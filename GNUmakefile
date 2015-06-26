@@ -9,3 +9,6 @@
 check:
 	@ $(MAKE) --silent all install
 	@ $(MAKE) --silent -C tests clean check
+
+clean::
+	@ $(MAKE) --silent -C tests clean
