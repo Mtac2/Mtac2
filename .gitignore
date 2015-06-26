@@ -2,7 +2,13 @@
 *~
 
 # Coq annotation files
-.glob
+*.glob
+
+# Coq auxiliary files
+.*.aux
+
+# Coq compilation unit
+*.vo
 
 *.annot
 *.cmo
