@@ -1,4 +1,9 @@
+# emacs backup files
 *~
+
+# Coq annotation files
+.glob
+
 *.annot
 *.cmo
 *.cma
