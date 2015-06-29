@@ -1,5 +1,6 @@
 -I src
 -R theories Mtac2
 src/mtac2Initialization.ml4
+src/mtac2Mode.ml4
 src/mtac2Plugin.mllib
 theories/Mtac2.v
