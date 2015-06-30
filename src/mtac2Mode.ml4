@@ -5,27 +5,31 @@
 (** The following identifiers must be globally unique. They are used
     in several global tables to register some callbacks (for instance
     for the parser and the interpreter). *)
-
 let proof_mode_identifier = "MProof"
 
 (** Register a proof mode. 
-
     See proof_global.mli for a documentation on the role of each of
-    the following fields. In our case, there are no state to restore
-    and save when we go from and to the standard proof mode.
-
- *)
+    the following fields. 
+    In our case we have to set the command entry 
+    to mproof_mode defined in the Mtac2Parser when we enter in 
+    proof mode; and to reset the noedit_mode when when quit the 
+    mtac2 proof mode
+*)
 let _ =
   Proof_global.register_proof_mode {
     Proof_global.
     name  = proof_mode_identifier ;
-    set   = begin fun () -> () end ;
-    reset = begin fun () -> () end 
+    set   = 
+      begin fun () -> 
+	G_vernac.set_command_entry Mtac2Parser.mproof_mode 
+      end ;
+    reset = 
+      begin fun () -> 
+       G_vernac.set_command_entry G_vernac.noedit_mode
+      end 
   }
 
-(**
-
-   The following command extends both the parser and the interpreter
+(** The following command extends both the parser and the interpreter
    of the Vernacular language so that a new keyword "MProof" is
    recognized and is interpreted as the entry point for a proof 
    written in Mtac.
@@ -57,7 +61,6 @@ let _ =
     - On the fourth line, the interpretation function is given. This
      interpretation function is registered in Vernacinterp and called
      in Vernacentries.interp.
-
 *)
 VERNAC COMMAND EXTEND MProofCommand
   [ "MProof" ] 
