@@ -17,8 +17,10 @@ let proof_mode_identifier = "MProof"
     dynamically change the parser for the proof script instructions.
     See Mtac2Parser to know the syntax of our proof instructions.
 
-    We also reset the noedit_mode when when quit the mtac2 proof mode.
+    We also reset to the noedit_mode when we quit the mtac2 proof
+    mode.
 *)
+(* FIXME: (Yann) What is exactly this noedit_mode? *)
 let _ =
   Proof_global.register_proof_mode {
     Proof_global.
