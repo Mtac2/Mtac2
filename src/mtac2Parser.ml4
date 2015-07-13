@@ -5,7 +5,7 @@
     as Coq's notations are meeting our needs.
 *)
 
-(** New parser entry proof_mode *)
+(** New parser entry proof_mode. *)
 let mproof_mode : Vernacexpr.vernac_expr Pcoq.Gram.entry =
   Pcoq.Gram.entry_create "vernac:mproof_command"
 
