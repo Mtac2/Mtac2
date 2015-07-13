@@ -11,6 +11,6 @@ check:
 	@ $(MAKE) --silent all install
 	@ $(MAKE) --silent -C tests clean check
 
-cleanall:
+cleanall::
 	@ $(MAKE) --silent clean
 	@ $(MAKE) --silent -C tests clean
