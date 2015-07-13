@@ -49,5 +49,5 @@ END
 GEXTEND Gram
 GLOBAL: mproof_instr;
   mproof_instr :
-    [[ c=Pcoq.Constr.operconstr ; "." -> Run c ]];
+    [[ c=Pcoq.Constr.operconstr ; "." -> Mtac2Instr.Run c ]];
 END
