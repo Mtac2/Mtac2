@@ -2,10 +2,8 @@
 
     For the moment, this parser is trivial: a MProof command is simply
     a toplevel Gallina term. We will stay with a trivial parser as long
-    as Coq's notations are meeting our needs. 
+    as Coq's notations are meeting our needs.
 *)
-
-(*i camlp4deps: "grammar/grammar.cma" i*)
 
 (** New parser entry proof_mode *)
 let mproof_mode : Vernacexpr.vernac_expr Pcoq.Gram.entry =
