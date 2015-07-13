@@ -7,31 +7,35 @@
     for the parser and the interpreter). *)
 let proof_mode_identifier = "MProof"
 
-(** Register a proof mode. 
+(** Register the proof mode.
+
     See proof_global.mli for a documentation on the role of each of
-    the following fields. 
-    In our case we have to set the command entry 
-    to mproof_mode defined in the Mtac2Parser when we enter in 
-    proof mode; and to reset the noedit_mode when when quit the 
-    mtac2 proof mode
+    the following fields.
+
+    In our case, we have to set the command entry to "mproof_mode"
+    defined in the Mtac2Parser when we enter in proof mode. This
+    dynamically change the parser for the proof script instructions.
+    See Mtac2Parser to know the syntax of our proof instructions.
+
+    We also reset the noedit_mode when when quit the mtac2 proof mode.
 *)
 let _ =
   Proof_global.register_proof_mode {
     Proof_global.
     name  = proof_mode_identifier ;
-    set   = 
-      begin fun () -> 
-	G_vernac.set_command_entry Mtac2Parser.mproof_mode 
+    set   =
+      begin fun () ->
+	G_vernac.set_command_entry Mtac2Parser.mproof_mode
       end ;
-    reset = 
-      begin fun () -> 
+    reset =
+      begin fun () ->
        G_vernac.set_command_entry G_vernac.noedit_mode
-      end 
+      end
   }
 
 (** The following command extends both the parser and the interpreter
    of the Vernacular language so that a new keyword "MProof" is
-   recognized and is interpreted as the entry point for a proof 
+   recognized and is interpreted as the entry point for a proof
    written in Mtac.
 
    In the following command:
@@ -43,27 +47,27 @@ let _ =
      integer which represents the index of the interpretation rule
      (here 0).
 
-   - On the second line, [ "MProof" ] is the right hand side of the 
+   - On the second line, [ "MProof" ] is the right hand side of the
      unique grammar rule for the non terminal MProofCommand.
 
    - On the third line, there are two classifiers that influence
-     the interpretation of this command. 
+     the interpretation of this command.
 
      "VtProofMode" classifies the command as a proof mode introducer.
-     The "proof_mode_identifier" is used as a key in 
-     Vernac_classifier.classifiers. 
+     The "proof_mode_identifier" is used as a key in
+     Vernac_classifier.classifiers.
 
      "VtNow" indicates that the interpretation of this command cannot
      be done in the background asynchronously. Indeed, changing the
      proof mode has an effect on the parsing and the interpretation
-     of the subsequent commands. 
+     of the subsequent commands.
 
     - On the fourth line, the interpretation function is given. This
      interpretation function is registered in Vernacinterp and called
      in Vernacentries.interp.
 *)
 VERNAC COMMAND EXTEND MProofCommand
-  [ "MProof" ] 
-  => [ Vernacexpr.VtProofMode proof_mode_identifier, Vernacexpr.VtNow  ] 
+  [ "MProof" ]
+  => [ Vernacexpr.VtProofMode proof_mode_identifier, Vernacexpr.VtNow  ]
   -> [ () ]
 END
