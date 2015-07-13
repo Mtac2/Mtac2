@@ -39,7 +39,7 @@ let mproof_instr : Mtac2Instr.mproof_instr Pcoq.Gram.entry =
       of type vernac_classification
 *)
 VERNAC mproof_mode EXTEND MProofInstr
-  [ - mproof_instr(instr) ] => [ Vernacexpr.VtProofStep false, Vernacexpr.VtLater ] ->
+  [ - mproof_instr(_instr) ] => [ Vernacexpr.VtProofStep false, Vernacexpr.VtLater ] ->
   [ () ]
 END
 
