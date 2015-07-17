@@ -71,5 +71,5 @@ let _ =
 VERNAC COMMAND EXTEND MProofCommand
   [ "MProof" ]
   => [ Vernacexpr.VtProofMode proof_mode_identifier, Vernacexpr.VtNow  ]
-  -> [ () ]
+  -> [ Mtac2Interp.interp_mproof_command () ]
 END

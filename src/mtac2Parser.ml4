@@ -72,7 +72,7 @@ let mproof_instr : Mtac2Instr.mproof_instr Pcoq.Gram.entry =
 
 VERNAC mproof_mode EXTEND MProofInstr
   [ - mproof_instr(_instr) ] => [ Vernacexpr.VtProofStep false, Vernacexpr.VtLater ] ->
-  [ () ]
+  [ Mtac2Interp.interp_proof_constr _instr ]
 END
 
 (** The parsing rule for the non terminal [mproof_instr]. *)
@@ -80,5 +80,5 @@ open Pcoq
 GEXTEND Gram
 GLOBAL: mproof_instr;
   mproof_instr :
-    [[ c=Pcoq.Constr.operconstr ; "." -> Mtac2Instr.Run c ]];
+    [[ c=Pcoq.Constr.operconstr ; "." -> Mtac2Instr.Mtac2_constr c ]];
 END

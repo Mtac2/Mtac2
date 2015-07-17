@@ -2,5 +2,4 @@
 
 (** Mtac2 uses the syntax of Coq to represent programs. *)
 type mproof_instr =
-  | Run of Constrexpr.constr_expr
-
+  | Mtac2_constr of Constrexpr.constr_expr
