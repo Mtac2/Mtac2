@@ -28,9 +28,9 @@ let run_tac t =
     let (sigma, t) = pretypeT env sigma concl c in
     let r = run (env, sigma) c in
     match r with
-      | Val (sigma', _, v) ->
-	(Proofview.Unsafe.tclEVARS sigma')
-	<*> (Proofview.Refine.refine ~unsafe:false (fun s->(s, v)))
-      | Err (_, _, e) ->
-	Errors.error ("Uncaught exception: " ^ (Pp.string_of_ppcmds (Termops.print_constr e)))
+    | Val (sigma', _, v) ->
+        (Proofview.Unsafe.tclEVARS sigma')
+        <*> (Proofview.Refine.refine ~unsafe:false (fun s->(s, v)))
+    | Err (_, _, e) ->
+        Errors.error ("Uncaught exception: " ^ (Pp.string_of_ppcmds (Termops.print_constr e)))
   end

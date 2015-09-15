@@ -11,13 +11,13 @@ let get_its_info gls = Mtac2ProofInfos.get_info gls.Evd.sigma gls.it
 (**  *)
 let tcl_change_info_gen info_gen =
   (fun gls ->
-    let it = Evd.sig_it gls in
-    let concl = Tacmach.pf_concl gls in
-    let hyps = Goal.V82.hyps (Tacmach.project gls) it in
-    let extra = Goal.V82.extra (Tacmach.project gls) it in
-    let (gl,ev,sigma) = Goal.V82.mk_goal (Tacmach.project gls) hyps concl (info_gen extra) in
-    let sigma = Goal.V82.partial_solution sigma it ev in
-    {it = [gl] ; sigma= sigma; } )
+     let it = Evd.sig_it gls in
+     let concl = Tacmach.pf_concl gls in
+     let hyps = Goal.V82.hyps (Tacmach.project gls) it in
+     let extra = Goal.V82.extra (Tacmach.project gls) it in
+     let (gl,ev,sigma) = Goal.V82.mk_goal (Tacmach.project gls) hyps concl (info_gen extra) in
+     let sigma = Goal.V82.partial_solution sigma it ev in
+     {it = [gl] ; sigma= sigma; } )
 
 (** Updates the info of the evar maps *)
 let tcl_change_info info gls =
@@ -56,7 +56,7 @@ let interp_mproof_command () =
 (** Interpreter of a mtactic *)
 let interp_instr instr =
   match instr with
-    | Mtac2Instr.Mtac2_constr c -> Mtac2Run.run_tac c
+  | Mtac2Instr.Mtac2_constr c -> Mtac2Run.run_tac c
 
 (** Interpreter of a constr :
     - Interpretes the constr

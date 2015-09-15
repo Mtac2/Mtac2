@@ -1,12 +1,11 @@
 (**
-    This module concerns the state of the proof tree
+   This module concerns the state of the proof tree
 *)
 
 (**  *)
 type split_tree=
     Skip_patt of Names.Id.Set.t * split_tree
-  | Split_patt of Names.Id.Set.t * Names.inductive *
-		(bool array * (Names.Id.Set.t * split_tree) option) array
+  | Split_patt of Names.Id.Set.t * Names.inductive * (bool array * (Names.Id.Set.t * split_tree) option) array
   | Close_patt of split_tree
   | End_patt of (Names.Id.t * (int * int))
 
@@ -19,14 +18,14 @@ type elim_kind =
 type recpath = int option*Declarations.wf_paths
 
 type per_info =
-    {per_casee:Term.constr;
-     per_ctype:Term.types;
-     per_ind:Names.inductive;
-     per_pred:Term.constr;
-     per_args:Term.constr list;
-     per_params:Term.constr list;
-     per_nparams:int;
-     per_wf:recpath}
+  {per_casee:Term.constr;
+   per_ctype:Term.types;
+   per_ind:Names.inductive;
+   per_pred:Term.constr;
+   per_args:Term.constr list;
+   per_params:Term.constr list;
+   per_nparams:int;
+   per_wf:recpath}
 
 type elim_type =
     ET_Case_analysis
@@ -39,7 +38,7 @@ type stack_info =
   | Focus_claim
 
 type pm_info =
-    { pm_stack : stack_info list}
+  { pm_stack : stack_info list}
 
 (** Create a new field in datatype used to store additional information in evar maps*)
 let info = Evd.Store.field ()
@@ -61,7 +60,7 @@ let proof_cond = Proof.no_cond proof_focus
 (** focus on the proof *)
 let focus p =
   let inf = get_stack p in
-Printf.printf "____focus\n%!";
+  Printf.printf "____focus\n%!";
   Proof_global.simple_with_current_proof
     (fun _ -> Proof.focus proof_cond inf 1)
 
