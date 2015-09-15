@@ -1,5 +1,5 @@
 # Generated Makefile
-./Makefile
+/Makefile
 
 # Make dependencies
 *.d
@@ -30,12 +30,15 @@
 *.cmxa
 
 # ocamlbuild working directory
-_build/
+/_build/
 
 # ocamlbuild targets
 *.byte
 *.native
 
 # oasis generated files
-setup.data
-setup.log
+/setup.data
+/setup.log
+
+# merlin generated files
+/.merlin
