@@ -1,7 +1,13 @@
 #!/usr/bin/env sh
 
+# Makefile generation
 coq_makefile -f Make -o Makefile
 
+# git pre-commit hooks installation
+(cd .git/hooks; ln -sf ../../scripts/hooks/pre-commit)
+
+# .merlin generation
+# NOTE: Needed because Coq doesn't install any META files
 path=`ocamlfind printconf destdir`
 if [ $? -ne 0 ]; then
     echo "Warning: Optional command (ocamlfind) not found. Error ignored"
