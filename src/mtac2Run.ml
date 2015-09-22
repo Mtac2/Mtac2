@@ -1,12 +1,11 @@
 (** This module run the interpretation of a constr
 *)
 
-open Run
 open Proofview.Notations
 
 (**  *)
 let pretypeT env sigma t c =
-  let (_, e) = MtacNames.mkT_lazy sigma env in
+  let (_, e) = Run.MtacNames.mkT_lazy sigma env in
   let ty = Retyping.get_type_of env sigma c in
   let (h, args) = Reductionops.whd_betadeltaiota_stack env sigma ty in
   if Term.eq_constr_nounivs e h && List.length args = 1 then
@@ -26,11 +25,11 @@ let run_tac t =
     let concl = Proofview.Goal.concl gl in
     let sigma,c = Constrintern.interp_open_constr env sigma t in
     let (sigma, t) = pretypeT env sigma concl c in
-    let r = run (env, sigma) c in
+    let r = Run.run (env, sigma) c in
     match r with
-    | Val (sigma', _, v) ->
+    | Run.Val (sigma', _, v) ->
         (Proofview.Unsafe.tclEVARS sigma')
         <*> (Proofview.Refine.refine ~unsafe:false (fun s->(s, v)))
-    | Err (_, _, e) ->
+    | Run.Err (_, _, e) ->
         Errors.error ("Uncaught exception: " ^ (Pp.string_of_ppcmds (Termops.print_constr e)))
   end

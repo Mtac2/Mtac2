@@ -89,8 +89,7 @@ VERNAC mproof_mode EXTEND MProofInstr
 END
 
 (** The parsing rule for the non terminal [mproof_instr]. *)
-open Pcoq
-GEXTEND Gram
+GEXTEND Pcoq.Gram
 GLOBAL: mproof_instr;
   mproof_instr :
     [[ c=Pcoq.Constr.operconstr ; "." -> Mtac2Instr.Mtac2_constr c ]];

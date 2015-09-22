@@ -3,10 +3,8 @@
    and the vernac MProof command.
 *)
 
-open Evd
-
 (** Get the infos of a goal *)
-let get_its_info gls = Mtac2ProofInfos.get_info gls.Evd.sigma gls.it
+let get_its_info gls = Mtac2ProofInfos.get_info gls.Evd.sigma gls.Evd.it
 
 (**  *)
 let tcl_change_info_gen info_gen =
@@ -17,11 +15,11 @@ let tcl_change_info_gen info_gen =
      let extra = Goal.V82.extra (Tacmach.project gls) it in
      let (gl,ev,sigma) = Goal.V82.mk_goal (Tacmach.project gls) hyps concl (info_gen extra) in
      let sigma = Goal.V82.partial_solution sigma it ev in
-     {it = [gl] ; sigma= sigma; } )
+     {Evd.it = [gl] ; sigma= sigma; } )
 
 (** Updates the info of the evar maps *)
 let tcl_change_info info gls =
-  let info_gen s = Store.set s Mtac2ProofInfos.info info in
+  let info_gen s = Evd.Store.set s Mtac2ProofInfos.info info in
   tcl_change_info_gen info_gen gls
 
 (** Initializes the evar map and returns the updates evar map given the goal *)
