@@ -6,9 +6,8 @@
 
   For the moment, we do not implement tacticals like ';', '||', ...
 
-** Jacques Pascal
-*** TODO Remove usage of V82 compatibility thanks to the new proof engine.
-*** TODO Focus on the next goal after each mproof instructions.
+** Jacques-Pascal
+*** Implement some tactics
 
 
 ** Yann
