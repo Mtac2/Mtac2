@@ -4,10 +4,7 @@ src/mtac2Initialization.ml4
 src/mtac2Instr.mli
 src/run.ml
 src/run.mli
-src/mtac2Run.ml
-src/mtac2ProofInfos.ml
 src/mtac2Interp.ml
-src/mtac2Parser.ml4
-src/mtac2Mode.ml4
+src/mtac2Interp.mli
 src/mtac2Plugin.mllib
 theories/Mtac2.v
