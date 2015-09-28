@@ -40,66 +40,13 @@ module Mtac2ProofInfos = struct
      This module concerns the state of the proof tree
   *)
 
-  (**  *)
-  type split_tree=
-    | Skip_patt of Names.Id.Set.t * split_tree
-    | Split_patt of Names.Id.Set.t * Names.inductive * (bool array * (Names.Id.Set.t * split_tree) option) array
-    | Close_patt of split_tree
-    | End_patt of (Names.Id.t * (int * int))
-
-  (**  *)
-  type elim_kind =
-    | EK_dep of split_tree
-    | EK_nodep
-    | EK_unknown
-
-  type recpath = int option*Declarations.wf_paths
-
-  type per_info =
-    {per_casee:Term.constr;
-     per_ctype:Term.types;
-     per_ind:Names.inductive;
-     per_pred:Term.constr;
-     per_args:Term.constr list;
-     per_params:Term.constr list;
-     per_nparams:int;
-     per_wf:recpath}
-
-  type elim_type =
-    | ET_Case_analysis
-    | ET_Induction
-
-  type stack_info =
-    | Per of elim_type * per_info * elim_kind * Names.Id.t list
-    | Suppose_case
-    | Claim
-    | Focus_claim
-
-  type pm_info =
-    { pm_stack : stack_info list}
-
-  (** Create a new field in datatype used to store additional information in evar maps*)
-  let info = Evd.Store.field ()
-
-  (** Get back the infos of a given goal *)
-  let get_info sigma gl=
-    match Evd.Store.get (Goal.V82.extra sigma gl) info with
-    | None -> invalid_arg "get_info"
-    | Some pm -> pm
-
-  let get_stack pts =
-    let { Evd.it = goals; sigma } = Proof.V82.subgoals pts in
-    let info = get_info sigma (List.hd goals) in
-    info.pm_stack
-
   let proof_focus = Proof.new_focus_kind ()
   let proof_cond = Proof.no_cond proof_focus
 
   (** focus on the proof *)
-  let focus p =
-    let inf = get_stack p in
-    Printf.printf "____focus\n%!";
-    Proof_global.simple_with_current_proof (fun _ -> Proof.focus proof_cond inf 1)
+  let focus () =
+    Proof_global.simple_with_current_proof
+      (fun _ -> Proof.focus proof_cond () 1)
 
   (** unfocus *)
   let maximal_unfocus () =
@@ -112,40 +59,11 @@ end
    and the vernac MProof command.
 *)
 
-(** Get the infos of a goal *)
-let get_its_info gls = Mtac2ProofInfos.get_info gls.Evd.sigma gls.Evd.it
-
-(**  *)
-let tcl_change_info_gen info_gen =
-  (fun gls ->
-     let it = Evd.sig_it gls in
-     let concl = Tacmach.pf_concl gls in
-     let hyps = Goal.V82.hyps (Tacmach.project gls) it in
-     let extra = Goal.V82.extra (Tacmach.project gls) it in
-     let (gl, ev, sigma) =
-       Goal.V82.mk_goal (Tacmach.project gls) hyps concl (info_gen extra)
-     in
-     let sigma = Goal.V82.partial_solution sigma it ev in
-     {Evd.it = [gl]; sigma}
-  )
-
-(** Updates the info of the evar maps *)
-let tcl_change_info info gls =
-  let info_gen s = Evd.Store.set s Mtac2ProofInfos.info info in
-  tcl_change_info_gen info_gen gls
-
-(** Initializes the evar map and returns the updates evar map given the goal *)
-let start_proof_tac gls=
-  let info={Mtac2ProofInfos.pm_stack=[]} in
-  tcl_change_info info gls
-
 (** Applies start_proof_tac to the 1st subgoal of the current
     focused proof in order to updates the evar map and focus on
     the current proof *)
 let go_to_proof_mode () =
-  ignore (Pfedit.by (Proofview.V82.tactic start_proof_tac));
-  let p = Proof_global.give_me_the_proof () in
-  Mtac2ProofInfos.focus p
+  Mtac2ProofInfos.focus ()
 
 
 (** Interpreter of the MProof vernac command :
