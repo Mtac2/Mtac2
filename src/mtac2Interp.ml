@@ -99,8 +99,7 @@ module Mtac2ProofInfos = struct
   let focus p =
     let inf = get_stack p in
     Printf.printf "____focus\n%!";
-    Proof_global.simple_with_current_proof
-      (fun _ -> Proof.focus proof_cond inf 1)
+    Proof_global.simple_with_current_proof (fun _ -> Proof.focus proof_cond inf 1)
 
   (** unfocus *)
   let maximal_unfocus () =
