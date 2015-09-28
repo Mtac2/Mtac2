@@ -5,7 +5,7 @@ Definition exact {A : Type} (x : A) : M A :=
   ret x.
 
 Lemma test1 : forall P, P -> P.
-  MProof.
+MProof.
   exact (fun P x => x).
 Qed.
 
@@ -13,11 +13,11 @@ Definition apply {B C : Type} (l : B -> C) : M C :=
   h <- evar B;
   ret (l h).
 
-(* Lemma test2 : True.
+ Lemma test2 : True.
 MProof.
    apply (fun (x : True) => x).
    ret I.
- *)
+Qed.
 
 Require Import Omega.
 

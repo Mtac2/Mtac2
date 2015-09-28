@@ -35,6 +35,7 @@ module Mtac2Run = struct
           Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
     end
 end
+
 module Mtac2ProofInfos = struct
   (**
      This module concerns the state of the proof tree
@@ -50,21 +51,17 @@ module Mtac2ProofInfos = struct
 
   (** unfocus *)
   let maximal_unfocus () =
-    Proof_global.simple_with_current_proof
-      (fun _ -> Proof.maximal_unfocus proof_focus)
+    let aux _ proof =
+      let proof = Proof.unshelve proof in
+      Proof.maximal_unfocus proof_focus proof
+    in
+    Proof_global.simple_with_current_proof aux
 end
 
 (**
    This module manages the interpretation of the mtac2 tactics
    and the vernac MProof command.
 *)
-
-(** Applies start_proof_tac to the 1st subgoal of the current
-    focused proof in order to updates the evar map and focus on
-    the current proof *)
-let go_to_proof_mode () =
-  Mtac2ProofInfos.focus ()
-
 
 (** Interpreter of the MProof vernac command :
     - Get back and focus on the current proof
@@ -76,7 +73,7 @@ let interp_mproof_command () =
     Errors.error "Nothing left to prove here."
   else
     begin
-      go_to_proof_mode ();
+      Mtac2ProofInfos.focus ();
       Proof_global.set_proof_mode "MProof";
       Vernacentries.print_subgoals ();
     end
