@@ -9,14 +9,22 @@ MProof.
   exact (fun P x => x).
 Qed.
 
+Definition reflexivity {A : Type} {x : A} : M (x = x) :=
+  ret (eq_refl : x = x).
+
 Definition apply {B C : Type} (l : B -> C) : M C :=
   h <- evar B;
   ret (l h).
 
- Lemma test2 : True.
+Lemma test2 : True.
 MProof.
    apply (fun (x : True) => x).
-   ret I.
+   exact I.
+Qed.
+
+Lemma test3 : O = O.
+MProof.
+  reflexivity.
 Qed.
 
 Require Import Omega.
@@ -33,7 +41,6 @@ Proof.
   apply sym_eq.
   exact H.
 Qed.
-Print bar.
 
 Definition intro {A : Type} {q} (s : forall x : A, M (q x))
 : M (forall x : A, q x) :=
@@ -41,9 +48,7 @@ Definition intro {A : Type} {q} (s : forall x : A, M (q x))
   p <- s x;
   abs x p.
 
-Lemma example2 : True -> True.
+Lemma test4 : forall (p : Prop), p = p.
 MProof.
-  intro (fun x => ret x).
-
+  intro (fun x => reflexivity).
 Qed.
-Print example2.
