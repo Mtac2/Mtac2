@@ -52,3 +52,36 @@ Lemma test4 : forall (p : Prop), p = p.
 MProof.
   intro (fun x => reflexivity).
 Qed.
+
+Definition symmetry {A : Type} {t u : A} {p : t = u} : M (u = t) :=
+  ret (eq_sym p).
+
+Definition idtac {A : Type} {x : A} : M A := ret x.
+
+Notation "'intros' x .. y" := (intro (fun x => .. (intro (fun y => idtac)) ..)) (at level 99, x binder).
+Notation "'intro' x" := (intro (fun x => idtac)) (at level 99).
+
+Lemma test5 : forall n m : nat, n = m -> m = n.
+MProof.
+  intros n m H.
+  idtac. (* TODO: Remove this. Necessary to see the reduced term *)
+  symmetry.
+  exact H.
+Qed.
+
+Definition NotFound : Exception.
+  exact exception.
+Qed.
+
+(* Doesn't type-check yet *)
+Definition lookup (A : Type) :=
+  mfix f (hyps : list Hyp) : M A :=
+    mmatch hyps return M A with
+    | nil => raise NotFound
+    | [? a] cons (@ahyp A a _) _ => ret a
+    | [? xs] cons _ xs => f xs
+    end.
+
+Definition assumption {A : Type} : M A :=
+  hyps <- hypotheses;
+  lookup A hyps
