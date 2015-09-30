@@ -75,13 +75,13 @@ Qed.
 
 (* Doesn't type-check yet *)
 Definition lookup (A : Type) :=
-  mfix f (hyps : list Hyp) : M A :=
+  mfix1 f (hyps : list Hyp) : M A :=
     mmatch hyps return M A with
     | nil => raise NotFound
-    | [? a] cons (@ahyp A a _) _ => ret a
-    | [? xs] cons _ xs => f xs
+    | [? a b xs] cons (@ahyp A a b) xs => ret a
+    | [? a xs] cons a xs => f xs
     end.
 
 Definition assumption {A : Type} : M A :=
   hyps <- hypotheses;
-  lookup A hyps
+  lookup A hyps.
