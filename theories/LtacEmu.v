@@ -61,19 +61,10 @@ Definition idtac {A : Type} {x : A} : M A := ret x.
 Notation "'intros' x .. y" := (intro (fun x => .. (intro (fun y => idtac)) ..)) (at level 99, x binder).
 Notation "'intro' x" := (intro (fun x => idtac)) (at level 99).
 
-Lemma test5 : forall n m : nat, n = m -> m = n.
-MProof.
-  intros n m H.
-  idtac. (* TODO: Remove this. Necessary to see the reduced term *)
-  symmetry.
-  exact H.
-Qed.
-
 Definition NotFound : Exception.
   exact exception.
 Qed.
 
-(* Doesn't type-check yet *)
 Definition lookup (A : Type) :=
   mfix1 f (hyps : list Hyp) : M A :=
     mmatch hyps return M A with
@@ -85,3 +76,11 @@ Definition lookup (A : Type) :=
 Definition assumption {A : Type} : M A :=
   hyps <- hypotheses;
   lookup A hyps.
+
+Lemma test5 : forall n m : nat, n = m -> m = n.
+MProof.
+  intros n m H.
+  idtac. (* TODO: Remove this. Necessary to see the reduced term *)
+  symmetry.
+  assumption.
+Qed.
