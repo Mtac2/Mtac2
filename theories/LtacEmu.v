@@ -84,3 +84,15 @@ MProof.
   symmetry.
   assumption.
 Qed.
+
+Definition transitivity {A : Type} (y : A) {x z : A} {f : x = y} {g : y = z} : M (x = z) :=
+  ret (eq_trans f g).
+
+Lemma test6 : forall (x y z : Prop), x = y -> y = z -> x = z.
+MProof.
+  intros x y z H G.
+  idtac. (* TODO: Remove this. Necessary to see the reduced term *)
+  transitivity y.
+  exact H.
+  exact G.
+Qed.
