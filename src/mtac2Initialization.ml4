@@ -1,5 +1,7 @@
 (** This module initializes the plugin (parser extension, callbacks, …). *)
 
+open Pcoq  (* required by Camlp5 *)
+
 (**
 
    Since Coq 8.5, the following directive must appear to declare plugins. See:
@@ -89,7 +91,7 @@ VERNAC mproof_mode EXTEND MProofInstr
 END
 
 (** The parsing rule for the non terminal [mproof_instr]. *)
-GEXTEND Pcoq.Gram
+GEXTEND Gram
 GLOBAL: mproof_instr;
   mproof_instr :
     [[ c=Pcoq.Constr.operconstr ; "." -> Mtac2Instr.Mtac2_constr c ]];
