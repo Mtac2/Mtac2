@@ -14,4 +14,4 @@
 *** TODO Implement "intro", find a way to introduce name at the level of a script.
 
 ** Next steps
-*** TODO Implement an unsafe call to OCaml code from Mtac2.
+*** TODO Implement an unsafe call to OCaml code from MetaCoq.

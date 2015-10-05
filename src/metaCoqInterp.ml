@@ -1,4 +1,4 @@
-module Mtac2Run = struct
+module MetaCoqRun = struct
   (** This module run the interpretation of a constr
   *)
 
@@ -6,7 +6,7 @@ module Mtac2Run = struct
 
   (**  *)
   let pretypeT env sigma t c =
-    let (_, e) = Run.MtacNames.mkT_lazy sigma env in
+    let (_, e) = Run.MetaCoqNames.mkT_lazy sigma env in
     let ty = Retyping.get_type_of env sigma c in
     let (h, args) = Reductionops.whd_betadeltaiota_stack env sigma ty in
     if Term.eq_constr_nounivs e h && List.length args = 1 then
@@ -36,7 +36,7 @@ module Mtac2Run = struct
     end
 end
 
-module Mtac2ProofInfos = struct
+module MetaCoqProofInfos = struct
   (**
      This module concerns the state of the proof tree
   *)
@@ -59,7 +59,7 @@ module Mtac2ProofInfos = struct
 end
 
 (**
-   This module manages the interpretation of the mtac2 tactics
+   This module manages the interpretation of the MetaCoq tactics
    and the vernac MProof command.
 *)
 
@@ -73,14 +73,14 @@ let interp_mproof_command () =
     Errors.error "Nothing left to prove here."
   else
     begin
-      Mtac2ProofInfos.focus ();
+      MetaCoqProofInfos.focus ();
       Proof_global.set_proof_mode "MProof";
       Vernacentries.print_subgoals ();
     end
 
 (** Interpreter of a mtactic *)
 let interp_instr = function
-  | Mtac2Instr.Mtac2_constr c -> Mtac2Run.run_tac c
+  | MetaCoqInstr.MetaCoq_constr c -> MetaCoqRun.run_tac c
 
 (** Interpreter of a constr :
     - Interpretes the constr
@@ -88,5 +88,5 @@ let interp_instr = function
     - Print subgoals *)
 let interp_proof_constr instr =
   ignore (Pfedit.by (interp_instr instr));
-  Mtac2ProofInfos.maximal_unfocus ();
+  MetaCoqProofInfos.maximal_unfocus ();
   Vernacentries.print_subgoals ()

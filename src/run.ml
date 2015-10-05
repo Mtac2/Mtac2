@@ -1,4 +1,4 @@
-(** This module defines the interpretation of mtac constr
+(** This module defines the interpretation of MetaCoq constr
 *)
 
 open Declarations
@@ -109,12 +109,12 @@ module CoqOption = struct
 
 end
 
-module MtacNames = struct
-  let mtac_module_name = "Mtac2.Mtac2.Mtac"
-  let mkConstr e sigma env = (sigma, Lazy.force (Constr.mkConstr (mtac_module_name ^ "." ^ e)))
-  let mkBuilder e = ConstrBuilder.from_string (mtac_module_name ^ "." ^ e)
-  let mkT_lazy = mkConstr "Mtac"
-  let mkUConstr e = (Constr.mkUConstr (mtac_module_name ^ "." ^ e))
+module MetaCoqNames = struct
+  let metaCoq_module_name = "MetaCoq.MetaCoq.MetaCoq"
+  let mkConstr e sigma env = (sigma, Lazy.force (Constr.mkConstr (metaCoq_module_name ^ "." ^ e)))
+  let mkBuilder e = ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
+  let mkT_lazy = mkConstr "MetaCoq"
+  let mkUConstr e = (Constr.mkUConstr (metaCoq_module_name ^ "." ^ e))
 
   let isConstr e sigma env =
     let (_, c) = mkConstr e sigma env in
@@ -132,7 +132,7 @@ let constr_to_string t = string_of_ppcmds (Termops.print_constr t)
 
 module Exceptions = struct
 
-  let mkInternalException = MtacNames.mkConstr
+  let mkInternalException = MetaCoqNames.mkConstr
 
   let mkNullPointer = mkInternalException  "NullPointer"
   let mkTermNotGround = mkInternalException  "TermNotGround"
@@ -142,8 +142,8 @@ module Exceptions = struct
   (* HACK: we put Prop as the type of the raise. We can put an evar, but
      what's the point anyway? *)
   let mkRaise e env sigma =
-    let (sigma, c) = MtacNames.mkConstr "raise" sigma env in
-    let (sigma, a) = MtacNames.mkConstr e sigma env in
+    let (sigma, c) = MetaCoqNames.mkConstr "raise" sigma env in
+    let (sigma, a) = MetaCoqNames.mkConstr e sigma env in
     (sigma, mkApp(c, [|mkProp; a|]))
 
   let error_stuck = "Cannot reduce term, perhaps an opaque definition?"
@@ -160,15 +160,15 @@ end
 
 module ReductionStrategy = struct
 (*
-     let redNone = MtacNames.mkConstr "RedNone"
-     let redSimpl = MtacNames.mkConstr "RedSimpl"
-     let redWhd = MtacNames.mkConstr "RedWhd"
-     let redOneStep = MtacNames.mkConstr "RedOneStep"
+     let redNone = MetaCoqNames.mkConstr "RedNone"
+     let redSimpl = MetaCoqNames.mkConstr "RedSimpl"
+     let redWhd = MetaCoqNames.mkConstr "RedWhd"
+     let redOneStep = MetaCoqNames.mkConstr "RedOneStep"
   *)
-  let isRedNone = MtacNames.isConstr "RedNone"
-  let isRedSimpl = MtacNames.isConstr "RedSimpl"
-  let isRedWhd = MtacNames.isConstr "RedWhd"
-  let isRedOneStep = MtacNames.isConstr "RedOneStep"
+  let isRedNone = MetaCoqNames.isConstr "RedNone"
+  let isRedSimpl = MetaCoqNames.isConstr "RedSimpl"
+  let isRedWhd = MetaCoqNames.isConstr "RedWhd"
+  let isRedOneStep = MetaCoqNames.isConstr "RedOneStep"
 
   let has_definition ts env t =
     if isVar t then
@@ -246,16 +246,16 @@ end
 
 module UnificationStrategy = struct
 (*
-     let mkUni = fun s -> lazy (MtacNames.mkConstr s)
+     let mkUni = fun s -> lazy (MetaCoqNames.mkConstr s)
      let uniRed = mkUni "UniRed"
      let uniSimpl = mkUni "UniSimpl"
      let uniMuni = mkUni "UniMuni"
 
      let test = fun r c -> eq_constr (Lazy.force r) c
   *)
-  let isUniRed = MtacNames.isConstr "UniRed"
-  let isUniSimpl = MtacNames.isConstr "UniSimpr"
-  let isUniMuni = MtacNames.isConstr "UniMuni"
+  let isUniRed = MetaCoqNames.isConstr "UniRed"
+  let isUniSimpl = MetaCoqNames.isConstr "UniSimpr"
+  let isUniMuni = MetaCoqNames.isConstr "UniMuni"
 
   let find_pbs sigma evars =
     let (_, pbs) = extract_all_conv_pbs sigma in
@@ -517,7 +517,7 @@ end
 *)
 module ArrayRefFactory =
 struct
-  let mkArrRef= Constr.mkConstr (MtacNames.mtac_module_name ^ ".carray")
+  let mkArrRef= Constr.mkConstr (MetaCoqNames.metaCoq_module_name ^ ".carray")
 
   let isArrRef =  Constr.isConstr mkArrRef
 
@@ -657,12 +657,12 @@ let rec open_pattern (env, sigma) p evars =
   let (patt, args) = whd_betadeltaiota_stack env sigma p in
   let length = List.length args in
   let nth = List.nth args in
-  if MtacNames.isBase sigma env patt && length = 6 then
+  if MetaCoqNames.isBase sigma env patt && length = 6 then
     let p = nth 3 in
     let b = nth 4 in
     let strategy = nth 5 in
     Some (sigma, evars, p, b, strategy)
-  else if MtacNames.isTele sigma env patt && length = 5 then
+  else if MetaCoqNames.isTele sigma env patt && length = 5 then
     let c = nth 2 in
     let f = nth 4 in
     let (sigma', evar) = Evarutil.new_evar env sigma c in
@@ -756,9 +756,9 @@ let name_occurn_env env n =
 let dest_Case (env, sigma) t_type t =
   let nil = Constr.mkConstr "Coq.Init.Datatypes.nil" in
   let cons = Constr.mkConstr "Coq.Init.Datatypes.cons" in
-  let (sigma, mkCase) = MtacNames.mkConstr "mkCase" sigma env in
-  let (sigma, dyn) = MtacNames.mkUConstr "dyn" sigma env in
-  let (sigma, mkDyn) = MtacNames.mkUConstr "Dyn" sigma env in
+  let (sigma, mkCase) = MetaCoqNames.mkConstr "mkCase" sigma env in
+  let (sigma, dyn) = MetaCoqNames.mkUConstr "dyn" sigma env in
+  let (sigma, mkDyn) = MetaCoqNames.mkUConstr "Dyn" sigma env in
   try
     let t = whd_betadeltaiota env sigma t in
     let (info, return_type, discriminant, branches) = Term.destCase t in
@@ -787,13 +787,13 @@ let dest_Case (env, sigma) t_type t =
 
 let make_Case (env, sigma) case =
   let map = Constr.mkConstr "List.map" in
-  let (sigma, elem) = MtacNames.mkUConstr "elem" sigma env in
-  let (sigma, mkDyn) = MtacNames.mkUConstr "Dyn" sigma env in
-  let (sigma, case_ind) = MtacNames.mkConstr "case_ind" sigma env in
-  let (sigma, case_val) = MtacNames.mkConstr "case_val" sigma env in
-  let (sigma, case_type) = MtacNames.mkConstr "case_type" sigma env  in
-  let (sigma, case_return) = MtacNames.mkConstr "case_return" sigma env in
-  let (sigma, case_branches) = MtacNames.mkConstr "case_branches" sigma env in
+  let (sigma, elem) = MetaCoqNames.mkUConstr "elem" sigma env in
+  let (sigma, mkDyn) = MetaCoqNames.mkUConstr "Dyn" sigma env in
+  let (sigma, case_ind) = MetaCoqNames.mkConstr "case_ind" sigma env in
+  let (sigma, case_val) = MetaCoqNames.mkConstr "case_val" sigma env in
+  let (sigma, case_type) = MetaCoqNames.mkConstr "case_type" sigma env  in
+  let (sigma, case_return) = MetaCoqNames.mkConstr "case_return" sigma env in
+  let (sigma, case_branches) = MetaCoqNames.mkConstr "case_branches" sigma env in
   let repr_ind = Term.applist(case_ind, [case]) in
   let repr_val = Term.applist(case_val, [case]) in
   let repr_val_red = whd_betadeltaiota env sigma repr_val in
@@ -831,8 +831,8 @@ let get_Constrs (env, sigma) t =
     | Term.Ind ((mind, ind_i), _) ->
         let mbody = Environ.lookup_mind mind env in
         let ind = Array.get (mbody.mind_packets) ind_i in
-        let (sigma, dyn) = MtacNames.mkUConstr "dyn" sigma env in
-        let (sigma, mkDyn) = MtacNames.mkUConstr "Dyn" sigma env in
+        let (sigma, dyn) = MetaCoqNames.mkUConstr "dyn" sigma env in
+        let (sigma, mkDyn) = MetaCoqNames.mkUConstr "Dyn" sigma env in
         let l = Array.fold_left
                   (fun l i ->
                      let constr = Names.ith_constructor_of_inductive (mind, ind_i) i in
@@ -853,7 +853,7 @@ let get_Constrs (env, sigma) t =
 
 module Hypotheses = struct
 
-  let ahyp_constr = MtacNames.mkBuilder "ahyp"
+  let ahyp_constr = MetaCoqNames.mkBuilder "ahyp"
 
   let mkAHyp ty n t sigma env =
     let t = match t with
@@ -861,7 +861,7 @@ module Hypotheses = struct
       | Some t -> CoqOption.mkSome ty t
     in UConstrBuilder.build_app ahyp_constr sigma env [|ty; n; t|]
 
-  let mkHypType = MtacNames.mkConstr "Hyp"
+  let mkHypType = MetaCoqNames.mkConstr "Hyp"
 
 
   let cons_hyp ty n t renv sigma env =
@@ -979,7 +979,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
   let constr c =
     if Term.isConstruct c then
       let ((m, ix), _) = Term.destConstruct c in
-      if Names.eq_ind m (fst (Term.destInd (snd (MtacNames.mkT_lazy sigma env)))) then
+      if Names.eq_ind m (fst (Term.destInd (snd (MetaCoqNames.mkT_lazy sigma env)))) then
         ix
       else
         Exceptions.block Exceptions.error_stuck
