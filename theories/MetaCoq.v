@@ -19,6 +19,8 @@ Definition ArrayOutOfBounds : Exception. exact exception. Qed.
 
 Definition NoPatternMatches : Exception. exact exception. Qed.
 
+Definition NotUnifiableException {A} (x y : A) : Exception. exact exception. Qed.
+
 Polymorphic Record dyn := Dyn { type : Type; elem : type }.
 
 Definition index := N.
@@ -84,7 +86,6 @@ Inductive MetaCoq : Type -> Prop :=
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), MetaCoq (B x1 x2 x3 x4 x5)
-| tmatch : forall {A} B (t : A), list (tpatt A B t) -> MetaCoq (B t)
 | print : string -> MetaCoq unit
 | tnu : forall {A B}, (A -> MetaCoq B) -> MetaCoq B
 | is_var : forall {A}, A -> MetaCoq bool
@@ -114,9 +115,8 @@ Inductive MetaCoq : Type -> Prop :=
 
 | pabs : forall {A P} (x : A), P x -> MetaCoq Type
 
-with tpatt : forall A (B : A -> Type) (t : A), Prop :=
-| base : forall {A B t} (x:A) (b : t = x -> MetaCoq (B x)), Unification -> tpatt A B t
-| tele : forall {A B C t}, (forall (x : C), tpatt A B t) -> tpatt A B t.
+| munify {A} (x y : A) (P : A -> Type) (f : x = y -> Mtac (P y)) : Mtac (P x)
+.
 
 Definition array_length : forall {A}, array A -> length :=
   fun A m => match m with carray _ _ l => l end.
@@ -167,77 +167,9 @@ Notation "t1 ';;' t2" := (@bind _ _ t1 (fun _=>t2))
 Notation "f @@ x" := (bind f (fun r=>ret (r x))) (at level 70).
 Notation "f >> x" := (bind f (fun r=>x r)) (at level 70).
 
-Notation "[? x .. y ] ps" := (tele (fun x=> .. (tele (fun y=>ps)).. ))
-  (at level 202, x binder, y binder, ps at next level) : metaCoq_patt_scope.
-Notation "p => b" := (base p%core (fun _=>b%core) UniRed)
-  (no associativity, at level 201) : metaCoq_patt_scope.
-Notation "p => b 'return' T" := (@base _ T _ p%core (fun _=>b%core) UniRed)
-  (no associativity, at level 201) : metaCoq_patt_scope.
-Notation "p => [ H ] b" := (base p%core (fun H=>b%core) UniRed)
-  (no associativity, at level 201, H at next level) : metaCoq_patt_scope.
-Notation "p '=s>' b" := (base p%core (fun _=>b%core) UniSimpl)
-  (no associativity, at level 201) : metaCoq_patt_scope.
-Notation "p =m> b" := (base p%core (fun _=>b%core) UniMuni)
-  (no associativity, at level 201) : metaCoq_patt_scope.
-Notation "p =m> [ H ] b" := (base p%core (fun H=>b%core) UniMuni)
-  (no associativity, at level 201, H at next level) : metaCoq_patt_scope.
-Notation "p =c> b" := (base p%core (fun _=>b%core) UniRed)
-  (no associativity, at level 201) : metaCoq_patt_scope.
-Notation "p =c> [ H ] b" := (base p%core (fun H=>b%core) UniRed)
-  (no associativity, at level 201, H at next level) : metaCoq_patt_scope.
-Notation "'_' => b " := (tele (fun x=> base x (fun _=>b%core) UniRed))
-  (at level 201, b at next level) : metaCoq_patt_scope.
-Notation "'_' =m> b " := (tele (fun x=> base x (fun _=>b%core) UniMuni))
-  (at level 201, b at next level) : metaCoq_patt_scope.
-Notation "'_' =c> b " := (tele (fun x=> base x (fun _=>b%core) UniRed))
-  (at level 201, b at next level) : metaCoq_patt_scope.
-
-Delimit Scope metaCoq_patt_scope with metaCoq_patt.
-
-Notation "'with' | p1 | .. | pn 'end'" :=
-  ((cons p1%metaCoq_patt (.. (cons pn%metaCoq_patt nil) ..)))
-    (at level 91, p1 at level 210, pn at level 210).
-Notation "'with' p1 | .. | pn 'end'" :=
-  ((cons p1%metaCoq_patt (.. (cons pn%metaCoq_patt nil) ..)))
-    (at level 91, p1 at level 210, pn at level 210).
-
-Notation "'mmatch' t ls" :=
-  (tmatch (fun _=>_) t ((fun l : list (tpatt _ (fun _=>_) _)=>l) ls))
-    (at level 90, ls at level 91, only parsing).
-Notation "'mmatch' t 'return' 'M' p ls" :=
-  (tmatch (fun _=>p) t ((fun l : list (tpatt _ (fun _=>p) _)=>l) ls))
-    (at level 90, p at level 0, ls at level 91, only parsing).
-Notation "'mmatch' t 'as' x 'return' 'M' p ls" :=
-  (tmatch (fun x=>p) t ((fun l : list (tpatt _ (fun x=>p) _)=>l) ls))
-    (at level 90, p at level 0, ls at level 91, format
-  "'[v' 'mmatch'  t  'as'  x  'return'  'M'  p  '/'  ls ']'").
-
 Notation "'nu' x .. y , a" := (tnu (fun x=>.. (tnu (fun y=> a))..))
 (at level 81, x binder, y binder, right associativity).
 
-
-Definition MFixException (s : string) : Exception.
-  exact exception.
-Qed.
-
-Program
-Definition mk_rec (Ty : Prop) (b : Ty) : M dyn :=
-  mmatch Ty as Ty' return M _ with
-  | [? A B] (forall x:A, M (B x)) -> forall x:A, M (B x) =c> [H]
-    retS (Dyn _ (tfix1 B (eq_ind _ id b _ H)))
-  | [? A B C] (forall (x:A) (y : B x), M (C x y)) -> forall (x:A) (y : B x), M (C x y) =c>[H]
-    retS (Dyn _ (tfix2 C (eq_ind _ id b _ H)))
-  | [? A1 A2 A3 B] (forall (x1:A1) (x2:A2 x1) (x3:A3 x1 x2), M (B x1 x2 x3))
-    -> forall (x1:A1) (x2:A2 x1) (x3:A3 x1 x2), M (B x1 x2 x3) =c> [H]
-    retS (Dyn _ (tfix3 B (eq_ind _ id b _ H)))
-  | [? A1 A2 A3 A4 B] (forall (x1:A1) (x2:A2 x1) (x3:A3 x1 x2) (x4:A4 x1 x2 x3), M (B x1 x2 x3 x4))
-    -> forall (x1:A1) (x2:A2 x1) (x3:A3 x1 x2) (x4:A4 x1 x2 x3), M (B x1 x2 x3 x4) =c> [H]
-    retS (Dyn _ (tfix4 B (eq_ind _ id b _ H)))
-  | [? A1 A2 A3 A4 A5 B] (forall (x1:A1) (x2:A2 x1) (x3:A3 x1 x2) (x4:A4 x1 x2 x3) (x5:A5 x1 x2 x3 x4), M (B x1 x2 x3 x4 x5))
-    -> forall (x1:A1) (x2:A2 x1) (x3:A3 x1 x2) (x4:A4 x1 x2 x3) (x5:A5 x1 x2 x3 x4), M (B x1 x2 x3 x4 x5) =c> [H]
-    retS (Dyn _ (tfix5 B (eq_ind _ id b _ H)))
-  | _ => raise (MFixException "Cannot typecheck the fixpoint. Perhaps you provided more than 5 arguments? If not, you can try providing the type to the fixpoint.")
-  end.
 
 Notation "'mfix1' f ( x : A ) : 'M' T := b" := (tfix1 (fun x=>T) (fun f (x : A)=>b))
   (at level 85, f at level 0, x at next level, format
@@ -263,27 +195,76 @@ Notation "'mfix5' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) ( x5 : A5 ) 
   (at level 85, f at level 0, x1 at next level, x2 at next level, x3 at next level, x4 at next level, x5 at next level, format
   "'[v  ' 'mfix5'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  '(' x5  ':'  A5 ')'  ':'  'M'  T  ':=' '/  ' b ']'").
 
-(* Not working. Must do in Ocaml. *)
-Notation "'mfix' f x .. y := b" := (
-  let T := (forall x, .. (forall y, M _) ..) in
-  let func := mk_rec (forall f : T, _ : Prop) (fun f =>(fun x => .. (fun y => b) ..)) in
-  eval (r <- func; retW (elem r))
-  )
-  (at level 85, f at level 0, x binder, y binder, only parsing).
-
-Notation "'mfix' f x .. y : 'M' A := b" := (
-  let T := (forall x, .. (forall y, M A) ..) in
-  let func := mk_rec (forall f : T, _ : Prop) (fun f =>(fun x => .. (fun y => b) ..)) in
-  eval (r <- func; retW (elem r))
-  )
-  (at level 85, f at level 0, x binder, y binder, only parsing).
-
 
 Definition type_inside {A} (x : M A) := A.
 
+
+(** Pattern matching without pain *)
+Inductive pattern A (B : A -> Type) (t : A) : Prop :=
+| pbase : forall (x:A) (b : t = x -> Mtac (B x)), Unification -> pattern A B t
+| ptele : forall {C}, (forall (x : C), pattern A B t) -> pattern A B t.
+
+(** Given a pattern of the form [[? a b c] p a b c => t a b c] it returns
+    the pattern with evars for each pattern variable: [p ?a ?b ?c => t ?a ?b ?c] *)
+Definition open_pattern {A} {P:A->Type} {t:A}  :=
+  mfix1 op (p : pattern A P t) : M (pattern A P t) :=
+    match p return M _ with
+    | pbase _ _ _ x f u => ret p : M (pattern _ _ _)
+    | @ptele _ _ _ C f =>
+      e <- evar C; op (f e)
+    end.
+
+Definition NoPatternMatches : Exception. exact exception. Qed.
+Definition Anomaly : Exception. exact exception. Qed.
+Import ListNotations.
+Fixpoint tmatch {A P} t (ps : list (pattern A P t)) : M (P t) :=
+  match ps with
+  | [] => raise NoPatternMatches
+  | (p :: ps') =>
+    p' <- open_pattern p;
+    ttry (
+      match p' with
+      | pbase _ _ _ t' f u =>
+        munify t t' P f : M (P t)
+      | _ => raise Anomaly
+      end)
+    (fun e=>
+       A <- evar Type;
+       x <- evar A;
+       y <- evar A;
+       munify e (NotUnifiableException x y) _ (fun _=>tmatch t ps')
+    )
+  end.
+
+Arguments ptele {A B t C} f.
+Arguments pbase {A B t} x b u.
+
+
+Notation "[? x .. y ] ps" := (ptele (fun x=> .. (ptele (fun y=>ps)).. ))
+  (at level 202, x binder, y binder, ps at next level) : metaCoq_pattern_scope.
+Notation "p => b" := (pbase p%core (fun _=>b%core) UniRed)
+  (no associativity, at level 201) : metaCoq_pattern_scope.
+Notation "p => [ H ] b" := (pbase p%core (fun H=>b%core) UniRed)
+  (no associativity, at level 201, H at next level) : metaCoq_pattern_scope.
+Notation "'_' => b " := (ptele (fun x=> pbase x (fun _=>b%core) UniRed))
+  (at level 201, b at next level) : metaCoq_pattern_scope.
+
+Delimit Scope metaCoq_pattern_scope with metaCoq_pattern.
+
+Notation "'with' | p1 | .. | pn 'end'" :=
+  ((cons p1%metaCoq_pattern (.. (cons pn%metaCoq_pattern nil) ..)))
+    (at level 91, p1 at level 210, pn at level 210).
+Notation "'with' p1 | .. | pn 'end'" :=
+  ((cons p1%metaCoq_pattern (.. (cons pn%metaCoq_pattern nil) ..)))
+    (at level 91, p1 at level 210, pn at level 210).
+
+Notation "'mmatch' x ls" := (tmatch x ls)
+  (at level 90, ls at level 91).
+
+
 Notation "'mtry' a ls" :=
   (ttry a (fun e=>
-    (tmatch _ e (app ls (cons ([? x] x=>raise x)%metaCoq_patt nil)))))
+    (tmatch _ e (app ls (cons ([? x] x=>raise x)%metaCoq_pattern nil)))))
     (at level 82, a at level 100, ls at level 91, only parsing).
 
 Notation "! a" := (read a) (at level 80).

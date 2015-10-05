@@ -137,7 +137,9 @@ module Exceptions = struct
   let mkNullPointer = mkInternalException  "NullPointer"
   let mkTermNotGround = mkInternalException  "TermNotGround"
   let mkOutOfBounds = mkInternalException  "ArrayOutOfBounds"
-  let noPatternMatches = "NoPatternMatches"
+  let mkNotUnifiable a x y env sigma =
+    let (_, e) = mkInternalException "NotUnifiableException" env sigma in
+    mkApp(e, [|a;x;y|])
 
   (* HACK: we put Prop as the type of the raise. We can put an evar, but
      what's the point anyway? *)
@@ -653,70 +655,6 @@ let return s es t = Val (s, es, t)
 
 let fail s es t = Err (s, es, t)
 
-let rec open_pattern (env, sigma) p evars =
-  let (patt, args) = whd_betadeltaiota_stack env sigma p in
-  let length = List.length args in
-  let nth = List.nth args in
-  if MetaCoqNames.isBase sigma env patt && length = 6 then
-    let p = nth 3 in
-    let b = nth 4 in
-    let strategy = nth 5 in
-    Some (sigma, evars, p, b, strategy)
-  else if MetaCoqNames.isTele sigma env patt && length = 5 then
-    let c = nth 2 in
-    let f = nth 4 in
-    let (sigma', evar) = Evarutil.new_evar env sigma c in
-    open_pattern (env, sigma') (mkApp (f, [|evar|])) (evar :: evars)
-  else
-    None
-
-
-
-let rec runmatch' (env, sigma as ctxt) t ty patts' i =
-  let (patts, args) =  whd_betadeltaiota_stack env sigma patts' in
-  if CoqList.isNil patts && List.length args = 1 then
-    Exceptions.mkRaise Exceptions.noPatternMatches env sigma
-  else if CoqList.isCons patts && List.length args = 3 then
-    match open_pattern ctxt (List.nth args 1) [] with
-      Some (sigma', evars, p, body, strategy) ->
-        let rsigma' = ref sigma' in
-        let devars = destEvars evars in
-        begin
-          if unify env rsigma' evars strategy p t && all_defined rsigma' devars then
-            let body = nf_evar !rsigma' body in
-            let () = remove_all rsigma' devars in
-            let body' = mkApp(body, [|CoqEq.mkAppEqRefl ty t|]) in
-            (!rsigma', body')
-          else
-            runmatch' ctxt t ty (List.nth args 2) (i+1)
-        end
-    | None -> Exceptions.block Exceptions.error_stuck
-  else
-    Exceptions.block Exceptions.error_stuck
-
-and destEvars =
-  (* fun l -> l *)
-  List.map (fun e-> let ev, _ = destEvar e in ev)
-
-and all_defined rsigma =
-  (* List.fold_left (fun b e -> b && Evd.meta_defined !rsigma e) true *)
-  (*
-     List.fold_left (fun b e -> b && Evd.is_defined !rsigma e) true
-  *)
-  (fun _->true)
-
-and remove_all rsigma =
-  fun l -> ()
-(* List.iter (fun e -> rsigma := Evd.remove !rsigma e) *)
-
-and unify env rsigma evars strategy t1 t2 =
-  UnificationStrategy.unify rsigma env evars strategy t1 t2
-
-
-let runmatch (env, sigma as ctxt) t ty patts =
-  runmatch' ctxt t ty patts 0
-
-
 let print env sigma s = Printf.printf "[DEBUG] %s\n" (CoqString.from_coq env sigma s)
 let print_term t = Printf.printf "[DEBUG] "; msg (Termops.print_constr t); Printf.printf "\n"
 
@@ -1031,16 +969,12 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9, nth 10, nth 11, nth 12, nth 13 in
       run_fix ctxt h [|a1; a2; a3; a4; a5|] b s i f [|x1; x2; x3; x4; x5|]
 
-  | 10 -> (* match *)
-      let (sigma', body) = runmatch (env, sigma) (nth 2) (nth 0) (nth 3) in
-      run' (env, renv, sigma', undo, metas) body
-
-  | 11 -> (* print *)
+  | 10 -> (* print *)
       let s = nth 0 in
       print env sigma s;
       return sigma metas (Lazy.force CoqUnit.mkTT)
 
-  | 12 -> (* nu *)
+  | 11 -> (* nu *)
       let a, f = nth 0, nth 2 in
       let fx = mkApp(Vars.lift 1 f, [|mkRel 1|]) in
       let renv = Vars.lift 1 renv in
@@ -1063,37 +997,37 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
               fail sigma' metas (pop e)
       end
 
-  | 13 -> (* is_param *)
+  | 12 -> (* is_param *)
       let e = whd_betadeltaiota env sigma (nth 1) in
       if isRel e then
         return sigma metas (Lazy.force CoqBool.mkTrue)
       else
         return sigma metas (Lazy.force CoqBool.mkFalse)
 
-  | 14 -> (* abs *)
+  | 13 -> (* abs *)
       let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
       abs (env, sigma, metas) a p x y
 (*
-     | 15 -> (* abs_eq *)
+     | 14 -> (* abs_eq *)
      let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
      abs env sigma metas a p x y true
   *)
-  | 16 -> (* evar *)
+  | 15 -> (* evar *)
       let t = nth 0 in
       let (sigma', ev) = Evarutil.new_evar env sigma t in
       return sigma' (ExistentialSet.add (fst (destEvar ev)) metas) ev
 
-  | 17 -> (* is_evar *)
+  | 16 -> (* is_evar *)
       let e = whd_betadeltaiota env sigma (nth 1) in
       if isEvar e then
         return sigma metas (Lazy.force CoqBool.mkTrue)
       else
         return sigma metas (Lazy.force CoqBool.mkFalse)
 
-  | 18 -> (* hash *)
+  | 17 -> (* hash *)
       return sigma metas (hash ctxt (nth 1) (nth 2))
 
-  | 19 -> (* nu_let *)
+  | 18 -> (* nu_let *)
       let a, t, f = nth 0, nth 2, nth 3 in
       let fx = mkApp(Vars.lift 1 f, [|mkRel 1;CoqEq.mkAppEqRefl a (mkRel 1)|]) in
       let renv = Vars.lift 1 renv in
@@ -1113,16 +1047,16 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
               fail sigma' metas (pop e)
       end
 
-  | 20 -> (* solve_typeclasses *)
+  | 19 -> (* solve_typeclasses *)
       let evd' = Typeclasses.resolve_typeclasses ~fail:false env sigma in
       return evd' metas (Lazy.force CoqUnit.mkTT)
 
-  | 21 -> (* new_array *)
+  | 20 -> (* new_array *)
       let ty, n, c = nth 0, nth 1, nth 2 in
       let a = ArrayRefs.new_array env sigma undo ty n c in
       return sigma metas a
 
-  | 22 -> (* get *)
+  | 21 -> (* get *)
       let ty, a, i = nth 0, nth 1, nth 2 in
       begin
         try
@@ -1140,7 +1074,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
                Exceptions.block "Wrong array!"
       end
 
-  | 23 -> (* set *)
+  | 22 -> (* set *)
       let ty, a, i, c = nth 0, nth 1, nth 2, nth 3 in
       begin
         try
@@ -1155,37 +1089,47 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
                Exceptions.block "Wrong array!"
       end
 
-  | 24 -> (* print term *)
+  | 23 -> (* print term *)
       let t = nth 1 in
       print_term t;
       return sigma metas (Lazy.force CoqUnit.mkTT)
 
-  | 25 -> (* hypotheses *)
+  | 24 -> (* hypotheses *)
       return sigma metas renv
 
-  | 26 -> (* dest case *)
+  | 25 -> (* dest case *)
       let t_type = nth 0 in
       let t = nth 1 in
       let (sigma', case) = dest_Case (env, sigma) t_type t in
       return sigma' metas case
 
-  | 27 -> (* get constrs *)
+  | 26 -> (* get constrs *)
       let t = nth 1 in
       let (sigma', constrs) = get_Constrs (env, sigma) t in
       return sigma' metas constrs
 
-  | 28 -> (* make case *)
+  | 27 -> (* make case *)
       let case = nth 0 in
       let (sigma', case) = make_Case (env, sigma) case in
       return sigma' metas case
 
-  | 29 -> (* Cevar *)
+  | 28 -> (* Cevar *)
       let ty, hyp = nth 0, nth 1 in
       cvar (env, sigma, metas) ty hyp
 
-  | 30 -> (* pabs *)
+  | 29 -> (* pabs *)
       let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
       abs ~mkprod:true (env, sigma, metas) a p x y
+
+  | 30 -> (* munify *)
+      let a, x, y, p, f = nth 0, nth 1, nth 2, nth 3, nth 4 in
+      try
+        let sigma = the_conv_x env x y sigma in
+	let sigma = consider_remaining_unif_problems env sigma in
+	let feq = mkApp(f, [|CoqEq.mkAppEqRefl a x|]) in
+	run' (env, renv, sigma, undo, metas) feq
+      with Evarconv.UnableToUnify _ ->
+	fail sigma metas (Exceptions.mkNotUnifiable a x y env sigma)
 
   | _ ->
       Exceptions.block "I have no idea what is this construct of T that you have here"
