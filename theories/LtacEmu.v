@@ -96,3 +96,6 @@ MProof.
   exact H.
   exact G.
 Qed.
+
+Definition absurd (p : Prop) {x : p} {y : ~p} : M False :=
+  ret (y x).
