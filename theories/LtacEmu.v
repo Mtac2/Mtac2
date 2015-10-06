@@ -4,6 +4,8 @@ Import MetaCoqNotations.
 Definition exact {A : Type} (x : A) : M A :=
   ret x.
 
+Definition refine : forall {A : Type}, A -> M A := @exact.
+
 Lemma test1 : forall P, P -> P.
 MProof.
   exact (fun P x => x).
