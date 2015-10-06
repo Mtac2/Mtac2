@@ -1,5 +1,5 @@
-Require Import Mtac2.Mtac2.
-Import Mtac2Notations.
+Require Import MetaCoq.MetaCoq.
+Import MetaCoqNotations.
 
 Require Import List.
 Import ListNotations.

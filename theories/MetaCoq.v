@@ -115,7 +115,7 @@ Inductive MetaCoq : Type -> Prop :=
 
 | pabs : forall {A P} (x : A), P x -> MetaCoq Type
 
-| munify {A} (x y : A) (P : A -> Type) (f : x = y -> Mtac (P y)) : Mtac (P x)
+| munify {A} (x y : A) (P : A -> Type) (f : x = y -> MetaCoq (P y)) : MetaCoq (P x)
 .
 
 Definition array_length : forall {A}, array A -> length :=
@@ -201,7 +201,7 @@ Definition type_inside {A} (x : M A) := A.
 
 (** Pattern matching without pain *)
 Inductive pattern A (B : A -> Type) (t : A) : Prop :=
-| pbase : forall (x:A) (b : t = x -> Mtac (B x)), Unification -> pattern A B t
+| pbase : forall (x:A) (b : t = x -> MetaCoq (B x)), Unification -> pattern A B t
 | ptele : forall {C}, (forall (x : C), pattern A B t) -> pattern A B t.
 
 (** Given a pattern of the form [[? a b c] p a b c => t a b c] it returns
