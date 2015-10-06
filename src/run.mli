@@ -10,7 +10,7 @@ type data =
 
 val run : (env * evar_map) -> constr -> data
 
-module MtacNames : sig
+module MetaCoqNames : sig
   val mkT_lazy : evar_map -> env -> (evar_map * constr)
 end
 

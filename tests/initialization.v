@@ -1,1 +1,1 @@
-Require Import Mtac2.Mtac2.
+Require Import MetaCoq.MetaCoq.

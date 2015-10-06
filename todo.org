@@ -6,13 +6,12 @@
 
   For the moment, we do not implement tacticals like ';', '||', ...
 
-** Jacques Pascal
-*** TODO Remove usage of V82 compatibility thanks to the new proof engine.
-*** TODO Focus on the next goal after each mproof instructions.
+** Jacques-Pascal
+*** Implement some tactics
 
 
 ** Yann
 *** TODO Implement "intro", find a way to introduce name at the level of a script.
 
 ** Next steps
-*** TODO Implement an unsafe call to OCaml code from Mtac2.
+*** TODO Implement an unsafe call to OCaml code from MetaCoq.

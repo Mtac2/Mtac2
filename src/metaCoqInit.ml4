@@ -11,9 +11,9 @@ open Pcoq  (* required by Camlp5 *)
    Remark: We should add a "How-to write your plugin" section in Coq manual.
 
 *)
-DECLARE PLUGIN "mtac2"
+DECLARE PLUGIN "MetaCoq"
 
-(** Defines the parser of the proof mode for Mtac2.
+(** Defines the parser of the proof mode for MetaCoq.
 
     For the moment, this parser is trivial: an MProof command is
     simply a toplevel Gallina term. We will stay with a trivial parser
@@ -40,14 +40,14 @@ let mproof_mode : Vernacexpr.vernac_expr Pcoq.Gram.entry =
    to encode the following static property:
 
    - at the raw level (just after parsing), these semantic values are
-   [Mtac2Instr.mproof_instr] ;
+   [MetaCoqInstr.mproof_instr] ;
 
    - after parsing, they should not appear anymore. (This is encoded
    by the usage of [Util.Empty.t] type which encode a type with no
    inhabitant.)
 
 *)
-let wit_mproof_instr : (Mtac2Instr.mproof_instr, Util.Empty.t, Util.Empty.t) Genarg.genarg_type =
+let wit_mproof_instr : (MetaCoqInstr.mproof_instr, Util.Empty.t, Util.Empty.t) Genarg.genarg_type =
   Genarg.create_arg None "mproof_instr"
 
 (* FIXME: (Yann) I am not 100% sure that using all this machinery is really needed.
@@ -60,11 +60,11 @@ let wit_mproof_instr : (Mtac2Instr.mproof_instr, Util.Empty.t, Util.Empty.t) Gen
 
 (** We introduce a new grammar rule for MProof instructions. The type of
     the semantic values (with_mproof_instr) is specified. *)
-let mproof_instr : Mtac2Instr.mproof_instr Pcoq.Gram.entry =
+let mproof_instr : MetaCoqInstr.mproof_instr Pcoq.Gram.entry =
   Pcoq.create_generic_entry "mproof_instr" (Genarg.rawwit wit_mproof_instr)
 
 (** We now declare the grammar rule named [mproof_mode] as the entry point
-    for proof instructions (installed by [Mtac2Mode] in [ProofGlobal]).
+    for proof instructions (installed by [MetaCoqMode] in [ProofGlobal]).
 
     A grammar rule is defined in three parts (i) the producers ;
     (ii) the effect descriptor needed by STM (iii) the semantic
@@ -87,17 +87,17 @@ let mproof_instr : Mtac2Instr.mproof_instr Pcoq.Gram.entry =
 
 VERNAC mproof_mode EXTEND MProofInstr
   [ - mproof_instr(_instr) ] => [ Vernacexpr.VtProofStep false, Vernacexpr.VtLater ] ->
-  [ Mtac2Interp.interp_proof_constr _instr ]
+  [ MetaCoqInterp.interp_proof_constr _instr ]
 END
 
 (** The parsing rule for the non terminal [mproof_instr]. *)
 GEXTEND Gram
 GLOBAL: mproof_instr;
   mproof_instr :
-    [[ c=Pcoq.Constr.operconstr ; "." -> Mtac2Instr.Mtac2_constr c ]];
+    [[ c=Pcoq.Constr.operconstr ; "." -> MetaCoqInstr.MetaCoq_constr c ]];
 END
 
-(** Initialize the proof mode MProof for Mtac2. *)
+(** Initialize the proof mode MProof for MetaCoq. *)
 
 (** The following identifiers must be globally unique. They are used
     in several global tables to register some callbacks (for instance
@@ -110,11 +110,11 @@ let proof_mode_identifier = "MProof"
     the following fields.
 
     In our case, we have to set the command entry to "mproof_mode"
-    defined in the Mtac2Parser when we enter in proof mode. This
+    defined in the MetaCoqParser when we enter in proof mode. This
     dynamically change the parser for the proof script instructions.
-    See Mtac2Parser to know the syntax of our proof instructions.
+    See MetaCoqParser to know the syntax of our proof instructions.
 
-    We also reset to the noedit_mode when we quit the mtac2 proof
+    We also reset to the noedit_mode when we quit the MetaCoq proof
     mode.
 *)
 (* FIXME: (Yann) What is exactly this noedit_mode? *)
@@ -135,7 +135,7 @@ let () =
 (** The following command extends both the parser and the interpreter
    of the Vernacular language so that a new keyword "MProof" is
    recognized and is interpreted as the entry point for a proof
-   written in Mtac.
+   written in MetaCoq.
 
    In the following command:
 
@@ -168,5 +168,5 @@ let () =
 VERNAC COMMAND EXTEND MProofCommand
   [ "MProof" ]
   => [ Vernacexpr.VtProofMode proof_mode_identifier, Vernacexpr.VtNow  ]
-  -> [ Mtac2Interp.interp_mproof_command () ]
+  -> [ MetaCoqInterp.interp_mproof_command () ]
 END

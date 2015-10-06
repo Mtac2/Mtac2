@@ -1,10 +1,10 @@
 -I src
--R theories Mtac2
-src/mtac2Initialization.ml4
-src/mtac2Instr.mli
+-R theories MetaCoq
+src/metaCoqInit.ml4
+src/metaCoqInstr.mli
 src/run.ml
 src/run.mli
-src/mtac2Interp.ml
-src/mtac2Interp.mli
-src/mtac2Plugin.mllib
-theories/Mtac2.v
+src/metaCoqInterp.ml
+src/metaCoqInterp.mli
+src/MetaCoqPlugin.mllib
+theories/MetaCoq.v

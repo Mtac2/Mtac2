@@ -1,5 +1,5 @@
-(** Load library "mtac2Plugin.cma". *)
-Declare ML Module "mtac2Plugin".
+(** Load library "MetaCoqPlugin.cma". *)
+Declare ML Module "MetaCoqPlugin".
 
 Require Import Strings.String.
 Require Import Lists.List.
@@ -7,7 +7,7 @@ Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
 
 
-Module Mtac.
+Module MetaCoq.
 
 Inductive Exception : Type := exception : Exception.
 
@@ -55,105 +55,105 @@ Record Case :=
         case_branches : list dyn
         }.
 
-Inductive Mtac : Type -> Prop :=
-| tret : forall {A}, Reduction -> A -> Mtac A
-| bind : forall {A B}, Mtac A -> (A -> Mtac B) -> Mtac B
-| ttry : forall {A}, Mtac A -> (Exception -> Mtac A) -> Mtac A
-| raise : forall {A}, Exception -> Mtac A
+Inductive MetaCoq : Type -> Prop :=
+| tret : forall {A}, Reduction -> A -> MetaCoq A
+| bind : forall {A B}, MetaCoq A -> (A -> MetaCoq B) -> MetaCoq B
+| ttry : forall {A}, MetaCoq A -> (Exception -> MetaCoq A) -> MetaCoq A
+| raise : forall {A}, Exception -> MetaCoq A
 | tfix1' : forall {A B} (S : Type -> Prop),
-  (forall a, S a -> Mtac a) ->
+  (forall a, S a -> MetaCoq a) ->
   ((forall x : A, S (B x)) -> (forall x : A, S (B x))) ->
-  forall x : A, Mtac (B x)
+  forall x : A, MetaCoq (B x)
 | tfix2' : forall {A1 A2 B} (S : Type -> Prop),
-  (forall a, S a -> Mtac a) ->
+  (forall a, S a -> MetaCoq a) ->
   ((forall (x1 : A1) (x2 : A2 x1), S (B x1 x2)) ->
     (forall (x1 : A1) (x2 : A2 x1), S (B x1 x2))) ->
-  forall (x1 : A1) (x2 : A2 x1), Mtac (B x1 x2)
+  forall (x1 : A1) (x2 : A2 x1), MetaCoq (B x1 x2)
 | tfix3' : forall {A1 A2 A3 B} (S : Type -> Prop),
-  (forall a, S a -> Mtac a) ->
+  (forall a, S a -> MetaCoq a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), S (B x1 x2 x3)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), S (B x1 x2 x3))) ->
-  forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), Mtac (B x1 x2 x3)
+  forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), MetaCoq (B x1 x2 x3)
 | tfix4' : forall {A1 A2 A3 A4 B} (S : Type -> Prop),
-  (forall a, S a -> Mtac a) ->
+  (forall a, S a -> MetaCoq a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4))) ->
-  forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), Mtac (B x1 x2 x3 x4)
+  forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), MetaCoq (B x1 x2 x3 x4)
 | tfix5' : forall {A1 A2 A3 A4 A5 B} (S : Type -> Prop),
-  (forall a, S a -> Mtac a) ->
+  (forall a, S a -> MetaCoq a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5))) ->
-  forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), Mtac (B x1 x2 x3 x4 x5)
-| tmatch : forall {A} B (t : A), list (tpatt A B t) -> Mtac (B t)
-| print : string -> Mtac unit
-| tnu : forall {A B}, (A -> Mtac B) -> Mtac B
-| is_var : forall {A}, A -> Mtac bool
-| abs : forall {A P} (x : A), P x -> Mtac (forall x, P x)
+  forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), MetaCoq (B x1 x2 x3 x4 x5)
+| tmatch : forall {A} B (t : A), list (tpatt A B t) -> MetaCoq (B t)
+| print : string -> MetaCoq unit
+| tnu : forall {A B}, (A -> MetaCoq B) -> MetaCoq B
+| is_var : forall {A}, A -> MetaCoq bool
+| abs : forall {A P} (x : A), P x -> MetaCoq (forall x, P x)
 | abs_eq : forall {A} {P} (x : A) (y : P x),
-  Mtac (sigT (fun f : (forall x':A, P x')=> f x = y))
-| evar : forall A, Mtac A
-| is_evar : forall {A}, A -> Mtac bool
+  MetaCoq (sigT (fun f : (forall x':A, P x')=> f x = y))
+| evar : forall A, MetaCoq A
+| is_evar : forall {A}, A -> MetaCoq bool
 
-| hash : forall {A}, A -> N -> Mtac N
+| hash : forall {A}, A -> N -> MetaCoq N
 
-| tnu_let : forall {A B}, forall t : A, (forall y : A, y = t -> Mtac B) -> Mtac B
+| tnu_let : forall {A B}, forall t : A, (forall y : A, y = t -> MetaCoq B) -> MetaCoq B
 
-| solve_typeclasses : Mtac unit
+| solve_typeclasses : MetaCoq unit
 
-| array_make : forall {A}, N -> A -> Mtac (array A)
-| array_get : forall {A}, array A -> N -> Mtac A
-| array_set : forall {A}, array A -> N -> A -> Mtac unit
-| print_term : forall {A}, A -> Mtac unit
-| hypotheses : Mtac (list Hyp)
+| array_make : forall {A}, N -> A -> MetaCoq (array A)
+| array_get : forall {A}, array A -> N -> MetaCoq A
+| array_set : forall {A}, array A -> N -> A -> MetaCoq unit
+| print_term : forall {A}, A -> MetaCoq unit
+| hypotheses : MetaCoq (list Hyp)
 
-| destcase : forall {A} (a : A), Mtac (Case)
-| constrs : forall {A : Type} (a : A), Mtac (list dyn)
-| makecase : forall (C : Case), Mtac dyn
+| destcase : forall {A} (a : A), MetaCoq (Case)
+| constrs : forall {A : Type} (a : A), MetaCoq (list dyn)
+| makecase : forall (C : Case), MetaCoq dyn
 
-| Cevar : forall A, list Hyp -> Mtac A
+| Cevar : forall A, list Hyp -> MetaCoq A
 
-| pabs : forall {A P} (x : A), P x -> Mtac Type
+| pabs : forall {A P} (x : A), P x -> MetaCoq Type
 
 with tpatt : forall A (B : A -> Type) (t : A), Prop :=
-| base : forall {A B t} (x:A) (b : t = x -> Mtac (B x)), Unification -> tpatt A B t
+| base : forall {A B t} (x:A) (b : t = x -> MetaCoq (B x)), Unification -> tpatt A B t
 | tele : forall {A B C t}, (forall (x : C), tpatt A B t) -> tpatt A B t.
 
 Definition array_length : forall {A}, array A -> length :=
   fun A m => match m with carray _ _ l => l end.
 
 
-Definition tfix1 {A} B := @tfix1' A B Mtac (fun _ x => x).
-Definition tfix2 {A1 A2} B := @tfix2' A1 A2 B Mtac (fun _ x => x).
-Definition tfix3 {A1 A2 A3} B := @tfix3' A1 A2 A3 B Mtac (fun _ x => x).
-Definition tfix4 {A1 A2 A3 A4} B := @tfix4' A1 A2 A3 A4 B Mtac (fun _ x => x).
-Definition tfix5 {A1 A2 A3 A4 A5} B := @tfix5' A1 A2 A3 A4 A5 B Mtac (fun _ x => x).
+Definition tfix1 {A} B := @tfix1' A B MetaCoq (fun _ x => x).
+Definition tfix2 {A1 A2} B := @tfix2' A1 A2 B MetaCoq (fun _ x => x).
+Definition tfix3 {A1 A2 A3} B := @tfix3' A1 A2 A3 B MetaCoq (fun _ x => x).
+Definition tfix4 {A1 A2 A3 A4} B := @tfix4' A1 A2 A3 A4 B MetaCoq (fun _ x => x).
+Definition tfix5 {A1 A2 A3 A4 A5} B := @tfix5' A1 A2 A3 A4 A5 B MetaCoq (fun _ x => x).
 
 Definition Ref := array.
 
-Definition ref : forall {A}, A -> Mtac (Ref A) :=
+Definition ref : forall {A}, A -> MetaCoq (Ref A) :=
   fun A x=> array_make 1%N x.
 
-Definition read : forall {A}, Ref A -> Mtac A :=
+Definition read : forall {A}, Ref A -> MetaCoq A :=
   fun A r=> array_get r 0%N.
 
-Definition write : forall {A}, Ref A -> A -> Mtac unit :=
+Definition write : forall {A}, Ref A -> A -> MetaCoq unit :=
   fun A r c=> array_set r 0%N c.
 
 (** Defines [eval f] to execute after elaboration the Mtactic [f].
     It allows e.g. [rewrite (eval f)]. *)
-Class runner A  (f : Mtac A) := { eval : A }.
+Class runner A  (f : MetaCoq A) := { eval : A }.
 Arguments runner {A} _.
 Arguments Build_runner {A} _ _.
 Arguments eval {A} _ {_}.
 
-End Mtac.
+End MetaCoq.
 
-Export Mtac.
+Export MetaCoq.
 
 
-Module Mtac2Notations.
+Module MetaCoqNotations.
 
-Notation "'M'" := Mtac.
+Notation "'M'" := MetaCoq.
 
 Notation "'ret'" := (tret RedNone).
 Notation "'retS'" := (tret RedSimpl).
@@ -168,37 +168,37 @@ Notation "f @@ x" := (bind f (fun r=>ret (r x))) (at level 70).
 Notation "f >> x" := (bind f (fun r=>x r)) (at level 70).
 
 Notation "[? x .. y ] ps" := (tele (fun x=> .. (tele (fun y=>ps)).. ))
-  (at level 202, x binder, y binder, ps at next level) : mtac_patt_scope.
+  (at level 202, x binder, y binder, ps at next level) : metaCoq_patt_scope.
 Notation "p => b" := (base p%core (fun _=>b%core) UniRed)
-  (no associativity, at level 201) : mtac_patt_scope.
+  (no associativity, at level 201) : metaCoq_patt_scope.
 Notation "p => b 'return' T" := (@base _ T _ p%core (fun _=>b%core) UniRed)
-  (no associativity, at level 201) : mtac_patt_scope.
+  (no associativity, at level 201) : metaCoq_patt_scope.
 Notation "p => [ H ] b" := (base p%core (fun H=>b%core) UniRed)
-  (no associativity, at level 201, H at next level) : mtac_patt_scope.
+  (no associativity, at level 201, H at next level) : metaCoq_patt_scope.
 Notation "p '=s>' b" := (base p%core (fun _=>b%core) UniSimpl)
-  (no associativity, at level 201) : mtac_patt_scope.
+  (no associativity, at level 201) : metaCoq_patt_scope.
 Notation "p =m> b" := (base p%core (fun _=>b%core) UniMuni)
-  (no associativity, at level 201) : mtac_patt_scope.
+  (no associativity, at level 201) : metaCoq_patt_scope.
 Notation "p =m> [ H ] b" := (base p%core (fun H=>b%core) UniMuni)
-  (no associativity, at level 201, H at next level) : mtac_patt_scope.
+  (no associativity, at level 201, H at next level) : metaCoq_patt_scope.
 Notation "p =c> b" := (base p%core (fun _=>b%core) UniRed)
-  (no associativity, at level 201) : mtac_patt_scope.
+  (no associativity, at level 201) : metaCoq_patt_scope.
 Notation "p =c> [ H ] b" := (base p%core (fun H=>b%core) UniRed)
-  (no associativity, at level 201, H at next level) : mtac_patt_scope.
+  (no associativity, at level 201, H at next level) : metaCoq_patt_scope.
 Notation "'_' => b " := (tele (fun x=> base x (fun _=>b%core) UniRed))
-  (at level 201, b at next level) : mtac_patt_scope.
+  (at level 201, b at next level) : metaCoq_patt_scope.
 Notation "'_' =m> b " := (tele (fun x=> base x (fun _=>b%core) UniMuni))
-  (at level 201, b at next level) : mtac_patt_scope.
+  (at level 201, b at next level) : metaCoq_patt_scope.
 Notation "'_' =c> b " := (tele (fun x=> base x (fun _=>b%core) UniRed))
-  (at level 201, b at next level) : mtac_patt_scope.
+  (at level 201, b at next level) : metaCoq_patt_scope.
 
-Delimit Scope mtac_patt_scope with mtac_patt.
+Delimit Scope metaCoq_patt_scope with metaCoq_patt.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
-  ((cons p1%mtac_patt (.. (cons pn%mtac_patt nil) ..)))
+  ((cons p1%metaCoq_patt (.. (cons pn%metaCoq_patt nil) ..)))
     (at level 91, p1 at level 210, pn at level 210).
 Notation "'with' p1 | .. | pn 'end'" :=
-  ((cons p1%mtac_patt (.. (cons pn%mtac_patt nil) ..)))
+  ((cons p1%metaCoq_patt (.. (cons pn%metaCoq_patt nil) ..)))
     (at level 91, p1 at level 210, pn at level 210).
 
 Notation "'mmatch' t ls" :=
@@ -283,33 +283,33 @@ Definition type_inside {A} (x : M A) := A.
 
 Notation "'mtry' a ls" :=
   (ttry a (fun e=>
-    (tmatch _ e (app ls (cons ([? x] x=>raise x)%mtac_patt nil)))))
+    (tmatch _ e (app ls (cons ([? x] x=>raise x)%metaCoq_patt nil)))))
     (at level 82, a at level 100, ls at level 91, only parsing).
 
 Notation "! a" := (read a) (at level 80).
 Notation "a ::= b" := (write a b) (at level 80).
 
-End Mtac2Notations.
+End MetaCoqNotations.
 
 
 Module Array.
   Require Import Arith_base.
 
-  Import Mtac2Notations.
+  Import MetaCoqNotations.
 
   Definition t A := array A.
 
   Definition make {A} n (c : A)  :=
-    Mtac.array_make n c.
+    MetaCoq.array_make n c.
 
   Definition length {A} (a : t A) :=
-    Mtac.array_length a.
+    MetaCoq.array_length a.
 
   Definition get {A} (a : t A) i :=
-    Mtac.array_get a i.
+    MetaCoq.array_get a i.
 
   Definition set {A} (a : t A) i (c : A) :=
-    Mtac.array_set a i c.
+    MetaCoq.array_set a i c.
 
   Definition iter {A} (a : t A) (f : N -> A -> M unit) : M unit :=
     let n := length a in
