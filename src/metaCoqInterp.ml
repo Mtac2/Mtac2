@@ -88,5 +88,4 @@ let interp_instr = function
     - Print subgoals *)
 let interp_proof_constr instr =
   ignore (Pfedit.by (interp_instr instr));
-  MetaCoqProofInfos.maximal_unfocus ();
-  Vernacentries.print_subgoals ()
+  MetaCoqProofInfos.maximal_unfocus ()
