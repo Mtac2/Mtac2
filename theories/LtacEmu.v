@@ -97,5 +97,5 @@ MProof.
   exact G.
 Qed.
 
-Definition absurd (p : Prop) {x : p} {y : ~p} : M False :=
-  ret (y x).
+Definition absurd {A : Type} (p : Prop) {y : ~p} {x : p} : M A :=
+  ret (match y x with end).
