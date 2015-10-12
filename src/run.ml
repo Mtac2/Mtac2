@@ -1123,13 +1123,15 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
   | 30 -> (* munify *)
       let a, x, y, p, f = nth 0, nth 1, nth 2, nth 3, nth 4 in
-      try
-        let sigma = the_conv_x env x y sigma in
-	let sigma = consider_remaining_unif_problems env sigma in
-	let feq = mkApp(f, [|CoqEq.mkAppEqRefl a x|]) in
-	run' (env, renv, sigma, undo, metas) feq
-      with Evarconv.UnableToUnify _ ->
-	fail sigma metas (Exceptions.mkNotUnifiable a x y env sigma)
+      begin
+        try
+          let sigma = the_conv_x env x y sigma in
+          let sigma = consider_remaining_unif_problems env sigma in
+          let feq = mkApp(f, [|CoqEq.mkAppEqRefl a x|]) in
+          run' (env, renv, sigma, undo, metas) feq
+        with Evarconv.UnableToUnify _ ->
+          fail sigma metas (Exceptions.mkNotUnifiable a x y env sigma)
+      end
 
   | _ ->
       Exceptions.block "I have no idea what is this construct of T that you have here"
