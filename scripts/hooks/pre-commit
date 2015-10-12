@@ -52,5 +52,11 @@ git diff-index --check --cached $against -- || exit 1
 ## Custom rules
 
 # Check indentation for OCaml files
+# Check if ocp-indent is installed
+ocp-indent --version > /dev/null
+if [ $? -ne 0 ]; then
+    echo "Error: ocp-indent not found. It is necessary in order to commit"
+    exit 1
+fi
 # NOTE: command line taken from goblint: https://github.com/goblint/analyzer
 git diff --cached --name-only | grep -E ".*\.ml(i|l|y)?$" | xargs -I% bash -c 'diff -u <(git show :%) <(git show :% | ocp-indent) || (echo; echo "Indentation not valid in % (diff shown above)."; false)' || exit 1
