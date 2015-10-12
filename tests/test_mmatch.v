@@ -49,3 +49,22 @@ x09;x19;x29;x39;x49;x59;x69;x79;x89;x99
 MProof.
   Time inlist _ _ _.
 Qed.
+
+
+(* This definition fails because Coq is unable to finde that 0 = 0 =?= t = t *)
+Fail Definition test (t : nat) : M (t = t) :=
+  mmatch t with
+  | 0 => ret (eq_refl 0)
+  end.
+
+(* We need the [return] clause *)
+Definition test_return (t : nat) : M (t = t) :=
+  mmatch t return M (t = t) with
+  | 0 => ret (eq_refl 0)
+  end.
+
+(* testing with a different name *)
+Definition test_return_in (t : nat) : M (t = t) :=
+  mmatch 0+t as x return M (x = x) with
+  | 0 => ret (eq_refl 0)
+  end.

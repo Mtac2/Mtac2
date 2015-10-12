@@ -260,6 +260,10 @@ Notation "'with' p1 | .. | pn 'end'" :=
 
 Notation "'mmatch' x ls" := (tmatch x ls)
   (at level 90, ls at level 91).
+Notation "'mmatch' x 'return' 'M' p ls" := (@tmatch _ (fun x=>p) x ls)
+  (at level 90, ls at level 91).
+Notation "'mmatch' x 'as' y 'return' 'M' p ls" := (@tmatch _ (fun y=>p) x ls)
+  (at level 90, ls at level 91).
 
 
 Notation "'mtry' a ls" :=
