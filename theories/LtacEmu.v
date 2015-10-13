@@ -101,3 +101,52 @@ Qed.
 
 Definition absurd {A : Type} (p : Prop) {y : ~p} {x : p} : M A :=
   ret (match y x with end).
+
+Require Import Coq.Lists.List.
+Import ListNotations.
+
+Definition mmap {A B : Type} (f : A -> M B) :=
+  mfix1 rec (l : list A) : M (list B) :=
+    match l with
+    | [] =>
+        ret []
+    | (x :: xs) =>
+        x <- f x;
+        xs <- rec xs;
+        ret (x :: xs)
+    end.
+
+Definition CantCoerce : Exception. exact exception. Qed.
+
+Definition coerce {A B : Type} (x : A) : M B :=
+  mmatch A with
+  | B => [H] ret (eq_rect_r _ (fun x0 : B => x0) H x)
+  | _ => raise CantCoerce
+  end.
+
+Program Definition copy_ctx {A} (B : A -> Type) :=
+  mfix1 rec (d : dyn) : M Type :=
+    mmatch d with
+    | [? C (D : C -> Type) (E : forall y:C, D y)] {| elem := fun x : C => E x |} =>
+        nu y : C,
+        r <- rec (Dyn _ (E y));
+        pabs y r
+    | [? c : A] {| elem := c |} =>
+        ret (B c)
+    end.
+
+Definition destruct {A : Type} (n : A) {P : A -> Prop} : M (P n) :=
+  l <- constrs A;
+  l <- mmap (fun d : dyn =>
+               t' <- copy_ctx P d;
+               e <- evar t';
+               ret {| elem := e |}) l;
+  let c := {| case_ind := A;
+              case_val := n;
+              case_type := P n;
+              case_return := {| elem := fun n : A => P n |};
+              case_branches := l
+           |} in
+  d <- makecase c;
+  d <- coerce (elem d);
+  ret d.
