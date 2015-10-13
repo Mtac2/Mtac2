@@ -268,7 +268,7 @@ Notation "'mmatch' x 'as' y 'return' 'M' p ls" := (@tmatch _ (fun y=>p) x ls)
 
 Notation "'mtry' a ls" :=
   (ttry a (fun e=>
-    (tmatch _ e (app ls (cons ([? x] x=>raise x)%metaCoq_pattern nil)))))
+    (@tmatch _ _ e (app ls (cons ([? x] x=>raise x)%metaCoq_pattern nil)))))
     (at level 82, a at level 100, ls at level 91, only parsing).
 
 Notation "! a" := (read a) (at level 80).
