@@ -115,7 +115,7 @@ Inductive MetaCoq : Type -> Prop :=
 
 | pabs : forall {A P} (x : A), P x -> MetaCoq Type
 
-| munify {A} (x y : A) (P : A -> Type) (f : x = y -> MetaCoq (P y)) : MetaCoq (P x)
+| munify {A} (x y : A) : MetaCoq (x = y)
 .
 
 Definition array_length : forall {A}, array A -> length :=
@@ -201,7 +201,7 @@ Definition type_inside {A} (x : M A) := A.
 
 (** Pattern matching without pain *)
 Inductive pattern A (B : A -> Type) (t : A) : Prop :=
-| pbase : forall (x:A) (b : t = x -> MetaCoq (B x)), Unification -> pattern A B t
+| pbase : forall (x:A) (b : x = t -> MetaCoq (B x)), Unification -> pattern A B t
 | ptele : forall {C}, (forall (x : C), pattern A B t) -> pattern A B t.
 
 (** Given a pattern of the form [[? a b c] p a b c => t a b c] it returns
@@ -216,24 +216,27 @@ Definition open_pattern {A} {P:A->Type} {t:A}  :=
 
 Definition NoPatternMatches : Exception. exact exception. Qed.
 Definition Anomaly : Exception. exact exception. Qed.
+Definition Continue : Exception. exact exception. Qed.
 Import ListNotations.
 Fixpoint tmatch {A P} t (ps : list (pattern A P t)) : M (P t) :=
   match ps with
   | [] => raise NoPatternMatches
   | (p :: ps') =>
     p' <- open_pattern p;
-    ttry (
-      match p' with
-      | pbase _ _ _ t' f u =>
-        munify t t' P f : M (P t)
-      | _ => raise Anomaly
-      end)
-    (fun e=>
-       A <- evar Type;
-       x <- evar A;
-       y <- evar A;
-       munify e (NotUnifiableException x y) _ (fun _=>tmatch t ps')
-    )
+    match p' with
+    | pbase _ _ _ t' f u =>
+      ttry (
+        eq <- ttry (munify t' t) (fun _ => raise Continue);
+        feq <- f eq;
+        match eq in (_ = y) return M (P y) with
+        | eq_refl => ret feq
+        end
+      )
+      (fun e=>
+        ttry (munify e Continue) (fun _=>raise e);; tmatch t ps'
+      )
+    | _ => raise Anomaly
+    end
   end.
 
 Arguments ptele {A B t C} f.
@@ -258,7 +261,7 @@ Notation "'with' p1 | .. | pn 'end'" :=
   ((cons p1%metaCoq_pattern (.. (cons pn%metaCoq_pattern nil) ..)))
     (at level 91, p1 at level 210, pn at level 210).
 
-Notation "'mmatch' x ls" := (tmatch x ls)
+Notation "'mmatch' x ls" := (@tmatch _ (fun _=>_) x ls)
   (at level 90, ls at level 91).
 Notation "'mmatch' x 'return' 'M' p ls" := (@tmatch _ (fun x=>p) x ls)
   (at level 90, ls at level 91).
@@ -268,7 +271,7 @@ Notation "'mmatch' x 'as' y 'return' 'M' p ls" := (@tmatch _ (fun y=>p) x ls)
 
 Notation "'mtry' a ls" :=
   (ttry a (fun e=>
-    (@tmatch _ _ e (app ls (cons ([? x] x=>raise x)%metaCoq_pattern nil)))))
+    (@tmatch _ (fun _=>_) e (app ls (cons ([? x] x=>raise x)%metaCoq_pattern nil)))))
     (at level 82, a at level 100, ls at level 91, only parsing).
 
 Notation "! a" := (read a) (at level 80).

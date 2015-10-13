@@ -64,7 +64,7 @@ Definition CantCoerce : Exception. exact exception. Qed.
 
 Definition coerce {A B : Type} (x : A) : M B :=
   mmatch A with
-  | B => [H] ret (eq_rect_r _ (fun x0 : B => x0) H x)
+  | B => [H] ret (eq_rect_r (fun T=>T) x H)
   | _ => raise CantCoerce
   end.
 

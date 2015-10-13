@@ -1122,13 +1122,13 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
       abs ~mkprod:true (env, sigma, metas) a p x y
 
   | 30 -> (* munify *)
-      let a, x, y, p, f = nth 0, nth 1, nth 2, nth 3, nth 4 in
+      let a, x, y = nth 0, nth 1, nth 2 in
       begin
         try
           let sigma = the_conv_x env x y sigma in
           let sigma = consider_remaining_unif_problems env sigma in
-          let feq = mkApp(f, [|CoqEq.mkAppEqRefl a x|]) in
-          run' (env, renv, sigma, undo, metas) feq
+          let feq = CoqEq.mkAppEqRefl a x in
+          return sigma metas feq
         with Evarconv.UnableToUnify _ ->
           fail sigma metas (Exceptions.mkNotUnifiable a x y env sigma)
       end
@@ -1206,8 +1206,8 @@ let run (env, sigma) t  =
   let _ = ArrayRefs.clean () in
   let (sigma, renv) = build_hypotheses sigma env in
   match run' (env, renv, sigma, [], ExistentialSet.empty) (nf_evar sigma t) with
-  | Err i ->
-      Err i
+  | Err (sigma', metas, v) ->
+      Err (sigma', metas, nf_evar sigma' v)
   | Val (sigma', metas, v) ->
       let sigma' = clean_unused_metas sigma' metas v in
       Val (sigma', ExistentialSet.empty, nf_evar sigma' v)

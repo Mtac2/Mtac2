@@ -8,3 +8,4 @@ src/metaCoqInterp.ml
 src/metaCoqInterp.mli
 src/MetaCoqPlugin.mllib
 theories/MetaCoq.v
+theories/LtacEmu.v

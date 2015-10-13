@@ -51,14 +51,14 @@ MProof.
 Qed.
 
 
-(* This definition fails because Coq is unable to finde that 0 = 0 =?= t = t *)
-Fail Definition test (t : nat) : M (t = t) :=
+(* This definition fails because Coq is unable to find the returning type*)
+Fail Definition test (t : nat)  :=
   mmatch t with
   | 0 => ret (eq_refl 0)
   end.
 
 (* We need the [return] clause *)
-Definition test_return (t : nat) : M (t = t) :=
+Definition test_return (t : nat) :=
   mmatch t return M (t = t) with
   | 0 => ret (eq_refl 0)
   end.
