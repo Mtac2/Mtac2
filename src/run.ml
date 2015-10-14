@@ -1185,8 +1185,22 @@ let clean_unused_metas sigma metas term =
     ) fms metas
   in
   let metas = rem term metas in
-  (* remove all the reminding metas *)
-  ExistentialSet.fold (fun ev sigma -> Evd.remove sigma ev) metas sigma
+  (* remove all the reminding metas, first from the future goals *)
+  let sigma = ExistentialSet.fold (fun ev sigma -> Evd.remove sigma ev) metas sigma in
+  let future_goals = Evd.future_goals sigma in
+  let principal_goal = Evd.principal_future_goal sigma in
+  let sigma = Evd.reset_future_goals sigma in
+  let alive = List.filter (fun e->not (ExistentialSet.mem e metas)) future_goals in
+  let principal_goal =
+    match principal_goal with
+    | Some e ->
+        if not (ExistentialSet.mem e metas) then
+          Some e
+        else
+          None
+    | None -> None
+  in
+  Evd.restore_future_goals sigma alive principal_goal
 
 let build_hypotheses sigma env =
   let renv = List.mapi (fun n (_, t, ty) -> (mkRel (n+1), t, ty)) (rel_context env)
@@ -1209,5 +1223,5 @@ let run (env, sigma) t  =
   | Err (sigma', metas, v) ->
       Err (sigma', metas, nf_evar sigma' v)
   | Val (sigma', metas, v) ->
-      (*      let sigma' = clean_unused_metas sigma' metas v in *)
+      let sigma' = clean_unused_metas sigma' metas v in
       Val (sigma', ExistentialSet.empty, nf_evar sigma' v)
