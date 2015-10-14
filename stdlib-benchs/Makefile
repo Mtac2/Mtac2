@@ -9,7 +9,7 @@ COUNT_PROOF = $(shell grep -c "Proof." $(SRC) | awk -F ':' '{total += $$2} END {
 COUNT_MPROOF = $(shell grep -c "MProof." $(SRC) | awk -F ':' '{total += $$2} END { print total }')
 
 all:
-	@$(TIME) $(MAKE) --silent bench
+	@$(TIME) $(MAKE) bench
 	@echo -n "MProoved: "
 	@echo 'x = ($(COUNT_MPROOF) / $(COUNT_PROOF)) * 100\nprint x, "%\n"' | bc -l
 

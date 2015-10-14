@@ -17,4 +17,4 @@ cleanall::
 	@ $(MAKE) --silent -C stdlib-bench clean
 
 bench:
-	@ $(MAKE) --silent -C stdlib-benchs
+	@ $(MAKE) -C stdlib-benchs
