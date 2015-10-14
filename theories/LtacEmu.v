@@ -23,9 +23,6 @@ Definition symmetry {A : Type} {t u : A} {p : t = u} : M (u = t) :=
 
 Definition idtac {A : Type} {x : A} : M A := ret x.
 
-Notation "'intros' x .. y" := (intro (fun x => .. (intro (fun y => idtac)) ..)) (at level 99, x binder).
-Notation "'intro' x" := (intro (fun x => idtac)) (at level 99).
-
 Definition NotFound : Exception. exact exception. Qed.
 
 Definition lookup (A : Type) :=
@@ -94,3 +91,12 @@ Definition destruct {A : Type} (n : A) {P : A -> Prop} : M (P n) :=
   d <- makecase c;
   d <- coerce (elem d);
   ret d.
+
+Notation "'intros' x .. y" :=
+  (intro (fun x => .. (intro (fun y => idtac)) ..))
+    (at level 99, x binder)
+  : mproof_scope.
+Notation "'intro' x" :=
+  (intro (fun x => idtac))
+    (at level 99)
+  : mproof_scope.
