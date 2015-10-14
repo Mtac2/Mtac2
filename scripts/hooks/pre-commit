@@ -46,7 +46,7 @@ EOF
 fi
 
 # If there are whitespace errors, print the offending file names and fail.
-git diff-index --check --cached $against -- || exit 1
+git diff-index --check --cached $against -- `git ls-files | grep -Ev "^stdlib-benchs/.*.v$"` || exit 1
 
 
 ## Custom rules

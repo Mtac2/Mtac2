@@ -14,3 +14,7 @@ check:
 cleanall::
 	@ $(MAKE) --silent clean
 	@ $(MAKE) --silent -C tests clean
+	@ $(MAKE) --silent -C stdlib-bench clean
+
+bench:
+	@ $(MAKE) --silent -C stdlib-benchs
