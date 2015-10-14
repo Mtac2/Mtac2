@@ -1209,5 +1209,5 @@ let run (env, sigma) t  =
   | Err (sigma', metas, v) ->
       Err (sigma', metas, nf_evar sigma' v)
   | Val (sigma', metas, v) ->
-      let sigma' = clean_unused_metas sigma' metas v in
+      (*      let sigma' = clean_unused_metas sigma' metas v in *)
       Val (sigma', ExistentialSet.empty, nf_evar sigma' v)

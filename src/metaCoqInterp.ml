@@ -21,18 +21,17 @@ module MetaCoqRun = struct
   *)
   let run_tac t =
     Proofview.Goal.nf_enter begin fun gl ->
-      let sigma = Proofview.Goal.sigma gl in
-      let env = Proofview.Goal.env gl in
-      let concl = Proofview.Goal.concl gl in
-      let sigma,c = Constrintern.interp_open_constr env sigma t in
-      let (sigma, t) = pretypeT env sigma concl c in
-      let r = Run.run (env, sigma) c in
-      match r with
-      | Run.Val (sigma', _, v) ->
-          (Proofview.Unsafe.tclEVARS sigma')
-          <*> (Proofview.Refine.refine ~unsafe:false (fun s -> (s, v)))
-      | Run.Err (_, _, e) ->
-          Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
+      Proofview.Refine.refine ~unsafe:false begin fun sigma ->
+        let env = Proofview.Goal.env gl in
+        let concl = Proofview.Goal.concl gl in
+        let sigma,c = Constrintern.interp_open_constr env sigma t in
+        let (sigma, t) = pretypeT env sigma concl c in
+        let r = Run.run (env, sigma) c in
+        match r with
+        | Run.Val (sigma', _, v) -> (sigma', v)
+        | Run.Err (_, _, e) ->
+            Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
+      end
     end
 end
 
