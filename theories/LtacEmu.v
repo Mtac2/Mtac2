@@ -100,3 +100,58 @@ Notation "'intro' x" :=
   (intro (fun x => idtac))
     (at level 99)
   : mproof_scope.
+
+
+
+Inductive goal_pattern : Type :=
+| gbase : forall (B : Type), M B -> goal_pattern
+| gtele : forall {C}, (forall (x : C), goal_pattern) -> goal_pattern.
+
+Arguments gbase _ _.
+Arguments gtele {C} _.
+
+(** Given a pattern of the form [[? a b c] p a b c => t a b c] it returns
+    the pattern with evars for each pattern variable: [p ?a ?b ?c => t ?a ?b ?c] *)
+Definition open_pattern :=
+  mfix1 op (p : goal_pattern) : M (goal_pattern) :=
+    match p return M _ with
+    | gbase _ _ => ret p
+    | @gtele C f =>
+      e <- evar C; op (f e)
+    end.
+
+Import ListNotations.
+
+
+Notation "[[ x .. y |- ps ]] => t" := (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
+  (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
+
+Delimit Scope goal_match_scope with goal_match.
+
+Fixpoint match_goal {P} (p : goal_pattern) (l : list Hyp) : M P :=
+  match p, l with
+  | gbase g t, _ =>
+    peq <- munify g P;
+    match peq in (_ = P) return M P with
+    | eq_refl => t
+    end
+  | @gtele C f, (@ahyp A a None :: l) =>
+    mtry
+      e <- evar C;
+      teq <- munify C A;
+      let e' := match teq with eq_refl => e end in
+      veq <- munify e' a;
+      match_goal (f e) l
+    with _ => match_goal p l end
+  | _, _ => raise exception
+  end.
+Arguments match_goal {P} p%goal_match l.
+
+
+
+Definition assump {P} : M P :=
+  l <- hypotheses;
+  match_goal ([[ x:P |- P ]] => exact x) l.
+
+Definition split {P Q : Prop} {x:P} {y : Q} : M (P /\ Q)
+  := ret (conj x y).

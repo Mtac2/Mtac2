@@ -1,5 +1,5 @@
-Require Import LtacEmu.
 Require Import MetaCoq.MetaCoq.
+Require Import MetaCoq.LtacEmu.
 Import MetaCoqNotations.
 
 Lemma test1 : forall P, P -> P.
@@ -66,14 +66,11 @@ MProof.
   destruct H.
   intros H0.
   idtac.
-  idtac.
+  exact I.
   intro H0.
   idtac.
-  idtac.
   exact I.
-  exact I.
-  absurd p.
-Abort.
+Qed.
 
 Inductive Option : Set :=
 | Fail : Option
@@ -88,5 +85,36 @@ MProof.
             end).
   intro H.
   absurd (Fail = Fail).
-  trivial.
+  assump.
+  reflexivity.
+Qed.
+
+Definition test := ([[ (b : nat) |- S b > 0  ]] => evar _)%goal_match.
+
+Goal forall a b : nat, S b > 0.
+MProof.
+  intros a b.
+  idtac.
+  l <- hypotheses;
+  match_goal test  l.
+Abort.
+
+Goal forall P Q : Prop, P -> P.
+MProof.
+  intros P Q x.
+  assump.
+Qed.
+
+Goal forall P Q : Prop, Q -> P -> P.
+MProof.
+  intros P Q xQ xP.
+  assump.
+Qed.
+
+Goal forall P Q : Prop, Q -> P -> Q -> P /\ Q.
+MProof.
+  intros P Q xQ xP xP'.
+  split.
+  - assump.
+  - assump.
 Qed.
