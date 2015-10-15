@@ -86,8 +86,5 @@ let interp_instr = function
     - Unfocus on the current proof
     - Print subgoals *)
 let interp_proof_constr instr =
-  let scope = "mproof_scope" in
-  Notation.open_close_scope (false, true, scope); (* NOTE: Not completely sure of the false value *)
   ignore (Pfedit.by (interp_instr instr));
-  Notation.open_close_scope (false, false, scope);
   MetaCoqProofInfos.maximal_unfocus ()

@@ -1,6 +1,7 @@
 Require Import MetaCoq.MetaCoq.
 Require Import MetaCoq.LtacEmu.
 Import MetaCoqNotations.
+Import LtacEmuNotations.
 
 Lemma test1 : forall P, P -> P.
 MProof.

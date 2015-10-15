@@ -92,23 +92,30 @@ Definition destruct {A : Type} (n : A) {P : A -> Prop} : M (P n) :=
   d <- coerce (elem d);
   ret d.
 
-Notation "'intros' x .. y" :=
-  (intro (fun x => .. (intro (fun y => idtac)) ..))
-    (at level 99, x binder)
-  : mproof_scope.
-Notation "'intro' x" :=
-  (intro (fun x => idtac))
-    (at level 99)
-  : mproof_scope.
-
-
-
 Inductive goal_pattern : Type :=
 | gbase : forall (B : Type), M B -> goal_pattern
 | gtele : forall {C}, (forall (x : C), goal_pattern) -> goal_pattern.
 
 Arguments gbase _ _.
 Arguments gtele {C} _.
+
+Module LtacEmuNotations.
+
+Notation "'intros' x .. y" :=
+  (intro (fun x => .. (intro (fun y => idtac)) ..))
+    (at level 99, x binder).
+Notation "'intro' x" :=
+  (intro (fun x => idtac))
+    (at level 99).
+
+Notation "[[ x .. y |- ps ]] => t" := (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
+  (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
+
+Delimit Scope goal_match_scope with goal_match.
+
+End LtacEmuNotations.
+
+Import LtacEmuNotations.
 
 (** Given a pattern of the form [[? a b c] p a b c => t a b c] it returns
     the pattern with evars for each pattern variable: [p ?a ?b ?c => t ?a ?b ?c] *)
@@ -119,14 +126,6 @@ Definition open_pattern :=
     | @gtele C f =>
       e <- evar C; op (f e)
     end.
-
-Import ListNotations.
-
-
-Notation "[[ x .. y |- ps ]] => t" := (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
-  (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
-
-Delimit Scope goal_match_scope with goal_match.
 
 Fixpoint match_goal {P} (p : goal_pattern) (l : list Hyp) : M P :=
   match p, l with
@@ -146,7 +145,6 @@ Fixpoint match_goal {P} (p : goal_pattern) (l : list Hyp) : M P :=
   | _, _ => raise exception
   end.
 Arguments match_goal {P} p%goal_match l.
-
 
 
 Definition assump {P} : M P :=
