@@ -127,7 +127,15 @@ Definition open_pattern :=
       e <- evar C; op (f e)
     end.
 
-Fixpoint match_goal {P} (p : goal_pattern) (l : list Hyp) : M P :=
+Import ListNotations.
+
+
+Notation "[[ x .. y |- ps ]] => t" := (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
+  (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
+
+Delimit Scope goal_match_scope with goal_match.
+
+Fixpoint match_goal' {P} (p : goal_pattern) (l : list Hyp) : M P :=
   match p, l with
   | gbase g t, _ =>
     peq <- munify g P;
@@ -140,16 +148,15 @@ Fixpoint match_goal {P} (p : goal_pattern) (l : list Hyp) : M P :=
       teq <- munify C A;
       let e' := match teq with eq_refl => e end in
       veq <- munify e' a;
-      match_goal (f e) l
-    with _ => match_goal p l end
+      match_goal' (f e) l
+    with _ => match_goal' p l end
   | _, _ => raise exception
   end.
-Arguments match_goal {P} p%goal_match l.
 
+Definition match_goal {P} p : M P := hypotheses >> match_goal' p.
+Arguments match_goal {P} p%goal_match.
 
-Definition assump {P} : M P :=
-  l <- hypotheses;
-  match_goal ([[ x:P |- P ]] => exact x) l.
+Definition assump {P} : M P := match_goal ([[ x:P |- P ]] => exact x).
 
 Definition split {P Q : Prop} {x:P} {y : Q} : M (P /\ Q)
   := ret (conj x y).

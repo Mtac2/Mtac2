@@ -96,8 +96,7 @@ Goal forall a b : nat, S b > 0.
 MProof.
   intros a b.
   idtac.
-  l <- hypotheses;
-  match_goal test  l.
+  match_goal test.
 Abort.
 
 Goal forall P Q : Prop, P -> P.
@@ -118,4 +117,14 @@ MProof.
   split.
   - assump.
   - assump.
+Qed.
+
+Goal forall x : bool, orb x true = true.
+MProof.
+  intro x.
+  idtac.
+  match_goal ([[ z:bool |- _ ]] => destruct (P:=fun z=>_ z _ = _) z).
+  idtac. reflexivity.
+  idtac.
+  reflexivity.
 Qed.
