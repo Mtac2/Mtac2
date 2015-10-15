@@ -912,8 +912,8 @@ let cvar (env, sigma, metas) ty hyp =
 
 let rec run' (env, renv, sigma, undo, metas as ctxt) t =
   let t = whd_betadeltaiota env sigma t in
-  let (h, args) = Term.decompose_app t in
-  let nth = List.nth args in
+  let (h, args) = Term.decompose_appvect t in
+  let nth = Array.get args in
   let constr c =
     if Term.isConstruct c then
       let ((m, ix), _) = Term.destConstruct c in
@@ -943,7 +943,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
       end
 
   | 4 -> (* raise *)
-      fail sigma metas (List.nth args 1)
+      fail sigma metas (nth 1)
 
   | 5 -> (* fix1 *)
       let a, b, s, i, f, x = nth 0, nth 1, nth 2, nth 3, nth 4, nth 5 in
