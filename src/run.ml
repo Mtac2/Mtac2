@@ -1091,6 +1091,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
   | 23 -> (* print term *)
       let t = nth 1 in
+      let t = whd_evar sigma t in
       print_term t;
       return sigma metas (Lazy.force CoqUnit.mkTT)
 
