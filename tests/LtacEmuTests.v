@@ -128,3 +128,24 @@ MProof.
   idtac.
   reflexivity.
 Qed.
+
+Example for_yann : forall (a b : nat) (Hb : b = 0) (Ha : a = 0), b = 0.
+MProof.
+  intros a b Hb Ha.
+  idtac.
+  match_goal ([[ (x:nat) (Hx : x = 0) |- _ ]] => exact Hx).
+Qed.
+
+Example for_yann2 : forall (a b : nat) (Ha : a = 0) (Hb : b = 0), a = a.
+MProof.
+  intros a b Ha Hb.
+  idtac.
+  match_goal ([[ (x:nat) (Hx : x = 0) |- x = x ]] => print_term x;; reflexivity).
+Qed.
+
+Example for_yann3 : forall (a b : nat) (Ha : a = 0) (Hb : b = 0), b = b.
+MProof.
+  intros a b Ha Hb.
+  idtac.
+  match_goal ([[ (x:nat) (Hx : x = 0) |- x = x ]] => print_term x;; reflexivity).
+Qed.
