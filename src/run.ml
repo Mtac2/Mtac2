@@ -922,7 +922,7 @@ let get_func_name env f =
     | Names.Name var ->
         let v = Namegen.next_ident_away_in_goal var (ids_of_context env) in
         if v == var then arg, body else
-          Names.Name v, replace_term (Term.mkVar var) (Term.mkVar v) body
+          Names.Name v, body
   else
     Names.Anonymous, Term.mkApp(Vars.lift 1 f, [|Term.mkRel 1|])
 
