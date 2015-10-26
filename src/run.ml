@@ -912,6 +912,19 @@ let cvar (env, sigma, metas) ty hyp =
   with Not_found ->
     Exceptions.block "Hypothesis not found"
 
+(* if [f] is a function, we use its variable to get the name, otherwise we
+   apply [f] to a fresh new variable. *)
+let get_func_name env f =
+  if Term.isLambda f then
+    let (arg, _, body) = Term.destLambda f in
+    match arg with
+    | Names.Anonymous -> arg, body
+    | Names.Name var ->
+        let v = Namegen.next_ident_away_in_goal var (ids_of_context env) in
+        if v == var then arg, body else
+          Names.Name v, replace_term (Term.mkVar var) (Term.mkVar v) body
+  else
+    Names.Anonymous, Term.mkApp(Vars.lift 1 f, [|Term.mkRel 1|])
 
 let rec run' (env, renv, sigma, undo, metas as ctxt) t =
   let (t,sk as appr) = Reductionops.whd_nored_state sigma (t, []) in
@@ -988,11 +1001,11 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
     | 11 -> (* nu *)
         let a, f = nth 0, nth 2 in
-        let fx = mkApp(Vars.lift 1 f, [|mkRel 1|]) in
+        let x, fx = get_func_name env f in
         let renv = Vars.lift 1 renv in
         let ur = ref [] in
         begin
-          let env = push_rel (Anonymous, None, a) env in
+          let env = push_rel (x, None, a) env in
           let (sigma, renv) = Hypotheses.cons_hyp a (mkRel 1) None renv sigma env in
           match run' (env, renv, sigma, (ur :: undo), metas) fx with
           | Val (sigma', metas, e) ->
