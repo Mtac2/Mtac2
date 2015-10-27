@@ -127,14 +127,6 @@ Definition open_pattern :=
       e <- evar C; op (f e)
     end.
 
-Import ListNotations.
-
-
-Notation "[[ x .. y |- ps ]] => t" := (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
-  (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
-
-Delimit Scope goal_match_scope with goal_match.
-
 Fixpoint match_goal' {P} (p : goal_pattern) (l : list Hyp) : M P :=
   match p, l with
   | gbase g t, _ =>
