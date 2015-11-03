@@ -57,8 +57,11 @@ Record Case :=
         case_branches : list dyn
         }.
 
+(* Reduction primitive *)
+Definition reduce (r : Reduction) {A} (x : A) := x.
+
 Inductive MetaCoq : Type -> Prop :=
-| tret : forall {A}, Reduction -> A -> MetaCoq A
+| tret : forall {A}, A -> MetaCoq A
 | bind : forall {A B}, MetaCoq A -> (A -> MetaCoq B) -> MetaCoq B
 | ttry : forall {A}, MetaCoq A -> (Exception -> MetaCoq A) -> MetaCoq A
 | raise : forall {A}, Exception -> MetaCoq A
@@ -155,10 +158,12 @@ Module MetaCoqNotations.
 
 Notation "'M'" := MetaCoq.
 
-Notation "'ret'" := (tret RedNone).
-Notation "'retS'" := (tret RedSimpl).
-Notation "'retW'" := (tret RedWhd).
-Notation "'retO'" := (tret RedOneStep).
+Notation "'simpl'" := (reduce RedSimpl).
+Notation "'hnf'" := (reduce RedWhd).
+Notation "'one_step'" := (reduce RedOneStep).
+
+Notation "'ret'" := (tret).
+Notation "'retS' e" := (let s := simpl e in ret s) (at level 20).
 
 Notation "r '<-' t1 ';' t2" := (@bind _ _ t1 (fun r=> t2))
   (at level 81, right associativity).
