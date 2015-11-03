@@ -9,9 +9,6 @@ Definition refine : forall {A : Type}, A -> M A := @exact.
 Definition reflexivity {A : Type} {x : A} : M (x = x) :=
   ret (eq_refl : x = x).
 
-Definition apply {A B : Type} (f : A -> B) {x : A} : M B :=
-  ret (f x).
-
 Definition intro {A : Type} {q : A -> Type} (s : forall x : A, M (q x))
 : M (forall x : A, q x) :=
   nu x,
@@ -103,7 +100,7 @@ Module LtacEmuNotations.
 
 Notation "'intros' x .. y" :=
   (intro (fun x => .. (intro (fun y => idtac)) ..))
-    (at level 99, x binder).
+    (at level 99, x binder, y binder).
 Notation "'intro' x" :=
   (intro (fun x => idtac))
     (at level 99).
@@ -152,3 +149,20 @@ Definition assump {P} : M P := match_goal ([[ x:P |- P ]] => exact x).
 
 Definition split {P Q : Prop} {x:P} {y : Q} : M (P /\ Q)
   := ret (conj x y).
+
+Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
+Definition apply {P T} (l : T) : M P :=
+  (mfix2 app (T : _) (l' : T) : M P :=
+    mtry
+      p <- munify P T;
+      ret (eq_rect_r (fun T => T) l' p)
+    with [? A (a b : A)] NotUnifiableException a b =>
+      mmatch T return M P with
+      | [? T1 T2] (forall x:T1, T2 x) => [H]
+          e <- evar T1;
+          l' <- retS (eq_rect _ (fun T => T -> T2 e)
+            (fun l : forall x : T1, T2 x => l e) _ H l');
+          app (T2 e) l'
+      | _ => raise (CantApply a b)
+      end
+    end) _ l.

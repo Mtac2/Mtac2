@@ -149,3 +149,19 @@ MProof.
   idtac.
   match_goal ([[ (x:nat) (Hx : x = 0) |- x = x ]] => print_term x;; reflexivity).
 Qed.
+
+Example apply_tactic (a b : nat) : a > b -> S a > S b.
+MProof.
+  intro H.
+  idtac.
+  apply Gt.gt_n_S.
+  assumption.
+Qed.
+
+Example apply_tactic_fail (a b : nat) : a > b -> S a > b.
+Proof.
+MProof.
+  intro H.
+  idtac.
+  Fail apply Gt.gt_n_S.
+Abort.
