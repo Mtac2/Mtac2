@@ -1,4 +1,5 @@
 Require Import MetaCoq.MetaCoq.
+Require Import Strings.String.
 Import MetaCoqNotations.
 
 Definition exact {A : Type} (x : A) : M A :=
@@ -9,11 +10,11 @@ Definition refine : forall {A : Type}, A -> M A := @exact.
 Definition reflexivity {A : Type} {x : A} : M (x = x) :=
   ret (eq_refl : x = x).
 
-Definition intro {A : Type} {q : A -> Type} (s : forall x : A, M (q x))
+Definition intro {A : Type} {q : A -> Type} (s : string) (f : forall x : A, M (q x))
 : M (forall x : A, q x) :=
-  nu x,
-  p <- s x;
-  abs x p.
+  tnu s (fun x=>
+  p <- f x;
+  abs x p).
 
 Definition symmetry {A : Type} {t u : A} {p : t = u} : M (u = t) :=
   ret (eq_sym p).
@@ -97,12 +98,13 @@ Arguments gbase _ _.
 Arguments gtele {C} _.
 
 Module LtacEmuNotations.
-
+Open Scope string.
+Notation "'hid_intro' x , f" := (intro "x" (fun x=>f)) (at level 0).
 Notation "'intros' x .. y" :=
-  (intro (fun x => .. (intro (fun y => idtac)) ..))
+  (hid_intro x, .. (hid_intro y, idtac)..)
     (at level 99, x binder, y binder).
 Notation "'intro' x" :=
-  (intro (fun x => idtac))
+  (hid_intro x , idtac)
     (at level 99).
 
 Notation "[[ x .. y |- ps ]] => t" := (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))

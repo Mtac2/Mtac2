@@ -914,17 +914,22 @@ let cvar (env, sigma, metas) ty hyp =
 
 (* if [f] is a function, we use its variable to get the name, otherwise we
    apply [f] to a fresh new variable. *)
-let get_func_name env f =
-  if Term.isLambda f then
-    let (arg, _, body) = Term.destLambda f in
-    match arg with
-    | Names.Anonymous -> arg, body
-    | Names.Name var ->
-        let v = Namegen.next_ident_away_in_goal var (ids_of_context env) in
-        if v == var then arg, body else
-          Names.Name v, body
-  else
-    Names.Anonymous, Term.mkApp(Vars.lift 1 f, [|Term.mkRel 1|])
+let get_func_name env sigma s f =
+  (*
+     if Term.isLambda f then
+     let (arg, _, body) = Term.destLambda f in
+     match arg with
+     | Names.Anonymous -> arg, body
+     | Names.Name var ->
+     let v = Namegen.next_ident_away_in_goal var (ids_of_context env) in
+     if v == var then arg, body else
+     Names.Name v, body
+     else
+  *)
+  let s = CoqString.from_coq env sigma s in
+  let s = Names.Id.of_string s in
+  let s = Namegen.next_ident_away_in_goal s (ids_of_context env) in
+  Names.Name s, Term.mkApp(Vars.lift 1 f, [|Term.mkRel 1|])
 
 let rec run' (env, renv, sigma, undo, metas as ctxt) t =
   let (t,sk as appr) = Reductionops.whd_nored_state sigma (t, []) in
@@ -1000,8 +1005,8 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         return sigma metas (Lazy.force CoqUnit.mkTT)
 
     | 11 -> (* nu *)
-        let a, f = nth 0, nth 2 in
-        let x, fx = get_func_name env f in
+        let a, s, f = nth 0, nth 2, nth 3 in
+        let x, fx = get_func_name env sigma s f in
         let renv = Vars.lift 1 renv in
         let ur = ref [] in
         begin
