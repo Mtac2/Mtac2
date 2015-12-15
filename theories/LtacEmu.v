@@ -100,10 +100,10 @@ Arguments gtele {C} _.
 Module LtacEmuNotations.
 Open Scope string.
 Notation "'hid_intro' x , f" := (intro "x" (fun x=>f)) (at level 0).
-Notation "'intros' x .. y" :=
+Notation "'mintros' x .. y" :=
   (hid_intro x, .. (hid_intro y, idtac)..)
     (at level 99, x binder, y binder).
-Notation "'intro' x" :=
+Notation "'mintro' x" :=
   (hid_intro x , idtac)
     (at level 99).
 
