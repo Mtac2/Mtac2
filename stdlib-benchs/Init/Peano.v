@@ -28,6 +28,9 @@ Require Import Datatypes.
 Require Import Logic.
 Require Coq.Init.Nat.
 
+Require Import MetaCoq.LtacEmu.
+Import LtacEmuNotations.
+
 Open Scope nat_scope.
 
 Definition eq_S := f_equal S.
@@ -96,7 +99,7 @@ Qed.
 Hint Resolve plus_n_O: core.
 
 Lemma plus_O_n : forall n:nat, 0 + n = n.
-Proof.
+MProof.
   reflexivity.
 Qed.
 
@@ -107,7 +110,8 @@ Qed.
 Hint Resolve plus_n_Sm: core.
 
 Lemma plus_Sn_m : forall n m:nat, S n + m = S (n + m).
-Proof.
+MProof.
+  mintros n m.
   reflexivity.
 Qed.
 
