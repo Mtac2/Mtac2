@@ -7,9 +7,6 @@ Definition exact {A : Type} (x : A) : M A :=
 
 Definition refine : forall {A : Type}, A -> M A := @exact.
 
-Definition reflexivity {A : Type} {x : A} : M (x = x) :=
-  ret (eq_refl : x = x).
-
 Definition intro {A : Type} {q : A -> Type} (s : string) (f : forall x : A, M (q x))
 : M (forall x : A, q x) :=
   tnu s (fun x=>
@@ -153,18 +150,22 @@ Definition split {P Q : Prop} {x:P} {y : Q} : M (P /\ Q)
   := ret (conj x y).
 
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
-Definition apply {P T} (l : T) : M P :=
-  (mfix2 app (T : _) (l' : T) : M P :=
+Definition apply {P T : Prop} (l : T) : M P :=
+  (mfix2 app (T : Prop) (l' : T) : M P :=
     mtry
       p <- munify P T;
-      ret (eq_rect_r (fun T => T) l' p)
+      ret (eq_ind_r (fun T => T) l' p)
     with [? A (a b : A)] NotUnifiableException a b =>
-      mmatch T return M P with
-      | [? T1 T2] (forall x:T1, T2 x) => [H]
+      mmatch T with
+      | [? (T1 : Type) (T2 : T1 -> Prop)] (forall x:T1, T2 x) => [H]
           e <- evar T1;
-          l' <- retS (eq_rect _ (fun T => T -> T2 e)
+          l' <- retS (eq_ind (forall x : T1, T2 x) (fun T => T -> T2 e)
             (fun l : forall x : T1, T2 x => l e) _ H l');
           app (T2 e) l'
-      | _ => raise (CantApply a b)
+      | _ =>
+          (raise (CantApply a b) : M P)
       end
     end) _ l.
+
+Definition reflexivity {A : Prop} : M A :=
+  apply (@eq_refl).
