@@ -10,8 +10,10 @@ COUNT_MPROOF = $(shell grep -c "MProof." $(SRC) | awk -F ':' '{total += $$2} END
 
 all:
 	@$(TIME) $(MAKE) bench
+	@echo "Proof count:" $(COUNT_PROOF)
+	@echo "MProof count:" $(COUNT_MPROOF)
 	@echo -n "MProoved: "
-	@echo 'x = ($(COUNT_MPROOF) / $(COUNT_PROOF)) * 100\nprint x, "%\n"' | bc -l
+	@echo 'x = ($(COUNT_MPROOF) / $(COUNT_PROOF)) * 100\nscale=3\nx = x / 1\nprint x, "%\n"' | bc -l
 
 clean:
 	@$(RM) $(OBJ)
