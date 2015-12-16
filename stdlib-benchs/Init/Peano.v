@@ -190,8 +190,8 @@ induction 1; auto. destruct m; simpl; auto.
 Qed.
 
 Theorem le_S_n : forall n m, S n <= S m -> n <= m.
-Proof.
-intros n m. exact (le_pred (S n) (S m)).
+MProof.
+mintros n m. exact (le_pred (S n) (S m)).
 Qed.
 
 Theorem le_0_n : forall n, 0 <= n.

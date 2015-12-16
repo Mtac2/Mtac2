@@ -23,6 +23,8 @@ where "n + m" := (add n m) : nat_scope.
 
 Require Import PeanoNat.
 
+Require Import MetaCoq.LtacEmu.
+
 Local Open Scope nat_scope.
 
 (** * Neutrality of 0, commutativity, associativity *)
@@ -38,7 +40,7 @@ Definition plus_Snm_nSm : forall n m, S n + m = n + S m :=
  Peano.plus_n_Sm.
 
 Lemma plus_assoc_reverse n m p : n + m + p = n + (m + p).
-Proof.
+MProof.
   symmetry. apply Nat.add_assoc.
 Qed.
 
@@ -82,27 +84,27 @@ Proof.
 Qed.
 
 Lemma plus_le_compat n m p q : n <= m -> p <= q -> n + p <= m + q.
-Proof.
+MProof.
  apply Nat.add_le_mono.
 Qed.
 
 Lemma plus_le_lt_compat n m p q : n <= m -> p < q -> n + p < m + q.
-Proof.
+MProof.
  apply Nat.add_le_lt_mono.
 Qed.
 
 Lemma plus_lt_le_compat n m p q : n < m -> p <= q -> n + p < m + q.
-Proof.
+MProof.
  apply Nat.add_lt_le_mono.
 Qed.
 
 Lemma plus_lt_compat n m p q : n < m -> p < q -> n + p < m + q.
-Proof.
+MProof.
  apply Nat.add_lt_mono.
 Qed.
 
 Lemma le_plus_l n m : n <= n + m.
-Proof.
+MProof.
  apply Nat.le_add_r.
 Qed.
 
@@ -161,7 +163,7 @@ Qed.
 (** * Discrimination *)
 
 Lemma succ_plus_discr n m : n <> S (m+n).
-Proof.
+MProof.
  apply Nat.succ_add_discr.
 Qed.
 

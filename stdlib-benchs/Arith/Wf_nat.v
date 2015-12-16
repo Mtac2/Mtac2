@@ -10,6 +10,8 @@
 
 Require Import PeanoNat Lt.
 
+Require Import MetaCoq.LtacEmu.
+
 Local Open Scope nat_scope.
 
 Implicit Types m n p : nat.
@@ -33,7 +35,7 @@ Proof.
 Defined.
 
 Theorem well_founded_gtof : well_founded gtof.
-Proof.
+MProof.
   exact well_founded_ltof.
 Defined.
 
@@ -75,21 +77,21 @@ Defined.
 Theorem induction_gtof1 :
   forall P:A -> Set,
     (forall x:A, (forall y:A, gtof y x -> P y) -> P x) -> forall a:A, P a.
-Proof.
+MProof.
   exact induction_ltof1.
 Defined.
 
 Theorem induction_ltof2 :
   forall P:A -> Set,
     (forall x:A, (forall y:A, ltof y x -> P y) -> P x) -> forall a:A, P a.
-Proof.
+MProof.
   exact (well_founded_induction well_founded_ltof).
 Defined.
 
 Theorem induction_gtof2 :
   forall P:A -> Set,
     (forall x:A, (forall y:A, gtof y x -> P y) -> P x) -> forall a:A, P a.
-Proof.
+MProof.
   exact induction_ltof2.
 Defined.
 
@@ -113,19 +115,19 @@ Defined.
 End Well_founded_Nat.
 
 Lemma lt_wf : well_founded lt.
-Proof.
+MProof.
   exact (well_founded_ltof nat (fun m => m)).
 Defined.
 
 Lemma lt_wf_rec1 :
   forall n (P:nat -> Set), (forall n, (forall m, m < n -> P m) -> P n) -> P n.
-Proof.
+MProof.
   exact (fun p P F => induction_ltof1 nat (fun m => m) P F p).
 Defined.
 
 Lemma lt_wf_rec :
   forall n (P:nat -> Set), (forall n, (forall m, m < n -> P m) -> P n) -> P n.
-Proof.
+MProof.
   exact (fun p P F => induction_ltof2 nat (fun m => m) P F p).
 Defined.
 
@@ -137,7 +139,7 @@ Qed.
 
 Lemma gt_wf_rec :
   forall n (P:nat -> Set), (forall n, (forall m, n > m -> P m) -> P n) -> P n.
-Proof.
+MProof.
   exact lt_wf_rec.
 Defined.
 

@@ -8,6 +8,8 @@
 
 Require Import Le Lt Gt Decidable PeanoNat.
 
+Require Import MetaCoq.LtacEmu.
+
 Local Open Scope nat_scope.
 
 Implicit Types m n x y : nat.
@@ -39,7 +41,7 @@ Proof.
 Defined.
 
 Definition le_le_S_dec n m : {n <= m} + {S m <= n}.
-Proof.
+MProof.
   exact (le_lt_dec n m).
 Defined.
 
@@ -49,7 +51,7 @@ Proof.
 Defined.
 
 Definition le_gt_dec n m : {n <= m} + {n > m}.
-Proof.
+MProof.
   exact (le_lt_dec n m).
 Defined.
 
@@ -84,22 +86,22 @@ Defined.
 (** Proofs of decidability *)
 
 Theorem dec_le n m : decidable (n <= m).
-Proof.
+MProof.
   apply Nat.le_decidable.
 Qed.
 
 Theorem dec_lt n m : decidable (n < m).
-Proof.
+MProof.
   apply Nat.lt_decidable.
 Qed.
 
 Theorem dec_gt n m : decidable (n > m).
-Proof.
+MProof.
   apply Nat.lt_decidable.
 Qed.
 
 Theorem dec_ge n m : decidable (n >= m).
-Proof.
+MProof.
   apply Nat.le_decidable.
 Qed.
 

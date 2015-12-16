@@ -9,6 +9,8 @@
 Require Import PeanoNat.
 Local Open Scope nat_scope.
 
+Require Import MetaCoq.LtacEmu.
+
 (** Equality on natural numbers *)
 
 (** * Propositional equality  *)
@@ -75,7 +77,7 @@ Notation beq_nat_true_iff := Nat.eqb_eq (compat "8.4").
 Notation beq_nat_false_iff := Nat.eqb_neq (compat "8.4").
 
 Lemma beq_nat_refl n : true = (n =? n).
-Proof.
+MProof.
  symmetry. apply Nat.eqb_refl.
 Qed.
 

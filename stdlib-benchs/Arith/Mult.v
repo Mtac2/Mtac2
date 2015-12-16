@@ -17,6 +17,8 @@ Require Import PeanoNat.
 (** For Compatibility: *)
 Require Export Plus Minus Le Lt.
 
+Require Import MetaCoq.LtacEmu.
+
 Local Open Scope nat_scope.
 
 (** * [nat] is a semi-ring *)
@@ -62,7 +64,7 @@ Hint Resolve mult_minus_distr_l: arith v62.
 Notation mult_assoc := Nat.mul_assoc (compat "8.4"). (* n*(m*p)=n*m*p *)
 
 Lemma mult_assoc_reverse n m p : n * m * p = n * (m * p).
-Proof.
+MProof.
  symmetry. apply Nat.mul_assoc.
 Qed.
 
@@ -95,14 +97,14 @@ Qed.
 Hint Resolve mult_O_le: arith v62.
 
 Lemma mult_le_compat_l n m p : n <= m -> p * n <= p * m.
-Proof.
- apply Nat.mul_le_mono_nonneg_l, Nat.le_0_l. (* TODO : get rid of 0<=n hyp *)
+MProof.
+ apply Nat.mul_le_mono_nonneg_l. apply Nat.le_0_l. (* TODO : get rid of 0<=n hyp *)
 Qed.
 Hint Resolve mult_le_compat_l: arith.
 
 Lemma mult_le_compat_r n m p : n <= m -> n * p <= m * p.
-Proof.
- apply Nat.mul_le_mono_nonneg_r, Nat.le_0_l.
+MProof.
+ apply Nat.mul_le_mono_nonneg_r. apply Nat.le_0_l.
 Qed.
 
 Lemma mult_le_compat n m p q : n <= m -> p <= q -> n * p <= m * q.

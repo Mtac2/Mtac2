@@ -23,12 +23,14 @@ where "n - m" := (sub n m) : nat_scope.
 
 Require Import PeanoNat Lt Le.
 
+Require Import MetaCoq.LtacEmu.
+
 Local Open Scope nat_scope.
 
 (** * 0 is right neutral *)
 
 Lemma minus_n_O n : n = n - 0.
-Proof.
+MProof.
  symmetry. apply Nat.sub_0_r.
 Qed.
 
@@ -40,7 +42,7 @@ Proof.
 Qed.
 
 Theorem pred_of_minus n : pred n = n - 1.
-Proof.
+MProof.
  symmetry. apply Nat.sub_1_r.
 Qed.
 
@@ -49,7 +51,7 @@ Qed.
 Notation minus_diag := Nat.sub_diag (compat "8.4"). (* n - n = 0 *)
 
 Lemma minus_diag_reverse n : 0 = n - n.
-Proof.
+MProof.
  symmetry. apply Nat.sub_diag.
 Qed.
 

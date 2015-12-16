@@ -17,6 +17,8 @@ Require Import Notations.
 Require Import Logic.
 Require Import Datatypes.
 
+Require Import MetaCoq.LtacEmu.
+
 (** Well-founded induction principle on [Prop] *)
 
 Section Well_founded.
@@ -54,14 +56,14 @@ Section Well_founded.
  Theorem well_founded_induction :
   forall P:A -> Set,
     (forall x:A, (forall y:A, R y x -> P y) -> P x) -> forall a:A, P a.
- Proof.
+ MProof.
   exact (fun P:A -> Set => well_founded_induction_type P).
  Defined.
 
  Theorem well_founded_ind :
   forall P:A -> Prop,
     (forall x:A, (forall y:A, R y x -> P y) -> P x) -> forall a:A, P a.
- Proof.
+ MProof.
   exact (fun P:A -> Prop => well_founded_induction_type P).
  Defined.
 

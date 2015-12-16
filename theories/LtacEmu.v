@@ -13,9 +13,6 @@ Definition intro {A : Type} {q : A -> Type} (s : string) (f : forall x : A, M (q
   p <- f x;
   abs x p).
 
-Definition symmetry {A : Type} {t u : A} {p : t = u} : M (u = t) :=
-  ret (eq_sym p).
-
 Definition idtac {A : Type} {x : A} : M A := ret x.
 
 Definition NotFound : Exception. exact exception. Qed.
@@ -31,9 +28,6 @@ Definition lookup (A : Type) :=
 Definition assumption {A : Type} : M A :=
   hyps <- hypotheses;
   lookup A hyps.
-
-Definition transitivity {A : Type} (y : A) {x z : A} {f : x = y} {g : y = z} : M (x = z) :=
-  ret (eq_trans f g).
 
 Definition absurd {A : Type} (p : Prop) {y : ~p} {x : p} : M A :=
   ret (match y x with end).
@@ -150,6 +144,7 @@ Definition split {P Q : Prop} {x:P} {y : Q} : M (P /\ Q)
   := ret (conj x y).
 
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
+
 Definition apply {P T : Prop} (l : T) : M P :=
   (mfix2 app (T : Prop) (l' : T) : M P :=
     mtry
@@ -169,3 +164,9 @@ Definition apply {P T : Prop} (l : T) : M P :=
 
 Definition reflexivity {A : Prop} : M A :=
   apply (@eq_refl).
+
+Definition transitivity {A : Prop} : M A :=
+  apply (@eq_trans).
+
+Definition symmetry {A : Prop} : M A :=
+  apply (@eq_sym).

@@ -20,6 +20,8 @@ Definition gt (n m:nat) := m < n.
 Require Import PeanoNat Le Lt Plus.
 Local Open Scope nat_scope.
 
+Require Import MetaCoq.LtacEmu.
+
 (** * Order and successor *)
 
 Theorem gt_Sn_O n : S n > 0.

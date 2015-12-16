@@ -12,6 +12,8 @@
 
 Require Import PeanoNat Even.
 
+Require Import MetaCoq.LtacEmu.
+
 Local Open Scope nat_scope.
 
 Implicit Type n : nat.
@@ -38,7 +40,7 @@ Qed.
 (** [0 <n  =>  n/2 < n] *)
 
 Lemma lt_div2 n : 0 < n -> div2 n < n.
-Proof. apply Nat.lt_div2. Qed.
+MProof. apply Nat.lt_div2. Qed.
 
 Hint Resolve lt_div2: arith.
 
@@ -89,12 +91,12 @@ Notation double := Nat.double (compat "8.4").
 Hint Unfold double Nat.double: arith.
 
 Lemma double_S n : double (S n) = S (S (double n)).
-Proof.
+MProof.
   apply Nat.add_succ_r.
 Qed.
 
 Lemma double_plus n m : double (n + m) = double n + double m.
-Proof.
+MProof.
   apply Nat.add_shuffle1.
 Qed.
 
@@ -152,7 +154,7 @@ Defined.
 (** Doubling before dividing by two brings back to the initial number. *)
 
 Lemma div2_double n : div2 (2*n) = n.
-Proof. apply Nat.div2_double. Qed.
+MProof. apply Nat.div2_double. Qed.
 
 Lemma div2_double_plus_one n : div2 (S (2*n)) = n.
-Proof. apply Nat.div2_succ_double. Qed.
+MProof. apply Nat.div2_succ_double. Qed.

@@ -12,6 +12,8 @@ Require Import NAxioms NProperties OrdersFacts.
 
 (** Implementation of [NAxiomsSig] by [nat] *)
 
+Require Import MetaCoq.LtacEmu.
+
 Module Nat
  <: NAxiomsSig
  <: UsualDecidableTypeFull
@@ -88,32 +90,32 @@ Definition lt := Peano.lt.
 (** ** Basic specifications : pred add sub mul *)
 
 Lemma pred_succ n : pred (S n) = n.
-Proof.
+MProof.
 reflexivity.
 Qed.
 
 Lemma pred_0 : pred 0 = 0.
-Proof.
+MProof.
 reflexivity.
 Qed.
 
 Lemma one_succ : 1 = S 0.
-Proof.
+MProof.
 reflexivity.
 Qed.
 
 Lemma two_succ : 2 = S 1.
-Proof.
+MProof.
 reflexivity.
 Qed.
 
 Lemma add_0_l n : 0 + n = n.
-Proof.
+MProof.
 reflexivity.
 Qed.
 
 Lemma add_succ_l n m : (S n) + m = S (n + m).
-Proof.
+MProof.
 reflexivity.
 Qed.
 
@@ -128,7 +130,7 @@ revert m. induction n; destruct m; simpl; auto. apply sub_0_r.
 Qed.
 
 Lemma mul_0_l n : 0 * n = 0.
-Proof.
+MProof.
 reflexivity.
 Qed.
 
@@ -168,7 +170,7 @@ Proof.
 Qed.
 
 Lemma ltb_lt n m : (n <? m) = true <-> n < m.
-Proof.
+MProof.
  apply leb_le.
 Qed.
 
@@ -217,7 +219,7 @@ Proof.
 Qed.
 
 Lemma compare_succ n m : (S n ?= S m) = (n ?= m).
-Proof.
+MProof.
  reflexivity.
 Qed.
 
@@ -228,22 +230,22 @@ Qed.
 (** ** Minimum, maximum *)
 
 Lemma max_l : forall n m, m <= n -> max n m = n.
-Proof.
+MProof.
  exact Peano.max_l.
 Qed.
 
 Lemma max_r : forall n m, n <= m -> max n m = m.
-Proof.
+MProof.
  exact Peano.max_r.
 Qed.
 
 Lemma min_l : forall n m, n <= m -> min n m = n.
-Proof.
+MProof.
  exact Peano.min_l.
 Qed.
 
 Lemma min_r : forall n m, m <= n -> min n m = m.
-Proof.
+MProof.
  exact Peano.min_r.
 Qed.
 
@@ -263,7 +265,7 @@ Include NBasicProp <+ UsualMinMaxLogicalProperties <+ UsualMinMaxDecProperties.
 Lemma pow_neg_r a b : b<0 -> a^b = 0. inversion 1. Qed.
 
 Lemma pow_0_r a : a^0 = 1.
-Proof. reflexivity. Qed.
+MProof. reflexivity. Qed.
 
 Lemma pow_succ_r a b : 0<=b -> a^(S b) = a * a^b.
 Proof. reflexivity. Qed.
@@ -271,7 +273,7 @@ Proof. reflexivity. Qed.
 (** ** Square *)
 
 Lemma square_spec n : square n = n * n.
-Proof. reflexivity. Qed.
+MProof. reflexivity. Qed.
 
 (** ** Parity *)
 
@@ -514,7 +516,7 @@ Proof.
 Qed.
 
 Lemma gcd_nonneg a b : 0<=gcd a b.
-Proof. apply le_0_l. Qed.
+MProof. apply le_0_l. Qed.
 
 
 (** ** Bitwise operations *)
@@ -706,7 +708,7 @@ Proof.
 Qed.
 
 Lemma div2_spec a : div2 a = shiftr a 1.
-Proof.
+MProof.
  reflexivity.
 Qed.
 
