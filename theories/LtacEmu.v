@@ -98,7 +98,7 @@ Notation "'mintro' x" :=
   (hid_intro x , idtac)
     (at level 99).
 
-Notation "[[ x .. y |- ps ]] => t" := (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
+Notation "[[ x .. y |- ps ] ] => t" := (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
   (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
 
 Delimit Scope goal_match_scope with goal_match.
