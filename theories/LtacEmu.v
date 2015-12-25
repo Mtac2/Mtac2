@@ -162,6 +162,23 @@ Definition apply {P T : Prop} (l : T) : M P :=
       end
     end) _ l.
 
+Definition apply_type {P T : Type} (l : T) : M P :=
+  (mfix2 app (T : Type) (l' : T) : M P :=
+    mtry
+      p <- munify P T;
+      ret (eq_rect_r (fun T => T) l' p)
+    with [? A (a b : A)] NotUnifiableException a b =>
+      mmatch T with
+      | [? (T1 : Type) (T2 : T1 -> Type)] (forall x:T1, T2 x) => [H]
+          e <- evar T1;
+          l' <- retS (eq_rect (forall x : T1, T2 x) (fun T => T -> T2 e)
+            (fun l : forall x : T1, T2 x => l e) _ H l');
+          app (T2 e) l'
+      | _ =>
+          (raise (CantApply a b) : M P)
+      end
+    end) _ l.
+
 Definition reflexivity {A : Prop} : M A :=
   apply (@eq_refl).
 
