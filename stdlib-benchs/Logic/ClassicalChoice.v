@@ -14,6 +14,9 @@
     be used to build choice functions outside the scope of a theorem
     proof) *)
 
+Require Import MetaCoq.LtacEmu.
+Import LtacEmuNotations.
+
 (** This file extends ClassicalUniqueChoice.v with full choice.
     As ClassicalUniqueChoice.v, it implies the double-negation of
     excluded-middle in [Set] and leads to a classical world populated
@@ -41,8 +44,8 @@ Theorem choice :
  forall (A B : Type) (R : A->B->Prop),
    (forall x : A, exists y : B, R x y) ->
     exists f : A->B, (forall x : A, R x (f x)).
-Proof.
-intros A B.
+MProof.
+mintros A B.
 apply description_rel_choice_imp_funct_choice.
 exact (unique_choice A B).
 exact (relational_choice A B).

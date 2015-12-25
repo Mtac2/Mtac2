@@ -6,6 +6,9 @@
 (*         *       GNU Lesser General Public License Version 2.1       *)
 (***********************************************************************)
 
+Require Import MetaCoq.LtacEmu.
+Import LtacEmuNotations.
+
 Require Export List.
 Require Export Sorted.
 Require Export Setoid Basics Morphisms.
@@ -327,19 +330,19 @@ Proof.
 Qed.
 
 Lemma equivlistA_double_head x l : equivlistA (x :: x :: l) (x :: l).
-Proof.
- intro. apply InA_double_head.
+MProof.
+ mintro H. apply_type InA_double_head.
 Qed.
 
 Lemma equivlistA_permute_heads x y l :
  equivlistA (x :: y :: l) (y :: x :: l).
-Proof.
- intro. apply InA_permute_heads.
+MProof.
+ mintro H. apply_type InA_permute_heads.
 Qed.
 
 Lemma equivlistA_app_idem l : equivlistA (l ++ l) l.
-Proof.
- intro. apply InA_app_idem.
+MProof.
+ mintro H. apply_type InA_app_idem.
 Qed.
 
 Lemma equivlistA_NoDupA_split l l1 l2 x y : eqA x y ->
@@ -916,8 +919,8 @@ Qed.
 
 Lemma eqlistA_rev : forall l1 l1',
    eqlistA l1 l1' -> eqlistA (rev l1) (rev l1').
-Proof.
-apply rev_eqlistA_compat.
+MProof.
+apply_type rev_eqlistA_compat.
 Qed.
 
 Lemma SortA_equivlistA_eqlistA : forall l l',

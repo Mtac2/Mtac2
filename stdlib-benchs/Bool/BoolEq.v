@@ -13,6 +13,9 @@
 
 Require Export Bool.
 
+Require Import MetaCoq.LtacEmu.
+Import LtacEmuNotations.
+
 Section Bool_eq_dec.
 
   Variable A : Set.
@@ -37,7 +40,7 @@ Section Bool_eq_dec.
   Defined.
 
   Definition beq_false_not_eq : forall x y:A, false = beq x y -> x <> y.
-  Proof.
+  MProof.
     exact
      (fun (x y:A) (H:false = beq x y) (e:x = y) => beq_eq_not_false x y e H).
   Defined.
@@ -50,11 +53,11 @@ Section Bool_eq_dec.
   Defined.
 
   Definition not_eq_false_beq : forall x y:A, x <> y -> false = beq x y.
-  Proof.
-    intros x y H.
+  MProof.
+    mintros x y H.
     symmetry .
     apply not_true_is_false.
-    intro.
+    mintro G.
     apply H.
     apply beq_eq.
     symmetry .

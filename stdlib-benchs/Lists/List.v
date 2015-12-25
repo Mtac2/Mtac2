@@ -6,6 +6,8 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
+Require Import MetaCoq.LtacEmu.
+
 Require Setoid.
 Require Import PeanoNat Le Gt Minus Bool.
 
@@ -190,7 +192,7 @@ Section Facts.
 
   (** Concat with [nil] *)
   Theorem app_nil_l : forall l:list A, [] ++ l = l.
-  Proof.
+  MProof.
     reflexivity.
   Qed.
 
@@ -648,7 +650,7 @@ Section Elts.
   Qed.
 
   Lemma count_occ_nil x : count_occ [] x = 0.
-  Proof.
+  MProof.
     reflexivity.
   Qed.
 
@@ -842,7 +844,7 @@ Section ListOps.
   end.
 
   Lemma concat_nil : concat nil = nil.
-  Proof.
+  MProof.
   reflexivity.
   Qed.
 
@@ -888,7 +890,7 @@ Section Map.
     end.
 
   Lemma map_cons (x:A)(l:list A) : map (x::l) = (f x) :: (map l).
-  Proof.
+  MProof.
     reflexivity.
   Qed.
 
@@ -2142,7 +2144,7 @@ Section Forall2.
   Hint Constructors Forall2.
 
   Theorem Forall2_refl : Forall2 [] [].
-  Proof. intros; apply Forall2_nil. Qed.
+  MProof. apply Forall2_nil. Qed.
 
   Theorem Forall2_app_inv_l : forall l1 l2 l',
     Forall2 (l1 ++ l2) l' ->

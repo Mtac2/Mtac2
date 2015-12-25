@@ -27,8 +27,8 @@ Proof.
 Defined.
 
 Definition gt_eq_gt_dec n m : {m > n} + {n = m} + {n > m}.
-Proof.
-  now apply lt_eq_lt_dec.
+MProof.
+  apply_type lt_eq_lt_dec.
 Defined.
 
 Definition le_lt_dec n m : {n <= m} + {m < n}.
@@ -69,18 +69,18 @@ Proof.
 Defined.
 
 Theorem lt_dec n m : {n < m} + {~ n < m}.
-Proof.
-  apply le_dec.
+MProof.
+  apply_type le_dec.
 Defined.
 
 Theorem gt_dec n m : {n > m} + {~ n > m}.
-Proof.
-  apply lt_dec.
+MProof.
+  apply_type lt_dec.
 Defined.
 
 Theorem ge_dec n m : {n >= m} + {~ n >= m}.
-Proof.
-  apply le_dec.
+MProof.
+  apply_type le_dec.
 Defined.
 
 (** Proofs of decidability *)

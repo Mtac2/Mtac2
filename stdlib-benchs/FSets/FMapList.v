@@ -12,6 +12,9 @@
  [FMapInterface.S] using lists of pairs ordered (increasing) with respect to
  left projection. *)
 
+Require Import MetaCoq.LtacEmu.
+Import LtacEmuNotations.
+
 Require Import FMapInterface.
 
 Set Implicit Arguments.
@@ -1139,15 +1142,15 @@ Section Elt.
 	(x:key)(f:option elt->option elt'->option elt''),
 	In x m \/ In x m' ->
         find x (map2 f m m') = f (find x m) (find x m').
- Proof.
- intros elt elt' elt'' m m' x f;
+ MProof.
+ mintros elt elt' elt'' m m' x f.
  exact (@Raw.map2_1 elt elt' elt'' f m.(this) m.(sorted) m'.(this) m'.(sorted) x).
  Qed.
  Lemma map2_2 : forall (elt elt' elt'':Type)(m: t elt)(m': t elt')
 	(x:key)(f:option elt->option elt'->option elt''),
         In x (map2 f m m') -> In x m \/ In x m'.
- Proof.
- intros elt elt' elt'' m m' x f;
+ MProof.
+ mintros elt elt' elt'' m m' x f.
  exact (@Raw.map2_2 elt elt' elt'' f m.(this) m.(sorted) m'.(this) m'.(sorted) x).
  Qed.
 

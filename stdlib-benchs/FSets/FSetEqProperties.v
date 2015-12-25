@@ -17,6 +17,8 @@
 
 Require Import FSetProperties Zerob Sumbool Omega DecidableTypeEx.
 
+Require Import MetaCoq.LtacEmu.
+
 Module WEqProperties_fun (Import E:DecidableType)(M:WSfun E).
 Module Import MP := WProperties_fun E M.
 Import FM Dec.F.
@@ -91,7 +93,7 @@ auto with set.
 Qed.
 
 Lemma add_mem_2: ~E.eq x y -> mem y (add x s)=mem y s.
-Proof.
+MProof.
 apply add_neq_b.
 Qed.
 
@@ -101,7 +103,7 @@ rewrite <- not_mem_iff; auto with set.
 Qed.
 
 Lemma remove_mem_2: ~E.eq x y -> mem y (remove x s)=mem y s.
-Proof.
+MProof.
 apply remove_neq_b.
 Qed.
 
@@ -119,13 +121,13 @@ Qed.
 
 Lemma inter_mem:
   mem x (inter s s')=mem x s && mem x s'.
-Proof.
+MProof.
 apply inter_b.
 Qed.
 
 Lemma diff_mem:
   mem x (diff s s')=mem x s && negb (mem x s').
-Proof.
+MProof.
 apply diff_b.
 Qed.
 

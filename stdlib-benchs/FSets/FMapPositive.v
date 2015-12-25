@@ -10,6 +10,9 @@
 
 Require Import Bool OrderedType ZArith OrderedType OrderedTypeEx FMapInterface.
 
+Require Import MetaCoq.LtacEmu.
+Import LtacEmuNotations.
+
 Set Implicit Arguments.
 Local Open Scope positive_scope.
 Local Unset Elimination Schemes.
@@ -202,7 +205,7 @@ Module PositiveMap <: S with Module E:=PositiveOrderedTypeBits.
   Qed.
 
   Lemma gleaf : forall (i : key), find i (Leaf : t A) = None.
-  Proof. exact gempty. Qed.
+  MProof. exact gempty. Qed.
 
   Theorem gso:
     forall (i j: key) (x: A) (m: t A),
@@ -284,8 +287,8 @@ Module PositiveMap <: S with Module E:=PositiveOrderedTypeBits.
   Theorem elements_correct:
     forall (m: t A) (i: key) (v: A),
     find i m = Some v -> List.In (i, v) (elements m).
-  Proof.
-    intros m i v H.
+  MProof.
+    mintros m i v H.
     exact (xelements_correct m i xH H).
   Qed.
 
@@ -714,7 +717,7 @@ Module PositiveMap <: S with Module E:=PositiveOrderedTypeBits.
   Qed.
 
   Lemma elements_3w : NoDupA eq_key (elements m).
-  Proof.
+  MProof.
     apply ME.Sort_NoDupA.
     apply elements_3.
   Qed.

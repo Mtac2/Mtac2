@@ -6,6 +6,8 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
+Require Import MetaCoq.LtacEmu.
+
 (** The type [bool] is defined in the prelude as
     [Inductive bool : Set := true : bool | false : bool] *)
 
@@ -380,7 +382,7 @@ Proof.
 Qed.
 
 Lemma andb_true_l : forall b:bool, true && b = b.
-Proof.
+MProof.
   reflexivity.
 Qed.
 

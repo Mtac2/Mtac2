@@ -8,6 +8,9 @@
 
 Set Implicit Arguments.
 
+Require Import MetaCoq.LtacEmu.
+Import LtacEmuNotations.
+
 Require Import Notations.
 Require Import Logic.
 Declare ML Module "nat_syntax_plugin".
@@ -322,7 +325,7 @@ Hint Unfold CompSpec CompSpecT.
 
 Lemma CompSpec2Type : forall A (eq lt:A->A->Prop) x y c,
  CompSpec eq lt x y c -> CompSpecT eq lt x y c.
-Proof. intros. apply CompareSpec2Type; assumption. Defined.
+MProof. mintros A eq lt x y c H. apply_type CompareSpec2Type. assumption. Defined.
 
 
 (******************************************************************)

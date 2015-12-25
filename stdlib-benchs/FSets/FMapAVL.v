@@ -16,6 +16,8 @@
     See the comments at the beginning of FSetAVL for more details.
 *)
 
+Require Import MetaCoq.LtacEmu.
+
 Require Import FMapInterface FMapList ZArith Int.
 
 Set Implicit Arguments.
@@ -1866,7 +1868,7 @@ Module IntMake (I:Int)(X: OrderedType) <: S with Module E := X.
  Qed.
 
  Lemma empty_1 : Empty empty.
- Proof. exact (@empty_1 elt). Qed.
+ MProof. exact (@empty_1 elt). Qed.
 
  Lemma is_empty_1 : forall m, Empty m -> is_empty m = true.
  Proof. intros m; exact (@is_empty_1 _ m.(this)). Qed.
