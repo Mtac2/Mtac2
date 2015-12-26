@@ -187,3 +187,17 @@ Definition transitivity {A : Prop} : M A :=
 
 Definition symmetry {A : Prop} : M A :=
   apply (@eq_sym).
+
+Definition CantFindConstructor : Exception. exact exception. Qed.
+Definition ConstructorsStartingFrom1 : Exception. exact exception. Qed.
+
+Definition constructor {A : Type} (n : nat) : M A :=
+  match n with
+  | 0 => raise ConstructorsStartingFrom1
+  | S n =>
+      l <- constrs A;
+      match nth_error l n with
+        | Some x => coerce (elem x)
+        | None => raise CantFindConstructor
+      end
+  end.
