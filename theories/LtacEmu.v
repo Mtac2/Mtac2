@@ -140,9 +140,6 @@ Arguments match_goal {P} p%goal_match.
 
 Definition assump {P} : M P := match_goal ([[ x:P |- P ]] => exact x).
 
-Definition split {P Q : Prop} {x:P} {y : Q} : M (P /\ Q)
-  := ret (conj x y).
-
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 
 Definition apply {P T : Prop} (l : T) : M P :=
@@ -188,6 +185,18 @@ Definition transitivity {A : Prop} : M A :=
 Definition symmetry {A : Prop} : M A :=
   apply (@eq_sym).
 
+Definition coerce_applied {A B : Type} :=
+  (mfix2 rec (A : Type) (l : A) : M B :=
+     mmatch A with
+     | [? T1 T2] (forall x : T1, T2 x) => [H]
+         e <- evar T1;
+         l <- retS (eq_rect (forall x : T1, T2 x) (fun T => T -> T2 e)
+           (fun l : forall x : T1, T2 x => l e) _ H l);
+         rec (T2 e) l
+     | B => [H] ret (eq_rect_r (fun T=>T) l H)
+     | _ => raise CantCoerce
+     end) A.
+
 Definition CantFindConstructor : Exception. exact exception. Qed.
 Definition ConstructorsStartingFrom1 : Exception. exact exception. Qed.
 
@@ -197,7 +206,41 @@ Definition constructor {A : Type} (n : nat) : M A :=
   | S n =>
       l <- constrs A;
       match nth_error l n with
-        | Some x => coerce (elem x)
+        | Some x => coerce_applied (elem x)
         | None => raise CantFindConstructor
       end
+  end.
+
+Definition constructor0 {A : Type} : M A :=
+  l <- constrs A;
+  (mfix1 rec (l : list dyn) : M A :=
+     match l with
+     | [] => raise CantFindConstructor
+     | x::xs => mtry coerce_applied (elem x) with CantCoerce => rec xs end
+     end
+  ) l.
+
+Definition Not1Constructor : Exception. exact exception. Qed.
+
+Definition split {A : Type} : M A :=
+  l <- constrs A;
+  match l with
+  | [x] => coerce_applied (elem x)
+  | _ => raise Not1Constructor
+  end.
+
+Definition Not2Constructor : Exception. exact exception. Qed.
+
+Definition left {A : Type} : M A :=
+  l <- constrs A;
+  match l with
+  | [x; _] => coerce_applied (elem x)
+  | _ => raise Not2Constructor
+  end.
+
+Definition right {A : Type} : M A :=
+  l <- constrs A;
+  match l with
+  | [_; x] => coerce_applied (elem x)
+  | _ => raise Not2Constructor
   end.
