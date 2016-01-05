@@ -165,8 +165,8 @@ Definition apply_type {P T : Type} (l : T) : M P :=
 Definition reflexivity {A : Prop} : M A :=
   apply (@eq_refl).
 
-Definition transitivity {A : Prop} : M A :=
-  apply (@eq_trans).
+Definition transitivity {A : Prop} {B : Type} (y : B) : M A :=
+  apply (fun x => @eq_trans B x y).
 
 Definition symmetry {A : Prop} : M A :=
   apply (@eq_sym).
