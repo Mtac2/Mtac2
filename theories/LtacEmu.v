@@ -230,3 +230,9 @@ Definition right {A : Type} : M A :=
   | [_; x] => coerce_applied (elem x)
   | _ => raise Not2Constructor
   end.
+
+Definition auto {A : Prop} : M A :=
+  mmatch A with
+  | True => [H] ret (eq_ind_r (fun T => T) I (eq_sym H : A = True))
+  | _ => evar A
+  end.

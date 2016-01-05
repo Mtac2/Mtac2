@@ -165,3 +165,8 @@ MProof.
   idtac.
   Fail apply Gt.gt_n_S.
 Abort.
+
+Goal True.
+MProof.
+  auto.
+Qed.
