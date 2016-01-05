@@ -231,8 +231,12 @@ Definition right {A : Type} : M A :=
   | _ => raise Not2Constructor
   end.
 
+(* TODO: Use eq_ind and get ride of eq_sym *)
+Definition coerce_ind {A : Prop} (B : Prop) (H : A = B) (x : A) : B :=
+  eq_ind_r (fun T => T) x (eq_sym H).
+
 Definition auto {A : Prop} : M A :=
   mmatch A with
-  | True => [H] ret (eq_ind_r (fun T => T) I (eq_sym H : A = True))
+  | True => [H] ret (coerce_ind A H I)
   | _ => evar A
   end.
