@@ -15,20 +15,6 @@ Definition intro {A : Type} {q : A -> Type} (s : string) (f : forall x : A, M (q
 
 Definition idtac {A : Type} {x : A} : M A := ret x.
 
-Definition NotFound : Exception. exact exception. Qed.
-
-Definition lookup (A : Type) :=
-  mfix1 f (hyps : list Hyp) : M A :=
-    mmatch hyps with
-    | nil => raise NotFound
-    | [? a b xs] cons (@ahyp A a b) xs => ret a
-    | [? a xs] cons a xs => f xs
-    end.
-
-Definition assumption {A : Type} : M A :=
-  hyps <- hypotheses;
-  lookup A hyps.
-
 Definition absurd {A : Type} (p : Prop) {y : ~p} {x : p} : M A :=
   ret (match y x with end).
 
@@ -138,7 +124,7 @@ Fixpoint match_goal' {P} (p : goal_pattern) (l : list Hyp) : M P :=
 Definition match_goal {P} p : M P := hypotheses >> match_goal' p.
 Arguments match_goal {P} p%goal_match.
 
-Definition assump {P} : M P := match_goal ([[ x:P |- P ]] => exact x).
+Definition assumption {P : Type} : M P := match_goal ([[ x:P |- P ]] => exact x).
 
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 

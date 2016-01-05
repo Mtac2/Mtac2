@@ -86,7 +86,7 @@ MProof.
             end).
   mintro H.
   absurd (Fail = Fail).
-  assump.
+  assumption.
   reflexivity.
 Qed.
 
@@ -102,21 +102,21 @@ Abort.
 Goal forall P Q : Prop, P -> P.
 MProof.
   mintros P Q x.
-  assump.
+  assumption.
 Qed.
 
 Goal forall P Q : Prop, Q -> P -> P.
 MProof.
   mintros P Q xQ xP.
-  assump.
+  assumption.
 Qed.
 
 Goal forall P Q : Prop, Q -> P -> Q -> P /\ Q.
 MProof.
   mintros P Q xQ xP xP'.
   split.
-  - assump.
-  - assump.
+  - assumption.
+  - assumption.
 Qed.
 
 Goal forall x : bool, orb x true = true.
