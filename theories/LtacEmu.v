@@ -2,8 +2,25 @@ Require Import MetaCoq.MetaCoq.
 Require Import Strings.String.
 Import MetaCoqNotations.
 
-Definition exact {A : Type} (x : A) : M A :=
-  ret x.
+Definition coerce_ind {A : Prop} (B : Prop) (H : A = B) (x : A) : B :=
+  eq_ind A (fun T => T) x B H.
+
+Definition coerce_rect {A : Type} (B : Type) (H : A = B) (x : A) : B :=
+  eq_rect A (fun T => T) x B H.
+
+Definition coerce_rec {A : Set} (B : Set) (H : A = B) (x : A) : B :=
+  eq_rec A (fun T => T) x B H.
+
+Definition coerce_ind_r {A : Prop} (B : Prop) (H : B = A) (x : A) : B :=
+  eq_ind_r (fun T => T) x H.
+
+Definition coerce_rect_r {A : Type} (B : Type) (H : B = A) (x : A) : B :=
+  eq_rect_r (fun T => T) x H.
+
+Definition coerce_rec_r {A : Set} (B : Set) (H : B = A) (x : A) : B :=
+  eq_rec_r (fun T => T) x H.
+
+Definition exact {A : Type} (x : A) : M A := ret x.
 
 Definition refine : forall {A : Type}, A -> M A := @exact.
 
@@ -36,7 +53,7 @@ Definition CantCoerce : Exception. exact exception. Qed.
 
 Definition coerce {A B : Type} (x : A) : M B :=
   mmatch A with
-  | B => [H] ret (eq_rect_r (fun T=>T) x H)
+  | B => [H] ret (coerce_rect_r B H x)
   | _ => raise CantCoerce
   end.
 
@@ -132,7 +149,7 @@ Definition apply {P T : Prop} (l : T) : M P :=
   (mfix2 app (T : Prop) (l' : T) : M P :=
     mtry
       p <- munify P T;
-      ret (eq_ind_r (fun T => T) l' p)
+      ret (coerce_ind_r P p l')
     with [? A (a b : A)] NotUnifiableException a b =>
       mmatch T with
       | [? (T1 : Type) (T2 : T1 -> Prop)] (forall x:T1, T2 x) => [H]
@@ -181,7 +198,8 @@ Definition coerce_applied {A B : Type} :=
          rec (T2 e) l
      | B => [H] ret (eq_rect_r (fun T=>T) l H)
      | _ => raise CantCoerce
-     end) A.
+     end
+  ) A.
 
 Definition CantFindConstructor : Exception. exact exception. Qed.
 Definition ConstructorsStartingFrom1 : Exception. exact exception. Qed.
@@ -230,10 +248,6 @@ Definition right {A : Type} : M A :=
   | [_; x] => coerce_applied (elem x)
   | _ => raise Not2Constructor
   end.
-
-(* TODO: Use eq_ind and get ride of eq_sym *)
-Definition coerce_ind {A : Prop} (B : Prop) (H : A = B) (x : A) : B :=
-  eq_ind_r (fun T => T) x (eq_sym H).
 
 Definition auto {A : Prop} : M A :=
   mmatch A with
