@@ -166,7 +166,8 @@ MProof.
   Fail apply Gt.gt_n_S.
 Abort.
 
-Goal True.
+
+Goal 0 = 0.
 MProof.
   auto.
 Qed.

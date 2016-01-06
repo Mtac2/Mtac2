@@ -252,5 +252,6 @@ Definition right {A : Type} : M A :=
 Definition auto {A : Prop} : M A :=
   mmatch A with
   | True => [H] ret (coerce_ind A H I)
+  | [? B (x : B)] @eq B x x => [H] ret (coerce_ind A H eq_refl)
   | _ => evar A
   end.
