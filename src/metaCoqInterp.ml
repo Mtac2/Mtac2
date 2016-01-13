@@ -24,14 +24,18 @@ module MetaCoqRun = struct
       let env = Proofview.Goal.env gl in
       let concl = Proofview.Goal.concl gl in
       let sigma = Proofview.Goal.sigma gl in
-      let sigma,c = Constrintern.interp_open_constr env sigma t in
+      let (sigma, c) = Constrintern.interp_open_constr env sigma t in
       let (sigma, t) = pretypeT env sigma concl c in
-      let r = Run.run (env, sigma) c in
-      match r with
-      | Run.Val (sigma', _, v) ->
-          Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma', v))
-      | Run.Err (_, _, e) ->
-          Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
+      let rec aux = function
+        | Run.Val (sigma', _, v) ->
+            Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma', v))
+        | Run.Tac (sigma, metas, tac, f) ->
+            let (c, sigma) = Pfedit.refine_by_tactic env sigma concl tac in
+            aux (f (sigma, metas, c))
+        | Run.Err (_, _, e) ->
+            Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
+      in
+      aux (Run.run (env, sigma) c)
     end
 end
 

@@ -646,13 +646,18 @@ end
 
 module ExistentialSet = Evar.Set
 
-type data = Val of (evar_map * ExistentialSet.t * constr)
-          | Err of (evar_map * ExistentialSet.t * constr)
+type elem = (evar_map * ExistentialSet.t * constr)
 
-let (>>=) v g =
+type data =
+  | Val of elem
+  | Tac of (evar_map * ExistentialSet.t * unit Proofview.tactic * (elem -> data))
+  | Err of elem
+
+let rec (>>=) v g =
   match v with
   | Val v' -> g v'
-  | _ -> v
+  | Tac (sigma, metas, tac, f) -> Tac (sigma, metas, tac, fun v' -> f v' >>= g)
+  | Err _ -> v
 
 let return s es t = Val (s, es, t)
 
@@ -1164,6 +1169,21 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
             fail sigma metas (Exceptions.mkNotUnifiable a x y env sigma)
         end
 
+    | 31 -> (* extern *)
+        let name = nth 1 in
+        let name = CoqString.from_coq env sigma name in
+        (* let name = Lib.make_kn (Names.Id.of_string name) in *)
+        (* let tac = Tacenv.interp_ml_tactic name in *)
+        let tac =
+          let rec aux = function
+            | [] -> raise Not_found
+            | (k, x)::_ when String.equal (Names.KerName.to_string k) name -> x.Tacenv.tac_body
+            | (k, _)::xs -> aux xs
+          in
+          aux (KNmap.bindings (Tacenv.ltac_entries ()))
+        in
+        Tac (sigma, metas, Tacinterp.eval_tactic tac, fun v -> Val v)
+
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"
 
@@ -1253,6 +1273,7 @@ let run (env, sigma) t  =
   match run' (env, renv, sigma, [], ExistentialSet.empty) (nf_evar sigma t) with
   | Err (sigma', metas, v) ->
       Err (sigma', metas, nf_evar sigma' v)
+  | Tac _ as v -> v
   | Val (sigma', metas, v) ->
       let sigma' = clean_unused_metas sigma' metas v in
       Val (sigma', ExistentialSet.empty, nf_evar sigma' v)

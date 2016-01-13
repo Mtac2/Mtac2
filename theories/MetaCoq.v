@@ -119,6 +119,8 @@ Inductive MetaCoq : Type -> Prop :=
 | pabs : forall {A P} (x : A), P x -> MetaCoq Type
 
 | munify {A} (x y : A) : MetaCoq (x = y)
+
+| extern : forall A, string -> MetaCoq A
 .
 
 Definition array_length : forall {A}, array A -> length :=

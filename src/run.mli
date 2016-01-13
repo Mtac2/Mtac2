@@ -4,9 +4,12 @@ open Environ
 
 module ExistentialSet : Set.S with type elt = existential_key
 
+type elem = (evar_map * ExistentialSet.t * constr)
+
 type data =
-  | Val of (evar_map * ExistentialSet.t * constr)
-  | Err of (evar_map * ExistentialSet.t * constr)
+  | Val of elem
+  | Tac of (evar_map * ExistentialSet.t * unit Proofview.tactic * (elem -> data))
+  | Err of elem
 
 val run : (env * evar_map) -> constr -> data
 

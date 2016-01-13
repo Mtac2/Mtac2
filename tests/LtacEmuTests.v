@@ -166,8 +166,14 @@ MProof.
   Fail apply Gt.gt_n_S.
 Abort.
 
-
-Goal 0 = 0.
+Goal forall x : Prop, x = x.
 MProof.
-  auto.
+  extern _ "Coq.Init.Notations.auto".
+Qed.
+
+Require Coq.omega.Omega.
+
+Goal O = O.
+MProof.
+  extern _ "Coq.omega.Omega.omega".
 Qed.
