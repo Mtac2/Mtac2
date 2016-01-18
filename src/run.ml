@@ -1170,7 +1170,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
             fail sigma metas (Exceptions.mkNotUnifiable a x y env sigma)
         end
 
-    | 31 -> (* extern *)
+    | 31 -> (* call_ltac *)
         let name = nth 1 in
         let name = CoqString.from_coq env sigma name in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
@@ -1184,6 +1184,11 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
           aux (KNmap.bindings (Tacenv.ltac_entries ()))
         in
         Tac (sigma, metas, Tacinterp.eval_tactic tac, fun v -> Val v)
+
+    | 32 -> (* list_ltac *)
+        let aux k _ = Pp.msg_info (Pp.str (Names.KerName.to_string k)) in
+        KNmap.iter aux (Tacenv.ltac_entries ());
+        return sigma metas (nth 1)
 
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"

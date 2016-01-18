@@ -168,12 +168,15 @@ Abort.
 
 Goal forall x : Prop, x = x.
 MProof.
-  extern _ "Coq.Init.Notations.auto".
+  call_ltac _ "Coq.Init.Notations.auto".
 Qed.
 
-Require Coq.omega.Omega.
+Require Import Coq.omega.Omega.
+
+Ltac omega' := omega.
 
 Goal O = O.
 MProof.
-  extern _ "Coq.omega.Omega.omega".
+  list_ltac.
+  call_ltac _ "Top.omega'".
 Qed.
