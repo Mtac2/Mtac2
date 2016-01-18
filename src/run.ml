@@ -438,7 +438,8 @@ module CoqAscii = struct
       | (b :: bs) -> (if CoqBool.isTrue b then 1 else 0) lsl n + from_bits (n+1) bs
     in
     let n = from_bits 0 args in
-    Char.escaped (Char.chr n)
+    (* Char.escaped (Char.chr n) *) (* Why was it excaped in the first place ? *)
+    String.make 1 (Char.chr n)
 
 end
 
