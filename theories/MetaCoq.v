@@ -60,6 +60,8 @@ Record Case :=
 (* Reduction primitive *)
 Definition reduce (r : Reduction) {A} (x : A) := x.
 
+Inductive Sig : Type := Exists : forall {A : Type}, A -> Sig.
+
 Inductive MetaCoq : Type -> Prop :=
 | tret : forall {A}, A -> MetaCoq A
 | bind : forall {A B}, MetaCoq A -> (A -> MetaCoq B) -> MetaCoq B
@@ -120,7 +122,7 @@ Inductive MetaCoq : Type -> Prop :=
 
 | munify {A} (x y : A) : MetaCoq (x = y)
 
-| call_ltac : forall {A : Type}, string -> MetaCoq A
+| call_ltac : forall {A : Type}, string -> list Sig -> MetaCoq A
 | list_ltac : forall {A : Type} {_ : A}, MetaCoq A
 .
 

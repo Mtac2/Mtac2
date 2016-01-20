@@ -51,12 +51,34 @@ MProof.
   assumption.
 Qed.
 
+Goal forall (x y z : Prop), x = y -> y = z -> x = z.
+Proof.
+  intros x y z H G.
+  transitivity y.
+  exact H.
+  exact G.
+Qed.
+
+Goal forall (x y z : Prop), x = y -> y = z -> x = z.
+MProof.
+  mintros x y z H G.
+  transitivity y.
+  exact H.
+  exact G.
+Qed.
+
+Ltac transitivity' t := transitivity t.
+
 Lemma test6 : forall (x y z : Prop), x = y -> y = z -> x = z.
 MProof.
   mintros x y z H G.
   idtac. (* TODO: Remove this. Necessary to see the reduced term *)
-  transitivity y.
+  call_ltac "Top.transitivity'" (cons (Exists y) nil).
+  Grab Existential Variables.
+  call_ltac "Coq.Init.Notations.revgoals" nil.
+  (* transitivity y. *)
   exact H.
+  Grab Existential Variables.
   exact G.
 Qed.
 
@@ -168,7 +190,7 @@ Abort.
 
 Goal forall x : Prop, x = x.
 MProof.
-  call_ltac _ "Coq.Init.Notations.auto".
+  call_ltac "Coq.Init.Notations.auto" nil.
 Qed.
 
 Require Import Coq.omega.Omega.
@@ -178,5 +200,5 @@ Ltac omega' := omega.
 Goal O = O.
 MProof.
   list_ltac.
-  call_ltac _ "Top.omega'".
+  call_ltac "Top.omega'" nil.
 Qed.

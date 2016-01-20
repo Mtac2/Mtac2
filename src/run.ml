@@ -322,6 +322,13 @@ module CoqSigT = struct
     mkApp (Lazy.force mkExistT, [|a; p; x; px|])
 end
 
+module CoqSig = struct
+  let rec from_coq env sigma constr =
+    (* NOTE: Hightly unsafe *)
+    let (_, args) = whd_betadeltaiota_stack env sigma constr in
+    List.nth args 1
+end
+
 module CoqNat = struct
   let mkZero = Constr.mkConstr "Coq.Init.Datatypes.O"
   let mkSucc = Constr.mkConstr "Coq.Init.Datatypes.S"
@@ -1171,14 +1178,23 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         end
 
     | 31 -> (* call_ltac *)
-        let name = nth 1 in
-        let name = CoqString.from_coq env sigma name in
+        let name, args = nth 1, nth 2 in
+        let name, args = CoqString.from_coq env sigma name, CoqList.from_coq (env, sigma) args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
         (* let tac = Tacenv.interp_ml_tactic name in *)
         let tac =
           let rec aux = function
             | [] -> raise Not_found
-            | (k, x)::_ when String.equal (Names.KerName.to_string k) name -> x.Tacenv.tac_body
+            | (k, _)::_ when String.equal (Names.KerName.to_string k) name ->
+                let args =
+                  let aux x =
+                    let x = CoqSig.from_coq env sigma x in
+                    (* let x = Detyping.detype false [] env sigma x in *)
+                    Tacexpr.ConstrMayEval (Genredexpr.ConstrTerm (Glob_term.GVar (Loc.ghost, Term.destVar x), None))
+                  in
+                  List.map aux args
+                in
+                Tacexpr.TacArg (Loc.ghost, (Tacexpr.TacCall (Loc.ghost, Misctypes.ArgArg (Loc.ghost, k), args)))
             | (k, _)::xs -> aux xs
           in
           aux (KNmap.bindings (Tacenv.ltac_entries ()))

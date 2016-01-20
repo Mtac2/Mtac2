@@ -87,8 +87,7 @@ let interp_instr = function
 
 (** Interpreter of a constr :
     - Interpretes the constr
-    - Unfocus on the current proof
-    - Print subgoals *)
+    - Unfocus on the current proof *)
 let interp_proof_constr instr =
   ignore (Pfedit.by (interp_instr instr));
   MetaCoqProofInfos.maximal_unfocus ()
