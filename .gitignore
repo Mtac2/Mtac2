@@ -10,6 +10,9 @@
 # emacs backup files
 *~
 
+# vim backup files
+\#*\#
+
 # Coq annotation files
 *.glob
 
@@ -42,3 +45,6 @@
 
 # merlin generated files
 /.merlin
+
+# locals for emacs
+.dir-locals.el
