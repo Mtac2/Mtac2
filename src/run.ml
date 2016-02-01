@@ -19,97 +19,12 @@ open Util
 open Evarconv
 open Libnames
 
+open Constrs
+
 module Stack = Reductionops.Stack
 
 let reduce_value = Tacred.compute
 
-module Constr = struct
-  exception Constr_not_found of string
-  exception Constr_poly of string
-
-  let mkConstr name = lazy (
-    try Universes.constr_of_global
-          (Nametab.global_of_path (Libnames.path_of_string name))
-    with Not_found -> raise (Constr_not_found name)
-       | Invalid_argument _ -> raise (Constr_poly name)
-  )
-
-  let mkUConstr name sigma env =
-    try Evd.fresh_global env sigma
-          (Nametab.global_of_path (Libnames.path_of_string name))
-    with Not_found -> raise (Constr_not_found name)
-
-  let isConstr = fun r c -> eq_constr (Lazy.force r) c
-
-  let isUConstr r sigma env = fun c ->
-    eq_constr_nounivs (snd (mkUConstr r sigma env)) c
-
-  let eq_ind i1 i2 = Names.eq_ind (fst i1) (fst i2)
-
-end
-
-module ConstrBuilder = struct
-
-  type t = string
-
-  let from_string (s:string) : t = s
-
-  let build_app s args = mkApp (Lazy.force (Constr.mkConstr s), args)
-
-  let equal s = Constr.isConstr (Constr.mkConstr s)
-
-  exception WrongConstr of t * constr
-
-  let from_coq s (env, sigma as ctx) cterm =
-    let (head, args) = whd_betadeltaiota_stack env sigma cterm in
-    let args = Array.of_list args in
-    if equal s head then
-      args
-    else
-      raise (WrongConstr (s, head))
-end
-
-module UConstrBuilder = struct
-
-  type t = string
-
-  let from_string (s:string) : t = s
-
-  let build_app s sigma env args =
-    let (sigma, c) = Constr.mkUConstr s sigma env in
-    (sigma, mkApp (c, args))
-
-  let equal = Constr.isUConstr
-
-  exception WrongConstr of t * constr
-
-  let from_coq s (env, sigma as ctx) cterm =
-    let (head, args) = whd_betadeltaiota_stack env sigma cterm in
-    let args = Array.of_list args in
-    if equal s sigma env head then
-      args
-    else
-      raise (WrongConstr (s, head))
-end
-
-module CoqOption = struct
-  let noneBuilder = ConstrBuilder.from_string "Coq.Init.Datatypes.None"
-
-  let mkNone ty = ConstrBuilder.build_app noneBuilder [|ty|]
-
-  let someBuilder = ConstrBuilder.from_string "Coq.Init.Datatypes.Some"
-
-  let mkSome ty t = ConstrBuilder.build_app someBuilder [|ty; t|]
-
-  let from_coq (env, sigma as ctx) cterm fsome =
-    try
-      let _ = ConstrBuilder.from_coq noneBuilder ctx cterm in
-      None
-    with ConstrBuilder.WrongConstr _ ->
-      let arr = ConstrBuilder.from_coq someBuilder ctx cterm in
-      Some (fsome arr.(0))
-
-end
 
 module MetaCoqNames = struct
   let metaCoq_module_name = "MetaCoq.MetaCoq.MetaCoq"
@@ -280,199 +195,6 @@ module UnificationStrategy = struct
 
 end
 
-module CoqList = struct
-  let mkNil  = Constr.mkConstr "Coq.Init.Datatypes.nil"
-  let mkCons = Constr.mkConstr "Coq.Init.Datatypes.cons"
-
-  let makeNil ty = Term.mkApp (Lazy.force mkNil, [| ty |])
-  let makeCons t x xs = Term.mkApp (Lazy.force mkCons, [| t ; x ; xs |])
-
-  let mkListType ty =
-    mkApp (Lazy.force (Constr.mkConstr "Coq.Init.Datatypes.cons"),
-           [|ty|])
-
-  let isNil  = Constr.isConstr mkNil
-  let isCons = Constr.isConstr mkCons
-
-  let rec from_coq_conv (env, sigma as ctx) (fconv : Term.constr -> 'a) cterm =
-    let (constr, args) = whd_betadeltaiota_stack env sigma cterm in
-    if isNil constr then [] else
-    if not (isCons constr) then invalid_arg "not a list" else
-      let elt = List.nth args 1 in
-      let ctail = List.nth args 2 in
-      fconv elt :: from_coq_conv ctx fconv ctail
-
-  let from_coq (env, sigma as ctx) =
-    from_coq_conv ctx (fun x->x)
-
-end
-
-module CoqEq = struct
-  let mkEq = Constr.mkConstr "Coq.Init.Logic.eq"
-  let mkEqRefl = Constr.mkConstr "Coq.Init.Logic.eq_refl"
-
-  let mkAppEq a x y = mkApp(Lazy.force mkEq, [|a;x;y|])
-  let mkAppEqRefl a x = mkApp(Lazy.force mkEqRefl, [|a;x|])
-end
-
-module CoqSigT = struct
-  let mkExistT  = Constr.mkConstr "Coq.Init.Specif.existT"
-
-  let mkAppExistT a p x px =
-    mkApp (Lazy.force mkExistT, [|a; p; x; px|])
-end
-
-module CoqSig = struct
-  let rec from_coq env sigma constr =
-    (* NOTE: Hightly unsafe *)
-    let (_, args) = whd_betadeltaiota_stack env sigma constr in
-    List.nth args 1
-end
-
-module CoqNat = struct
-  let mkZero = Constr.mkConstr "Coq.Init.Datatypes.O"
-  let mkSucc = Constr.mkConstr "Coq.Init.Datatypes.S"
-
-  let isZero = Constr.isConstr mkZero
-  let isSucc = Constr.isConstr mkSucc
-
-  let rec to_coq = function
-    | 0 -> Lazy.force mkZero
-    | n -> Term.mkApp (Lazy.force mkSucc, [| to_coq (pred n) |])
-
-  let from_coq env evd c =
-    let rec fc c =
-      if isZero c then
-        0
-      else
-        let (s, n) = destApp c in
-        begin
-          if isSucc s then
-            1 + (fc (n.(0)))
-          else
-            Exceptions.block "Not a nat"
-        end
-    in
-    let c' = reduce_value env evd c in
-    fc c'
-
-end
-
-module CoqPositive = struct
-  let xI = Constr.mkConstr "Coq.Numbers.BinNums.xI"
-  let xO = Constr.mkConstr "Coq.Numbers.BinNums.xO"
-  let xH = Constr.mkConstr "Coq.Numbers.BinNums.xH"
-
-  let isH = Constr.isConstr xH
-  let isI = Constr.isConstr xI
-  let isO = Constr.isConstr xO
-
-  let from_coq env evd c =
-    let rec fc i c =
-      if isH c then
-        1
-      else
-        let (s, n) = destApp c in
-        begin
-          if isI s then
-            (fc (i+1) (n.(0)))*2 + 1
-          else if isO s then
-            (fc (i+1) (n.(0)))*2
-          else
-            Exceptions.block"Not a positive"
-        end
-    in
-    let c' = reduce_value env evd c in
-    fc 0 c'
-
-  let rec to_coq n =
-    if n = 1 then
-      Lazy.force xH
-    else if n mod 2 = 0 then
-      mkApp(Lazy.force xO, [|to_coq (n / 2)|])
-    else
-      mkApp(Lazy.force xI, [|to_coq ((n-1)/2)|])
-
-end
-
-module CoqN = struct
-  let tN = Constr.mkConstr "Coq.Numbers.BinNums.N"
-  let h0 = Constr.mkConstr "Coq.Numbers.BinNums.N0"
-  let hP = Constr.mkConstr "Coq.Numbers.BinNums.Npos"
-
-  let is0 = Constr.isConstr h0
-  let isP = Constr.isConstr hP
-
-  let from_coq env evd c =
-    let rec fc c =
-      if is0 c then
-        0
-      else
-        let (s, n) = destApp c in
-        begin
-          if isP s then
-            CoqPositive.from_coq env evd (n.(0))
-          else
-            Exceptions.block "Not a positive"
-        end
-    in
-    let c' = reduce_value env evd c in
-    fc c'
-
-  let to_coq n =
-    if n = 0 then
-      Lazy.force h0
-    else
-      mkApp(Lazy.force hP, [|CoqPositive.to_coq n|])
-end
-
-module CoqBool = struct
-
-  let mkTrue = Constr.mkConstr "Coq.Init.Datatypes.true"
-  let mkFalse = Constr.mkConstr "Coq.Init.Datatypes.false"
-
-  let isTrue = Constr.isConstr mkTrue
-
-end
-
-module CoqAscii = struct
-
-  let from_coq env sigma c =
-    let (h, args) = whd_betadeltaiota_stack env sigma c in
-    let rec from_bits n bits =
-      match bits with
-      | [] -> 0
-      | (b :: bs) -> (if CoqBool.isTrue b then 1 else 0) lsl n + from_bits (n+1) bs
-    in
-    let n = from_bits 0 args in
-    (* Char.escaped (Char.chr n) *) (* Why was it excaped in the first place ? *)
-    String.make 1 (Char.chr n)
-
-end
-
-module CoqString = struct
-
-  let mkEmpty = Constr.mkConstr "Coq.Strings.String.EmptyString"
-  let mkString = Constr.mkConstr "Coq.Strings.String.String"
-
-  let isEmpty = Constr.isConstr mkEmpty
-  let isString = Constr.isConstr mkString
-
-  let rec from_coq env sigma s =
-    let (h, args) = whd_betadeltaiota_stack env sigma s in
-    if isEmpty h then
-      ""
-    else if isString h then
-      let c, s' = List.nth args 0, List.nth args 1 in
-      CoqAscii.from_coq env sigma c ^ from_coq env sigma s'
-    else
-      Exceptions.block "Not a string"
-end
-
-module CoqUnit = struct
-  let mkTT = Constr.mkConstr "Coq.Init.Datatypes.tt"
-end
-
 module GrowingArray = struct
   type 'a t = 'a array ref * 'a * int ref
 
@@ -537,10 +259,10 @@ struct
   let to_coq a i n =
     Term.mkApp (Lazy.force mkArrRef, [|a ; CoqN.to_coq i; n|])
 
-  let from_coq env evd c =
+  let from_coq (env, evd as ctx) c =
     let c = whd_betadeltaiota env evd c in
     if isApp c && isArrRef (fst (destApp c)) then
-      CoqN.from_coq env evd (snd (destApp c)).(1)
+      CoqN.from_coq ctx (snd (destApp c)).(1)
     else
       Exceptions.block "Not a reference"
 
@@ -584,7 +306,7 @@ module ArrayRefs = struct
   *)
   let new_array evd sigma undo ty n c =
     let level = List.length undo in
-    let size = CoqN.from_coq evd sigma n in
+    let size = CoqN.from_coq (evd, sigma) n in
     let arr = Array.make size (Some (c, level)) in
     let index = GrowingArray.length !bag in
     let params = get_parameters level ty in
@@ -603,8 +325,8 @@ module ArrayRefs = struct
 
   let get env evd undo i ty k =
     let level = List.length undo in
-    let index = ArrayRefFactory.from_coq env evd i in
-    let arri = CoqN.from_coq env evd k in
+    let index = ArrayRefFactory.from_coq (env, evd) i in
+    let arri = CoqN.from_coq (env, evd) k in
     try
       let ((aty, al), v) = GrowingArray.get !bag index in
       match aty, v.(arri) with
@@ -626,8 +348,8 @@ module ArrayRefs = struct
 
   let set env evd undo i k ty c =
     let level = List.length undo in
-    let index = ArrayRefFactory.from_coq env evd i in
-    let arri = CoqN.from_coq env evd k in
+    let index = ArrayRefFactory.from_coq (env, evd) i in
+    let arri = CoqN.from_coq (env, evd) k in
     remove_all undo index arri;
     try
       let ((aty, al), v) = GrowingArray.get !bag index in
@@ -671,8 +393,11 @@ let return s es t = Val (s, es, t)
 
 let fail s es t = Err (s, es, t)
 
-let print env sigma s = Printf.printf "[DEBUG] %s\n" (CoqString.from_coq env sigma s)
-let print_term t = Printf.printf "[DEBUG] "; msg (Termops.print_constr t); Printf.printf "\n"
+let print env sigma s = Printf.printf "[DEBUG] %s\n"
+                          (CoqString.from_coq (env, sigma) s)
+
+let print_term t = Printf.printf "[DEBUG] ";
+  msg (Termops.print_constr t); Printf.printf "\n"
 
 exception AbstractingArrayType
 
@@ -809,18 +534,18 @@ module Hypotheses = struct
 
   let ahyp_constr = MetaCoqNames.mkBuilder "ahyp"
 
-  let mkAHyp ty n t sigma env =
+  let mkAHyp ty n t =
     let t = match t with
       | None -> CoqOption.mkNone ty
       | Some t -> CoqOption.mkSome ty t
-    in UConstrBuilder.build_app ahyp_constr sigma env [|ty; n; t|]
+    in ConstrBuilder.build_app ahyp_constr [|ty; n; t|]
 
   let mkHypType = MetaCoqNames.mkConstr "Hyp"
 
 
   let cons_hyp ty n t renv sigma env =
     let (sigma, hyptype) = mkHypType sigma env in
-    let (sigma, hyp) = mkAHyp ty n t sigma env in
+    let hyp = mkAHyp ty n t in
     (sigma, CoqList.makeCons hyptype hyp renv)
 
   let from_coq (env, sigma as ctx) c =
@@ -939,7 +664,7 @@ let get_func_name env sigma s f =
      Names.Name v, body
      else
   *)
-  let s = CoqString.from_coq env sigma s in
+  let s = CoqString.from_coq (env, sigma) s in
   let s = Names.Id.of_string s in
   let s = Namegen.next_ident_away_in_goal s (ids_of_context env) in
   Names.Name s, Term.mkApp(Vars.lift 1 f, [|Term.mkRel 1|])
@@ -1179,7 +904,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
     | 31 -> (* call_ltac *)
         let name, args = nth 1, nth 2 in
-        let name, args = CoqString.from_coq env sigma name, CoqList.from_coq (env, sigma) args in
+        let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq (env, sigma) args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
         (* let tac = Tacenv.interp_ml_tactic name in *)
         let tac =
@@ -1188,7 +913,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
             | (k, _)::_ when String.equal (Names.KerName.to_string k) name ->
                 let args =
                   let aux x =
-                    let x = CoqSig.from_coq env sigma x in
+                    let x = CoqSig.from_coq (env, sigma) x in
                     (* let x = Detyping.detype false [] env sigma x in *)
                     Tacexpr.ConstrMayEval (Genredexpr.ConstrTerm (Glob_term.GVar (Loc.ghost, Term.destVar x), None))
                   in
@@ -1221,7 +946,7 @@ and run_fix (env, renv, sigma, _, _ as ctxt) h a b s i f x =
   run' ctxt c
 
 and hash (env, renv, sigma, undo, metas) c size =
-  let size = CoqN.from_coq env sigma size in
+  let size = CoqN.from_coq (env, sigma) size in
   let nus = List.length undo in
   let rec upd depth t =
     match kind_of_term t with

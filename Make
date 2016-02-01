@@ -2,6 +2,8 @@
 -R theories MetaCoq
 src/metaCoqInit.ml4
 src/metaCoqInstr.mli
+src/constrs.ml
+src/constrs.mli
 src/run.ml
 src/run.mli
 src/metaCoqInterp.ml
