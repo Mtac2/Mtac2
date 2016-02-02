@@ -1,3 +1,5 @@
+module MCT = MetaCoqTactic
+
 module MetaCoqRun = struct
   (** This module run the interpretation of a constr
   *)
@@ -36,6 +38,33 @@ module MetaCoqRun = struct
             Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
       in
       aux (Run.run (env, sigma) c)
+    end
+end
+
+module MetaCoqTacticRun = struct
+  (** This module run the interpretation of a constr
+  *)
+
+  open Proofview.Notations
+
+  (**  *)
+  let pretypeT env sigma c =
+    let e = MCT.TacticNames.tacType () in
+    let ty = Retyping.get_type_of env sigma c in
+    let (h, args) = Reductionops.whd_betadeltaiota_stack env sigma ty in
+    if Term.eq_constr_nounivs e h && List.length args = 0 then
+      c
+    else
+      Errors.error "Not a MetaCoq.Tactic"
+
+  let run_tac t =
+    Proofview.Goal.nf_enter begin fun gl ->
+      let env = Proofview.Goal.env gl in
+      let sigma = Proofview.Goal.sigma gl in
+      let (sigma, t) = Constrintern.interp_open_constr env sigma t in
+      Proofview.Unsafe.tclEVARS sigma <*>
+      let t = pretypeT env sigma t in
+      MCT.interp t
     end
 end
 
@@ -83,7 +112,7 @@ let interp_mproof_command () =
 
 (** Interpreter of a mtactic *)
 let interp_instr = function
-  | MetaCoqInstr.MetaCoq_constr c -> MetaCoqRun.run_tac c
+  | MetaCoqInstr.MetaCoq_constr c -> MetaCoqTacticRun.run_tac c
 
 (** Interpreter of a constr :
     - Interpretes the constr
