@@ -57,8 +57,10 @@ let rec interp (c : constr) : unit PV.tactic =
   | 2 -> (* Trefine *)
       let tm = nth 1 in
       let evs = evars_list_of_term tm in
-      PV.Refine.refine ~unsafe:false (fun _ -> (sigma, nth 1)) <*>
-      PV.Unsafe.tclNEWGOALS evs
+      PV.Refine.refine ~unsafe:false begin fun sigma ->
+        let sigma = List.fold_right Evd.declare_future_goal evs sigma in
+        (sigma, nth 1)
+      end
 
   | 3 -> (* Tlet *)
       begin

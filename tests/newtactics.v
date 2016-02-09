@@ -40,8 +40,13 @@ Qed.
 
 Example basic6 : True /\ True.
 MProof.
-  Tthen (Trefine (conj _ _))
-  (Trefine I).
+  Tthen (Trefine (conj _ _)) (Trefine I).
+Qed.
+
+Example basic7 : False \/ True.
+MProof.
+  Fail Tor (Tthen (Trefine (or_introl _)) (Trefine I))
+      (fun _ =>Tthen (Trefine (or_intror _)) (Trefine I)).
 Fail Qed.
 
 (* Local Variables: *)
