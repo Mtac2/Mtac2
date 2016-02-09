@@ -40,9 +40,9 @@ Qed.
 
 Example basic6 : True /\ True.
 MProof.
-  Trefine False. (* WHAT??? *)
+  Tthen (Trefine (conj _ _))
+  (Trefine I).
 Fail Qed.
-Abort.
 
 (* Local Variables: *)
 (* coq-prog-name: "coqtop.byte" *)

@@ -2,5 +2,6 @@ MetaCoq
 MetaCoqInstr
 Constrs
 Run
+MetaCoqTactic
 MetaCoqInterp
 MetaCoqInit

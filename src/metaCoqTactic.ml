@@ -34,6 +34,15 @@ let index_of c =
 
 exception UserException of constr
 
+let evars_list_of_term c =
+  let rec evrec acc c =
+    match Term.kind_of_term c with
+    | Term.Evar (n, l) -> n :: (Array.fold_left evrec acc l)
+    | _ -> Term.fold_constr evrec acc c
+  in
+  evrec [] c
+
+
 let rec interp (c : constr) : unit PV.tactic =
   PV.tclEVARMAP >>= fun sigma ->
   PV.tclENV >>= fun env ->
@@ -46,7 +55,10 @@ let rec interp (c : constr) : unit PV.tactic =
       PV.tclBIND t1 t2
 
   | 2 -> (* Trefine *)
-      PV.Refine.refine ~unsafe:true (fun sigma -> (sigma, nth 1))
+      let tm = nth 1 in
+      let evs = evars_list_of_term tm in
+      PV.Refine.refine ~unsafe:false (fun _ -> (sigma, nth 1)) <*>
+      PV.Unsafe.tclNEWGOALS evs
 
   | 3 -> (* Tlet *)
       begin
