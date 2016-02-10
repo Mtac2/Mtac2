@@ -57,6 +57,11 @@ Definition coerce {A B : Type} (x : A) : M B :=
   | _ => raise CantCoerce
   end.
 
+Definition reduceGoal {A : Type} : M A :=
+  A' <- retS A;
+  x <- evar A';
+  coerce x.
+
 Program Definition copy_ctx {A} (B : A -> Type) :=
   mfix1 rec (d : dyn) : M Type :=
     mmatch d with

@@ -285,3 +285,7 @@ end
 module CoqUnit = struct
   let mkTT = Constr.mkConstr "Coq.Init.Datatypes.tt"
 end
+
+module CoqReduceGoal = struct
+  let mkReduceGoal = Constr.mkConstr "MetaCoq.LtacEmu.reduceGoal"
+end

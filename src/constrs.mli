@@ -80,3 +80,7 @@ end
 module CoqSig : sig
   val from_coq : (Environ.env * Evd.evar_map) -> constr -> constr
 end
+
+module CoqReduceGoal : sig
+  val mkReduceGoal : constr Lazy.t
+end

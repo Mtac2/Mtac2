@@ -27,8 +27,8 @@ module MetaCoqRun = struct
       let (sigma, c) = Constrintern.interp_open_constr env sigma t in
       let (sigma, t) = pretypeT env sigma concl c in
       let rec aux = function
-        | Run.Val (sigma', _, v) ->
-            Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma', v))
+        | Run.Val (sigma, _, v) ->
+            Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))
         | Run.Tac (sigma, metas, tac, f) ->
             let (c, sigma) = Pfedit.refine_by_tactic env sigma concl tac in
             aux (f (sigma, metas, c))
@@ -36,6 +36,19 @@ module MetaCoqRun = struct
             Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
       in
       aux (Run.run (env, sigma) c)
+    end
+
+  let normalizer () =
+    Proofview.Goal.nf_enter begin fun gl ->
+      let env = Proofview.Goal.env gl in
+      let concl = Proofview.Goal.concl gl in
+      let sigma = Proofview.Goal.sigma gl in
+      let reduceGoal = Lazy.force Constrs.CoqReduceGoal.mkReduceGoal in
+      match Run.run (env, sigma) (Term.mkApp (reduceGoal, [|concl|])) with
+      | Run.Val (sigma, _, v) ->
+          Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))
+      | Run.Tac _ | Run.Err _ ->
+          assert false
     end
 end
 
@@ -85,9 +98,21 @@ let interp_mproof_command () =
 let interp_instr = function
   | MetaCoqInstr.MetaCoq_constr c -> MetaCoqRun.run_tac c
 
+let exec_again f =
+  let pf = Proof_global.give_me_the_proof () in
+  if not (Proof.is_done pf) then begin
+    MetaCoqProofInfos.focus ();
+    ignore (Pfedit.by (f ()));
+    MetaCoqProofInfos.maximal_unfocus ();
+  end
+
+let exec f l =
+  ignore (Pfedit.by (f ()));
+  MetaCoqProofInfos.maximal_unfocus ();
+  List.iter exec_again l
+
 (** Interpreter of a constr :
     - Interpretes the constr
     - Unfocus on the current proof *)
 let interp_proof_constr instr =
-  ignore (Pfedit.by (interp_instr instr));
-  MetaCoqProofInfos.maximal_unfocus ()
+  exec (fun () -> interp_instr instr) [MetaCoqRun.normalizer]
