@@ -58,9 +58,8 @@ Definition coerce {A B : Type} (x : A) : M B :=
   end.
 
 Definition reduceGoal {A : Type} : M A :=
-  A' <- retS A;
-  x <- evar A';
-  coerce x.
+  let A' := simpl A in
+  evar A'.
 
 Program Definition copy_ctx {A} (B : A -> Type) :=
   mfix1 rec (d : dyn) : M Type :=
