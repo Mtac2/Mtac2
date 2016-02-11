@@ -1,8 +1,6 @@
 Require Import MetaCoq.MetaCoq.
 
-Require Import Strings.String.
-
-Definition goal := string.
+Definition CouldntRefine (A B : Type) : Exception. exact exception. Qed.
 
 Inductive Tactic : Prop :=
 | Tthen : Tactic -> Tactic -> Tactic
