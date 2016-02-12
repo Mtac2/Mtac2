@@ -436,8 +436,8 @@ let dest_Case (env, sigma) t_type t =
   let nil = Constr.mkConstr "Coq.Init.Datatypes.nil" in
   let cons = Constr.mkConstr "Coq.Init.Datatypes.cons" in
   let (sigma, mkCase) = MetaCoqNames.mkConstr "mkCase" sigma env in
-  let (sigma, dyn) = MetaCoqNames.mkUConstr "dyn" sigma env in
-  let (sigma, mkDyn) = MetaCoqNames.mkUConstr "Dyn" sigma env in
+  let (sigma, dyn) = MetaCoqNames.mkConstr "dyn" sigma env in
+  let (sigma, mkDyn) = MetaCoqNames.mkConstr "Dyn" sigma env in
   try
     let t = whd_betadeltaiota env sigma t in
     let (info, return_type, discriminant, branches) = Term.destCase t in
@@ -467,7 +467,7 @@ let dest_Case (env, sigma) t_type t =
 let make_Case (env, sigma) case =
   let map = Constr.mkConstr "List.map" in
   let (sigma, elem) = MetaCoqNames.mkUConstr "elem" sigma env in
-  let (sigma, mkDyn) = MetaCoqNames.mkUConstr "Dyn" sigma env in
+  let (sigma, mkDyn) = MetaCoqNames.mkConstr "Dyn" sigma env in
   let (sigma, case_ind) = MetaCoqNames.mkConstr "case_ind" sigma env in
   let (sigma, case_val) = MetaCoqNames.mkConstr "case_val" sigma env in
   let (sigma, case_type) = MetaCoqNames.mkConstr "case_type" sigma env  in
@@ -510,8 +510,8 @@ let get_Constrs (env, sigma) t =
     | Term.Ind ((mind, ind_i), _) ->
         let mbody = Environ.lookup_mind mind env in
         let ind = Array.get (mbody.mind_packets) ind_i in
-        let (sigma, dyn) = MetaCoqNames.mkUConstr "dyn" sigma env in
-        let (sigma, mkDyn) = MetaCoqNames.mkUConstr "Dyn" sigma env in
+        let (sigma, dyn) = MetaCoqNames.mkConstr "dyn" sigma env in
+        let (sigma, mkDyn) = MetaCoqNames.mkConstr "Dyn" sigma env in
         let l = Array.fold_left
                   (fun l i ->
                      let constr = Names.ith_constructor_of_inductive (mind, ind_i) i in

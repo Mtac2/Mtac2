@@ -21,7 +21,7 @@ Definition NoPatternMatches : Exception. exact exception. Qed.
 
 Definition NotUnifiableException {A} (x y : A) : Exception. exact exception. Qed.
 
-Polymorphic Record dyn := Dyn { type : Type; elem : type }.
+Record dyn := Dyn { type : Type; elem : type }.
 
 Definition index := N.
 Definition length := N.
