@@ -35,6 +35,7 @@ module ConstrBuilder = struct
 
   let from_string (s:string) : t = s
 
+  let build s = Lazy.force (Constr.mkConstr s)
   let build_app s args = mkApp (Lazy.force (Constr.mkConstr s), args)
 
   let equal s = Constr.isConstr (Constr.mkConstr s)
@@ -241,14 +242,23 @@ end
 
 module CoqBool = struct
 
-  let mkTrue = Constr.mkConstr "Coq.Init.Datatypes.true"
-  let mkFalse = Constr.mkConstr "Coq.Init.Datatypes.false"
+  let trueB = ConstrBuilder.from_string "Coq.Init.Datatypes.true"
+  let falseB = ConstrBuilder.from_string "Coq.Init.Datatypes.false"
 
-  let isTrue = Constr.isConstr mkTrue
+  let isTrue = ConstrBuilder.equal trueB
+
+  let mkTrue = ConstrBuilder.build trueB
+  let mkFalse = ConstrBuilder.build falseB
+
+  let to_coq b = if b then
+      ConstrBuilder.build trueB
+    else ConstrBuilder.build falseB
 
 end
 
 module CoqAscii = struct
+
+  let asciiBuilder = ConstrBuilder.from_string "Coq.Strings.Ascii.Ascii"
 
   let from_coq (env, sigma) c =
     let (h, args) = whd_betadeltaiota_stack env sigma c in
@@ -261,15 +271,21 @@ module CoqAscii = struct
     (* Char.escaped (Char.chr n) *) (* Why was it excaped in the first place ? *)
     String.make 1 (Char.chr n)
 
+  let to_coq c =
+    let c = int_of_char c in
+    let a = Array.init 8 (fun i->(c lsr i) mod 2 = 1) in
+    let a = Array.map CoqBool.to_coq a in
+    ConstrBuilder.build_app asciiBuilder a
+
 end
 
 module CoqString = struct
 
-  let mkEmpty = Constr.mkConstr "Coq.Strings.String.EmptyString"
-  let mkString = Constr.mkConstr "Coq.Strings.String.String"
+  let emptyB = ConstrBuilder.from_string "Coq.Strings.String.EmptyString"
+  let stringB = ConstrBuilder.from_string "Coq.Strings.String.String"
 
-  let isEmpty = Constr.isConstr mkEmpty
-  let isString = Constr.isConstr mkString
+  let isEmpty = ConstrBuilder.equal emptyB
+  let isString = ConstrBuilder.equal stringB
 
   let rec from_coq (env, sigma) s =
     let (h, args) = whd_betadeltaiota_stack env sigma s in
@@ -280,6 +296,15 @@ module CoqString = struct
       CoqAscii.from_coq (env, sigma) c ^ from_coq (env, sigma) s'
     else
       Errors.error "Not a string"
+
+  let rec to_coq s =
+    if String.length s = 0 then
+      ConstrBuilder.build emptyB
+    else
+      ConstrBuilder.build_app stringB [|
+        CoqAscii.to_coq s.[0];
+        to_coq (String.sub s 1 (String.length s -1))|]
+
 end
 
 module CoqUnit = struct

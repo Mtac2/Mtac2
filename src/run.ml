@@ -584,10 +584,11 @@ let abs ?(mkprod=false) (env, sigma, metas) a p x y =
     if Vars.noccurn rel p then
       if noccurn_env env rel then
         try
+          let (name, _, _) = lookup_rel rel env in
           let y' = mysubstn (mkRel 1) rel y in
           let t =
-            if mkprod then Term.mkProd (Names.Anonymous, a, y')
-            else Term.mkLambda (Names.Anonymous, a, y') in
+            if mkprod then Term.mkProd (name, a, y')
+            else Term.mkLambda (name, a, y') in
           return sigma metas t
         with AbstractingArrayType ->
           Exceptions.block Exceptions.error_abs_ref
@@ -653,21 +654,25 @@ let cvar (env, sigma, metas) ty hyp =
 (* if [f] is a function, we use its variable to get the name, otherwise we
    apply [f] to a fresh new variable. *)
 let get_func_name env sigma s f =
-  (*
-     if Term.isLambda f then
-     let (arg, _, body) = Term.destLambda f in
-     match arg with
-     | Names.Anonymous -> arg, body
-     | Names.Name var ->
-     let v = Namegen.next_ident_away_in_goal var (ids_of_context env) in
-     if v == var then arg, body else
-     Names.Name v, body
-     else
-  *)
   let s = CoqString.from_coq (env, sigma) s in
   let s = Names.Id.of_string s in
   let s = Namegen.next_ident_away_in_goal s (ids_of_context env) in
   Names.Name s, Term.mkApp(Vars.lift 1 f, [|Term.mkRel 1|])
+
+let get_name (env, sigma) t =
+  let t = whd_betadeltaiota env sigma t in
+  let name =
+    if isVar t then Name (destVar t)
+    else if isRel t then
+      let (n, _, _) = lookup_rel (destRel t) env in n
+    else if isLambda t then
+      let (n, _, _) = destLambda t in n
+    else
+      Exceptions.block "No variable nor function to get the name from"
+  in
+  match name with
+  | Name i -> CoqString.to_coq (Names.Id.to_string i)
+  | _ -> CoqString.to_coq "x"
 
 let rec run' (env, renv, sigma, undo, metas as ctxt) t =
   let (t,sk as appr) = Reductionops.whd_nored_state sigma (t, []) in
@@ -768,9 +773,9 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
     | 12 -> (* is_param *)
         let e = whd_betadeltaiota env sigma (nth 1) in
         if isRel e then
-          return sigma metas (Lazy.force CoqBool.mkTrue)
+          return sigma metas CoqBool.mkTrue
         else
-          return sigma metas (Lazy.force CoqBool.mkFalse)
+          return sigma metas CoqBool.mkFalse
 
     | 13 -> (* abs *)
         let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
@@ -788,9 +793,9 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
     | 16 -> (* is_evar *)
         let e = whd_betadeltaiota env sigma (nth 1) in
         if isEvar e then
-          return sigma metas (Lazy.force CoqBool.mkTrue)
+          return sigma metas CoqBool.mkTrue
         else
-          return sigma metas (Lazy.force CoqBool.mkFalse)
+          return sigma metas CoqBool.mkFalse
 
     | 17 -> (* hash *)
         return sigma metas (hash ctxt (nth 1) (nth 2))
@@ -930,6 +935,11 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         let aux k _ = Pp.msg_info (Pp.str (Names.KerName.to_string k)) in
         KNmap.iter aux (Tacenv.ltac_entries ());
         return sigma metas (nth 1)
+
+    | 33 -> (* get_name *)
+        let t = nth 1 in
+        let s = get_name (env, sigma) t in
+        return sigma metas s
 
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"

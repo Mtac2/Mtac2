@@ -4,6 +4,7 @@ Import MetaCoqNotations.
 Require Import MetaCoq.LtacEmu.
 Import LtacEmuNotations.
 
+Require Import Strings.String.
 
 Require Import Lists.List.
 Import ListNotations.
@@ -37,11 +38,11 @@ Definition open_and_apply (t : tactic) : tactic := fix open g :=
     match g return M _ with
     | TheGoal _ => t g
     | @AHyp C f =>
-      nu x : C,
+      x <- get_name f;
+      tnu x (fun x : C=>
         l <- open (f x);
-        mmap (fun g'=>
-                    r <- abs x g';
-                    ret (@AHyp C r)) l
+        mmap (fun g'=>r <- abs x g';
+              ret (@AHyp C r)) l)
     end.
 
 
@@ -111,10 +112,8 @@ MProof.
   run_tac (bbind (destruct b) [reflexivity; reflexivity]).
 Qed.
 
-Notation name := String.string.
-
 Definition NotAProduct : Exception. exact exception. Qed.
-Program Definition intro (n : name) : tactic := fun g=>
+Program Definition intro (n : string) : tactic := fun g=>
   mmatch g return M list goal with
   | [? (A:Type) (P:A -> Type) e] @TheGoal (forall x:A, P x) e =>
     tnu n (fun x=>
@@ -132,26 +131,18 @@ MProof.
   run_tac (bbind (intro "b1") [reflexivity]).
 Qed.
 
-Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b1 && b2 && b3.
+Definition idtac : tactic := fun g=>ret [g].
+
+Definition bindb (t u:tactic) : tactic := fun g=>
+  l <- t g;
+  r <- mmap (open_and_apply u) l;
+  let r := simpl List.concat _ r in
+  ret r.
+
+
+Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
-  run_tac (bbind (intro "b1") [intro "b2"]).
+  run_tac (bindb (intro "b1") (bindb (intro "b2") (intro "b3"))).
   (* something funky with the name of b1 is happening *)
-  run_tac (bbind
-    (destruct x)
-    [
-      (bbind (destruct b2)
-      [
-       bbind (intro "_") [reflexivity]
-      ;
-       bbind (intro "_") [reflexivity]
-      ])
-    ;
-      (bbind (destruct b2)
-      [
-        bbind (intro "b3") [reflexivity]
-      ;
-        intro "b3"
-      ])
-    ]).
-  run_tac reflexivity.
+  run_tac (bindb (destruct b1) (bindb (destruct b2) ((bindb (destruct b3) reflexivity)))).
 Qed.

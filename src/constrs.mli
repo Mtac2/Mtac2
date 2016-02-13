@@ -41,6 +41,7 @@ end
 module CoqString : sig
 
   val from_coq : (Environ.env * Evd.evar_map) -> constr -> string
+  val to_coq : string -> constr
 
 end
 
@@ -69,8 +70,8 @@ module CoqUnit : sig
 end
 
 module CoqBool : sig
-  val mkTrue : constr Lazy.t
-  val mkFalse : constr Lazy.t
+  val mkTrue : constr
+  val mkFalse : constr
 end
 
 module CoqEq : sig

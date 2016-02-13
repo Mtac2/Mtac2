@@ -124,6 +124,8 @@ Inductive MetaCoq : Type -> Prop :=
 
 | call_ltac : forall {A : Type}, string -> list Sig -> MetaCoq A
 | list_ltac : forall {A : Type} {_ : A}, MetaCoq A
+
+| get_name : forall {A}, A -> MetaCoq string
 .
 
 Definition array_length : forall {A}, array A -> length :=

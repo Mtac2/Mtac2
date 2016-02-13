@@ -98,6 +98,13 @@ MProof.
   exact I.
 Qed.
 
+Goal forall b, andb b b = b.
+MProof.
+  mintro b.
+  destruct b.
+  Fail reflexivity.
+Fail Qed. (* destruct is not doing right its job *)
+
 Inductive Option : Set :=
 | Fail : Option
 | Ok : bool -> Option.
