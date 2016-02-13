@@ -34,15 +34,17 @@ MProof.
   Fail run_tac (exact I).
 Abort.
 
+Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
+  mmap (fun g'=>r <- abs x g'; ret (@AHyp A r)).
+
+
 Definition open_and_apply (t : tactic) : tactic := fix open g :=
     match g return M _ with
     | TheGoal _ => t g
     | @AHyp C f =>
       x <- get_name f;
       tnu x (fun x : C=>
-        l <- open (f x);
-        mmap (fun g'=>r <- abs x g';
-              ret (@AHyp C r)) l)
+        open (f x) >> close_goals x)
     end.
 
 
@@ -145,4 +147,40 @@ MProof.
   run_tac (bindb (intro "b1") (bindb (intro "b2") (intro "b3"))).
   (* something funky with the name of b1 is happening *)
   run_tac (bindb (destruct b1) (bindb (destruct b2) ((bindb (destruct b3) reflexivity)))).
+Qed.
+
+
+Program Definition intro_cont (n:string) (t:tactic) : tactic := fun g=>
+  mmatch g return M list goal with
+  | [? (A:Type) (P:A -> Type) e] @TheGoal (forall x:A, P x) e =>
+    tnu n (fun x=>
+      e' <- evar _;
+      g <- abs x e';
+      munify e g;;
+      t (TheGoal e') >> close_goals x)
+  | _ => raise NotAProduct
+  end.
+
+
+Class semicolon {A} {B} {C} (t:A) (u:B) := SemiColon { the_value : C }.
+Arguments SemiColon {A} {B} {C} t u the_value.
+
+Instance i_intro_cont s t : semicolon (intro s) t | 0 := SemiColon _ _ (intro_cont s t).
+
+Instance i_bbind (t:tactic) (l:list tactic) : semicolon t l :=
+  SemiColon _ _ (bbind t l).
+
+Instance i_bindb (t:tactic) (u:tactic) : semicolon t u :=
+  SemiColon _ _ (bindb t u).
+
+Instance i_mtac A B (t:M A) (u:M B) : semicolon t u :=
+  SemiColon _ _ (_ <- t; u).
+
+Notation "a ;; b" := (@the_value _ _ _ a b _).
+(* ;; is in right associativity, but it should be left, right? *)
+
+Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
+MProof.
+  run_tac (intro "b1" ;; intro "b2" ;; intro "b3").
+  run_tac (destruct b1 ;; destruct b2 ;; destruct b3 ;; reflexivity).
 Qed.
