@@ -207,11 +207,17 @@ MProof.
   run_tac (destruct b1 ;; destruct b2 ;; destruct b3 ;; reflexivity).
 Qed.
 
-Notation "'cintro' x ';' t" := (intro_cont (fun x=>t)) (at level 39, right associativity).
+Notation "'cintro' x '{-' t '-}'" := (intro_cont (fun x=>t)) (at level 0, right associativity).
+
+Notation "'cintros' x .. y '{-' t '-}'" := (intro_cont (fun x=>.. (intro_cont (fun y=>t)) ..))
+(at level 0, x binder, y binder, t at next level, right associativity).
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
-  run_tac (cintro b1 ; cintro b2; (destruct b1 ;; destruct b2 ;; (cintro b3 ; destruct b3 ;; reflexivity))).
+  run_tac (cintros b1 b2 {-
+    destruct b1 ;; destruct b2 ;;
+    cintro b3 {- destruct b3 ;; reflexivity -}
+   -}).
 Qed.
 
 Print Unnamed_thm4.
@@ -257,7 +263,7 @@ Qed.
 
 Goal (forall x, x > 0) -> 3 > 0.
 MProof.
-  run_tac (cintro H; apply H).
+  run_tac (cintro H {- apply H -}).
 Qed.
 
 Definition NotAnOr : Exception. exact exception. Qed.
@@ -269,6 +275,6 @@ Ltac omega' := omega.
 
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.
-  run_tac (cintro H; apply H;; left).
+  run_tac (cintro H {- apply H;; left -}).
   call_ltac "Top.omega'" nil.
 Qed.
