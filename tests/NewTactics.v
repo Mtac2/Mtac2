@@ -37,6 +37,21 @@ Abort.
 Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
   mmap (fun g'=>r <- abs x g'; ret (@AHyp A r)).
 
+Definition mfilter {A} (b : A -> M bool) : list A -> M (list A) :=
+  fix f l :=
+    match l with
+    | [] => ret []
+    | x :: xs => bx <- b x; r <- f xs;
+                 if bx then ret (x::r) else ret r
+    end.
+
+Fixpoint is_open (g : goal) : M bool :=
+  match g with
+  | TheGoal e => is_evar e
+  | @AHyp C f => nu x:C, is_open (f x)
+  end.
+
+Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
 
 Definition open_and_apply (t : tactic) : tactic := fix open g :=
     match g return M _ with
@@ -61,6 +76,7 @@ Fixpoint gmap (funs : list tactic) (ass : list goal) : M (list (list goal)) :=
 
 Definition bbind (t:tactic) (l:list tactic) : tactic := fun g=>
   l' <- t g;
+  l' <- filter_goals l';
   ls <- gmap l l';
   ret (concat ls).
 
@@ -84,7 +100,7 @@ Definition to_goal d :=
 
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
   P <- evar (A->Type);
-  Pn <- evar (P n);
+  let Pn := hnf (P n) in
   l <- constrs A;
   l <- LtacEmu.mmap (fun d : dyn =>
                t' <- copy_ctx P d;
@@ -92,14 +108,15 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
                ret {| elem := e |}) l;
   let c := {| case_ind := A;
               case_val := n;
-              case_type := P n;
-              case_return := {| elem := fun n : A => P n |};
+              case_type := Pn;
+              case_return := {| elem := P |};
               case_branches := l
            |} in
   d <- makecase c;
   d <- coerce (elem d);
-  munify (@TheGoal (P n) d) g;;
-  let l := simpl (List.map to_goal l) in
+  let d := hnf d in
+  munify (@TheGoal Pn d) g;;
+  let l := hnf (List.map to_goal l) in
   ret l.
 
 Definition reflexivity : tactic := fun g=>
@@ -137,8 +154,9 @@ Definition idtac : tactic := fun g=>ret [g].
 
 Definition bindb (t u:tactic) : tactic := fun g=>
   l <- t g;
+  l <- filter_goals l;
   r <- mmap (open_and_apply u) l;
-  let r := simpl List.concat _ r in
+  let r := hnf List.concat _ r in
   ret r.
 
 
@@ -150,37 +168,107 @@ MProof.
 Qed.
 
 
-Program Definition intro_cont (n:string) (t:tactic) : tactic := fun g=>
+Program Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
   mmatch g return M list goal with
-  | [? (A:Type) (P:A -> Type) e] @TheGoal (forall x:A, P x) e =>
+  | [? (P:A -> Type) e] @TheGoal (forall x:A, P x) e =>
+    n <- get_name t;
     tnu n (fun x=>
       e' <- evar _;
       g <- abs x e';
       munify e g;;
-      t (TheGoal e') >> close_goals x)
+      t x (TheGoal e') >> close_goals x)
   | _ => raise NotAProduct
   end.
 
 
 Class semicolon {A} {B} {C} (t:A) (u:B) := SemiColon { the_value : C }.
 Arguments SemiColon {A} {B} {C} t u the_value.
-
-Instance i_intro_cont s t : semicolon (intro s) t | 0 := SemiColon _ _ (intro_cont s t).
-
-Instance i_bbind (t:tactic) (l:list tactic) : semicolon t l :=
+(*
+Instance i_intro_cont A s t :
+  semicolon (intro_cont (fun x:A=>idtac)) t | 0 :=
+  SemiColon _ _ (intro_cont s t).
+*)
+Instance i_bbind (t:tactic) (l:list tactic) : semicolon t l | 100 :=
   SemiColon _ _ (bbind t l).
 
-Instance i_bindb (t:tactic) (u:tactic) : semicolon t u :=
+Instance i_bindb (t:tactic) (u:tactic) : semicolon t u | 100:=
   SemiColon _ _ (bindb t u).
 
-Instance i_mtac A B (t:M A) (u:M B) : semicolon t u :=
+Instance i_mtac A B (t:M A) (u:M B) : semicolon t u | 100 :=
   SemiColon _ _ (_ <- t; u).
 
 Notation "a ;; b" := (@the_value _ _ _ a b _).
 (* ;; is in right associativity, but it should be left, right? *)
 
+Notation "'intro' x" := (intro_cont (fun x=>idtac)) (at level 40).
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
-  run_tac (intro "b1" ;; intro "b2" ;; intro "b3").
+  run_tac (intro b1 ;; intro b2 ;; intro b3).
   run_tac (destruct b1 ;; destruct b2 ;; destruct b3 ;; reflexivity).
+Qed.
+
+Notation "'cintro' x ';' t" := (intro_cont (fun x=>t)) (at level 39, right associativity).
+
+Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
+MProof.
+  run_tac (cintro b1 ; cintro b2; (destruct b1 ;; destruct b2 ;; (cintro b3 ; destruct b3 ;; reflexivity))).
+Qed.
+
+Print Unnamed_thm4.
+
+Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
+Proof.
+  intro b1; intro b2; destruct b1; destruct b2; intro b3; destruct b3; reflexivity.
+Qed.
+Print Unnamed_thm5.
+
+Definition NotAGoal : Exception. exact exception. Qed.
+Definition get_goal : goal -> M dyn := fun g =>
+  match g with
+  | TheGoal d => ret (Dyn _ d)
+  | _ => raise NotAGoal
+  end.
+
+Obligation Tactic := idtac.
+Program Definition apply {T} (c : T) : tactic := fun g=>
+  (mfix2 app (U : Type) (d : U) : M (list goal) :=
+    ttry (
+      munify (TheGoal d) g;;
+      ret []
+    )
+    (fun e=> (* should check if e is NotUnifiable *)
+      mmatch U return M (list goal) with
+      | [? (T1 : Type) (T2 : T1 -> Prop)] (forall x:T1, T2 x) => [H]
+          e <- evar T1;
+          r <- app (T2 e) (eq_rect_r (fun U=>U) d H e);
+          ret (TheGoal e :: r)
+      | _ =>
+          g <- get_goal g;
+          let g := hnf g in
+          raise (CantApply c g)
+      end
+    )) _ c.
+
+Goal (forall x, x > 0) -> 3 > 0.
+MProof.
+  run_tac (intro H).
+  run_tac (apply H).
+Qed.
+
+Goal (forall x, x > 0) -> 3 > 0.
+MProof.
+  run_tac (cintro H; apply H).
+Qed.
+
+Definition NotAnOr : Exception. exact exception. Qed.
+Definition left : tactic := apply or_introl.
+
+Require Import Coq.omega.Omega.
+
+Ltac omega' := omega.
+
+Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
+MProof.
+  run_tac (cintro H; apply H;; left).
+  call_ltac "Top.omega'" nil.
 Qed.
