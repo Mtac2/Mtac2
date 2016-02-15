@@ -273,8 +273,18 @@ Require Import Coq.omega.Omega.
 
 Ltac omega' := omega.
 
+Definition ltac (t : string) (args : list Sig) : tactic := fun g=>
+  d <- get_goal g;
+  let ty := simpl (type d) in
+  v <- @call_ltac ty t args;
+  munify v (elem d);;
+  ret [].
+
+Definition omega {A} := @call_ltac A "Top.omega'" nil.
+
+Definition gomega := ltac "Top.omega'" nil.
+
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.
-  run_tac (cintro H {- apply H;; left -}).
-  call_ltac "Top.omega'" nil.
+  run_tac (cintro H {- apply H;; (left;; gomega) -}).
 Qed.

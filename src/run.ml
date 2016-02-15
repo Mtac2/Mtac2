@@ -908,7 +908,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         end
 
     | 31 -> (* call_ltac *)
-        let name, args = nth 1, nth 2 in
+        let concl, name, args = nth 0, nth 1, nth 2 in
         let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq (env, sigma) args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
         (* let tac = Tacenv.interp_ml_tactic name in *)
@@ -929,7 +929,9 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
           in
           aux (KNmap.bindings (Tacenv.ltac_entries ()))
         in
-        Tac (sigma, metas, Tacinterp.eval_tactic tac, fun v -> Val v)
+        let (c, sigma) = Pfedit.refine_by_tactic env sigma concl (Tacinterp.eval_tactic tac) in
+        return sigma metas c
+    (* Tac (sigma, metas, Tacinterp.eval_tactic tac, fun v -> Val v) *)
 
     | 32 -> (* list_ltac *)
         let aux k _ = Pp.msg_info (Pp.str (Names.KerName.to_string k)) in
