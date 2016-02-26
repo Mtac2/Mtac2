@@ -28,20 +28,20 @@ let reduce_value = Tacred.compute
 
 module MetaCoqNames = struct
   let metaCoq_module_name = "MetaCoq.MetaCoq.MetaCoq"
-  let mkConstr e sigma env = (sigma, Lazy.force (Constr.mkConstr (metaCoq_module_name ^ "." ^ e)))
+  let mkConstr e = Constr.mkConstr (metaCoq_module_name ^ "." ^ e)
   let mkBuilder e = ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
   let mkT_lazy = mkConstr "MetaCoq"
   let mkUConstr e = (Constr.mkUConstr (metaCoq_module_name ^ "." ^ e))
 
-  let isConstr e sigma env =
-    let (_, c) = mkConstr e sigma env in
+  let isConstr e =
+    let c = Lazy.force (mkConstr e) in
     eq_constr c
 
-  let mkBase = mkConstr "base"
-  let mkTele = mkConstr "tele"
+  let mkCase = mkConstr "mkCase"
 
-  let isBase = isConstr "base"
-  let isTele = isConstr "tele"
+  let mkelem = mkConstr "elem"
+  let mkdyn = mkConstr "dyn"
+  let mkDyn = mkConstr "Dyn"
 
 end
 
@@ -51,19 +51,19 @@ module Exceptions = struct
 
   let mkInternalException = MetaCoqNames.mkConstr
 
-  let mkNullPointer = mkInternalException  "NullPointer"
-  let mkTermNotGround = mkInternalException  "TermNotGround"
-  let mkOutOfBounds = mkInternalException  "ArrayOutOfBounds"
-  let mkNotUnifiable a x y env sigma =
-    let (_, e) = mkInternalException "NotUnifiableException" env sigma in
-    mkApp(e, [|a;x;y|])
+  let mkNullPointer = mkInternalException "NullPointer"
+  let mkTermNotGround = mkInternalException "TermNotGround"
+  let mkOutOfBounds = mkInternalException "ArrayOutOfBounds"
+  let mkNotUnifiable a x y =
+    let e = mkInternalException "NotUnifiableException" in
+    mkApp(Lazy.force e, [|a;x;y|])
 
   (* HACK: we put Prop as the type of the raise. We can put an evar, but
      what's the point anyway? *)
-  let mkRaise e env sigma =
-    let (sigma, c) = MetaCoqNames.mkConstr "raise" sigma env in
-    let (sigma, a) = MetaCoqNames.mkConstr e sigma env in
-    (sigma, mkApp(c, [|mkProp; a|]))
+  let mkRaise e =
+    let c = Lazy.force (MetaCoqNames.mkConstr "raise") in
+    let a = Lazy.force (MetaCoqNames.mkConstr e) in
+    mkApp(c, [|mkProp; a|])
 
   let error_stuck = "Cannot reduce term, perhaps an opaque definition?"
   let error_param = "Parameter appears in returned value"
@@ -78,17 +78,11 @@ module Exceptions = struct
 end
 
 module ReductionStrategy = struct
-(*
-     let redNone = MetaCoqNames.mkConstr "RedNone"
-     let redSimpl = MetaCoqNames.mkConstr "RedSimpl"
-     let redWhd = MetaCoqNames.mkConstr "RedWhd"
-     let redOneStep = MetaCoqNames.mkConstr "RedOneStep"
-  *)
-  let isRedNone = MetaCoqNames.isConstr "RedNone"
-  let isRedSimpl = MetaCoqNames.isConstr "RedSimpl"
-  let isRedWhd = MetaCoqNames.isConstr "RedWhd"
-  let isRedOneStep = MetaCoqNames.isConstr "RedOneStep"
-  let isReduce = MetaCoqNames.isConstr "reduce"
+  let isRedNone c = MetaCoqNames.isConstr "RedNone" c
+  let isRedSimpl c = MetaCoqNames.isConstr "RedSimpl" c
+  let isRedWhd c = MetaCoqNames.isConstr "RedWhd" c
+  let isRedOneStep c = MetaCoqNames.isConstr "RedOneStep" c
+  let isReduce c = MetaCoqNames.isConstr "reduce" c
 
   let has_definition ts env t =
     if isVar t then
@@ -151,13 +145,13 @@ module ReductionStrategy = struct
     in applist r
 
   let reduce sigma env strategy c =
-    if isRedNone sigma env strategy then
+    if isRedNone strategy then
       c
-    else if isRedSimpl sigma env strategy then
+    else if isRedSimpl strategy then
       Tacred.simpl env sigma c
-    else if isRedWhd sigma env strategy then
+    else if isRedWhd strategy then
       whd_betadeltaiota env sigma c
-    else if isRedOneStep sigma env strategy then
+    else if isRedOneStep strategy then
       one_step env sigma c
     else
       Exceptions.block Exceptions.unknown_reduction_strategy
@@ -173,9 +167,9 @@ module UnificationStrategy = struct
 
      let test = fun r c -> eq_constr (Lazy.force r) c
   *)
-  let isUniRed = MetaCoqNames.isConstr "UniRed"
-  let isUniSimpl = MetaCoqNames.isConstr "UniSimpr"
-  let isUniMuni = MetaCoqNames.isConstr "UniMuni"
+  let isUniRed e = MetaCoqNames.isConstr "UniRed" e
+  let isUniSimpl e = MetaCoqNames.isConstr "UniSimpr" e
+  let isUniMuni e = MetaCoqNames.isConstr "UniMuni" e
 
   let find_pbs sigma evars =
     let (_, pbs) = extract_all_conv_pbs sigma in
@@ -184,7 +178,7 @@ module UnificationStrategy = struct
         Termops.occur_term e c1 || Termops.occur_term e c2) evars) pbs
 
   let unify rsigma env evars strategy t1 t2 =
-    if isUniRed !rsigma env strategy then
+    if isUniRed strategy then
       try
         let sigma = the_conv_x env t2 t1 !rsigma in
         rsigma := consider_remaining_unif_problems env sigma;
@@ -435,23 +429,22 @@ let name_occurn_env env n =
 let dest_Case (env, sigma) t_type t =
   let nil = Constr.mkConstr "Coq.Init.Datatypes.nil" in
   let cons = Constr.mkConstr "Coq.Init.Datatypes.cons" in
-  let (sigma, mkCase) = MetaCoqNames.mkConstr "mkCase" sigma env in
-  let (sigma, dyn) = MetaCoqNames.mkConstr "dyn" sigma env in
-  let (sigma, mkDyn) = MetaCoqNames.mkConstr "Dyn" sigma env in
+  let mkCase = Lazy.force MetaCoqNames.mkCase in
+  let dyn = Lazy.force MetaCoqNames.mkdyn in
+  let cDyn = Lazy.force MetaCoqNames.mkDyn in
   try
     let t = whd_betadeltaiota env sigma t in
     let (info, return_type, discriminant, branches) = Term.destCase t in
     let branch_dyns = Array.fold_left (
       fun l t ->
         let dyn_type = Retyping.get_type_of env sigma t in
-        Term.applist (Lazy.force cons, [dyn; Term.applist (mkDyn, [dyn_type; t]); l])
+        Term.applist (Lazy.force cons, [dyn; Term.applist (cDyn, [dyn_type; t]); l])
     ) (Lazy.force nil) branches in
     let ind_type = Retyping.get_type_of env sigma discriminant in
     let return_type_type = Retyping.get_type_of env sigma return_type in
-    (* (sigma, (Term.applist(mkCase, [t_type; t; ind_type; discriminant; branch_dyns]))) *)
     (sigma, (Term.applist(mkCase,
                           [ind_type; discriminant; t_type;
-                           Term.applist(mkDyn, [return_type_type; return_type]);
+                           Term.applist(cDyn, [return_type_type; return_type]);
                            branch_dyns
                           ])
             )
@@ -465,18 +458,15 @@ let dest_Case (env, sigma) t_type t =
       Exceptions.block "Something not so specific went wrong."
 
 let make_Case (env, sigma) case =
-  let map = Constr.mkConstr "List.map" in
-  let (sigma, elem) = MetaCoqNames.mkUConstr "elem" sigma env in
-  let (sigma, mkDyn) = MetaCoqNames.mkConstr "Dyn" sigma env in
-  let (sigma, case_ind) = MetaCoqNames.mkConstr "case_ind" sigma env in
-  let (sigma, case_val) = MetaCoqNames.mkConstr "case_val" sigma env in
-  let (sigma, case_type) = MetaCoqNames.mkConstr "case_type" sigma env  in
-  let (sigma, case_return) = MetaCoqNames.mkConstr "case_return" sigma env in
-  let (sigma, case_branches) = MetaCoqNames.mkConstr "case_branches" sigma env in
+  let elem = Lazy.force MetaCoqNames.mkelem in
+  let cDyn = Lazy.force MetaCoqNames.mkDyn in
+  let case_ind = Lazy.force (MetaCoqNames.mkConstr "case_ind") in
+  let case_val = Lazy.force (MetaCoqNames.mkConstr "case_val") in
+  let case_return = Lazy.force (MetaCoqNames.mkConstr "case_return") in
+  let case_branches = Lazy.force (MetaCoqNames.mkConstr "case_branches") in
   let repr_ind = Term.applist(case_ind, [case]) in
   let repr_val = Term.applist(case_val, [case]) in
   let repr_val_red = whd_betadeltaiota env sigma repr_val in
-  let repr_type = Term.applist(case_type, [case]) in
   let repr_return = Term.applist(case_return, [case]) in
   let repr_return_unpack = Term.applist(elem, [repr_return]) in
   let repr_return_red = whd_betadeltaiota env sigma repr_return_unpack in
@@ -490,14 +480,12 @@ let make_Case (env, sigma) case =
   if Term.isInd t_type then
     match Term.kind_of_term t_type with
     | Term.Ind ((mind, ind_i), _) ->
-        let mbody = Environ.lookup_mind mind env in
-        let ind = Array.get mbody.mind_packets ind_i in
         let case_info = Inductiveops.make_case_info env (mind, ind_i)
                           Term.LetPatternStyle in
         let match_term = Term.mkCase (case_info, repr_return_red, repr_val_red,
                                       Array.of_list (List.rev repr_branches_red)) in
         let match_type = Retyping.get_type_of env sigma match_term in
-        (sigma, Term.applist(mkDyn, [match_type;  match_term]))
+        (sigma, Term.applist(cDyn, [match_type;  match_term]))
     | _ -> assert false
   else
     Exceptions.block "case_type is not an inductive type"
@@ -510,15 +498,14 @@ let get_Constrs (env, sigma) t =
     | Term.Ind ((mind, ind_i), _) ->
         let mbody = Environ.lookup_mind mind env in
         let ind = Array.get (mbody.mind_packets) ind_i in
-        let (sigma, dyn) = MetaCoqNames.mkConstr "dyn" sigma env in
-        let (sigma, mkDyn) = MetaCoqNames.mkConstr "Dyn" sigma env in
+        let dyn = Lazy.force MetaCoqNames.mkdyn in
+        let cDyn = Lazy.force MetaCoqNames.mkDyn in
         let l = Array.fold_left
                   (fun l i ->
                      let constr = Names.ith_constructor_of_inductive (mind, ind_i) i in
-                     let coq_constr = Term.applist (mkDyn, [CoqList.makeNil dyn]) in (* what is the sense of this line? it's being shadowed in the next one *)
                      let coq_constr = Term.applist (Term.mkConstruct constr, args) in
                      let ty = Retyping.get_type_of env sigma coq_constr in
-                     let dyn_constr = Term.applist (mkDyn, [ty; coq_constr]) in
+                     let dyn_constr = Term.applist (cDyn, [ty; coq_constr]) in
                      CoqList.makeCons dyn dyn_constr l
                   )
                   (CoqList.makeNil dyn )
@@ -544,7 +531,7 @@ module Hypotheses = struct
 
 
   let cons_hyp ty n t renv sigma env =
-    let (sigma, hyptype) = mkHypType sigma env in
+    let hyptype = Lazy.force mkHypType in
     let hyp = mkAHyp ty n t in
     (sigma, CoqList.makeCons hyptype hyp renv)
 
@@ -681,7 +668,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
   if Term.isLetIn h then
     let (_, b, _, t) = Term.destLetIn h in
     let (h, args') = Term.decompose_appvect b in
-    if ReductionStrategy.isReduce env sigma h && Array.length args' = 3 then
+    if ReductionStrategy.isReduce h && Array.length args' = 3 then
       let b = ReductionStrategy.reduce sigma env (Array.get args' 0) (Array.get args' 2) in
       run' ctxt (Stack.zip (Vars.subst1 b t, args))
     else
@@ -690,7 +677,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
     let constr c =
       if Term.isConstruct c then
         let ((m, ix), _) = Term.destConstruct c in
-        if Names.eq_ind m (fst (Term.destInd (snd (MetaCoqNames.mkT_lazy sigma env)))) then
+        if Names.eq_ind m (fst (Term.destInd (Lazy.force MetaCoqNames.mkT_lazy))) then
           ix
         else
           Exceptions.block Exceptions.error_stuck
@@ -836,10 +823,10 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
             let (sigma, e) = ArrayRefs.get env sigma undo a ty i in
             return sigma metas e
           with ArrayRefs.NullPointerException ->
-            let (sigma, e) = Exceptions.mkNullPointer sigma env in
+            let e = Lazy.force Exceptions.mkNullPointer in
             fail sigma metas e
              | ArrayRefs.OutOfBoundsException ->
-                 let (sigma, e) = Exceptions.mkOutOfBounds sigma env in
+                 let e = Lazy.force Exceptions.mkOutOfBounds in
                  fail sigma metas e
              | ArrayRefs.WrongTypeException ->
                  Exceptions.block "Wrong type!"
@@ -854,7 +841,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
             let sigma = ArrayRefs.set env sigma undo a i ty c in
             return sigma metas (Lazy.force CoqUnit.mkTT)
           with ArrayRefs.OutOfBoundsException ->
-            let (sigma, e) = Exceptions.mkOutOfBounds sigma env in
+            let e = Lazy.force Exceptions.mkOutOfBounds in
             fail sigma metas e
              | ArrayRefs.WrongTypeException ->
                  Exceptions.block "Wrong type!"
@@ -904,7 +891,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
             let feq = CoqEq.mkAppEqRefl a x in
             return sigma metas feq
           with Evarconv.UnableToUnify _ ->
-            fail sigma metas (Exceptions.mkNotUnifiable a x y env sigma)
+            fail sigma metas (Exceptions.mkNotUnifiable a x y)
         end
 
     | 31 -> (* call_ltac *)
@@ -1018,7 +1005,7 @@ let build_hypotheses sigma env =
   in (* [H : x > 0, x : nat] *)
   let rec build renv =
     match renv with
-    | [] -> let (sigma, ty) = Hypotheses.mkHypType sigma env in
+    | [] -> let ty = Lazy.force Hypotheses.mkHypType in
         (sigma, CoqList.makeNil ty)
     | (n, t, ty) :: renv ->
         let (sigma, r) = build renv in

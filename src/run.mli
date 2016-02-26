@@ -14,7 +14,7 @@ type data =
 val run : (env * evar_map) -> constr -> data
 
 module MetaCoqNames : sig
-  val mkT_lazy : evar_map -> env -> (evar_map * constr)
+  val mkT_lazy : constr Lazy.t
 end
 
 val run' :

@@ -6,7 +6,7 @@ module MetaCoqRun = struct
 
   (**  *)
   let pretypeT env sigma t c =
-    let (_, e) = Run.MetaCoqNames.mkT_lazy sigma env in
+    let e = Lazy.force Run.MetaCoqNames.mkT_lazy in
     let ty = Retyping.get_type_of env sigma c in
     let (h, args) = Reductionops.whd_betadeltaiota_stack env sigma ty in
     if Term.eq_constr_nounivs e h && List.length args = 1 then
