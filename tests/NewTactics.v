@@ -98,31 +98,40 @@ Definition to_goal d :=
   | Dyn _ x => TheGoal x
   end.
 
+Definition NotAVariable : Exception. exact exception. Qed.
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
-  P <- evar (A->Type);
-  let Pn := hnf (P n) in
-  l <- constrs A;
-  l <- LtacEmu.mmap (fun d : dyn =>
-               t' <- copy_ctx P d;
-               e <- evar t';
-               ret {| elem := e |}) l;
-  let c := {| case_ind := A;
-              case_val := n;
-              case_type := Pn;
-              case_return := {| elem := P |};
-              case_branches := l
-           |} in
-  d <- makecase c;
-  d <- coerce (elem d);
-  let d := hnf d in
-  munify (@TheGoal Pn d) g;;
-  let l := hnf (List.map to_goal l) in
-  ret l.
+  b <- is_var n;
+  if negb b then raise NotAVariable
+  else
+    P <- evar (A->Type);
+    let Pn := P n in
+    l <- constrs A;
+    l <- LtacEmu.mmap (fun d : dyn =>
+      t' <- copy_ctx P d;
+      e <- evar t';
+      ret {| elem := e |}) l;
+    let c := {| case_ind := A;
+                case_val := n;
+                case_type := Pn;
+                case_return := {| elem := P |};
+                case_branches := l
+             |} in
+    d <- makecase c;
+    d <- coerce (elem d);
+    let d := hnf d in
+    munify (@TheGoal Pn d) g;;
+    let l := hnf (List.map to_goal l) in
+    ret l.
 
 Definition reflexivity : tactic := fun g=>
   A <- evar Type;
   x <- evar A;
   munify g (TheGoal (eq_refl x));; ret nil.
+
+Example fail_not_var : 0 = 0.
+MProof.
+  Fail run_tac (destruct 0).
+Abort.
 
 Require Import Unicoq.Unicoq.
 Goal forall b : bool, b = b.
@@ -282,7 +291,7 @@ Definition ltac (t : string) (args : list Sig) : tactic := fun g=>
 
 Definition omega {A} := @call_ltac A "Top.omega'" nil.
 
-Definition gomega := ltac "Top.omega'" nil.
+Definition gomega := ltac "Coq.omega.Omega.omega" nil.
 
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.

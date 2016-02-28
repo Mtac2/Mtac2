@@ -65,12 +65,12 @@ MProof.
   exact G.
 Qed.
 
-Ltac transitivity' t := transitivity t.
+Definition transitivity := "Coq.Init.Notations.transitivity".
 
 Lemma test6 : forall (x y z : Prop), x = y -> y = z -> x = z.
 MProof.
   mintros x y z H G.
-  call_ltac "Top.transitivity'" (cons (Exists y) nil).
+  call_ltac transitivity (cons (Exists y) nil).
   Grab Existential Variables.
   call_ltac "Coq.Init.Notations.revgoals" nil.
   (* transitivity y. *)
@@ -197,10 +197,8 @@ Qed.
 
 Require Import Coq.omega.Omega.
 
-Ltac omega' := omega.
-
 Goal O = O.
 MProof.
   list_ltac.
-  call_ltac "Top.omega'" nil.
+  call_ltac "Coq.omega.Omega.omega" nil.
 Qed.

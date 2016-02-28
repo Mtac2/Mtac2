@@ -757,9 +757,9 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
                 fail sigma' metas (pop e)
         end
 
-    | 12 -> (* is_param *)
+    | 12 -> (* is_var *)
         let e = whd_betadeltaiota env sigma (nth 1) in
-        if isRel e then
+        if isRel e || isVar e then
           return sigma metas CoqBool.mkTrue
         else
           return sigma metas CoqBool.mkFalse
