@@ -159,14 +159,6 @@ module ReductionStrategy = struct
 end
 
 module UnificationStrategy = struct
-(*
-     let mkUni = fun s -> lazy (MetaCoqNames.mkConstr s)
-     let uniRed = mkUni "UniRed"
-     let uniSimpl = mkUni "UniSimpl"
-     let uniMuni = mkUni "UniMuni"
-
-     let test = fun r c -> eq_constr (Lazy.force r) c
-  *)
   let isUniRed e = MetaCoqNames.isConstr "UniRed" e
   let isUniSimpl e = MetaCoqNames.isConstr "UniSimpr" e
   let isUniMuni e = MetaCoqNames.isConstr "UniMuni" e
@@ -661,6 +653,29 @@ let get_name (env, sigma) t =
   | Name i -> CoqString.to_coq (Names.Id.to_string i)
   | _ -> CoqString.to_coq "x"
 
+let clean = List.iter ArrayRefs.invalidate
+
+(* return the reflected hash of a term *)
+let hash (env, _, sigma, undo, _) c size =
+  let size = CoqN.from_coq (env, sigma) size in
+  let nus = List.length undo in
+  let rec upd depth t =
+    match kind_of_term t with
+    | Rel k ->
+        if depth < k then
+          begin
+            if k > depth + nus then
+              mkRel (k - nus)
+            else
+              mkRel (k + nus - (2 * (k -1)))
+          end
+        else
+          t
+    | _ -> map_constr_with_binders succ upd depth t
+  in
+  let h = Term.hash_constr (upd 0 c) in
+  CoqN.to_coq (Pervasives.abs (h mod size))
+
 let rec run' (env, renv, sigma, undo, metas as ctxt) t =
   let (t,sk as appr) = Reductionops.whd_nored_state sigma (t, []) in
   let (h, args) = Reductionops.whd_betadeltaiota_nolet_state env sigma appr in
@@ -934,40 +949,21 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         Exceptions.block "I have no idea what is this construct of T that you have here"
 
 
-
-
-and clean =
-  List.iter (fun i -> ArrayRefs.invalidate i)
-
 and run_fix (env, renv, sigma, _, _ as ctxt) h a b s i f x =
   let fixf = mkApp(h, Array.append a [|b;s;i;f|]) in
   let c = mkApp (f, Array.append [| fixf|] x) in
   run' ctxt c
 
-and hash (env, renv, sigma, undo, metas) c size =
-  let size = CoqN.from_coq (env, sigma) size in
-  let nus = List.length undo in
-  let rec upd depth t =
-    match kind_of_term t with
-    | Rel k ->
-        if depth < k then
-          begin
-            if k > depth + nus then
-              mkRel (k - nus)
-            else
-              mkRel (k + nus - (2 * (k -1)))
-          end
-        else
-          t
-    | _ -> map_constr_with_binders succ upd depth t
-  in
-  let h = Term.hash_constr (upd 0 c) in
-  CoqN.to_coq (Pervasives.abs (h mod size))
 
+(* Takes a [sigma], a set of evars [metas], and a [term],
+   and garbage collects all the [metas] in [sigma] that do not appear in
+   [term]. *)
 let clean_unused_metas sigma metas term =
   let rec rem (term : constr) (metas : ExistentialSet.t) =
     let fms = Evd.evars_of_term term in
     let metas = ExistentialSet.diff metas fms in
+    (* we also need to remove all metas that occur in the
+       types, context, and terms of other metas *)
     ExistentialSet.fold (fun ev metas ->
       let ev_info = Evd.find sigma ev  in
       let metas = rem (Evd.evar_concl ev_info) metas in
@@ -982,8 +978,9 @@ let clean_unused_metas sigma metas term =
     ) fms metas
   in
   let metas = rem term metas in
-  (* remove all the reminding metas, first from the future goals *)
-  let sigma = ExistentialSet.fold (fun ev sigma -> Evd.remove sigma ev) metas sigma in
+  (* remove all the reminding metas, also from the future goals *)
+  let sigma = ExistentialSet.fold
+                (fun ev sigma -> Evd.remove sigma ev) metas sigma in
   let future_goals = Evd.future_goals sigma in
   let principal_goal = Evd.principal_future_goal sigma in
   let sigma = Evd.reset_future_goals sigma in
@@ -999,10 +996,13 @@ let clean_unused_metas sigma metas term =
   in
   Evd.restore_future_goals sigma alive principal_goal
 
+(* reflects the hypotheses in [env] in a list of [ahyp] *)
 let build_hypotheses sigma env =
-  let renv = List.mapi (fun n (_, t, ty) -> (mkRel (n+1), t, ty)) (rel_context env)
-             @ List.rev (List.map (fun (n, t, ty) -> (mkVar n, t, ty)) (named_context env))
-  in (* [H : x > 0, x : nat] *)
+  let renv = List.mapi (fun i (_, t, ty)->(mkRel (i+1), t, ty))
+               (rel_context env)
+             @ List.rev (List.map (fun (n, t, ty)->(mkVar n, t, ty))
+                           (named_context env)) in
+  (* the list is reversed: [H : x > 0, x : nat] *)
   let rec build renv =
     match renv with
     | [] -> let ty = Lazy.force Hypotheses.mkHypType in
