@@ -98,15 +98,25 @@ Definition to_goal d :=
   | Dyn _ x => TheGoal x
   end.
 
+Program Definition hyps_except {A} (x : A) :=
+  l <- hypotheses;
+  mfilter (fun y=>mmatch y with
+    | [? b] ahyp x b => ret false
+    | _ => ret true
+    end) l.
+
 Definition NotAVariable : Exception. exact exception. Qed.
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
   b <- is_var n;
   if negb b then raise NotAVariable
   else
-    P <- evar (A->Type);
+    ctx <- hyps_except n;
+    P <- Cevar (A->Type) ctx;
     let Pn := P n in
     l <- constrs A;
     l <- LtacEmu.mmap (fun d : dyn =>
+      (* a constructor c has type (forall x, ... y, A) and we return
+         (forall x, ... y, P (c x .. y)) *)
       t' <- copy_ctx P d;
       e <- evar t';
       ret {| elem := e |}) l;
@@ -133,7 +143,6 @@ MProof.
   Fail run_tac (destruct 0).
 Abort.
 
-Require Import Unicoq.Unicoq.
 Goal forall b : bool, b = b.
 MProof.
   mintro b.
@@ -168,10 +177,10 @@ Definition bindb (t u:tactic) : tactic := fun g=>
   let r := hnf List.concat _ r in
   ret r.
 
-
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
   run_tac (bindb (intro "b1") (bindb (intro "b2") (intro "b3"))).
+  run_tac (destruct b1).
   (* something funky with the name of b1 is happening *)
   run_tac (bindb (destruct b1) (bindb (destruct b2) ((bindb (destruct b3) reflexivity)))).
 Qed.
@@ -207,7 +216,6 @@ Instance i_mtac A B (t:M A) (u:M B) : semicolon t u | 100 :=
   SemiColon _ _ (_ <- t; u).
 
 Notation "a ;; b" := (@the_value _ _ _ a b _).
-(* ;; is in right associativity, but it should be left, right? *)
 
 Notation "'intro' x" := (intro_cont (fun x=>idtac)) (at level 40).
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
@@ -295,5 +303,5 @@ Definition gomega := ltac "Coq.omega.Omega.omega" nil.
 
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.
-  run_tac (cintro H {- apply H;; (left;; gomega) -}).
+  run_tac (cintro H {- apply H;; left;; gomega -}).
 Qed.
