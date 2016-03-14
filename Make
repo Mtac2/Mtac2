@@ -8,6 +8,7 @@ src/run.ml
 src/run.mli
 src/metaCoqInterp.ml
 src/metaCoqInterp.mli
+src/metaCoqTactic.ml4
 src/MetaCoqPlugin.mllib
 theories/MetaCoq.v
 theories/LtacEmu.v

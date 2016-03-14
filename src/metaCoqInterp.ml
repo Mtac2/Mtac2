@@ -15,6 +15,19 @@ module MetaCoqRun = struct
     else
       Errors.error "Not a Mtactic"
 
+  let run env sigma concl c =
+    let (sigma, t) = pretypeT env sigma concl c in
+    let rec aux = function
+      | Run.Val (sigma, _, v) ->
+          Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))
+      | Run.Tac (sigma, metas, tac, f) ->
+          let (c, sigma) = Pfedit.refine_by_tactic env sigma concl tac in
+          aux (f (sigma, metas, c))
+      | Run.Err (_, _, e) ->
+          Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
+    in
+    aux (Run.run (env, sigma) c)
+
   (** Get back the context given a goal, interp the constr_expr to obtain a constr
       Then run the interpretation fo the constr, and returns the tactic value,
       according to the value of the data returned by [run].
@@ -25,17 +38,15 @@ module MetaCoqRun = struct
       let concl = Proofview.Goal.concl gl in
       let sigma = Proofview.Goal.sigma gl in
       let (sigma, c) = Constrintern.interp_open_constr env sigma t in
-      let (sigma, t) = pretypeT env sigma concl c in
-      let rec aux = function
-        | Run.Val (sigma, _, v) ->
-            Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))
-        | Run.Tac (sigma, metas, tac, f) ->
-            let (c, sigma) = Pfedit.refine_by_tactic env sigma concl tac in
-            aux (f (sigma, metas, c))
-        | Run.Err (_, _, e) ->
-            Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
-      in
-      aux (Run.run (env, sigma) c)
+      run env sigma concl c
+    end
+
+  let run_tac_constr t =
+    Proofview.Goal.nf_enter begin fun gl ->
+      let env = Proofview.Goal.env gl in
+      let concl = Proofview.Goal.concl gl in
+      let sigma = Proofview.Goal.sigma gl in
+      run env sigma concl t
     end
 
   let normalizer () =

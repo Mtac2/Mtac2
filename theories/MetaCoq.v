@@ -156,6 +156,9 @@ Arguments runner {A} _.
 Arguments Build_runner {A} _ _.
 Arguments eval {A} _ {_}.
 
+Hint Extern 20 (runner ?f) =>
+  (exact (Build_runner f ltac:(mrun f)))  : typeclass_instances.
+
 End MetaCoq.
 
 Export MetaCoq.

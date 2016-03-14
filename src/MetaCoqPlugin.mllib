@@ -4,3 +4,4 @@ Constrs
 Run
 MetaCoqInterp
 MetaCoqInit
+MetaCoqTactic
