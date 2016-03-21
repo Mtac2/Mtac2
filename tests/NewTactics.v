@@ -13,6 +13,12 @@ Inductive goal :=
 | TheGoal : forall {A}, A -> goal
 | AHyp : forall {A}, (A -> goal) -> goal.
 
+Definition NotAGoal : Exception. exact exception. Qed.
+Definition goal_type g : M Type :=
+  match g with
+    | @TheGoal A _ => ret A
+    | _ => raise NotAGoal
+  end.
 
 Notation tactic := (goal -> M (list goal)).
 
@@ -83,12 +89,12 @@ Definition bbind (t:tactic) (l:list tactic) : tactic := fun g=>
 Program Definition copy_ctx {A} (B : A -> Type) :=
   mfix1 rec (d : dyn) : M Type :=
     mmatch d with
-    | [? C (D : C -> Type) (E : forall y:C, D y)] {| elem := fun x : C => E x |} =>
-        nu y : C,
-        r <- rec (Dyn _ (E y));
-        pabs y r
     | [? c : A] {| elem := c |} =>
         ret (B c)
+    | [? C (D : C -> Type) (c : forall y:C, D y)] {| elem := c |} =>
+        nu y : C,
+        r <- rec (Dyn _ (c y));
+        pabs y r
     end.
 
 Definition CantCoerce : Exception. exact exception. Qed.
@@ -113,6 +119,8 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
     ctx <- hyps_except n;
     P <- Cevar (A->Type) ctx;
     let Pn := P n in
+    gT <- goal_type g;
+    munify Pn gT;;
     l <- constrs A;
     l <- LtacEmu.mmap (fun d : dyn =>
       (* a constructor c has type (forall x, ... y, A) and we return
@@ -142,6 +150,16 @@ Example fail_not_var : 0 = 0.
 MProof.
   Fail run_tac (destruct 0).
 Abort.
+
+Goal forall n:nat, n = n.
+MProof.
+  mintro n.
+  run_tac (destruct n).
+  run_tac (exact 0). (* this one is spurious *)
+  mintro n'.
+  run_tac reflexivity.
+  run_tac reflexivity.
+Qed.
 
 Goal forall b : bool, b = b.
 MProof.
@@ -177,13 +195,18 @@ Definition bindb (t u:tactic) : tactic := fun g=>
   let r := hnf List.concat _ r in
   ret r.
 
+Definition tryt (t:tactic) := fun g=>
+                                mtry t g with _ => ret [g] end.
+
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
   run_tac (bindb (intro "b1") (bindb (intro "b2") (intro "b3"))).
-  run_tac (destruct b1).
-  (* something funky with the name of b1 is happening *)
   run_tac (bindb (destruct b1) (bindb (destruct b2) ((bindb (destruct b3) reflexivity)))).
-Qed.
+  ret None.
+  ret None. ret None. ret None. ret None. ret None.
+  ret None. ret None. ret None. ret None. ret None. ret None.
+  ret None. ret None.
+Qed. (* what? *)
 
 
 Program Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
@@ -217,17 +240,30 @@ Instance i_mtac A B (t:M A) (u:M B) : semicolon t u | 100 :=
 
 Notation "a ;; b" := (@the_value _ _ _ a b _).
 
+Definition OR (t u : tactic) := fun g => mtry t g with _ => u g end.
+Notation "t || u" := (OR t u).
+
 Notation "'intro' x" := (intro_cont (fun x=>idtac)) (at level 40).
+
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
   run_tac (intro b1 ;; intro b2 ;; intro b3).
   run_tac (destruct b1 ;; destruct b2 ;; destruct b3 ;; reflexivity).
-Qed.
+Abort.
 
 Notation "'cintro' x '{-' t '-}'" := (intro_cont (fun x=>t)) (at level 0, right associativity).
 
 Notation "'cintros' x .. y '{-' t '-}'" := (intro_cont (fun x=>.. (intro_cont (fun y=>t)) ..))
 (at level 0, x binder, y binder, t at next level, right associativity).
+
+Definition type_of {A} (x:A) := A.
+
+Goal forall b1 b2 : bool, b1 && b2 = b2 && b1.
+MProof.
+  run_tac (cintros b1 b2 {-
+    destruct b1
+   -}).
+Abort.
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
@@ -235,17 +271,14 @@ MProof.
     destruct b1 ;; destruct b2 ;;
     cintro b3 {- destruct b3 ;; reflexivity -}
    -}).
-Qed.
-
-Print Unnamed_thm4.
+Abort.
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 Proof.
   intro b1; intro b2; destruct b1; destruct b2; intro b3; destruct b3; reflexivity.
 Qed.
-Print Unnamed_thm5.
+Print Unnamed_thm4.
 
-Definition NotAGoal : Exception. exact exception. Qed.
 Definition get_goal : goal -> M dyn := fun g =>
   match g with
   | TheGoal d => ret (Dyn _ d)

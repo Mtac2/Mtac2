@@ -65,7 +65,7 @@ module Exceptions = struct
     let a = Lazy.force (MetaCoqNames.mkConstr e) in
     mkApp(c, [|mkProp; a|])
 
-  let error_stuck = "Cannot reduce term, perhaps an opaque definition?"
+  let error_stuck t = "Cannot reduce term, perhaps an opaque definition? " ^ constr_to_string t
   let error_param = "Parameter appears in returned value"
   let error_abs x = "Cannot abstract non variable " ^ (constr_to_string x)
   let error_abs_env = "Cannot abstract variable in a context depending on it"
@@ -593,30 +593,33 @@ let abs ?(mkprod=false) (env, sigma, metas) a p x y =
 
 let cvar (env, sigma, metas) ty hyp =
   let hyp = Hypotheses.from_coq_list (env, sigma) hyp in
-  let check_vars e t vars = Idset.subset (Termops.collect_vars t) vars &&
-                            if Option.has_some e then
-                              Idset.subset (Termops.collect_vars (Option.get e)) vars
-                            else true
+  let check_vars e t vars =
+    Idset.subset (Termops.collect_vars t) vars &&
+    if Option.has_some e then
+      Idset.subset (Termops.collect_vars (Option.get e)) vars
+    else true
   in
   let _, _, subs, env' = List.fold_right (fun (i, e, t) (avoid, avoids, subs, env') ->
+    let t = Reductionops.nf_evar sigma t in
+    let e = Option.map (Reductionops.nf_evar sigma) e in
     if isRel i then
       let n = destRel i in
       let na, _, _ = List.nth (rel_context env) (n-1) in
       let id = Namegen.next_name_away na avoid in
-      let e = try Option.map (multi_subst subs) e with Not_found -> Exceptions.block "Not well-formed hypotheses" in
-      let t = try multi_subst subs t with Not_found -> Exceptions.block "Not well-formed hypotheses" in
+      let e = try Option.map (multi_subst subs) e with Not_found -> Exceptions.block "Not well-formed hypotheses 1" in
+      let t = try multi_subst subs t with Not_found -> Exceptions.block "Not well-formed hypotheses 2" in
       let b = check_vars e t avoids in
       let d = (id, e, t) in
       if b then
         (id::avoid, Idset.add id avoids, (n, mkVar id) :: subs, push_named d env')
       else
-        Exceptions.block "Not well-formed hypotheses"
+        Exceptions.block "Not well-formed hypotheses 3"
     else
       let id = destVar i in
       if check_vars e t avoids then
         (id::avoid, Idset.add id avoids, subs, push_named (id, e, t) env')
       else
-        Exceptions.block "Not well-formed hypotheses"
+        Exceptions.block "Not well-formed hypotheses 4"
   ) hyp ([], Idset.empty, [], empty_env)
   in
   let vars = List.map (fun (v, _, _)->v) hyp in
@@ -695,9 +698,9 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         if Names.eq_ind m (fst (Term.destInd (Lazy.force MetaCoqNames.mkT_lazy))) then
           ix
         else
-          Exceptions.block Exceptions.error_stuck
+          Exceptions.block (Exceptions.error_stuck c)
       else
-        Exceptions.block Exceptions.error_stuck
+        Exceptions.block (Exceptions.error_stuck c)
     in
     match constr h with
     | 1 -> (* ret *)
@@ -1021,5 +1024,5 @@ let run (env, sigma) t  =
       Err (sigma', metas, nf_evar sigma' v)
   | Tac _ as v -> v
   | Val (sigma', metas, v) ->
-      let sigma' = clean_unused_metas sigma' metas v in
+      (* let sigma' = clean_unused_metas sigma' metas v in *)
       Val (sigma', ExistentialSet.empty, nf_evar sigma' v)
