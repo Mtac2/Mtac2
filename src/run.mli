@@ -8,7 +8,6 @@ type elem = (evar_map * ExistentialSet.t * constr)
 
 type data =
   | Val of elem
-  | Tac of (evar_map * ExistentialSet.t * unit Proofview.tactic * (elem -> data))
   | Err of elem
 
 val run : (env * evar_map) -> constr -> data

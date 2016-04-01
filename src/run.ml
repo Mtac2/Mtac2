@@ -366,13 +366,11 @@ type elem = (evar_map * ExistentialSet.t * constr)
 
 type data =
   | Val of elem
-  | Tac of (evar_map * ExistentialSet.t * unit Proofview.tactic * (elem -> data))
   | Err of elem
 
 let rec (>>=) v g =
   match v with
   | Val v' -> g v'
-  | Tac (sigma, metas, tac, f) -> Tac (sigma, metas, tac, fun v' -> f v' >>= g)
   | Err _ -> v
 
 let return s es t = Val (s, es, t)
@@ -1022,7 +1020,6 @@ let run (env, sigma) t  =
   match run' (env, renv, sigma, [], ExistentialSet.empty) (nf_evar sigma t) with
   | Err (sigma', metas, v) ->
       Err (sigma', metas, nf_evar sigma' v)
-  | Tac _ as v -> v
   | Val (sigma', metas, v) ->
       (* let sigma' = clean_unused_metas sigma' metas v in *)
       Val (sigma', ExistentialSet.empty, nf_evar sigma' v)

@@ -20,9 +20,6 @@ module MetaCoqRun = struct
     let rec aux = function
       | Run.Val (sigma, _, v) ->
           Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))
-      | Run.Tac (sigma, metas, tac, f) ->
-          let (c, sigma) = Pfedit.refine_by_tactic env sigma concl tac in
-          aux (f (sigma, metas, c))
       | Run.Err (_, _, e) ->
           Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
     in
@@ -58,7 +55,7 @@ module MetaCoqRun = struct
       match Run.run (env, sigma) (Term.mkApp (reduceGoal, [|concl|])) with
       | Run.Val (sigma, _, v) ->
           Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))
-      | Run.Tac _ | Run.Err _ ->
+      | Run.Err _ ->
           assert false
     end
 end
