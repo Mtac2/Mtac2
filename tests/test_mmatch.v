@@ -1,6 +1,42 @@
 Require Import MetaCoq.MetaCoq.
 Import MetaCoqNotations.
 
+Require Import MetaCoq.LtacEmu.
+
+Goal True.
+MProof.
+  mmatch I with
+  [? i] i => ret i : M True
+  end.
+Qed.
+
+Goal True.
+MProof.
+  mmatch _ with
+  [? i] i => ret i : M True
+  end.
+  mmatch (fun x=>x) I with
+  [? i] (fun x=>x) i => ret i : M True
+  end.
+Qed.
+
+Goal True.
+MProof.
+  (* uninstantiated i *)
+  Fail mmatch (fun x=>x) I with
+  [? i] I => ret i : M True
+  end.
+  (* do not reduce pattern *)
+  Fail mmatch I with
+  [? i] (fun x=>x) i => ret i : M True
+  end.
+  mmatch I with
+  | [? i] (fun x=>x) i => ret i : M True
+  | [? i] i => ret i : M True
+  end.
+Qed.
+
+
 Require Import List.
 Import ListNotations.
 

@@ -52,8 +52,8 @@ Definition mmap {A B : Type} (f : A -> M B) :=
 Definition CantCoerce : Exception. exact exception. Qed.
 
 Definition coerce {A B : Type} (x : A) : M B :=
-  mmatch A with
-  | B => [H] ret (coerce_rect_r B H x)
+  mmatch B with
+  | A => [H] ret (coerce_rect B H x)
   | _ => raise CantCoerce
   end.
 
@@ -149,7 +149,7 @@ Definition assumption {P : Type} : M P := match_goal ([[ x:P |- P ]] => exact x)
 
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 
-Definition apply {P T : Prop} (l : T) : M P :=
+Program Definition apply {P T : Prop} (l : T) : M P :=
   (mfix2 app (T : Prop) (l' : T) : M P :=
     mtry
       p <- munify P T;

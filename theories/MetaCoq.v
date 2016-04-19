@@ -1,3 +1,5 @@
+(* Need to load Unicoq to get the module dependency right *)
+Declare ML Module "unicoq".
 (** Load library "MetaCoqPlugin.cma". *)
 Declare ML Module "MetaCoqPlugin".
 
@@ -5,7 +7,6 @@ Require Import Strings.String.
 Require Import Lists.List.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
-
 
 Module MetaCoq.
 
@@ -61,6 +62,11 @@ Record Case :=
 Definition reduce (r : Reduction) {A} (x : A) := x.
 
 Inductive Sig : Type := Exists : forall {A : Type}, A -> Sig.
+
+(** Pattern matching without pain *)
+Inductive pattern (M : Type->Prop) A (B : A -> Type) (t : A) : Prop :=
+| pbase : forall (x:A), (x = t -> M (B x)) -> pattern M A B t
+| ptele : forall {C}, (forall (x : C), pattern M A B t) -> pattern M A B t.
 
 Inductive MetaCoq : Type -> Prop :=
 | tret : forall {A}, A -> MetaCoq A
@@ -126,6 +132,7 @@ Inductive MetaCoq : Type -> Prop :=
 | list_ltac : forall {A : Type} {_ : A}, MetaCoq A
 
 | get_name : forall {A}, A -> MetaCoq string
+| match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
 .
 
 Definition array_length : forall {A}, array A -> length :=
@@ -217,57 +224,35 @@ Notation "'mfix5' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) ( x5 : A5 ) 
 Definition type_inside {A} (x : M A) := A.
 
 
-(** Pattern matching without pain *)
-Inductive pattern A (B : A -> Type) (t : A) : Prop :=
-| pbase : forall (x:A) (b : x = t -> MetaCoq (B x)), Unification -> pattern A B t
-| ptele : forall {C}, (forall (x : C), pattern A B t) -> pattern A B t.
-
-(** Given a pattern of the form [[? a b c] p a b c => t a b c] it returns
-    the pattern with evars for each pattern variable: [p ?a ?b ?c => t ?a ?b ?c] *)
-Definition open_pattern {A} {P:A->Type} {t:A}  :=
-  mfix1 op (p : pattern A P t) : M (pattern A P t) :=
-    match p return M _ with
-    | pbase _ _ _ x f u => ret p : M (pattern _ _ _)
-    | @ptele _ _ _ C f =>
-      e <- evar C; op (f e)
-    end.
-
 Definition NoPatternMatches : Exception. exact exception. Qed.
 Definition Anomaly : Exception. exact exception. Qed.
 Definition Continue : Exception. exact exception. Qed.
 Import ListNotations.
+
+Notation pattern := (pattern MetaCoq).
+
 Fixpoint tmatch {A P} t (ps : list (pattern A P t)) : M (P t) :=
   match ps with
   | [] => raise NoPatternMatches
   | (p :: ps') =>
-    p' <- open_pattern p;
-    match p' with
-    | pbase _ _ _ t' f u =>
-      ttry (
-        eq <- ttry (munify t' t) (fun _ => raise Continue);
-        feq <- f eq;
-        match eq in (_ = y) return M (P y) with
-        | eq_refl => ret feq
-        end
-      )
-      (fun e=>
-        ttry (munify e Continue) (fun _=>raise e);; tmatch t ps'
-      )
-    | _ => raise Anomaly
+    v <- match_and_run p;
+    match v with
+    | None => tmatch t ps'
+    | Some v => ret v
     end
   end.
 
-Arguments ptele {A B t C} f.
-Arguments pbase {A B t} x b u.
+Arguments ptele {_ A B t C} f.
+Arguments pbase {_ A B t} x b.
 
 
 Notation "[? x .. y ] ps" := (ptele (fun x=> .. (ptele (fun y=>ps)).. ))
   (at level 202, x binder, y binder, ps at next level) : metaCoq_pattern_scope.
-Notation "p => b" := (pbase p%core (fun _=>b%core) UniRed)
+Notation "p => b" := (pbase p%core (fun _=>b%core))
   (no associativity, at level 201) : metaCoq_pattern_scope.
-Notation "p => [ H ] b" := (pbase p%core (fun H=>b%core) UniRed)
+Notation "p => [ H ] b" := (pbase p%core (fun H=>b%core))
   (no associativity, at level 201, H at next level) : metaCoq_pattern_scope.
-Notation "'_' => b " := (ptele (fun x=> pbase x (fun _=>b%core) UniRed))
+Notation "'_' => b " := (ptele (fun x=> pbase x (fun _=>b%core)))
   (at level 201, b at next level) : metaCoq_pattern_scope.
 
 Delimit Scope metaCoq_pattern_scope with metaCoq_pattern.

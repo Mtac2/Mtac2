@@ -1,3 +1,4 @@
+-I "$(COQLIB)user-contrib/Unicoq"
 -I src
 -R theories MetaCoq
 src/metaCoqInit.ml4

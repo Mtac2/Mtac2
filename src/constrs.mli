@@ -23,6 +23,7 @@ module ConstrBuilder : sig
 
   val build_app : t -> constr array -> constr
 
+  val equal : t -> constr -> bool
 end
 
 module UConstrBuilder : sig

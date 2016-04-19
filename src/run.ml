@@ -181,6 +181,35 @@ module UnificationStrategy = struct
 
 end
 
+module Pattern = struct
+  open ConstrBuilder
+
+  let baseB = MetaCoqNames.mkBuilder "pbase"
+  let teleB = MetaCoqNames.mkBuilder "ptele"
+
+  exception NotAPattern
+
+  let open_pattern env sigma p =
+    let rec op sigma p evars =
+      let (c, args) = whd_betadeltaiota_stack env sigma p in
+      if equal baseB c then
+        (sigma, evars, List.nth args 4, List.nth args 5)
+      else if equal teleB c then
+        begin
+          let ty = List.nth args 4 in
+          let func = List.nth args 5 in
+          let (sigma, evar) = Evarutil.new_evar env sigma ty in
+          let evars = Evar.Set.add (fst (destEvar evar)) evars in
+          op sigma (mkApp (func, [|evar|])) evars
+        end
+      else
+        raise NotAPattern
+    in
+    op sigma p (Evar.Set.empty)
+
+end
+
+
 module GrowingArray = struct
   type 'a t = 'a array ref * 'a * int ref
 
@@ -946,6 +975,10 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         let s = get_name (env, sigma) t in
         return sigma metas s
 
+    | 34 -> (* match_and_run *)
+        let a, b, t, p = nth 0, nth 1, nth 2, nth 3 in
+        match_and_run ctxt a b t p
+
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"
 
@@ -955,6 +988,34 @@ and run_fix (env, renv, sigma, _, _ as ctxt) h a b s i f x =
   let c = mkApp (f, Array.append [| fixf|] x) in
   run' ctxt c
 
+and match_and_run (env, renv, sigma0, undo, metas as ctxt) a b t p =
+  try
+    let open Munify in
+    let open Pattern in
+    let open Evarsolve in
+    let (sigma, evars, x, func) = open_pattern env sigma0 p in
+    (* func has Coq type x = t -> M (B x) *)
+    let ts = Conv_oracle.get_transp_state (Environ.oracle env) in
+    let bt = mkApp(b, [|t|]) in
+    match unify_evar_conv ~ismatch:true ts env sigma Reduction.CONV x t with
+    | Success sigma ->
+        if Evar.Set.for_all (Evd.is_defined sigma) evars then
+          begin
+            let func = Evarutil.nf_evar sigma func in
+            let sigma = Evar.Set.fold (fun e sigma->Evd.remove sigma e) evars sigma in
+            let eqrefl = CoqEq.mkAppEqRefl a t in
+            let r = run' (env, renv, sigma, undo, metas) (mkApp (func, [|eqrefl|])) in
+            match r with
+            | Val (sigma, metas, r) ->
+                return sigma metas (CoqOption.mkSome bt r)
+            | _ -> r
+          end
+        else
+          Exceptions.(block (error_stuck p))
+    | _ ->
+        return sigma0 metas (CoqOption.mkNone bt)
+  with Pattern.NotAPattern ->
+    Exceptions.(block (error_stuck p))
 
 (* Takes a [sigma], a set of evars [metas], and a [term],
    and garbage collects all the [metas] in [sigma] that do not appear in
