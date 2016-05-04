@@ -232,6 +232,7 @@ Program Definition apply {T} (c : T) : tactic := fun g=>
     )) _ c.
 
 Definition left : tactic := apply or_introl.
+Definition right : tactic := apply or_intror.
 
 Definition ltac (t : string) (args : list Sig) : tactic := fun g=>
   d <- goal_to_dyn g;
