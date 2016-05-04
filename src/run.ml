@@ -133,6 +133,7 @@ module ReductionStrategy = struct
       t
 
   let one_step env sigma c =
+    let ts = Conv_oracle.get_transp_state (Environ.oracle env) in
     let h, args = decompose_app c in
     let h = whd_evar sigma h in
     let r =
@@ -140,7 +141,7 @@ module ReductionStrategy = struct
       | Lambda (_, _, trm) when args <> [] ->
           (Vars.subst1 (List.hd args) trm, List.tl args)
       | LetIn (_, trm, _, body) -> (Vars.subst1 trm body, args)
-      | Var _ | Rel _ | Const _ -> (try_unfolding Closure.all_transparent env h, args)
+      | Var _ | Rel _ | Const _ -> (try_unfolding ts env h, args)
       | _ -> h, args
     in applist r
 
