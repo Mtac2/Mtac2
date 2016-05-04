@@ -502,7 +502,7 @@ let make_Case (env, sigma) case =
         let case_info = Inductiveops.make_case_info env (mind, ind_i)
                           Term.LetPatternStyle in
         let match_term = Term.mkCase (case_info, repr_return_red, repr_val_red,
-                                      Array.of_list (List.rev repr_branches_red)) in
+                                      Array.of_list (repr_branches_red)) in
         let match_type = Retyping.get_type_of env sigma match_term in
         (sigma, Term.applist(cDyn, [match_type;  match_term]))
     | _ -> assert false
@@ -519,17 +519,17 @@ let get_Constrs (env, sigma) t =
         let ind = Array.get (mbody.mind_packets) ind_i in
         let dyn = Lazy.force MetaCoqNames.mkdyn in
         let cDyn = Lazy.force MetaCoqNames.mkDyn in
-        let l = Array.fold_left
-                  (fun l i ->
+        let l = Array.fold_right
+                  (fun i l ->
                      let constr = Names.ith_constructor_of_inductive (mind, ind_i) i in
                      let coq_constr = Term.applist (Term.mkConstruct constr, args) in
                      let ty = Retyping.get_type_of env sigma coq_constr in
                      let dyn_constr = Term.applist (cDyn, [ty; coq_constr]) in
                      CoqList.makeCons dyn dyn_constr l
                   )
-                  (CoqList.makeNil dyn )
                   (* this is just a dirty hack to get the indices of constructors *)
                   (Array.mapi (fun i t -> i+1) ind.mind_consnames)
+                  (CoqList.makeNil dyn)
         in
         (sigma, l)
     | _ -> assert false
