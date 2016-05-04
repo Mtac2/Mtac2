@@ -95,6 +95,11 @@ Program Definition copy_ctx {A} (B : A -> Type) :=
         nu y : C,
         r <- rec (Dyn _ (c y));
         pabs y r
+    | [? C D (c : C->D)] {| elem := c |} =>
+        nu y : C,
+        r <- rec (Dyn _ (c y));
+        pabs y r
+    | _ => print_term A;; print_term d;; raise NotAGoal
     end.
 
 Definition CantCoerce : Exception. exact exception. Qed.
@@ -155,7 +160,6 @@ Goal forall n:nat, n = n.
 MProof.
   mintro n.
   run_tac (destruct n).
-  run_tac (exact 0). (* this one is spurious *)
   mintro n'.
   run_tac reflexivity.
   run_tac reflexivity.
@@ -202,21 +206,20 @@ Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
   run_tac (bindb (intro "b1") (bindb (intro "b2") (intro "b3"))).
   run_tac (bindb (destruct b1) (bindb (destruct b2) ((bindb (destruct b3) reflexivity)))).
-  ret None.
-  ret None. ret None. ret None. ret None. ret None.
-  ret None. ret None. ret None. ret None. ret None. ret None.
-  ret None. ret None.
-Qed. (* what? *)
-
+Qed.
 
 Program Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
   mmatch g return M list goal with
-  | [? (P:A -> Type) e] @TheGoal (forall x:A, P x) e =>
+  | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
+    munify B A;;
     n <- get_name t;
     tnu n (fun x=>
       e' <- evar _;
       g <- abs x e';
       munify e g;;
+      x <- coerce x;
+      let x := hnf x in
+      print_term x;;
       t x (TheGoal e') >> close_goals x)
   | _ => raise NotAProduct
   end.
@@ -249,7 +252,7 @@ Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
   run_tac (intro b1 ;; intro b2 ;; intro b3).
   run_tac (destruct b1 ;; destruct b2 ;; destruct b3 ;; reflexivity).
-Abort.
+Qed.
 
 Notation "'cintro' x '{-' t '-}'" := (intro_cont (fun x=>t)) (at level 0, right associativity).
 

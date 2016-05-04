@@ -52,9 +52,10 @@ Definition mmap {A B : Type} (f : A -> M B) :=
 Definition CantCoerce : Exception. exact exception. Qed.
 
 Definition coerce {A B : Type} (x : A) : M B :=
-  mmatch B with
-  | A => [H] ret (coerce_rect B H x)
-  | _ => raise CantCoerce
+  mtry
+    H <- munify A B;
+    retS (coerce_rect B H x)
+  with _ => raise CantCoerce
   end.
 
 Definition reduceGoal {A : Type} : M A :=

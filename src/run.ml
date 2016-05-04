@@ -997,7 +997,7 @@ and match_and_run (env, renv, sigma0, undo, metas as ctxt) a b t p =
     (* func has Coq type x = t -> M (B x) *)
     let ts = Conv_oracle.get_transp_state (Environ.oracle env) in
     let bt = mkApp(b, [|t|]) in
-    match unify_evar_conv ~ismatch:true ts env sigma Reduction.CONV x t with
+    match unify_match evars ts env sigma Reduction.CONV x t with
     | Success sigma ->
         if Evar.Set.for_all (Evd.is_defined sigma) evars then
           begin
