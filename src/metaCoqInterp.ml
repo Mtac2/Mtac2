@@ -1,3 +1,5 @@
+open Constrs
+
 module MetaCoqRun = struct
   (** This module run the interpretation of a constr
   *)
@@ -6,12 +8,16 @@ module MetaCoqRun = struct
 
   (**  *)
   let pretypeT env sigma t c =
-    let e = Lazy.force Run.MetaCoqNames.mkT_lazy in
+    let metaCoqType = Lazy.force Run.MetaCoqNames.mkT_lazy in
+    let tacticType = Lazy.force MCTactics.mkTactic in
     let ty = Retyping.get_type_of env sigma c in
     let (h, args) = Reductionops.whd_betadeltaiota_stack env sigma ty in
-    if Term.eq_constr_nounivs e h && List.length args = 1 then
+    if Term.eq_constr_nounivs metaCoqType h && List.length args = 1 then
       let sigma = Evarconv.the_conv_x_leq env t (List.hd args) sigma in
       (sigma, c)
+    else if Term.eq_constr_nounivs tacticType ty && List.length args = 0 then
+      let runTac = Lazy.force MCTactics.mkRunTac in
+      (sigma, Term.mkApp(runTac, [|t; c|]))
     else
       Errors.error "Not a Mtactic"
 
@@ -23,7 +29,7 @@ module MetaCoqRun = struct
       | Run.Err (_, _, e) ->
           Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
     in
-    aux (Run.run (env, sigma) c)
+    aux (Run.run (env, sigma) t)
 
   (** Get back the context given a goal, interp the constr_expr to obtain a constr
       Then run the interpretation fo the constr, and returns the tactic value,
@@ -51,7 +57,7 @@ module MetaCoqRun = struct
       let env = Proofview.Goal.env gl in
       let concl = Proofview.Goal.concl gl in
       let sigma = Proofview.Goal.sigma gl in
-      let reduceGoal = Lazy.force Constrs.CoqReduceGoal.mkReduceGoal in
+      let reduceGoal = Lazy.force MCTactics.mkReduceGoal in
       match Run.run (env, sigma) (Term.mkApp (reduceGoal, [|concl|])) with
       | Run.Val (sigma, _, v) ->
           Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))

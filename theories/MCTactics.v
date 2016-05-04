@@ -1,17 +1,37 @@
-Require Import MetaCoq.MetaCoq.
+Require Import MetaCoq.MetaCoq MetaCoq.MCListUtils.
 Import MetaCoqNotations.
-
-Require Import MetaCoq.LtacEmu.
-Import LtacEmuNotations.
 
 Require Import Strings.String.
 
 Require Import Lists.List.
 Import ListNotations.
 
+Definition metaCoqReduceGoal {A : Type} : M A :=
+  let A' := simpl A in
+  evar A'.
+
+Definition coerce_rect {A : Type} (B : Type) (H : A = B) (x : A) : B :=
+  eq_rect A (fun T => T) x B H.
+
+Definition CantCoerce : Exception. exact exception. Qed.
+
+Definition coerce {A B : Type} (x : A) : M B :=
+  mtry
+    H <- munify A B;
+    retS (coerce_rect B H x)
+  with _ => raise CantCoerce
+  end.
+
 Inductive goal :=
 | TheGoal : forall {A}, A -> goal
 | AHyp : forall {A}, (A -> goal) -> goal.
+
+Definition tactic := (goal -> M (list goal)).
+
+Definition run_tac {P} (t : tactic) : M P :=
+  e <- evar P;
+  t (TheGoal e);;
+  ret e.
 
 Definition NotAGoal : Exception. exact exception. Qed.
 Definition goal_type g : M Type :=
@@ -20,36 +40,50 @@ Definition goal_type g : M Type :=
     | _ => raise NotAGoal
   end.
 
-Notation tactic := (goal -> M (list goal)).
-
 Definition exact {A} (x:A) : tactic := fun g=>
   munify g (TheGoal x);; ret nil.
 
-Definition run_tac {P} (t : tactic) : M P :=
-  e <- evar P;
-  t (TheGoal e);;
-  ret e.
-
 Goal True.
 MProof.
-  run_tac (exact I).
+  exact I.
 Qed.
 
 Goal False.
 MProof.
-  Fail run_tac (exact I).
+  Fail exact I.
 Abort.
+
 
 Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
   mmap (fun g'=>r <- abs x g'; ret (@AHyp A r)).
 
-Definition mfilter {A} (b : A -> M bool) : list A -> M (list A) :=
-  fix f l :=
-    match l with
-    | [] => ret []
-    | x :: xs => bx <- b x; r <- f xs;
-                 if bx then ret (x::r) else ret r
-    end.
+Definition NotAProduct : Exception. exact exception. Qed.
+Program Definition intro (n : string) : tactic := fun g=>
+  mmatch g return M list goal with
+  | [? (A:Type) (P:A -> Type) e] @TheGoal (forall x:A, P x) e =>
+    tnu n (fun x=>
+      e' <- evar _;
+      g <- abs x e';
+      munify e g;;
+      new_goal <- abs x (TheGoal e');
+      ret [(AHyp new_goal)])
+  | _ => raise NotAProduct
+  end.
+
+Program Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
+  mmatch g return M list goal with
+  | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
+    munify B A;;
+    n <- get_name t;
+    tnu n (fun x=>
+      e' <- evar _;
+      g <- abs x e';
+      munify e g;;
+      x <- coerce x;
+      let x := hnf x in
+      t x (TheGoal e') >> close_goals x)
+  | _ => raise NotAProduct
+  end.
 
 Fixpoint is_open (g : goal) : M bool :=
   match g with
@@ -99,10 +133,8 @@ Program Definition copy_ctx {A} (B : A -> Type) :=
         nu y : C,
         r <- rec (Dyn _ (c y));
         pabs y r
-    | _ => print_term A;; print_term d;; raise NotAGoal
+    | _ => raise NotAGoal
     end.
-
-Definition CantCoerce : Exception. exact exception. Qed.
 
 Definition to_goal d :=
   match d with
@@ -127,7 +159,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
     gT <- goal_type g;
     munify Pn gT;;
     l <- constrs A;
-    l <- LtacEmu.mmap (fun d : dyn =>
+    l <- mmap (fun d : dyn =>
       (* a constructor c has type (forall x, ... y, A) and we return
          (forall x, ... y, P (c x .. y)) *)
       t' <- copy_ctx P d;
@@ -153,41 +185,28 @@ Definition reflexivity : tactic := fun g=>
 
 Example fail_not_var : 0 = 0.
 MProof.
-  Fail run_tac (destruct 0).
+  Fail destruct 0.
 Abort.
 
-Goal forall n:nat, n = n.
+Example ex_destr (n:nat) : n = n.
 MProof.
-  mintro n.
-  run_tac (destruct n).
-  mintro n'.
-  run_tac reflexivity.
-  run_tac reflexivity.
+  destruct n.
+  intro "n'".
+  reflexivity.
+  reflexivity.
 Qed.
 
 Goal forall b : bool, b = b.
 MProof.
-  mintro b.
-  run_tac (bbind (destruct b) [reflexivity; reflexivity]).
+  intro "b".
+  bbind (destruct b) [reflexivity; reflexivity].
 Qed.
 
-Definition NotAProduct : Exception. exact exception. Qed.
-Program Definition intro (n : string) : tactic := fun g=>
-  mmatch g return M list goal with
-  | [? (A:Type) (P:A -> Type) e] @TheGoal (forall x:A, P x) e =>
-    tnu n (fun x=>
-      e' <- evar _;
-      g <- abs x e';
-      munify e g;;
-      new_goal <- abs x (TheGoal e');
-      ret [(AHyp new_goal)])
-  | _ => raise NotAProduct
-  end.
 
 Require Import Bool.Bool.
 Goal forall b1 : bool, b1 = b1.
 MProof.
-  run_tac (bbind (intro "b1") [reflexivity]).
+  bbind (intro "b1") [reflexivity].
 Qed.
 
 Definition idtac : tactic := fun g=>ret [g].
@@ -204,25 +223,10 @@ Definition tryt (t:tactic) := fun g=>
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
-  run_tac (bindb (intro "b1") (bindb (intro "b2") (intro "b3"))).
-  run_tac (bindb (destruct b1) (bindb (destruct b2) ((bindb (destruct b3) reflexivity)))).
+  bindb (intro "b1") (bindb (intro "b2") (intro "b3")).
+  bindb (destruct b1) (bindb (destruct b2) ((bindb (destruct b3) reflexivity))).
 Qed.
 
-Program Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
-  mmatch g return M list goal with
-  | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
-    munify B A;;
-    n <- get_name t;
-    tnu n (fun x=>
-      e' <- evar _;
-      g <- abs x e';
-      munify e g;;
-      x <- coerce x;
-      let x := hnf x in
-      print_term x;;
-      t x (TheGoal e') >> close_goals x)
-  | _ => raise NotAProduct
-  end.
 
 
 Class semicolon {A} {B} {C} (t:A) (u:B) := SemiColon { the_value : C }.
@@ -250,8 +254,8 @@ Notation "'intro' x" := (intro_cont (fun x=>idtac)) (at level 40).
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
-  run_tac (intro b1 ;; intro b2 ;; intro b3).
-  run_tac (destruct b1 ;; destruct b2 ;; destruct b3 ;; reflexivity).
+  intro b1 ;; intro b2 ;; intro b3.
+  destruct b1 ;; destruct b2 ;; destruct b3 ;; reflexivity.
 Qed.
 
 Notation "'cintro' x '{-' t '-}'" := (intro_cont (fun x=>t)) (at level 0, right associativity).
@@ -263,24 +267,18 @@ Definition type_of {A} (x:A) := A.
 
 Goal forall b1 b2 : bool, b1 && b2 = b2 && b1.
 MProof.
-  run_tac (cintros b1 b2 {-
-    destruct b1
-   -}).
-Abort.
+  cintros b1 b2 {-
+    destruct b1 ;; destruct b2 ;; reflexivity
+  -}.
+Qed.
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
-  run_tac (cintros b1 b2 {-
+  cintros b1 b2 {-
     destruct b1 ;; destruct b2 ;;
     cintro b3 {- destruct b3 ;; reflexivity -}
-   -}).
-Abort.
-
-Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
-Proof.
-  intro b1; intro b2; destruct b1; destruct b2; intro b3; destruct b3; reflexivity.
+  -}.
 Qed.
-Print Unnamed_thm4.
 
 Definition get_goal : goal -> M dyn := fun g =>
   match g with
@@ -289,6 +287,8 @@ Definition get_goal : goal -> M dyn := fun g =>
   end.
 
 Obligation Tactic := idtac.
+
+Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 Program Definition apply {T} (c : T) : tactic := fun g=>
   (mfix2 app (U : Type) (d : U) : M (list goal) :=
     ttry (
@@ -310,13 +310,13 @@ Program Definition apply {T} (c : T) : tactic := fun g=>
 
 Goal (forall x, x > 0) -> 3 > 0.
 MProof.
-  run_tac (intro H).
-  run_tac (apply H).
+  intro H.
+  apply H.
 Qed.
 
 Goal (forall x, x > 0) -> 3 > 0.
 MProof.
-  run_tac (cintro H {- apply H -}).
+  cintro H {- apply H -}.
 Qed.
 
 Definition NotAnOr : Exception. exact exception. Qed.
@@ -339,5 +339,5 @@ Definition gomega := ltac "Coq.omega.Omega.omega" nil.
 
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.
-  run_tac (cintro H {- apply H;; left;; gomega -}).
+  cintro H {- apply H;; left;; gomega -}.
 Qed.

@@ -12,4 +12,5 @@ src/metaCoqInterp.mli
 src/metaCoqTactic.ml4
 src/MetaCoqPlugin.mllib
 theories/MetaCoq.v
-theories/LtacEmu.v
+theories/MCListUtils.v
+theories/MCTactics.v

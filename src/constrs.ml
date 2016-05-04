@@ -311,6 +311,20 @@ module CoqUnit = struct
   let mkTT = Constr.mkConstr "Coq.Init.Datatypes.tt"
 end
 
-module CoqReduceGoal = struct
-  let mkReduceGoal = Constr.mkConstr "MetaCoq.LtacEmu.reduceGoal"
+module MCTactics = struct
+  let reduceGoal = "metaCoqReduceGoal"
+  let runTac = "run_tac"
+  let tactic = "tactic"
+
+  let mkConst s =
+    let open Nametab in let open Libnames in
+    try Term.mkConst (locate_constant (qualid_of_string s))
+    with _ -> raise (Constr.Constr_not_found s)
+
+  let mkReduceGoal = lazy (mkConst reduceGoal)
+
+  let mkRunTac = lazy (mkConst runTac)
+
+  let mkTactic = lazy (mkConst tactic)
+
 end
