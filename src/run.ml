@@ -199,7 +199,13 @@ module Pattern = struct
         begin
           let ty = List.nth args 4 in
           let func = List.nth args 5 in
-          let (sigma, evar) = Evarutil.new_evar env sigma ty in
+          let (sigma, evar) =
+            if Term.isSort ty && ty <> mkProp then
+              let (sigma, (evar, _)) = Evarutil.new_type_evar env sigma Evd.UnivRigid in
+              (sigma, evar)
+            else
+              Evarutil.new_evar env sigma ty
+          in
           let evars = Evar.Set.add (fst (destEvar evar)) evars in
           op sigma (mkApp (func, [|evar|])) evars
         end
