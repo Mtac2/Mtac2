@@ -20,7 +20,7 @@ Definition ArrayOutOfBounds : Exception. exact exception. Qed.
 
 Definition NoPatternMatches : Exception. exact exception. Qed.
 
-Definition NotUnifiableException {A} (x y : A) : Exception. exact exception. Qed.
+Definition NotUnifiable {A} (x y : A) : Exception. exact exception. Qed.
 
 Record dyn := Dyn { type : Type; elem : type }.
 
@@ -126,7 +126,7 @@ Inductive MetaCoq : Type -> Prop :=
 
 | pabs : forall {A P} (x : A), P x -> MetaCoq Type
 
-| munify {A} (x y : A) : MetaCoq (x = y)
+| munify {A} (x y : A) : MetaCoq (option (x = y))
 
 | call_ltac : forall {A : Type}, string -> list Sig -> MetaCoq A
 | list_ltac : forall {A : Type} {_ : A}, MetaCoq A

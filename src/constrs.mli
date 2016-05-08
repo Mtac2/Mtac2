@@ -76,6 +76,7 @@ module CoqBool : sig
 end
 
 module CoqEq : sig
+  val mkAppEq : types -> constr -> constr -> constr
   val mkAppEqRefl : types -> constr -> constr
 end
 

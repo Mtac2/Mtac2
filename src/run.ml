@@ -936,14 +936,17 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
     | 30 -> (* munify *)
         let a, x, y = nth 0, nth 1, nth 2 in
+        let feqT = CoqEq.mkAppEq a x y in
         begin
           try
-            let sigma = the_conv_x env x y sigma in
+            let sigma = the_conv_x_leq env x y sigma in
             let sigma = consider_remaining_unif_problems env sigma in
             let feq = CoqEq.mkAppEqRefl a x in
-            return sigma metas feq
+            let someFeq = CoqOption.mkSome feqT feq in
+            return sigma metas someFeq
           with Evarconv.UnableToUnify _ ->
-            fail sigma metas (Exceptions.mkNotUnifiable a x y)
+            let none = CoqOption.mkNone feqT in
+            return sigma metas none
         end
 
     | 31 -> (* call_ltac *)
@@ -995,7 +998,7 @@ and run_fix (env, renv, sigma, _, _ as ctxt) h a b s i f x =
   let c = mkApp (f, Array.append [| fixf|] x) in
   run' ctxt c
 
-and match_and_run (env, renv, sigma0, undo, metas as ctxt) a b t p =
+and match_and_run (env, renv, sigma0, undo, metas) a b t p =
   try
     let open Munify in
     let open Pattern in

@@ -17,10 +17,10 @@ Definition coerce_rect {A : Type} (B : Type) (H : A = B) (x : A) : B :=
 Definition CantCoerce : Exception. exact exception. Qed.
 
 Definition coerce {A B : Type} (x : A) : M B :=
-  mtry
-    H <- munify A B;
-    retS (coerce_rect B H x)
-  with _ => raise CantCoerce
+  oH <- munify A B;
+  match oH with
+  | Some H => retS (coerce_rect B H x)
+  | _ => raise CantCoerce
   end.
 
 Inductive goal :=
@@ -54,13 +54,20 @@ Definition goal_to_dyn : goal -> M dyn := fun g =>
 
 Definition idtac : tactic := fun g=>ret [g].
 
+Definition unify_or_fail {A} (x y : A) : M (x = y) :=
+  oeq <- munify x y;
+  match oeq with
+  | None => raise (NotUnifiable x y)
+  | Some eq=> ret eq
+  end.
+
 Definition exact {A} (x:A) : tactic := fun g=>
-  munify g (TheGoal x);; ret nil.
+  unify_or_fail g (TheGoal x);; ret nil.
 
 Definition reflexivity : tactic := fun g=>
   A <- evar Type;
   x <- evar A;
-  munify g (TheGoal (eq_refl x));; ret nil.
+  unify_or_fail g (TheGoal (eq_refl x));; ret nil.
 
 Definition tryt (t:tactic) := fun g=>
   mtry t g with _ => ret [g] end.
@@ -71,33 +78,21 @@ Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
   mmap (fun g'=>r <- abs x g'; ret (@AHyp A r)).
 
 Definition NotAProduct : Exception. exact exception. Qed.
-(* Program Definition intro (n : string) : tactic := fun g=>
-  mmatch g return M list goal with
-  | [? (A:Type) (P:A -> Type) e] @TheGoal (forall x:A, P x) e =>
-    tnu n (fun x=>
-      e' <- evar _;
-      g <- abs x e';
-      munify e g;;
-      new_goal <- abs x (TheGoal e');
-      ret [(AHyp new_goal)])
-  | _ => raise NotAProduct
-  end.
-*)
-Program Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
+
+Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
   mmatch g return M list goal with
   | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
-    munify B A;;
+    unify_or_fail B A;; (* A might be an evar, so it will fail to match. therefore, we have to unify it later *)
     n <- get_name t;
     tnu n (fun x=>
       e' <- evar _;
       g <- abs x e';
-      munify e g;;
+      unify_or_fail e g;;
       x <- coerce x;
       let x := hnf x in
       t x (TheGoal e') >> close_goals x)
   | _ => raise NotAProduct
   end.
-
 
 Fixpoint is_open (g : goal) : M bool :=
   match g with
@@ -186,7 +181,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
     P <- Cevar (A->Type) ctx;
     let Pn := P n in
     gT <- goal_type g;
-    munify Pn gT;;
+    unify_or_fail Pn gT;;
     l <- constrs A;
     l <- mmap (fun d : dyn =>
       (* a constructor c has type (forall x, ... y, A) and we return
@@ -203,7 +198,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
     d <- makecase c;
     d <- coerce (elem d);
     let d := hnf d in
-    munify (@TheGoal Pn d) g;;
+    unify_or_fail (@TheGoal Pn d) g;;
     let l := hnf (List.map dyn_to_goal l) in
     ret l.
 
@@ -212,33 +207,115 @@ Definition type_of {A} (x:A) := A.
 Local Obligation Tactic := idtac.
 
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
-Program Definition apply {T} (c : T) : tactic := fun g=>
+
+Definition apply {T} (c : T) : tactic := fun g=>
   (mfix2 app (U : Type) (d : U) : M (list goal) :=
-    ttry (
-      munify (TheGoal d) g;;
-      ret []
-    )
-    (fun e=> (* should check if e is NotUnifiable *)
+    oeq <- munify (TheGoal d) g;
+    match oeq with
+    | Some _ => ret []
+    | None =>
       mmatch U return M (list goal) with
-      | [? (T1 : Type) (T2 : T1 -> Prop)] (forall x:T1, T2 x) => [H]
+      | [? (T1 : Type) (T2 : T1 -> Type)] (forall x:T1, T2 x) => [H]
           e <- evar T1;
-          r <- app (T2 e) (eq_rect_r (fun U=>U) d H e);
+          let d := match eq_sym H in (_ = x) return x with
+          | eq_refl => d
+          end in
+          r <- app (T2 e) (d e);
           ret (TheGoal e :: r)
       | _ =>
-          g <- goal_to_dyn g;
-          let g := hnf g in
+          g <- goal_type g;
           raise (CantApply c g)
       end
-    )) _ c.
+    end
+    ) _ c.
 
 Definition left : tactic := apply or_introl.
 Definition right : tactic := apply or_intror.
+
+Definition transitivity {B : Type} (y : B) : tactic :=
+  apply (fun x => @eq_trans B x y).
+
+Definition symmetry : tactic :=
+  apply (@eq_sym).
+
+Inductive goal_pattern : Type :=
+| gbase : forall (B : Type), M B -> goal_pattern
+| gtele : forall {C}, (forall (x : C), goal_pattern) -> goal_pattern.
+
+Arguments gbase _ _.
+Arguments gtele {C} _.
+
+Notation "[[ x .. y |- ps ] ] => t" :=
+  (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
+  (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
+Delimit Scope goal_match_scope with goal_match.
+
+Definition DoesNotMatchGoal : Exception. exact exception. Qed.
+(*
+Definition coerce_rect_r {A B : Type} (H : B = A) (x : A) : B :=
+  eq_rect_r (fun T => T) x H.
+
+Definition match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun gl =>
+  P <- goal_type gl;
+  (fix mg (p : goal_pattern) (l : list Hyp) :=
+    print_term p;;
+    print_term l;;
+    match p, l with
+    | gbase g t, _ =>
+      oeq <- munify g P;
+       match oeq with
+       | Some eq => t gl
+       | None => raise DoesNotMatchGoal end
+    | @gtele C f, (@ahyp A a None :: l) =>
+      e <- evar C;
+      teq <- munify C A;
+      match teq with
+      | Some deq =>
+        mtry mg (f (coerce_rect_r deq a)) l with DoesNotMatchGoal => print "falla";; mg p l end
+      | None => mg p l end
+    | _, _ => raise DoesNotMatchGoal
+    end) p l.
+
+Definition match_goal p : tactic := fun g=>l <- hypotheses; match_goal' p l g.
+Arguments match_goal p%goal_match _.
+*)
+
+Fixpoint match_goal' {P} (p : goal_pattern) (l : list Hyp) : M P :=
+  match p, l with
+  | gbase g t, _ =>
+    peq <- munify g P;
+    match peq with
+    | Some e => match e in (_ = P) return M P with eq_refl => t end
+    | None => raise DoesNotMatchGoal
+    end
+  | @gtele C f, (@ahyp A a None :: l) =>
+    teq <- munify C A;
+    match teq with
+    | Some eq =>
+      e <- evar C;
+      let e' := match eq with eq_refl => e end in
+      munify e' a;; match_goal' (f e) l
+    | None => match_goal' p l end
+  | _, _ => raise DoesNotMatchGoal
+  end.
+
+Definition match_goal {P} p : M P := hypotheses >> match_goal' p.
+Arguments match_goal {P} p%goal_match.
+
+Definition assumption' {P : Type} : M P :=
+  match_goal ([[ x:P |- P ]] => ret x).
+
+Definition assumption : tactic := fun g=>
+  P <- goal_type g;
+  r <- @assumption' P;
+  unify_or_fail g (TheGoal r);;
+  ret [].
 
 Definition ltac (t : string) (args : list Sig) : tactic := fun g=>
   d <- goal_to_dyn g;
   let ty := simpl (type d) in
   v <- @call_ltac ty t args;
-  munify v (elem d);;
+  unify_or_fail v (elem d);;
   ret [].
 
 Require Import Coq.omega.Omega.
@@ -248,7 +325,9 @@ Module MCTacticsNotations.
 
 Notation "t || u" := (OR t u).
 
-Notation "'intro' x" := (intro_cont (fun x=>idtac)) (at level 40).
+(* We need a fresh evar to be able to use intro with ;; *)
+Notation "'intro' x" :=
+  ((fun g=>T <- evar Type; @intro_cont T (fun x=>idtac) g) : tactic) (at level 40).
 Notation "'intros' x .. y" :=
   (intro_cont (fun x=>.. (intro_cont (fun y=>idtac)) ..))
     (at level 0, x binder, y binder, right associativity).
