@@ -903,7 +903,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
     | 23 -> (* print term *)
         let t = nth 1 in
-        let t = whd_evar sigma t in
+        let t = nf_evar sigma t in
         print_term t;
         return sigma metas (Lazy.force CoqUnit.mkTT)
 
@@ -938,15 +938,17 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         let a, x, y = nth 0, nth 1, nth 2 in
         let feqT = CoqEq.mkAppEq a x y in
         begin
-          try
-            let sigma = the_conv_x_leq env x y sigma in
-            let sigma = consider_remaining_unif_problems env sigma in
-            let feq = CoqEq.mkAppEqRefl a x in
-            let someFeq = CoqOption.mkSome feqT feq in
-            return sigma metas someFeq
-          with Evarconv.UnableToUnify _ ->
-            let none = CoqOption.mkNone feqT in
-            return sigma metas none
+          let ts = Conv_oracle.get_transp_state (Environ.oracle env) in
+          let r = Munify.unify_evar_conv ts env sigma Reduction.CUMUL x y in
+          let open Evarsolve in
+          match r with
+          | Success sigma ->
+              let feq = CoqEq.mkAppEqRefl a x in
+              let someFeq = CoqOption.mkSome feqT feq in
+              return sigma metas someFeq
+          | _ ->
+              let none = CoqOption.mkNone feqT in
+              return sigma metas none
         end
 
     | 31 -> (* call_ltac *)

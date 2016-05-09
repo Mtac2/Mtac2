@@ -54,6 +54,8 @@ Definition goal_to_dyn : goal -> M dyn := fun g =>
 
 Definition idtac : tactic := fun g=>ret [g].
 
+Definition fail (e : Exception) : tactic := fun g=>raise e.
+
 Definition unify_or_fail {A} (x y : A) : M (x = y) :=
   oeq <- munify x y;
   match oeq with
@@ -229,87 +231,120 @@ Definition apply {T} (c : T) : tactic := fun g=>
     end
     ) _ c.
 
-Definition left : tactic := apply or_introl.
-Definition right : tactic := apply or_intror.
-
 Definition transitivity {B : Type} (y : B) : tactic :=
   apply (fun x => @eq_trans B x y).
 
 Definition symmetry : tactic :=
-  apply (@eq_sym).
+  apply eq_sym.
+
+Definition CantFindConstructor : Exception. exact exception. Qed.
+Definition ConstructorsStartsFrom1 : Exception. exact exception. Qed.
+
+Definition constructor (n : nat) : tactic := fun g=>
+  A <- goal_type g;
+  match n with
+  | 0 => raise ConstructorsStartsFrom1
+  | S n =>
+      l <- constrs A;
+      match nth_error l n with
+        | Some x => apply (elem x) g
+        | None => fail CantFindConstructor g
+      end
+  end.
+
+(*
+Definition constructor0 {A : Type} : M A :=
+  l <- constrs A;
+  (mfix1 rec (l : list dyn) : M A :=
+     match l with
+     | [] => raise CantFindConstructor
+     | x::xs => mtry coerce_applied (elem x) with CantCoerce => rec xs end
+     end
+  ) l.
+*)
+
+Definition Not1Constructor : Exception. exact exception. Qed.
+
+Definition split : tactic := fun g=>
+  A <- goal_type g;
+  l <- constrs A;
+  match l with
+  | [_] =>  constructor 1 g
+  | _ => raise Not1Constructor
+  end.
+
+Definition Not2Constructor : Exception. exact exception. Qed.
+
+Definition left : tactic := fun g=>
+  A <- goal_type g;
+  l <- constrs A;
+  match l with
+  | [x; _] => apply (elem x) g
+  | _ => raise Not2Constructor
+  end.
+
+Definition right : tactic := fun g=>
+  A <- goal_type g;
+  l <- constrs A;
+  match l with
+  | [_; x] => apply (elem x) g
+  | _ => raise Not2Constructor
+  end.
 
 Inductive goal_pattern : Type :=
-| gbase : forall (B : Type), M B -> goal_pattern
-| gtele : forall {C}, (forall (x : C), goal_pattern) -> goal_pattern.
-
-Arguments gbase _ _.
-Arguments gtele {C} _.
+| gbase : forall {A}, A -> tactic -> goal_pattern
+| gtele : forall {C}, (C -> goal_pattern) -> goal_pattern.
 
 Notation "[[ x .. y |- ps ] ] => t" :=
   (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
   (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
 Delimit Scope goal_match_scope with goal_match.
 
-Definition DoesNotMatchGoal : Exception. exact exception. Qed.
-(*
-Definition coerce_rect_r {A B : Type} (H : B = A) (x : A) : B :=
-  eq_rect_r (fun T => T) x H.
-
-Definition match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun gl =>
-  P <- goal_type gl;
-  (fix mg (p : goal_pattern) (l : list Hyp) :=
-    print_term p;;
-    print_term l;;
-    match p, l with
-    | gbase g t, _ =>
-      oeq <- munify g P;
-       match oeq with
-       | Some eq => t gl
-       | None => raise DoesNotMatchGoal end
-    | @gtele C f, (@ahyp A a None :: l) =>
-      e <- evar C;
-      teq <- munify C A;
-      match teq with
-      | Some deq =>
-        mtry mg (f (coerce_rect_r deq a)) l with DoesNotMatchGoal => print "falla";; mg p l end
-      | None => mg p l end
-    | _, _ => raise DoesNotMatchGoal
-    end) p l.
-
-Definition match_goal p : tactic := fun g=>l <- hypotheses; match_goal' p l g.
-Arguments match_goal p%goal_match _.
-*)
-
-Fixpoint match_goal' {P} (p : goal_pattern) (l : list Hyp) : M P :=
-  match p, l with
-  | gbase g t, _ =>
-    peq <- munify g P;
-    match peq with
-    | Some e => match e in (_ = P) return M P with eq_refl => t end
-    | None => raise DoesNotMatchGoal
+Definition jmeq {A} {B} (x:A) (y:B) : M bool :=
+  teq <- munify A B;
+  match teq with
+  | Some e =>
+    let x := match e in _ = B with eq_refl => x end in
+    veq <- munify x y;
+    match veq with
+    | Some _ => ret true
+    | None => ret false
     end
+  | None => ret false
+  end.
+
+Definition DoesNotMatchGoal : Exception. exact exception. Qed.
+
+Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
+  match p, l with
+  | gbase P t, _ =>
+    gty <- goal_type g;
+    beq <- jmeq P gty;  (* actually, we want a match with reduction here *)
+    if beq then t g
+    else fail DoesNotMatchGoal g
   | @gtele C f, (@ahyp A a None :: l) =>
-    teq <- munify C A;
+    teq <- munify C A; (* same here *)
     match teq with
     | Some eq =>
       e <- evar C;
       let e' := match eq with eq_refl => e end in
-      munify e' a;; match_goal' (f e) l
-    | None => match_goal' p l end
+      munify e' a;;
+      mtry match_goal' (f e) l g
+      with DoesNotMatchGoal =>
+        match_goal' p l g
+      end
+    | None => match_goal' p l g end
   | _, _ => raise DoesNotMatchGoal
   end.
 
-Definition match_goal {P} p : M P := hypotheses >> match_goal' p.
-Arguments match_goal {P} p%goal_match.
+Definition match_goal p : tactic := fun g=>
+  r <- hypotheses; match_goal' p r g.
+Arguments match_goal p%goal_match _.
 
-Definition assumption' {P : Type} : M P :=
-  match_goal ([[ x:P |- P ]] => ret x).
 
 Definition assumption : tactic := fun g=>
   P <- goal_type g;
-  r <- @assumption' P;
-  unify_or_fail g (TheGoal r);;
-  ret [].
+  match_goal ([[ x:P |- P ]] => exact x) g.
 
 Definition ltac (t : string) (args : list Sig) : tactic := fun g=>
   d <- goal_to_dyn g;
