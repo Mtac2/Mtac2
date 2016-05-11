@@ -273,3 +273,14 @@ Goal forall x : Prop, x = x.
 MProof.
   ltac "Coq.Init.Notations.auto" nil.
 Qed.
+
+Ltac rewrite h := rewrite h.
+
+(** intros_all test *)
+Goal forall (x y z : nat) (H: x = y), y = x.
+MProof.
+  intros.
+  ltac "Top.rewrite" [MetaCoq.Exists H].
+  Grab Existential Variables.
+  reflexivity.
+Qed.

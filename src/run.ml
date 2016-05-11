@@ -54,6 +54,7 @@ module Exceptions = struct
   let mkNullPointer = mkInternalException "NullPointer"
   let mkTermNotGround = mkInternalException "TermNotGround"
   let mkOutOfBounds = mkInternalException "ArrayOutOfBounds"
+  let mkWrongTerm = mkInternalException "WrongTerm"
   let mkNotUnifiable a x y =
     let e = mkInternalException "NotUnifiableException" in
     mkApp(Lazy.force e, [|a;x;y|])
@@ -678,17 +679,20 @@ let get_func_name env sigma s f =
 let get_name (env, sigma) t =
   let t = whd_betadeltaiota env sigma t in
   let name =
-    if isVar t then Name (destVar t)
+    if isVar t then Some (Name (destVar t))
     else if isRel t then
-      let (n, _, _) = lookup_rel (destRel t) env in n
+      let (n, _, _) = lookup_rel (destRel t) env in Some n
     else if isLambda t then
-      let (n, _, _) = destLambda t in n
+      let (n, _, _) = destLambda t in Some n
+    else if isProd t then
+      let (n, _, _) = destProd t in Some n
     else
-      Exceptions.block "No variable nor function to get the name from"
+      None
   in
   match name with
-  | Name i -> CoqString.to_coq (Names.Id.to_string i)
-  | _ -> CoqString.to_coq "x"
+  | Some (Name i) -> Some (CoqString.to_coq (Names.Id.to_string i))
+  | Some _ -> Some (CoqString.to_coq "x")
+  | _ -> None
 
 let clean = List.iter ArrayRefs.invalidate
 
@@ -985,7 +989,11 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
     | 33 -> (* get_name *)
         let t = nth 1 in
         let s = get_name (env, sigma) t in
-        return sigma metas s
+        begin
+          match s with
+          | Some s -> return sigma metas s
+          | None -> fail sigma metas (Lazy.force Exceptions.mkWrongTerm)
+        end
 
     | 34 -> (* match_and_run *)
         let a, b, t, p = nth 0, nth 1, nth 2, nth 3 in

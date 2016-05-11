@@ -81,6 +81,7 @@ Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
 
 Definition NotAProduct : Exception. exact exception. Qed.
 
+
 Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
   mmatch g return M list goal with
   | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
@@ -93,6 +94,18 @@ Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
       x <- coerce x;
       let x := hnf x in
       t x (TheGoal e') >> close_goals x)
+  | _ => raise NotAProduct
+  end.
+
+Definition intro_simpl (var: string) : tactic := fun g=>
+  mmatch g with
+  | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
+    tnu var (fun x=>
+      e' <- evar _;
+      g <- abs x e';
+      unify_or_fail e g;;
+      g' <- abs x (TheGoal e');
+      ret [AHyp g'])
   | _ => raise NotAProduct
   end.
 
@@ -113,6 +126,20 @@ Definition open_and_apply (t : tactic) : tactic := fix open g :=
         open (f x) >> close_goals x)
     end.
 
+Definition intros_all : tactic :=
+  mfix1 f (g : goal) : M (list goal) :=
+    open_and_apply (fun g =>
+      mmatch g return M list goal with
+      | [? T e] @TheGoal T e =>
+        mtry
+          xn <- get_name T;
+          r <- intro_simpl xn g;
+          g <- hd_exception r;
+          f g
+        with _ =>
+          ret [g]
+        end
+      end) g.
 
 Definition NotSameSize : Exception. exact exception. Qed.
 Fixpoint gmap (funs : list tactic) (ass : list goal) : M (list (list goal)) :=
@@ -366,6 +393,7 @@ Notation "'intro' x" :=
 Notation "'intros' x .. y" :=
   (intro_cont (fun x=>.. (intro_cont (fun y=>idtac)) ..))
     (at level 0, x binder, y binder, right associativity).
+Notation "'intros'" := (intros_all).
 
 Notation "'cintro' x '{-' t '-}'" := (intro_cont (fun x=>t)) (at level 0, right associativity).
 Notation "'cintros' x .. y '{-' t '-}'" :=

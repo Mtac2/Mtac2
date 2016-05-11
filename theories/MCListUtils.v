@@ -22,3 +22,10 @@ Definition mfilter {A} (b : A -> M bool) : list A -> M (list A) :=
     | x :: xs => bx <- b x; r <- f xs;
                  if bx then ret (x::r) else ret r
     end.
+
+Definition EmptyList : Exception. exact exception. Qed.
+Definition hd_exception {A} (l : list A) : M A :=
+  match l with
+  | (a :: _) => ret a
+  | _ => raise EmptyList
+  end.
