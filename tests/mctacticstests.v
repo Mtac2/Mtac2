@@ -269,6 +269,15 @@ MProof.
   Fail apply Gt.gt_n_S.
 Abort.
 
+(* generalize1 *)
+Goal forall (x : nat) (z : bool) (y : nat), x > y.
+MProof.
+  intros x z y.
+  generalize1.
+  generalize1.
+  generalize1.
+Abort.
+
 Goal forall x : Prop, x = x.
 MProof.
   ltac "Coq.Init.Notations.auto" nil.
@@ -280,7 +289,7 @@ Ltac rewrite h := rewrite h.
 Goal forall (x y z : nat) (H: x = y), y = x.
 MProof.
   intros.
-  ltac "mctacticstests.rewrite" [MetaCoq.Exists H].
+  ltac "Top.rewrite" [MetaCoq.Exists H].
   Grab Existential Variables.
   reflexivity.
 Qed.
@@ -292,8 +301,26 @@ MProof.
   destruct_all bool ;; reflexivity.
 Qed.
 
+Goal forall x : bool, true = x.
+MProof.
+  (* this fails with error "Parameter appears in returned value"
+     because reflexivity is throwing an exception containing
+     the variable introduced. If we remove the arguments from the
+     exception, then the message will be cryptic, but at the same
+     time this message is completely cryptic! *)
+  Fail tryt (intros;; reflexivity).
+Abort.
+
 Goal forall x y : bool, x = y -> y = x.
 MProof.
   intros.
-  Fail destruct x. (* must raise a meaningful exception *)
-Abort.
+  destruct x || idtac.
+  generalize1.
+ (* we can't chain generalize1 with ;; because it won't change
+    the local hypotheses. *)
+  destruct x;; destruct y;; intros ;;
+    (reflexivity || (symmetry ;; assumption)).
+  (* It's creating spurious evars because of the failure in applying
+     reflexivity (I think) *)
+  exact Set. exact bool. exact Set. exact bool.
+Qed.

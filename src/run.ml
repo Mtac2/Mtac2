@@ -55,6 +55,7 @@ module Exceptions = struct
   let mkTermNotGround = mkInternalException "TermNotGround"
   let mkOutOfBounds = mkInternalException "ArrayOutOfBounds"
   let mkWrongTerm = mkInternalException "WrongTerm"
+  let mkMissingDependency = mkInternalException "MissingDependency"
   let mkNotUnifiable a x y =
     let e = mkInternalException "NotUnifiableException" in
     mkApp(Lazy.force e, [|a;x;y|])
@@ -626,6 +627,7 @@ let abs ?(mkprod=false) (env, sigma, metas) a p x y =
   else
     Exceptions.block (Exceptions.error_abs x)
 
+exception MissingDep
 let cvar (env, sigma, metas) ty hyp =
   let hyp = Hypotheses.from_coq_list (env, sigma) hyp in
   let check_vars e t vars =
@@ -634,39 +636,45 @@ let cvar (env, sigma, metas) ty hyp =
       Idset.subset (Termops.collect_vars (Option.get e)) vars
     else true
   in
-  let _, _, subs, env' = List.fold_right (fun (i, e, t) (avoid, avoids, subs, env') ->
-    let t = Reductionops.nf_evar sigma t in
-    let e = Option.map (Reductionops.nf_evar sigma) e in
-    if isRel i then
-      let n = destRel i in
-      let na, _, _ = List.nth (rel_context env) (n-1) in
-      let id = Namegen.next_name_away na avoid in
-      let e = try Option.map (multi_subst subs) e with Not_found -> Exceptions.block "Not well-formed hypotheses 1" in
-      let t = try multi_subst subs t with Not_found -> Exceptions.block "Not well-formed hypotheses 2" in
-      let b = check_vars e t avoids in
-      let d = (id, e, t) in
-      if b then
-        (id::avoid, Idset.add id avoids, (n, mkVar id) :: subs, push_named d env')
-      else
-        Exceptions.block "Not well-formed hypotheses 3"
-    else
-      let id = destVar i in
-      if check_vars e t avoids then
-        (id::avoid, Idset.add id avoids, subs, push_named (id, e, t) env')
-      else
-        Exceptions.block "Not well-formed hypotheses 4"
-  ) hyp ([], Idset.empty, [], empty_env)
+  let b, (_, _, subs, env') =
+    try
+      true, List.fold_right (fun (i, e, t) (avoid, avoids, subs, env') ->
+        let t = Reductionops.nf_evar sigma t in
+        let e = Option.map (Reductionops.nf_evar sigma) e in
+        if isRel i then
+          let n = destRel i in
+          let na, _, _ = List.nth (rel_context env) (n-1) in
+          let id = Namegen.next_name_away na avoid in
+          let e = try Option.map (multi_subst subs) e with Not_found -> Exceptions.block "Not well-formed hypotheses 1" in
+          let t = try multi_subst subs t with Not_found -> Exceptions.block "Not well-formed hypotheses 2" in
+          let b = check_vars e t avoids in
+          let d = (id, e, t) in
+          if b then
+            (id::avoid, Idset.add id avoids, (n, mkVar id) :: subs, push_named d env')
+          else
+            raise MissingDep
+        else
+          let id = destVar i in
+          if check_vars e t avoids then
+            (id::avoid, Idset.add id avoids, subs, push_named (id, e, t) env')
+          else
+            raise MissingDep
+      ) hyp ([], Idset.empty, [], empty_env)
+    with MissingDep -> false, ([], Idset.empty, [], empty_env)
   in
-  let vars = List.map (fun (v, _, _)->v) hyp in
-  try
-    if List.distinct vars then
-      let evi = Evd.make_evar (Environ.named_context_val env') (multi_subst subs ty) in
-      let (sigma, e) = Evarutil.new_pure_evar_full sigma evi in
-      return sigma metas (mkEvar (e, Array.of_list vars))
-    else
-      Exceptions.block "Duplicated variable in hypotheses"
-  with Not_found ->
-    Exceptions.block "Hypothesis not found"
+  if not b then
+    fail sigma metas (Lazy.force Exceptions.mkMissingDependency)
+  else
+    let vars = List.map (fun (v, _, _)->v) hyp in
+    try
+      if List.distinct vars then
+        let evi = Evd.make_evar (Environ.named_context_val env') (multi_subst subs ty) in
+        let (sigma, e) = Evarutil.new_pure_evar_full sigma evi in
+        return sigma metas (mkEvar (e, Array.of_list vars))
+      else
+        Exceptions.block "Duplicated variable in hypotheses"
+    with Not_found ->
+      Exceptions.block "Hypothesis not found"
 
 (* if [f] is a function, we use its variable to get the name, otherwise we
    apply [f] to a fresh new variable. *)

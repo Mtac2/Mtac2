@@ -64,17 +64,18 @@ Definition unify_or_fail {A} (x y : A) : M (x = y) :=
   end.
 
 Definition exact {A} (x:A) : tactic := fun g=>
-  unify_or_fail g (TheGoal x);; ret nil.
+  unify_or_fail (TheGoal x) g;; ret nil.
 
 Definition reflexivity : tactic := fun g=>
   A <- evar Type;
   x <- evar A;
   unify_or_fail g (TheGoal (eq_refl x));; ret nil.
 
-Definition tryt (t:tactic) := fun g=>
+Definition tryt (t:tactic) : tactic := fun g=>
   mtry t g with _ => ret [g] end.
 
-Definition OR (t u : tactic) := fun g => mtry t g with _ => u g end.
+Definition OR (t u : tactic) : tactic := fun g=>
+  mtry t g with _ => u g end.
 
 Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
   mmap (fun g'=>r <- abs x g'; ret (@AHyp A r)).
@@ -237,25 +238,6 @@ Definition generalize1 : tactic := fun g=>
     end
   | _ => raise exception
   end.
-(*
-Goal forall (x : nat) (z : bool) (y : nat), x > y.
-MProof.
-  intro_simpl "x". intro_simpl "y". intro_simpl "z".
-  generalize1.
-*)
-(** Given a goal (P; t), a number n, and a list of hypotheses,
-    it returns (fun x_1, ..., x_n => t) x_1 ... x_n *)
-Definition productify_up_to ty :=
-  fix f n hyps :=
-    match n, hyps with
-    | 0, _ => ret ty
-    | S n, (ahyp x b :: hyps) =>
-      r <- f n hyps;
-      match r with
-      | Dyn _ p => ab <- pabs x p; ret (Dyn _ ab)
-      end
-    | _, _ => raise exception
-    end.
 
 (* if I have a goal (P; ?e) and a number n, I want to
    create a new goal (forall x_1, ..., x_n=>P; ?e')
@@ -345,17 +327,6 @@ Definition constructor (n : nat) : tactic := fun g=>
         | None => fail CantFindConstructor g
       end
   end.
-
-(*
-Definition constructor0 {A : Type} : M A :=
-  l <- constrs A;
-  (mfix1 rec (l : list dyn) : M A :=
-     match l with
-     | [] => raise CantFindConstructor
-     | x::xs => mtry coerce_applied (elem x) with CantCoerce => rec xs end
-     end
-  ) l.
-*)
 
 Definition Not1Constructor : Exception. exact exception. Qed.
 
