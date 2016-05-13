@@ -67,7 +67,7 @@ Inductive Sig : Type := Exists : forall {A : Type}, A -> Sig.
 
 (** Pattern matching without pain *)
 Inductive pattern (M : Type->Prop) A (B : A -> Type) (t : A) : Prop :=
-| pbase : forall (x:A), (x = t -> M (B x)) -> pattern M A B t
+| pbase : forall (x:A), (t = x -> M (B x)) -> pattern M A B t
 | ptele : forall {C}, (forall (x : C), pattern M A B t) -> pattern M A B t.
 
 Inductive MetaCoq : Type -> Prop :=
