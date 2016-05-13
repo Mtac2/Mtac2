@@ -29,3 +29,38 @@ Definition hd_exception {A} (l : list A) : M A :=
   | (a :: _) => ret a
   | _ => raise EmptyList
   end.
+
+Fixpoint last_exception {A} (l : list A) : M A :=
+  match l with
+  | [a] => ret a
+  | (_ :: s) => last_exception s
+  | _ => raise EmptyList
+  end.
+
+Definition mfold_right {A B} (f : B -> A -> M A) (x : A) : list B -> M A :=
+  fix loop l :=
+    match l with
+    | [] => ret x
+    | x :: xs => r <- loop xs;
+                 f x r
+    end.
+
+Definition mfold_left {A B} (f : A -> B -> M A) : list B -> A -> M A :=
+  fix loop l (a : A) :=
+    match l with
+    | [] => ret a
+    | b :: bs => r <- f a b;
+                 loop bs r
+    end.
+
+Definition mindex_of {A} (f : A -> M bool) (l : list A) : M (option nat) :=
+  ir <- mfold_left (fun (ir : (nat * option nat)) x =>
+    let (i, r) := ir in
+    match r with
+    | Some _ => ret ir
+    | _ => b <- f x;
+           if b then ret (i, Some i) else ret (S i, None)
+    end
+  ) l (0, None);
+  let (_, r) := ir in
+  ret r.

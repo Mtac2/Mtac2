@@ -178,7 +178,7 @@ Instance i_mtac A B (t:M A) (u:M B) : semicolon t u | 100 :=
   SemiColon _ _ (_ <- t; u).
 
 
-Program Definition copy_ctx {A} (B : A -> Type) :=
+Definition copy_ctx {A} (B : A -> Type) :=
   mfix1 rec (d : dyn) : M Type :=
     mmatch d with
     | [? c : A] {| elem := c |} =>
@@ -194,12 +194,81 @@ Program Definition copy_ctx {A} (B : A -> Type) :=
     | _ => raise NotAGoal
     end.
 
-Program Definition hyps_except {A} (x : A) :=
+Definition hyps_except {A} (x : A) :=
   l <- hypotheses;
   mfilter (fun y=>mmatch y with
     | [? b] ahyp x b => ret false
     | _ => ret true
     end) l.
+
+Definition find_hyp_index {A} (x : A) :=
+  l <- hypotheses;
+  mindex_of (fun y=>mmatch y with
+    | [? b] ahyp x b => ret true
+    | _ => ret false
+    end) l.
+
+Definition type_of {A} (x:A) := A.
+
+Fixpoint but_last {A} (l : list A) :=
+  match l with
+  | [] => []
+  | [a] => []
+  | (a :: ls) => a :: but_last ls
+  end.
+
+Definition generalize1 : tactic := fun g=>
+  P <- goal_type g;
+  l <- hypotheses;
+  ft <- hd_exception l;
+  let (A, x, _) := ft in
+  aP <- pabs x P; (* aP = (forall x:A, P) *)
+  e <- Cevar aP (List.tl l);
+  mmatch aP with
+  | [? Q : A -> Type] (forall z:A, Q z) => [H]
+    let e' := match H in _ = Q return Q with
+      | eq_refl => e
+      end
+    in
+    oeq <- munify g (@TheGoal (Q x) (e' x));
+    match oeq with
+    | Some _ => ret [TheGoal e]
+    | _ => raise exception
+    end
+  | _ => raise exception
+  end.
+(*
+Goal forall (x : nat) (z : bool) (y : nat), x > y.
+MProof.
+  intro_simpl "x". intro_simpl "y". intro_simpl "z".
+  generalize1.
+*)
+(** Given a goal (P; t), a number n, and a list of hypotheses,
+    it returns (fun x_1, ..., x_n => t) x_1 ... x_n *)
+Definition productify_up_to ty :=
+  fix f n hyps :=
+    match n, hyps with
+    | 0, _ => ret ty
+    | S n, (ahyp x b :: hyps) =>
+      r <- f n hyps;
+      match r with
+      | Dyn _ p => ab <- pabs x p; ret (Dyn _ ab)
+      end
+    | _, _ => raise exception
+    end.
+
+(* if I have a goal (P; ?e) and a number n, I want to
+   create a new goal (forall x_1, ..., x_n=>P; ?e')
+   so ?e should be instantiated with ?e' x_1 ... x_n *)
+(*
+Definition abstract_up_to n : tactic := fun g=>
+  l <- hypotheses;
+  P <- goal_type g;
+  pP <- productify_up_to (Dyn _ P) n l;
+  let l' := hnf (skipn n l) in
+  e <- Cevar pP l';
+*)
+
 
 Definition NotAVariable : Exception. exact exception. Qed.
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
@@ -231,8 +300,6 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
     let l := hnf (List.map dyn_to_goal l) in
     ret l.
 
-Definition type_of {A} (x:A) := A.
-
 Local Obligation Tactic := idtac.
 
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
@@ -246,7 +313,7 @@ Definition apply {T} (c : T) : tactic := fun g=>
       mmatch U return M (list goal) with
       | [? (T1 : Type) (T2 : T1 -> Type)] (forall x:T1, T2 x) => [H]
           e <- evar T1;
-          let d := match eq_sym H in (_ = x) return x with
+          let d := match H in (_ = x) return x with
           | eq_refl => d
           end in
           r <- app (T2 e) (d e);
@@ -365,7 +432,7 @@ Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
   end.
 
 Definition match_goal p : tactic := fun g=>
-  r <- hypotheses; match_goal' p r g.
+  r <- hypotheses; let r := simpl (List.rev r) in match_goal' p r g.
 Arguments match_goal p%goal_match _.
 
 
@@ -382,6 +449,22 @@ Definition ltac (t : string) (args : list Sig) : tactic := fun g=>
 
 Require Import Coq.omega.Omega.
 Definition omega := ltac "Coq.omega.Omega.omega" nil.
+
+Definition option_to_bool {A} (ox : option A) :=
+  match ox with Some _ => true | _ => false end.
+
+Definition destruct_all (T : Type) : tactic := fun g=>
+  l <- hypotheses;
+  l <- mfilter (fun h:Hyp=>
+    let (Th, _, _) := h in
+    r <- munify Th T;
+    ret (option_to_bool r)) l;
+  (fix f (l : list Hyp) : tactic :=
+    match l with
+    | [] => idtac
+    | (ahyp x _ :: l) => @the_value _ _ _ (destruct x) (f l) _
+    end) l g.
+
 
 Module MCTacticsNotations.
 

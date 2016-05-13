@@ -280,7 +280,20 @@ Ltac rewrite h := rewrite h.
 Goal forall (x y z : nat) (H: x = y), y = x.
 MProof.
   intros.
-  ltac "Top.rewrite" [MetaCoq.Exists H].
+  ltac "mctacticstests.rewrite" [MetaCoq.Exists H].
   Grab Existential Variables.
   reflexivity.
 Qed.
+
+(** destruct_all *)
+Goal forall x y : bool, x && y = y && x.
+MProof.
+  intros.
+  destruct_all bool ;; reflexivity.
+Qed.
+
+Goal forall x y : bool, x = y -> y = x.
+MProof.
+  intros.
+  Fail destruct x. (* must raise a meaningful exception *)
+Abort.

@@ -1082,8 +1082,8 @@ let clean_unused_metas sigma metas term =
 let build_hypotheses sigma env =
   let renv = List.mapi (fun i (_, t, ty)->(mkRel (i+1), t, ty))
                (rel_context env)
-             @ List.rev (List.map (fun (n, t, ty)->(mkVar n, t, ty))
-                           (named_context env)) in
+             @ (List.map (fun (n, t, ty)->(mkVar n, t, ty))
+                  (named_context env)) in
   (* the list is reversed: [H : x > 0, x : nat] *)
   let rec build renv =
     match renv with
