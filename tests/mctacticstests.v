@@ -273,9 +273,7 @@ Abort.
 Goal forall (x : nat) (z : bool) (y : nat), x > y.
 MProof.
   intros x z y.
-  generalize1 idtac.
-  generalize1 idtac.
-  generalize1 idtac.
+  generalize1 (generalize1 (generalize1 idtac)).
 Abort.
 
 Goal forall x : Prop, x = x.

@@ -747,27 +747,25 @@ let build_hypotheses sigma env =
   build renv
 
 let env_without sigma env renv x =
-  env, renv
-(*
-   let name_env = named_context env in
-   let rel_env = rel_context env in
-   let env = Environ.reset_context env in
-   if isVar x then
-   let nx = destVar x in
-   let env = fold_named_context (fun _ (n, _, _ as decl) e -> if n = nx then e else push_named decl e)
-   env name_env ~init:env in
-   let env = push_rel_context rel_env env in
-   env, build_hypotheses sigma env
-   else
-   let i = destRel x in
-   let env = fold_rel_context (fun _ (n, ot, ty as decl) (j,e) ->
-   if j > i then (j, push_rel decl e)
-   else if j = i then (j+1, e)
-   else (j+1, push_rel (n, Option.map Termpos.pop ot, Termops.pop ty) e))
-   rel_env empty_rel_context in
-   let env = push_named_context named_env env in
-   env, build_hypotheses sigma env
-*)
+  let name_env = named_context env in
+  let rel_env = rel_context env in
+  let env = Environ.reset_context env in
+  if isVar x then
+    let nx = destVar x in
+    let env = Context.fold_named_context (fun (n, _, _ as decl) e -> if n = nx then e else push_named decl e)
+                name_env ~init:(env:env) in
+    let env = push_rel_context rel_env env in
+    env, build_hypotheses sigma env
+  else
+    let i = destRel x in
+    let _, env = Context.fold_rel_context (fun (n, ot, ty as decl) (j,e) ->
+      if j > i then (j, push_rel decl e)
+      else if j = i then (j+1, e)
+      else (j+1, push_rel (n, Option.map Termops.pop ot, Termops.pop ty) e))
+      rel_env ~init:(1,env) in
+    let env = push_named_context name_env env in
+    env, build_hypotheses sigma env
+
 let rec run' (env, renv, sigma, undo, metas as ctxt) t =
   let (t,sk as appr) = Reductionops.whd_nored_state sigma (t, []) in
   let (h, args) = Reductionops.whd_betadeltaiota_nolet_state env sigma appr in
@@ -1055,7 +1053,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         let x = whd_betadeltaiota env sigma x in
         if isVar x || isRel x then
           if check_dependencies env x t then
-            let env, renv = env_without sigma env renv x in
+            let env, (sigma, renv) = env_without sigma env renv x in
             run' (env, renv, sigma, undo, metas) t
           else
             Exceptions.block "Environment or term depends on variable"
