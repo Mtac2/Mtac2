@@ -6,15 +6,26 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
-Require Import MetaCoq.LtacEmu.
+Require Import MetaCoq.MCTactics.
+Import MCTacticsNotations.
 
 (** The type [bool] is defined in the prelude as
     [Inductive bool : Set := true : bool | false : bool] *)
 
 (** Most of the lemmas in this file are trivial after breaking all booleans *)
 
+Ltac trivial := trivial.
+Ltac discriminate := discriminate.
+Ltac simpl_in_all := simpl in *.
+
+Definition not_yet_there :=
+  ltac "Top.trivial" nil;; ltac "Top.discriminate" nil.
+
+Definition destr_bool :=
+ intros;; destruct_all bool;; not_yet_there.
+
 Ltac destr_bool :=
- intros; destruct_all bool; simpl in *; trivial; try discriminate.
+ intros; destruct_all bool; simpl in *; trivial; discriminate.
 
 (** Interpretation of booleans as propositions *)
 
@@ -51,7 +62,9 @@ Hint Resolve diff_false_true : bool v62.
 Hint Extern 1 (false <> true) => exact diff_false_true.
 
 Lemma eq_true_false_abs : forall b:bool, b = true -> b = false -> False.
-Proof.
+MProof.
+  intros.
+  destruct b.
   destr_bool.
 Qed.
 

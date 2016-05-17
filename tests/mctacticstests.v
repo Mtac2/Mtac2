@@ -273,9 +273,9 @@ Abort.
 Goal forall (x : nat) (z : bool) (y : nat), x > y.
 MProof.
   intros x z y.
-  generalize1.
-  generalize1.
-  generalize1.
+  generalize1 idtac.
+  generalize1 idtac.
+  generalize1 idtac.
 Abort.
 
 Goal forall x : Prop, x = x.
@@ -315,7 +315,7 @@ Goal forall x y : bool, x = y -> y = x.
 MProof.
   intros.
   destruct x || idtac.
-  generalize1.
+  generalize1 idtac.
  (* we can't chain generalize1 with ;; because it won't change
     the local hypotheses. *)
   destruct x;; destruct y;; intros ;;
@@ -324,3 +324,6 @@ MProof.
      reflexivity (I think) *)
   exact Set. exact bool. exact Set. exact bool.
 Qed.
+
+(* a good example of why we need to get bindings right in tactics *)
+Fail Ltac test := rename x into y.

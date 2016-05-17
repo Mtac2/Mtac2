@@ -137,6 +137,8 @@ Inductive MetaCoq : Type -> Prop :=
 
 | get_name : forall {A}, A -> MetaCoq string
 | match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
+
+| remove : forall {A B}, A -> MetaCoq B -> MetaCoq B
 .
 
 Definition array_length : forall {A}, array A -> length :=

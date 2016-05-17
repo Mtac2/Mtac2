@@ -218,7 +218,7 @@ Fixpoint but_last {A} (l : list A) :=
   | (a :: ls) => a :: but_last ls
   end.
 
-Definition generalize1 : tactic := fun g=>
+Definition generalize1 (cont: tactic) : tactic := fun g=>
   P <- goal_type g;
   l <- hypotheses;
   ft <- hd_exception l;
@@ -233,7 +233,7 @@ Definition generalize1 : tactic := fun g=>
     in
     oeq <- munify g (@TheGoal (Q x) (e' x));
     match oeq with
-    | Some _ => ret [TheGoal e]
+    | Some _ => MetaCoq.remove x (cont (TheGoal e))
     | _ => raise exception
     end
   | _ => raise exception

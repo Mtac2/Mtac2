@@ -588,16 +588,28 @@ let multi_subst l c =
     | _ -> map_constr_with_binders succ substrec depth c in
   substrec 0 c
 
+(* check if x \not\in FV(t) union FV(env) *)
+let check_dependencies env x t =
+  if isRel x then
+    let rel = destRel x in
+    Vars.noccurn rel t && noccurn_env env rel
+  else if isVar x then
+    let name = destVar x in
+    not (Termops.occur_var env name t) && not (name_occurn_env env name)
+  else
+    failwith "check_dependencies should not be called with not a var or rel"
+
+
 (** Abstract *)
-let abs ?(mkprod=false) (env, sigma, metas) a p x y =
+let abs ?(mkprod=false) (env, sigma, metas) a p x y : data =
   let x = whd_betadeltaiota env sigma x in
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
-  if isRel x then
-    let rel = destRel x in
-    if Vars.noccurn rel p then
-      if noccurn_env env rel then
+  if isRel x || isVar x then
+    if check_dependencies env x p then
+      if isRel x then
+        let rel = destRel x in
         try
           let (name, _, _) = lookup_rel rel env in
           let y' = mysubstn (mkRel 1) rel y in
@@ -608,22 +620,14 @@ let abs ?(mkprod=false) (env, sigma, metas) a p x y =
         with AbstractingArrayType ->
           Exceptions.block Exceptions.error_abs_ref
       else
-        Exceptions.block Exceptions.error_abs_env
-    else
-      Exceptions.block Exceptions.error_abs_type
-  else if isVar x then
-    let name = destVar x in
-    if not (Termops.occur_var env name p) then
-      if not (name_occurn_env env name) then
+        let name = destVar x in
         let y' = Vars.subst_vars [name] y in
         let t =
           if mkprod then Term.mkProd (Name name, a, y')
           else Term.mkLambda (Name name, a, y') in
         return sigma metas t
-      else
-        Exceptions.block Exceptions.error_abs_env
     else
-      Exceptions.block Exceptions.error_abs_type
+      Exceptions.block Exceptions.error_abs_env
   else
     Exceptions.block (Exceptions.error_abs x)
 
@@ -725,6 +729,45 @@ let hash (env, _, sigma, undo, _) c size =
   let h = Term.hash_constr (upd 0 c) in
   CoqN.to_coq (Pervasives.abs (h mod size))
 
+(* reflects the hypotheses in [env] in a list of [ahyp] *)
+let build_hypotheses sigma env =
+  let renv = List.mapi (fun i (_, t, ty)->(mkRel (i+1), t, ty))
+               (rel_context env)
+             @ (List.map (fun (n, t, ty)->(mkVar n, t, ty))
+                  (named_context env)) in
+  (* the list is reversed: [H : x > 0, x : nat] *)
+  let rec build renv =
+    match renv with
+    | [] -> let ty = Lazy.force Hypotheses.mkHypType in
+        (sigma, CoqList.makeNil ty)
+    | (n, t, ty) :: renv ->
+        let (sigma, r) = build renv in
+        Hypotheses.cons_hyp ty n t r sigma env
+  in
+  build renv
+
+let env_without sigma env renv x =
+  env, renv
+(*
+   let name_env = named_context env in
+   let rel_env = rel_context env in
+   let env = Environ.reset_context env in
+   if isVar x then
+   let nx = destVar x in
+   let env = fold_named_context (fun _ (n, _, _ as decl) e -> if n = nx then e else push_named decl e)
+   env name_env ~init:env in
+   let env = push_rel_context rel_env env in
+   env, build_hypotheses sigma env
+   else
+   let i = destRel x in
+   let env = fold_rel_context (fun _ (n, ot, ty as decl) (j,e) ->
+   if j > i then (j, push_rel decl e)
+   else if j = i then (j+1, e)
+   else (j+1, push_rel (n, Option.map Termpos.pop ot, Termops.pop ty) e))
+   rel_env empty_rel_context in
+   let env = push_named_context named_env env in
+   env, build_hypotheses sigma env
+*)
 let rec run' (env, renv, sigma, undo, metas as ctxt) t =
   let (t,sk as appr) = Reductionops.whd_nored_state sigma (t, []) in
   let (h, args) = Reductionops.whd_betadeltaiota_nolet_state env sigma appr in
@@ -1007,6 +1050,18 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         let a, b, t, p = nth 0, nth 1, nth 2, nth 3 in
         match_and_run ctxt a b t p
 
+    | 35 -> (* remove *)
+        let x, t = nth 2, nth 3 in
+        let x = whd_betadeltaiota env sigma x in
+        if isVar x || isRel x then
+          if check_dependencies env x t then
+            let env, renv = env_without sigma env renv x in
+            run' (env, renv, sigma, undo, metas) t
+          else
+            Exceptions.block "Environment or term depends on variable"
+        else
+          Exceptions.block "Not a variable"
+
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"
 
@@ -1085,23 +1140,6 @@ let clean_unused_metas sigma metas term =
     | None -> None
   in
   Evd.restore_future_goals sigma alive principal_goal
-
-(* reflects the hypotheses in [env] in a list of [ahyp] *)
-let build_hypotheses sigma env =
-  let renv = List.mapi (fun i (_, t, ty)->(mkRel (i+1), t, ty))
-               (rel_context env)
-             @ (List.map (fun (n, t, ty)->(mkVar n, t, ty))
-                  (named_context env)) in
-  (* the list is reversed: [H : x > 0, x : nat] *)
-  let rec build renv =
-    match renv with
-    | [] -> let ty = Lazy.force Hypotheses.mkHypType in
-        (sigma, CoqList.makeNil ty)
-    | (n, t, ty) :: renv ->
-        let (sigma, r) = build renv in
-        Hypotheses.cons_hyp ty n t r sigma env
-  in
-  build renv
 
 let run (env, sigma) t  =
   let _ = ArrayRefs.clean () in
