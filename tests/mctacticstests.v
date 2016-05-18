@@ -312,12 +312,11 @@ Abort.
 Goal forall x y : bool, x = y -> y = x.
 MProof.
   intros.
-  destruct x || idtac.
-  generalize1 idtac.
- (* we can't chain generalize1 with ;; because it won't change
-    the local hypotheses. *)
-  destruct x;; destruct y;; intros ;;
-    (reflexivity || (symmetry ;; assumption)).
+  destruct x || idtac. (* should execute idtac because x0 depends on x *)
+  generalize1 (
+    destruct x;; destruct y;; intros ;;
+      (reflexivity || (symmetry ;; assumption))
+  ).
   (* It's creating spurious evars because of the failure in applying
      reflexivity (I think) *)
   exact Set. exact bool. exact Set. exact bool.

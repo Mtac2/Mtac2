@@ -759,10 +759,10 @@ let env_without sigma env renv x =
   else
     let i = destRel x in
     let _, env = Context.fold_rel_context (fun (n, ot, ty as decl) (j,e) ->
-      if j > i then (j, push_rel decl e)
-      else if j = i then (j+1, e)
-      else (j+1, push_rel (n, Option.map Termops.pop ot, Termops.pop ty) e))
-      rel_env ~init:(1,env) in
+      if j > i then (j-1, push_rel decl e)
+      else if j = i then (j-1, e)
+      else (j-1, push_rel (n, Option.map Termops.pop ot, Termops.pop ty) e))
+      rel_env ~init:(List.length rel_env,env) in
     let env = push_named_context name_env env in
     env, build_hypotheses sigma env
 
@@ -1053,8 +1053,11 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         let x = whd_betadeltaiota env sigma x in
         if isVar x || isRel x then
           if check_dependencies env x t then
+            (* if it's a rel we need to update the indices in t, since there is one element less in the context *)
+            let t = if isRel x then Vars.liftn (-1) (destRel x) t else t in
             let env, (sigma, renv) = env_without sigma env renv x in
-            run' (env, renv, sigma, undo, metas) t
+            run' (env, renv, sigma, undo, metas) t >>= fun (sigma, metas, v)->
+            return sigma metas (if isRel x then Vars.liftn (+1) (destRel x) v else v)
           else
             Exceptions.block "Environment or term depends on variable"
         else

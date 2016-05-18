@@ -1,0 +1,33 @@
+Require Import MetaCoq.MCTactics.
+Import MetaCoqNotations.
+
+Example test_remove1 (x y z : nat) : x > y -> x > y.
+MProof.
+  Fail remove x (ret id). (* the meta-variable depends on it *)
+  remove z (ret id). (* z is not required for the proof *)
+Qed.
+
+Example test_remove2 (z y x : nat) : x > y -> x > y.
+MProof.
+  remove z (ret id). (* z is not required for the proof *)
+Qed.
+
+Example test_remove3 : forall x y z : nat, x > y -> x > y.
+MProof.
+  (* z is not required for the proof *)
+  nu x y z : nat,
+   r1 <- remove z (ret id);
+   r2 <- abs z r1;
+   r3 <- abs (P:=fun y=>forall z, x > y -> x > y)  y r2;
+   abs (P:=fun x=>forall y, nat -> x > y -> x > y) x r3.
+Qed.
+
+Example test_remove4 : forall z x y : nat, x > y -> x > y.
+MProof.
+  (* z is not required for the proof *)
+  nu z x y : nat,
+   r1 <- remove z (ret id);
+   r2 <- abs y r1;
+   r3 <- abs (P:= fun x =>forall y : nat, x > y -> x > y) x r2;
+   abs z r3.
+Qed.
