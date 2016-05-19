@@ -24,6 +24,8 @@ Definition WrongTerm : Exception. exact exception. Qed.
 
 Definition MissingDependency : Exception. exact exception. Qed.
 
+Definition LtacError (s:string) : Exception. exact exception. Qed.
+
 Definition NotUnifiable {A} (x y : A) : Exception. exact exception. Qed.
 
 Record dyn := Dyn { type : Type; elem : type }.

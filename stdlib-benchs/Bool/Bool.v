@@ -7,6 +7,8 @@
 (************************************************************************)
 
 Require Import MetaCoq.MCTactics.
+Require Import MetaCoq.ImportedTactics.
+Import MetaCoqNotations.
 Import MCTacticsNotations.
 
 (** The type [bool] is defined in the prelude as
@@ -14,19 +16,18 @@ Import MCTacticsNotations.
 
 (** Most of the lemmas in this file are trivial after breaking all booleans *)
 
-Ltac trivial := trivial.
-Ltac discriminate := discriminate.
 Ltac simpl_in_all := simpl in *.
 
 Definition not_yet_there :=
-  ltac "Top.trivial" nil;; ltac "Top.discriminate" nil.
+  discriminate || trivial.
 
+(* destruct_all doesn't work with dependencies (as it should!) *)
 Definition destr_bool :=
- intros;; destruct_all bool;; not_yet_there.
-
+ typed_intros bool;; destruct_all bool;; intros;; not_yet_there.
+(*
 Ltac destr_bool :=
  intros; destruct_all bool; simpl in *; trivial; discriminate.
-
+*)
 (** Interpretation of booleans as propositions *)
 
 Definition Is_true (b:bool) :=
@@ -49,13 +50,13 @@ Defined.
 (*********************)
 
 Lemma diff_true_false : true <> false.
-Proof.
+MProof.
   discriminate.
 Qed.
 Hint Resolve diff_true_false : bool v62.
 
 Lemma diff_false_true : false <> true.
-Proof.
+MProof.
   discriminate.
 Qed.
 Hint Resolve diff_false_true : bool v62.
@@ -63,29 +64,27 @@ Hint Extern 1 (false <> true) => exact diff_false_true.
 
 Lemma eq_true_false_abs : forall b:bool, b = true -> b = false -> False.
 MProof.
-  intros.
-  destruct b.
   destr_bool.
 Qed.
 
 Lemma not_true_is_false : forall b:bool, b <> true -> b = false.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 Lemma not_false_is_true : forall b:bool, b <> false -> b = true.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 Lemma not_true_iff_false : forall b, b <> true <-> b = false.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 Lemma not_false_iff_true : forall b, b <> false <-> b = true.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 (**********************)
@@ -100,8 +99,8 @@ Definition leb (b1 b2:bool) :=
 Hint Unfold leb: bool v62.
 
 Lemma leb_implb : forall b1 b2, leb b1 b2 <-> implb b1 b2 = true.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 (* Infix "<=" := leb : bool_scope. *)
@@ -120,28 +119,28 @@ Definition eqb (b1 b2:bool) : bool :=
 
 Lemma eqb_subst :
   forall (P:bool -> Prop) (b1 b2:bool), eqb b1 b2 = true -> P b1 -> P b2.
-Proof.
-  destr_bool.
+MProof.
+  intro P;; destr_bool.
 Qed.
 
 Lemma eqb_reflx : forall b:bool, eqb b b = true.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma eqb_prop : forall a b:bool, eqb a b = true -> a = b.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma eqb_true_iff : forall a b:bool, eqb a b = true <-> a = b.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 Lemma eqb_false_iff : forall a b:bool, eqb a b = false <-> a <> b.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 (************************)
@@ -161,12 +160,12 @@ Open Scope bool_scope.
 (****************************)
 
 Lemma negb_orb : forall b1 b2:bool, negb (b1 || b2) = negb b1 && negb b2.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma negb_andb : forall b1 b2:bool, negb (b1 && b2) = negb b1 || negb b2.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
@@ -175,12 +174,12 @@ Qed.
 (********************************)
 
 Lemma negb_involutive : forall b:bool, negb (negb b) = b.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma negb_involutive_reverse : forall b:bool, b = negb (negb b).
-Proof.
+MProof.
   destr_bool.
 Qed.
 
@@ -188,40 +187,40 @@ Notation negb_elim := negb_involutive (only parsing).
 Notation negb_intro := negb_involutive_reverse (only parsing).
 
 Lemma negb_sym : forall b b':bool, b' = negb b -> b = negb b'.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma no_fixpoint_negb : forall b:bool, negb b <> b.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma eqb_negb1 : forall b:bool, eqb (negb b) b = false.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma eqb_negb2 : forall b:bool, eqb b (negb b) = false.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma if_negb :
   forall (A:Type) (b:bool) (x y:A),
     (if negb b then x else y) = (if b then y else x).
-Proof.
-  destr_bool.
+MProof.
+  intros A;; destr_bool.
 Qed.
 
 Lemma negb_true_iff : forall b, negb b = true <-> b = false.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 Lemma negb_false_iff : forall b, negb b = false <-> b = true.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 
@@ -231,25 +230,25 @@ Qed.
 
 Lemma orb_true_iff :
   forall b1 b2, b1 || b2 = true <-> b1 = true \/ b2 = true.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 Lemma orb_false_iff :
   forall b1 b2, b1 || b2 = false <-> b1 = false /\ b2 = false.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 Lemma orb_true_elim :
   forall b1 b2:bool, b1 || b2 = true -> {b1 = true} + {b2 = true}.
-Proof.
-  destruct b1; simpl; auto.
+MProof.
+  cintro b1 {- destruct b1;; simpl;; auto -}.
 Defined.
 
 Lemma orb_prop : forall a b:bool, a || b = true -> a = true \/ b = true.
 Proof.
- intros; apply orb_true_iff; trivial.
+ intros; apply orb_true_iff; trivial. (* apply is splitting the <-> in orb_true_iff *)
 Qed.
 
 Lemma orb_true_intro :
@@ -261,8 +260,10 @@ Hint Resolve orb_true_intro: bool v62.
 
 Lemma orb_false_intro :
   forall b1 b2:bool, b1 = false -> b2 = false -> b1 || b2 = false.
-Proof.
- intros. subst. reflexivity.
+MProof.
+ intros;; subst.
+ Grab Existential Variables. (* must take the evars generated by tactics *)
+ reflexivity.
 Qed.
 Hint Resolve orb_false_intro: bool v62.
 
@@ -273,21 +274,21 @@ Proof.
 Qed.
 
 Lemma orb_diag : forall b, b || b = b.
-Proof.
+MProof.
  destr_bool.
 Qed.
 
 (** [true] is a zero for [orb] *)
 
 Lemma orb_true_r : forall b:bool, b || true = true.
-Proof.
+MProof.
   destr_bool.
 Qed.
 Hint Resolve orb_true_r: bool v62.
 
 Lemma orb_true_l : forall b:bool, true || b = true.
-Proof.
-  reflexivity.
+MProof.
+  intros;; reflexivity.
 Qed.
 
 Notation orb_b_true := orb_true_r (only parsing).
@@ -296,13 +297,13 @@ Notation orb_true_b := orb_true_l (only parsing).
 (** [false] is neutral for [orb] *)
 
 Lemma orb_false_r : forall b:bool, b || false = b.
-Proof.
+MProof.
   destr_bool.
 Qed.
 Hint Resolve orb_false_r: bool v62.
 
 Lemma orb_false_l : forall b:bool, false || b = b.
-Proof.
+MProof.
   destr_bool.
 Qed.
 Hint Resolve orb_false_l: bool v62.
@@ -313,7 +314,7 @@ Notation orb_false_b := orb_false_l (only parsing).
 (** Complementation *)
 
 Lemma orb_negb_r : forall b:bool, b || negb b = true.
-Proof.
+MProof.
   destr_bool.
 Qed.
 Hint Resolve orb_negb_r: bool v62.
@@ -323,14 +324,14 @@ Notation orb_neg_b := orb_negb_r (only parsing).
 (** Commutativity *)
 
 Lemma orb_comm : forall b1 b2:bool, b1 || b2 = b2 || b1.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 (** Associativity *)
 
 Lemma orb_assoc : forall b1 b2 b3:bool, b1 || (b2 || b3) = b1 || b2 || b3.
-Proof.
+MProof.
   destr_bool.
 Qed.
 Hint Resolve orb_comm orb_assoc: bool v62.
@@ -341,20 +342,20 @@ Hint Resolve orb_comm orb_assoc: bool v62.
 
 Lemma andb_true_iff :
   forall b1 b2:bool, b1 && b2 = true <-> b1 = true /\ b2 = true.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 Lemma andb_false_iff :
   forall b1 b2:bool, b1 && b2 = false <-> b1 = false \/ b2 = false.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 Lemma andb_true_eq :
   forall a b:bool, true = a && b -> true = a /\ true = b.
-Proof.
-  destr_bool. auto.
+MProof.
+  destr_bool;; auto.
 Defined.
 
 Lemma andb_false_intro1 : forall b1 b2:bool, b1 = false -> b1 && b2 = false.
@@ -370,33 +371,33 @@ Qed.
 (** [false] is a zero for [andb] *)
 
 Lemma andb_false_r : forall b:bool, b && false = false.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma andb_false_l : forall b:bool, false && b = false.
-Proof.
-  reflexivity.
+MProof.
+  intros;; reflexivity.
 Qed.
 
 Notation andb_b_false := andb_false_r (only parsing).
 Notation andb_false_b := andb_false_l (only parsing).
 
 Lemma andb_diag : forall b, b && b = b.
-Proof.
+MProof.
  destr_bool.
 Qed.
 
 (** [true] is neutral for [andb] *)
 
 Lemma andb_true_r : forall b:bool, b && true = b.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma andb_true_l : forall b:bool, true && b = b.
 MProof.
-  reflexivity.
+  intros;; reflexivity.
 Qed.
 
 Notation andb_b_true := andb_true_r (only parsing).
@@ -404,15 +405,15 @@ Notation andb_true_b := andb_true_l (only parsing).
 
 Lemma andb_false_elim :
   forall b1 b2:bool, b1 && b2 = false -> {b1 = false} + {b2 = false}.
-Proof.
-  destruct b1; simpl; auto.
+MProof.
+  cintro b1 {- destruct b1;; simpl;; auto -}.
 Defined.
 Hint Resolve andb_false_elim: bool v62.
 
 (** Complementation *)
 
 Lemma andb_negb_r : forall b:bool, b && negb b = false.
-Proof.
+MProof.
   destr_bool.
 Qed.
 Hint Resolve andb_negb_r: bool v62.
@@ -422,14 +423,14 @@ Notation andb_neg_b := andb_negb_r (only parsing).
 (** Commutativity *)
 
 Lemma andb_comm : forall b1 b2:bool, b1 && b2 = b2 && b1.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 (** Associativity *)
 
 Lemma andb_assoc : forall b1 b2 b3:bool, b1 && (b2 && b3) = b1 && b2 && b3.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
@@ -443,25 +444,25 @@ Hint Resolve andb_comm andb_assoc: bool v62.
 
 Lemma andb_orb_distrib_r :
   forall b1 b2 b3:bool, b1 && (b2 || b3) = b1 && b2 || b1 && b3.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma andb_orb_distrib_l :
  forall b1 b2 b3:bool, (b1 || b2) && b3 = b1 && b3 || b2 && b3.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma orb_andb_distrib_r :
   forall b1 b2 b3:bool, b1 || b2 && b3 = (b1 || b2) && (b1 || b3).
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma orb_andb_distrib_l :
   forall b1 b2 b3:bool, b1 && b2 || b3 = (b1 || b3) && (b2 || b3).
-Proof.
+MProof.
   destr_bool.
 Qed.
 
@@ -474,12 +475,12 @@ Notation demorgan4 := orb_andb_distrib_l (only parsing).
 (** Absorption *)
 
 Lemma absorption_andb : forall b1 b2:bool, b1 && (b1 || b2) = b1.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma absorption_orb : forall b1 b2:bool, b1 || b1 && b2 = b1.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
@@ -496,12 +497,12 @@ Notation absoption_orb := absorption_orb (only parsing).
 (** [false] is neutral for [xorb] *)
 
 Lemma xorb_false_r : forall b:bool, xorb b false = b.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma xorb_false_l : forall b:bool, xorb false b = b.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
@@ -511,13 +512,13 @@ Notation false_xorb := xorb_false_l (only parsing).
 (** [true] is "complementing" for [xorb] *)
 
 Lemma xorb_true_r : forall b:bool, xorb b true = negb b.
-Proof.
-  reflexivity.
+MProof.
+  intros;; reflexivity.
 Qed.
 
 Lemma xorb_true_l : forall b:bool, xorb true b = negb b.
-Proof.
-  reflexivity.
+MProof.
+  intros;; reflexivity.
 Qed.
 
 Notation xorb_true := xorb_true_r (only parsing).
@@ -526,14 +527,14 @@ Notation true_xorb := xorb_true_l (only parsing).
 (** Nilpotency (alternatively: identity is a inverse for [xorb]) *)
 
 Lemma xorb_nilpotent : forall b:bool, xorb b b = false.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 (** Commutativity *)
 
 Lemma xorb_comm : forall b b':bool, xorb b b' = xorb b' b.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
@@ -541,61 +542,61 @@ Qed.
 
 Lemma xorb_assoc_reverse :
   forall b b' b'':bool, xorb (xorb b b') b'' = xorb b (xorb b' b'').
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Notation xorb_assoc := xorb_assoc_reverse (only parsing). (* Compatibility *)
 
 Lemma xorb_eq : forall b b':bool, xorb b b' = false -> b = b'.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma xorb_move_l_r_1 :
   forall b b' b'':bool, xorb b b' = b'' -> b' = xorb b b''.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma xorb_move_l_r_2 :
   forall b b' b'':bool, xorb b b' = b'' -> b = xorb b'' b'.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma xorb_move_r_l_1 :
   forall b b' b'':bool, b = xorb b' b'' -> xorb b' b = b''.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma xorb_move_r_l_2 :
   forall b b' b'':bool, b = xorb b' b'' -> xorb b b'' = b'.
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma negb_xorb_l : forall b b', negb (xorb b b') = xorb (negb b) b'.
-Proof.
- destruct b,b'; trivial.
+MProof.
+  destr_bool.
 Qed.
 
 Lemma negb_xorb_r : forall b b', negb (xorb b b') = xorb b (negb b').
-Proof.
- destruct b,b'; trivial.
+MProof.
+  destr_bool.
 Qed.
 
 Lemma xorb_negb_negb : forall b b', xorb (negb b) (negb b') = xorb b b'.
-Proof.
- destruct b,b'; trivial.
+MProof.
+  destr_bool.
 Qed.
 
 (** Lemmas about the [b = true] embedding of [bool] to [Prop] *)
 
 Lemma eq_iff_eq_true : forall b1 b2, b1 = b2 <-> (b1 = true <-> b2 = true).
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 Lemma eq_true_iff_eq : forall b1 b2, (b1 = true <-> b2 = true) -> b1 = b2.
@@ -606,15 +607,15 @@ Qed.
 Notation bool_1 := eq_true_iff_eq (only parsing). (* Compatibility *)
 
 Lemma eq_true_negb_classical : forall b:bool, negb b <> true -> b = true.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 Notation bool_3 := eq_true_negb_classical (only parsing). (* Compatibility *)
 
 Lemma eq_true_not_negb : forall b:bool, b <> true -> negb b = true.
-Proof.
-  destr_bool; intuition.
+MProof.
+  destr_bool;; intuition.
 Qed.
 
 Notation bool_6 := eq_true_not_negb (only parsing). (* Compatibility *)
@@ -624,14 +625,14 @@ Hint Resolve eq_true_not_negb : bool.
 (* An interesting lemma for auto but too strong to keep compatibility *)
 
 Lemma absurd_eq_bool : forall b b':bool, False -> b = b'.
-Proof.
+MProof.
   contradiction.
 Qed.
 
 (* A more specific one that preserves compatibility with old hint bool_3 *)
 
 Lemma absurd_eq_true : forall b, False -> b = true.
-Proof.
+MProof.
   contradiction.
 Qed.
 Hint Resolve absurd_eq_true.
@@ -640,7 +641,7 @@ Hint Resolve absurd_eq_true.
    old hint bool_2 *)
 
 Lemma trans_eq_bool : forall x y z:bool, x = y -> y = z -> x = z.
-Proof.
+MProof.
   apply eq_trans.
 Qed.
 Hint Resolve trans_eq_bool.
@@ -654,18 +655,25 @@ Hint Resolve trans_eq_bool.
 Hint Unfold Is_true: bool.
 
 Lemma Is_true_eq_true : forall x:bool, Is_true x -> x = true.
-Proof.
-  destr_bool; tauto.
+MProof.
+  destr_bool;; auto.
 Qed.
 
+Ltac auto_with_bool := auto with bool.
+Definition auto_with_bool : tactic := ltac "Top.auto_with_bool" nil.
+
 Lemma Is_true_eq_left : forall x:bool, x = true -> Is_true x.
-Proof.
-  intros; subst; auto with bool.
+MProof.
+  intros;; subst.
+  Grab Existential Variables.
+  auto_with_bool.
 Qed.
 
 Lemma Is_true_eq_right : forall x:bool, true = x -> Is_true x.
-Proof.
-  intros; subst; auto with bool.
+MProof.
+  intros;; subst.
+  Grab Existential Variables.
+  auto_with_bool.
 Qed.
 
 Notation Is_true_eq_true2 := Is_true_eq_right (only parsing).
@@ -673,35 +681,44 @@ Notation Is_true_eq_true2 := Is_true_eq_right (only parsing).
 Hint Immediate Is_true_eq_right Is_true_eq_left: bool.
 
 Lemma eqb_refl : forall x:bool, Is_true (eqb x x).
-Proof.
+MProof.
   destr_bool.
 Qed.
 
 Lemma eqb_eq : forall x y:bool, Is_true (eqb x y) -> x = y.
-Proof.
-  destr_bool; tauto.
+MProof.
+  destr_bool;; simpl;; (OR contradiction auto).
 Qed.
 
 (** [Is_true] and connectives *)
 
 Lemma orb_prop_elim :
   forall a b:bool, Is_true (a || b) -> Is_true a \/ Is_true b.
-Proof.
-  destr_bool; tauto.
+MProof.
+  destr_bool;; auto.
 Qed.
 
 Notation orb_prop2 := orb_prop_elim (only parsing).
 
 Lemma orb_prop_intro :
   forall a b:bool, Is_true a \/ Is_true b -> Is_true (a || b).
-Proof.
-  destr_bool; tauto.
-Qed.
+MProof.
+  destr_bool.
+  Grab Existential Variables.
+  simpl.
+  destruct x;; intros;; assumption.
+Qed. (* tauto isn't working *)
 
 Lemma andb_prop_intro :
   forall b1 b2:bool, Is_true b1 /\ Is_true b2 -> Is_true (b1 && b2).
-Proof.
-  destr_bool; tauto.
+MProof.
+  typed_intros bool.
+  destruct_all bool;; intro H.
+  destruct H. intros;; assumption.
+  destruct H. intros;; assumption.
+  destruct H. intros;; assumption.
+  destruct H. intros;; assumption.
+  (* can't do cintro H {- ... -} because H is typed *)
 Qed.
 Hint Resolve andb_prop_intro: bool v62.
 
@@ -711,8 +728,8 @@ Notation andb_true_intro2 :=
 
 Lemma andb_prop_elim :
   forall a b:bool, Is_true (a && b) -> Is_true a /\ Is_true b.
-Proof.
-  destr_bool; auto.
+MProof.
+  destr_bool;; auto.
 Qed.
 Hint Resolve andb_prop_elim: bool v62.
 
@@ -720,50 +737,56 @@ Notation andb_prop2 := andb_prop_elim (only parsing).
 
 Lemma eq_bool_prop_intro :
   forall b1 b2, (Is_true b1 <-> Is_true b2) -> b1 = b2.
-Proof.
-  destr_bool; tauto.
-Qed.
+MProof.
+  destr_bool.
+  Grab Existential Variables.
+  simpl;; destruct x.
+  intros. auto.
+  simpl;; destruct x.
+  intros.
+Admitted.
 
 Lemma eq_bool_prop_elim : forall b1 b2, b1 = b2 -> (Is_true b1 <-> Is_true b2).
-Proof.
-  destr_bool; tauto.
+MProof.
+  destr_bool;; split;; intros;; assumption.
 Qed.
 
 Lemma negb_prop_elim : forall b, Is_true (negb b) -> ~ Is_true b.
-Proof.
-  destr_bool; tauto.
+MProof.
+  destr_bool.
 Qed.
 
 Lemma negb_prop_intro : forall b, ~ Is_true b -> Is_true (negb b).
-Proof.
-  destr_bool; tauto.
-Qed.
+MProof.
+  destr_bool.
+Admitted.
 
 Lemma negb_prop_classical : forall b, ~ Is_true (negb b) -> Is_true b.
-Proof.
-  destr_bool; tauto.
-Qed.
+MProof.
+  destr_bool.
+Admitted.
 
 Lemma negb_prop_involutive : forall b, Is_true b -> ~ Is_true (negb b).
-Proof.
-  destr_bool; tauto.
-Qed.
+MProof.
+  destr_bool.
+Admitted.
 
 (** Rewrite rules about andb, orb and if (used in romega) *)
 
 Lemma andb_if : forall (A:Type)(a a':A)(b b' : bool),
   (if b && b' then a else a') =
   (if b then if b' then a else a' else a').
-Proof.
+MProof.
+  intros A a a'.
   destr_bool.
 Qed.
 
 Lemma negb_if : forall (A:Type)(a a':A)(b:bool),
  (if negb b then a else a') =
  (if b then a' else a).
-Proof.
-  destr_bool.
-Qed.
+MProof.
+  Fail intros A a a';; typed_intros bool;; destruct_all bool;; reflexivity.  (* CHECK! *)
+Admitted.
 
 (*****************************************)
 (** * Alternative versions of [andb] and [orb]
@@ -778,13 +801,13 @@ Notation "a ||| b" := (if a then true else b)
 Local Open Scope lazy_bool_scope.
 
 Lemma andb_lazy_alt : forall a b : bool, a && b = a &&& b.
-Proof.
-  reflexivity.
+MProof.
+  intros;;reflexivity.
 Qed.
 
 Lemma orb_lazy_alt : forall a b : bool, a || b = a ||| b.
-Proof.
-  reflexivity.
+MProof.
+  intros;; reflexivity.
 Qed.
 
 (*****************************************)
@@ -805,14 +828,16 @@ Hint Constructors reflect : bool.
 (** Relation with iff : *)
 
 Lemma reflect_iff : forall P b, reflect P b -> (P<->b=true).
-Proof.
- destruct 1; intuition; discriminate.
-Qed.
+MProof.
+ intros P b.
+ destruct b;; intuition;; discriminate.
+Grab Existential Variables. discriminate.
+Admitted.
 
 Lemma iff_reflect : forall P b, (P<->b=true) -> reflect P b.
-Proof.
- destr_bool; intuition.
-Defined.
+MProof.
+ destr_bool.
+Admitted.
 
 (** It would be nice to join [reflect_iff] and [iff_reflect]
     in a unique [iff] statement, but this isn't allowed since
@@ -821,9 +846,9 @@ Defined.
 (** Reflect implies decidability of the proposition *)
 
 Lemma reflect_dec : forall P b, reflect P b -> {P}+{~P}.
-Proof.
- destruct 1; auto.
-Defined.
+MProof.
+(* destruct 1; auto. *)
+Admitted.
 
 (** Reciprocally, from a decidability, we could state a
     [reflect] as soon as we have a [bool_of_sumbool]. *)

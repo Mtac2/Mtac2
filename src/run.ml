@@ -56,6 +56,12 @@ module Exceptions = struct
   let mkOutOfBounds = mkInternalException "ArrayOutOfBounds"
   let mkWrongTerm = mkInternalException "WrongTerm"
   let mkMissingDependency = mkInternalException "MissingDependency"
+  let mkLtacError (s, ppm) =
+    let e = mkInternalException "LtacError" in
+    let expl = string_of_ppcmds ppm in
+    let coqexp = CoqString.to_coq (s ^ ": " ^ expl) in
+    mkApp(Lazy.force e, [|coqexp|])
+
   let mkNotUnifiable a x y =
     let e = mkInternalException "NotUnifiableException" in
     mkApp(Lazy.force e, [|a;x;y|])
@@ -1026,8 +1032,13 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
           in
           aux (KNmap.bindings (Tacenv.ltac_entries ()))
         in
-        let (c, sigma) = Pfedit.refine_by_tactic env sigma concl (Tacinterp.eval_tactic tac) in
-        return sigma metas c
+        begin
+          try
+            let (c, sigma) = Pfedit.refine_by_tactic env sigma concl (Tacinterp.eval_tactic tac) in
+            return sigma metas c
+          with Errors.UserError(s,ppm) ->
+            fail sigma metas (Exceptions.mkLtacError (s, ppm))
+        end
     (* Tac (sigma, metas, Tacinterp.eval_tactic tac, fun v -> Val v) *)
 
     | 32 -> (* list_ltac *)

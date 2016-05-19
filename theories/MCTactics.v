@@ -416,7 +416,11 @@ Definition ltac (t : string) (args : list Sig) : tactic := fun g=>
   let ty := simpl (type d) in
   v <- @call_ltac ty t args;
   unify_or_fail v (elem d);;
-  ret [].
+  b <- is_evar v;
+  if b then
+    ret [TheGoal v]
+  else
+    ret [].
 
 Require Import Coq.omega.Omega.
 Definition omega := ltac "Coq.omega.Omega.omega" nil.
@@ -437,6 +441,32 @@ Definition destruct_all (T : Type) : tactic := fun g=>
     end) l g.
 
 
+Definition treduce (r : Reduction) : tactic := fun g=>
+  T <- goal_type g;
+  let T := reduce r T in
+  e <- evar T;
+  let e := TheGoal e in
+  munify g e;;
+  ret [e].
+
+Definition NotThatType : Exception. exact exception. Qed.
+Definition typed_intro (T : Type) : tactic := fun g=>
+  U <- goal_type g;
+  mmatch U with
+  | [? P:T->Type] forall x:T, P x =>
+    xn <- get_name U;
+    intro_simpl xn g
+  | _ => raise NotThatType
+  end.
+
+Definition typed_intros (T : Type) : tactic := fun g=>
+  (mfix1 f (g : goal) : M _ :=
+    mtry
+      (bindb (typed_intro T) f) g
+    with NotThatType =>
+      idtac g
+    end) g.
+
 Module MCTacticsNotations.
 
 Notation "t || u" := (OR t u).
@@ -456,4 +486,6 @@ Notation "'cintros' x .. y '{-' t '-}'" :=
 
 Notation "a ;; b" := (@the_value _ _ _ a b _).
 
+Notation "'simpl'" := (treduce RedSimpl).
+Notation "'hnf'" := (treduce RedWhd).
 End MCTacticsNotations.

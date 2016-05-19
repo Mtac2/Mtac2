@@ -14,3 +14,4 @@ src/MetaCoqPlugin.mllib
 theories/MetaCoq.v
 theories/MCListUtils.v
 theories/MCTactics.v
+theories/ImportedTactics.v
