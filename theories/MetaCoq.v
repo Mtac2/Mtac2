@@ -29,6 +29,7 @@ Definition LtacError (s:string) : Exception. exact exception. Qed.
 Definition NotUnifiable {A} (x y : A) : Exception. exact exception. Qed.
 
 Record dyn := Dyn { type : Type; elem : type }.
+Arguments Dyn {_} _.
 
 Definition index := N.
 Definition length := N.
@@ -66,8 +67,6 @@ Record Case :=
 
 (* Reduction primitive *)
 Definition reduce (r : Reduction) {A} (x : A) := x.
-
-Inductive Sig : Type := Exists : forall {A : Type}, A -> Sig.
 
 (** Pattern matching without pain *)
 Inductive pattern (M : Type->Prop) A (B : A -> Type) (t : A) : Prop :=
@@ -134,7 +133,7 @@ Inductive MetaCoq : Type -> Prop :=
 
 | munify {A} (x y : A) : MetaCoq (option (x = y))
 
-| call_ltac : forall {A : Type}, string -> list Sig -> MetaCoq A
+| call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq A
 | list_ltac : forall {A : Type} {_ : A}, MetaCoq A
 
 | get_name : forall {A}, A -> MetaCoq string

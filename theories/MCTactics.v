@@ -43,12 +43,12 @@ Definition goal_type g : M Type :=
 
 Definition dyn_to_goal d :=
   match d with
-  | Dyn _ x => TheGoal x
+  | Dyn x => TheGoal x
   end.
 
 Definition goal_to_dyn : goal -> M dyn := fun g =>
   match g with
-  | TheGoal d => ret (Dyn _ d)
+  | TheGoal d => ret (Dyn d)
   | _ => raise NotAGoal
   end.
 
@@ -186,11 +186,11 @@ Definition copy_ctx {A} (B : A -> Type) :=
         ret (B c)
     | [? C (D : C -> Type) (c : forall y:C, D y)] {| elem := c |} =>
         nu y : C,
-        r <- rec (Dyn _ (c y));
+        r <- rec (Dyn (c y));
         pabs y r
     | [? C D (c : C->D)] {| elem := c |} =>
         nu y : C,
-        r <- rec (Dyn _ (c y));
+        r <- rec (Dyn (c y));
         pabs y r
     | _ => raise NotAGoal
     end.
@@ -246,7 +246,7 @@ Definition generalize1 (cont: tactic) : tactic := fun g=>
 Definition abstract_up_to n : tactic := fun g=>
   l <- hypotheses;
   P <- goal_type g;
-  pP <- productify_up_to (Dyn _ P) n l;
+  pP <- productify_up_to (Dyn P) n l;
   let l' := hnf (skipn n l) in
   e <- Cevar pP l';
 *)
@@ -411,7 +411,7 @@ Definition assumption : tactic := fun g=>
   P <- goal_type g;
   match_goal ([[ x:P |- P ]] => exact x) g.
 
-Definition ltac (t : string) (args : list Sig) : tactic := fun g=>
+Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   d <- goal_to_dyn g;
   let ty := simpl (type d) in
   v <- @call_ltac ty t args;

@@ -144,7 +144,7 @@ Definition transitivity := "Coq.Init.Notations.transitivity".
 Lemma test6 : forall (x y z : Prop), x = y -> y = z -> x = z.
 MProof.
   intros x y z H G.
-  ltac transitivity [MetaCoq.Exists y].
+  ltac transitivity [Dyn y].
   Grab Existential Variables.
   ltac "Coq.Init.Notations.revgoals" nil.
   exact H.
@@ -287,7 +287,7 @@ Ltac rewrite h := rewrite h.
 Goal forall (x y z : nat) (H: x = y), y = x.
 MProof.
   intros.
-  ltac "Top.rewrite" [MetaCoq.Exists H].
+  ltac "Top.rewrite" [Dyn H].
   Grab Existential Variables.
   reflexivity.
 Qed.
