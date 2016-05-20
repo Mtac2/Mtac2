@@ -99,6 +99,7 @@ module CoqList = struct
 
   let makeNil ty = Term.mkApp (Lazy.force mkNil, [| ty |])
   let makeCons t x xs = Term.mkApp (Lazy.force mkCons, [| t ; x ; xs |])
+  let makeType ty = Term.mkApp (Lazy.force (Constr.mkConstr "Coq.Init.Datatypes.list"), [|ty|])
 
   let mkListType ty =
     mkApp (Lazy.force (Constr.mkConstr "Coq.Init.Datatypes.cons"),
@@ -118,6 +119,8 @@ module CoqList = struct
   let from_coq (env, sigma) =
     from_coq_conv (env, sigma) (fun x->x)
 
+  let to_coq ty f =
+    List.fold_left (fun l e -> makeCons ty (f e) l) (makeNil ty)
 end
 
 module CoqEq = struct
@@ -327,4 +330,10 @@ module MCTactics = struct
 
   let mkTactic = lazy (mkConst tactic)
 
+end
+
+module CoqPair = struct
+  let pairBuilder = ConstrBuilder.from_string "Coq.Init.Datatypes.pair"
+
+  let mkPair tya tyb a b = ConstrBuilder.build_app pairBuilder [|tya;tyb;a;b|]
 end

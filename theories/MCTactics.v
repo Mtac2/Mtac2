@@ -415,12 +415,13 @@ Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   d <- goal_to_dyn g;
   let ty := simpl (type d) in
   v <- @call_ltac ty t args;
+  let (v, l) := v in
   unify_or_fail v (elem d);;
   b <- is_evar v;
   if b then
-    ret [TheGoal v]
+    ret [TheGoal v] (* it wasn't solved *)
   else
-    ret [].
+    ret (List.map dyn_to_goal l).
 
 Require Import Coq.omega.Omega.
 Definition omega := ltac "Coq.omega.Omega.omega" nil.

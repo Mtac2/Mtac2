@@ -133,7 +133,7 @@ Inductive MetaCoq : Type -> Prop :=
 
 | munify {A} (x y : A) : MetaCoq (option (x = y))
 
-| call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq A
+| call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (A * list dyn)
 | list_ltac : forall {A : Type} {_ : A}, MetaCoq A
 
 | get_name : forall {A}, A -> MetaCoq string

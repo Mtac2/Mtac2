@@ -50,10 +50,11 @@ module CoqList : sig
 
   val makeNil : types -> constr
   val makeCons : types -> constr -> constr -> constr
+  val makeType : types -> types
   val from_coq : (Environ.env * Evd.evar_map) -> constr -> constr list
   val from_coq_conv : (Environ.env * Evd.evar_map) -> (constr -> 'a)
     -> constr -> 'a list
-
+  val to_coq : types -> ('a -> constr) -> 'a list -> constr
 end
 
 module CoqOption : sig
@@ -88,4 +89,8 @@ module MCTactics : sig
   val mkReduceGoal : constr Lazy.t
   val mkRunTac : constr Lazy.t
   val mkTactic : constr Lazy.t
+end
+
+module CoqPair : sig
+  val mkPair : types -> types -> constr -> constr -> constr
 end

@@ -324,3 +324,21 @@ Qed.
 
 (* a good example of why we need to get bindings right in tactics *)
 Fail Ltac test := rename x into y.
+
+Require Import MetaCoq.ImportedTactics.
+
+Goal forall x:nat, x = x.
+MProof.
+  trivial.
+Qed.
+
+Goal forall x:nat, False -> x = 0.
+MProof.
+  trivial;; intros ;; contradiction.
+Qed.
+
+Ltac myapply H := apply H.
+Goal forall P Q, (P -> Q) -> P -> Q.
+MProof.
+  cintros P Q f x {- ltac "Top.myapply" [Dyn f] ;; ltac "Top.myapply" [Dyn x] -}.
+Qed.

@@ -1022,8 +1022,8 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
                 let args =
                   let aux x =
                     let x = CoqSig.from_coq (env, sigma) x in
-                    (* let x = Detyping.detype false [] env sigma x in *)
-                    Tacexpr.ConstrMayEval (Genredexpr.ConstrTerm (Glob_term.GVar (Loc.ghost, Term.destVar x), None))
+                    let x = Detyping.detype false [] env sigma x in
+                    Tacexpr.ConstrMayEval (Genredexpr.ConstrTerm (x (*Glob_term.GVar (Loc.ghost, Term.destVar x*), None))
                   in
                   List.map aux args
                 in
@@ -1035,7 +1035,12 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         begin
           try
             let (c, sigma) = Pfedit.refine_by_tactic env sigma concl (Tacinterp.eval_tactic tac) in
-            return sigma metas c
+            let evars = List.filter (fun (i, _)->Evd.is_undefined sigma i) (Evd.evar_list c) in
+            let cDyn = Lazy.force MetaCoqNames.mkDyn in
+            let dyn = Lazy.force MetaCoqNames.mkdyn in
+            let evars = CoqList.to_coq (Lazy.force MetaCoqNames.mkdyn) (fun e->
+              mkApp(cDyn, [|Evd.existential_type sigma e; mkEvar e|])) evars in
+            return sigma metas (CoqPair.mkPair concl (CoqList.makeType dyn) c evars)
           with Errors.UserError(s,ppm) ->
             fail sigma metas (Exceptions.mkLtacError (s, ppm))
         end
