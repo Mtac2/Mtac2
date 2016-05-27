@@ -136,7 +136,7 @@ Inductive MetaCoq : Type -> Prop :=
 | call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (A * list dyn)
 | list_ltac : forall {A : Type} {_ : A}, MetaCoq A
 
-| get_name : forall {A}, A -> MetaCoq string
+| get_binder_name : forall {A}, A -> MetaCoq string
 | match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
 
 | remove : forall {A B}, A -> MetaCoq B -> MetaCoq B

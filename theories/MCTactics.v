@@ -87,7 +87,7 @@ Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
   mmatch g return M list goal with
   | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
     unify_or_fail B A;; (* A might be an evar, so it will fail to match. therefore, we have to unify it later *)
-    n <- get_name t;
+    n <- get_binder_name t;
     tnu n (fun x=>
       e' <- evar _;
       g <- abs x e';
@@ -122,7 +122,7 @@ Definition open_and_apply (t : tactic) : tactic := fix open g :=
     match g return M _ with
     | TheGoal _ => t g
     | @AHyp C f =>
-      x <- get_name f;
+      x <- get_binder_name f;
       tnu x (fun x : C=>
         open (f x) >> close_goals x)
     end.
@@ -133,7 +133,7 @@ Definition intros_all : tactic :=
       mmatch g return M list goal with
       | [? T e] @TheGoal T e =>
         mtry
-          xn <- get_name T;
+          xn <- get_binder_name T;
           r <- intro_simpl xn g;
           g <- hd_exception r;
           f g
@@ -142,7 +142,7 @@ Definition intros_all : tactic :=
         end
       end) g.
 
-Definition NotSameSize : Exception. exact exception. Qed.
+Definition NotSameSize (l : list tactic) (l' : list goal) : Exception. exact exception. Qed.
 Fixpoint gmap (funs : list tactic) (ass : list goal) : M (list (list goal)) :=
   match funs, ass with
   | nil, nil => ret nil
@@ -150,7 +150,7 @@ Fixpoint gmap (funs : list tactic) (ass : list goal) : M (list (list goal)) :=
     fa <- open_and_apply f g;
     rest <- gmap funs' ass';
     ret (fa :: rest)
-  | _, _ => raise NotSameSize
+  | l, l' => raise (NotSameSize l l')
   end.
 
 Definition bbind (t:tactic) (l:list tactic) : tactic := fun g=>
@@ -179,6 +179,7 @@ Instance i_mtac A B (t:M A) (u:M B) : semicolon t u | 100 :=
   SemiColon _ _ (_ <- t; u).
 
 
+Definition SomethingNotRight {A} (t : A) : Exception. exact exception. Qed.
 Definition copy_ctx {A} (B : A -> Type) :=
   mfix1 rec (d : dyn) : M Type :=
     mmatch d with
@@ -192,7 +193,7 @@ Definition copy_ctx {A} (B : A -> Type) :=
         nu y : C,
         r <- rec (Dyn (c y));
         pabs y r
-    | _ => raise NotAGoal
+    | _ => print_term A;; raise (SomethingNotRight d)
     end.
 
 Definition hyps_except {A} (x : A) :=
@@ -455,7 +456,7 @@ Definition typed_intro (T : Type) : tactic := fun g=>
   U <- goal_type g;
   mmatch U with
   | [? P:T->Type] forall x:T, P x =>
-    xn <- get_name U;
+    xn <- get_binder_name U;
     intro_simpl xn g
   | _ => raise NotThatType
   end.
