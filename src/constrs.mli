@@ -63,8 +63,8 @@ module CoqOption : sig
 
   val mkSome : types -> constr -> constr
 
-  val from_coq : (Environ.env * Evd.evar_map) -> types
-    -> (constr -> constr) -> constr option
+  val from_coq : (Environ.env * Evd.evar_map) -> constr
+    -> constr option
 end
 
 module CoqUnit : sig

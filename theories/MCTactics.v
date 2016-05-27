@@ -88,7 +88,7 @@ Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
   | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
     unify_or_fail B A;; (* A might be an evar, so it will fail to match. therefore, we have to unify it later *)
     n <- get_binder_name t;
-    tnu n (fun x=>
+    tnu n None (fun x=>
       e' <- evar _;
       g <- abs x e';
       unify_or_fail e g;;
@@ -101,7 +101,7 @@ Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
 Definition intro_simpl (var: string) : tactic := fun g=>
   mmatch g with
   | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
-    tnu var (fun x=>
+    tnu var None (fun x=>
       e' <- evar _;
       g <- abs x e';
       unify_or_fail e g;;
@@ -123,7 +123,7 @@ Definition open_and_apply (t : tactic) : tactic := fix open g :=
     | TheGoal _ => t g
     | @AHyp C f =>
       x <- get_binder_name f;
-      tnu x (fun x : C=>
+      tnu x None (fun x : C=>
         open (f x) >> close_goals x)
     end.
 
@@ -468,7 +468,13 @@ Definition typed_intros (T : Type) : tactic := fun g=>
     with NotThatType =>
       idtac g
     end) g.
-
+(*
+Definition pose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
+  n <- get_binder_name cont;
+  tnu_let t (fun x=>
+    r <- cont x g;
+    abs_let x
+*)
 Module MCTacticsNotations.
 
 Notation "t || u" := (OR t u).

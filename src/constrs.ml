@@ -83,13 +83,13 @@ module CoqOption = struct
 
   let mkSome ty t = ConstrBuilder.build_app someBuilder [|ty; t|]
 
-  let from_coq (env, sigma as ctx) cterm fsome =
+  let from_coq (env, sigma as ctx) cterm =
     try
       let _ = ConstrBuilder.from_coq noneBuilder ctx cterm in
       None
     with ConstrBuilder.WrongConstr _ ->
       let arr = ConstrBuilder.from_coq someBuilder ctx cterm in
-      Some (fsome arr.(0))
+      Some arr.(1)
 
 end
 

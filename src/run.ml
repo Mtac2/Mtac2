@@ -574,7 +574,7 @@ module Hypotheses = struct
       if Term.isVar c || isRel c then c
       else Exceptions.block "Not a variable in hypothesis"
     in
-    let fdecl = fun d -> CoqOption.from_coq ctx d (fun c->c) in
+    let fdecl = fun d -> CoqOption.from_coq ctx d in
     let args = ConstrBuilder.from_coq ahyp_constr ctx c in
     (fvar args.(1), fdecl args.(2), args.(0))
 
@@ -846,13 +846,14 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         return sigma metas (Lazy.force CoqUnit.mkTT)
 
     | 11 -> (* nu *)
-        let a, s, f = nth 0, nth 2, nth 3 in
+        let a, s, ot, f = nth 0, nth 2, nth 3, nth 4 in
         let x, fx = get_func_name env sigma s f in
+        let ot = CoqOption.from_coq (env, sigma) ot in
         let renv = Vars.lift 1 renv in
         let ur = ref [] in
+        let env = push_rel (x, ot, a) env in
+        let (sigma, renv) = Hypotheses.cons_hyp a (mkRel 1) ot renv sigma env in
         begin
-          let env = push_rel (x, None, a) env in
-          let (sigma, renv) = Hypotheses.cons_hyp a (mkRel 1) None renv sigma env in
           match run' (env, renv, sigma, (ur :: undo), metas) fx with
           | Val (sigma', metas, e) ->
               clean !ur;

@@ -103,7 +103,9 @@ Inductive MetaCoq : Type -> Prop :=
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), MetaCoq (B x1 x2 x3 x4 x5)
 | print : string -> MetaCoq unit
-| tnu : forall {A B}, string -> (A -> MetaCoq B) -> MetaCoq B
+
+(* if the 4th argument is Some t, it adds x:=t to the local context *)
+| tnu : forall {A B}, string -> option A -> (A -> MetaCoq B) -> MetaCoq B
 | is_var : forall {A}, A -> MetaCoq bool
 | abs : forall {A P} (x : A), P x -> MetaCoq (forall x, P x)
 | abs_eq : forall {A} {P} (x : A) (y : P x),
@@ -197,11 +199,22 @@ Notation "f @@ x" := (bind f (fun r=>ret (r x))) (at level 70).
 Notation "f >> x" := (bind f (fun r=>x r)) (at level 70).
 Open Scope string.
 
-(* [hid_nu] is only a hidden notation to help the recursive
-   notation engine to understand our pattern. *)
-Notation "'hid_nu' x , a" := (tnu "x" (fun x=>a)) (at level 0).
-Notation "'nu' x .. y , a" := (hid_nu x, .. (hid_nu y, a)..)
-(at level 81, x binder, y binder, right associativity).
+(* We cannot make this notation recursive, so we loose
+   notation in favor of naming. *)
+Notation "'nu' x , a" := (
+  let f := fun x=>a in
+  n <- get_binder_name f;
+  tnu n None f) (at level 81, x at next level, right associativity).
+
+Notation "'nu' x : A , a" := (
+  let f := fun x:A=>a in
+  n <- get_binder_name f;
+  tnu n None f) (at level 81, x at next level, right associativity).
+
+Notation "'nu' x := t , a" := (
+  let f := fun x=>a in
+  n <- get_binder_name f;
+  tnu n (Some t) f) (at level 81, x at next level, right associativity).
 
 Notation "'mfix1' f ( x : A ) : 'M' T := b" := (tfix1 (fun x=>T) (fun f (x : A)=>b))
   (at level 85, f at level 0, x at next level, format
