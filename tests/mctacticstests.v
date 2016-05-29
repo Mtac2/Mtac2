@@ -90,6 +90,9 @@ MProof.
   cintro H {- apply H -}.
 Qed.
 
+Require Import Coq.omega.Omega.
+Definition omega := ltac "Coq.omega.Omega.omega" nil.
+
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.
   cintro H {- apply H;; left;; omega -}.
@@ -320,6 +323,12 @@ MProof.
   (* It's creating spurious evars because of the failure in applying
      reflexivity (I think) *)
   exact Set. exact bool. exact Set. exact bool.
+Qed.
+
+Goal True.
+MProof.
+  pose I (fun x=>idtac).
+  exact I.
 Qed.
 
 (* a good example of why we need to get bindings right in tactics *)

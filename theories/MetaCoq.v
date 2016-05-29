@@ -44,9 +44,9 @@ Inductive Reduction : Type :=
 | RedOneStep : Reduction.
 
 Inductive Unification : Type :=
-| UniRed : Unification
-| UniSimpl : Unification
-| UniMuni : Unification.
+| UniNormal : Unification
+| UniMatch : Unification
+| UniCoq : Unification.
 
 Inductive Hyp : Type :=
 | ahyp : forall {A}, A -> option A -> Hyp.
@@ -133,7 +133,7 @@ Inductive MetaCoq : Type -> Prop :=
 
 | pabs : forall {A P} (x : A), P x -> MetaCoq Type
 
-| munify {A} (x y : A) : MetaCoq (option (x = y))
+| munify {A} (x y : A) : Unification -> MetaCoq (option (x = y))
 
 | call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (A * list dyn)
 | list_ltac : forall {A : Type} {_ : A}, MetaCoq A
@@ -142,6 +142,7 @@ Inductive MetaCoq : Type -> Prop :=
 | match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
 
 | remove : forall {A B}, A -> MetaCoq B -> MetaCoq B
+| abs_let : forall {A B}, A -> B -> MetaCoq B
 .
 
 Definition array_length : forall {A}, array A -> length :=

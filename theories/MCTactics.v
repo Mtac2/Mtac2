@@ -17,7 +17,7 @@ Definition coerce_rect {A : Type} (B : Type) (H : A = B) (x : A) : B :=
 Definition CantCoerce : Exception. exact exception. Qed.
 
 Definition coerce {A B : Type} (x : A) : M B :=
-  oH <- munify A B;
+  oH <- munify A B UniNormal;
   match oH with
   | Some H => retS (coerce_rect B H x)
   | _ => raise CantCoerce
@@ -25,7 +25,8 @@ Definition coerce {A B : Type} (x : A) : M B :=
 
 Inductive goal :=
 | TheGoal : forall {A}, A -> goal
-| AHyp : forall {A}, (A -> goal) -> goal.
+| AHyp : forall {A}, (A -> goal) -> goal
+| ADef : forall {A}, A -> goal -> goal.
 
 Definition tactic := (goal -> M (list goal)).
 
@@ -57,7 +58,7 @@ Definition idtac : tactic := fun g=>ret [g].
 Definition fail (e : Exception) : tactic := fun g=>raise e.
 
 Definition unify_or_fail {A} (x y : A) : M (x = y) :=
-  oeq <- munify x y;
+  oeq <- munify x y UniNormal;
   match oeq with
   | None => raise (NotUnifiable x y)
   | Some eq=> ret eq
@@ -80,20 +81,37 @@ Definition OR (t u : tactic) : tactic := fun g=>
 Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
   mmap (fun g'=>r <- abs x g'; ret (@AHyp A r)).
 
-Definition NotAProduct : Exception. exact exception. Qed.
+Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
+Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
 
+Definition instantiate {A} (x t : A) : M unit :=
+  b <- is_evar x;
+  if b then
+    r <- munify x t UniMatch;
+    match r with
+    | Some _ => ret tt
+    | _ => raise (CantInstantiate x t)
+    end
+  else
+    raise (NotAnEvar x).
+
+Definition NotAProduct : Exception. exact exception. Qed.
 
 Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
   mmatch g return M list goal with
   | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
-    unify_or_fail B A;; (* A might be an evar, so it will fail to match. therefore, we have to unify it later *)
+    (* We can't put A as the type of the product domain, since it
+    might be an evar, and it won't be instantiated (patterns do not
+    instantiate foreign evars). Therefore, we unify it here. *)
+    eq <- unify_or_fail B A;
     n <- get_binder_name t;
     tnu n None (fun x=>
       e' <- evar _;
       g <- abs x e';
-      unify_or_fail e g;;
-      x <- coerce x;
-      let x := hnf x in
+      instantiate e g;;
+      let x := hnf match eq in _ = x with
+                 | eq_refl => x
+               end in
       t x (TheGoal e') >> close_goals x)
   | _ => raise NotAProduct
   end.
@@ -114,9 +132,17 @@ Fixpoint is_open (g : goal) : M bool :=
   match g with
   | TheGoal e => is_evar e
   | @AHyp C f => nu x:C, is_open (f x)
+  | ADef _ f => is_open f
   end.
 
 Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
+
+Definition let_close_goals {A} (x: A) : list goal -> M (list goal) :=
+  mmap (fun g'=>
+          r <- abs_let x g';
+          let t := one_step x in
+          ret (@ADef A t r)
+          ).
 
 Definition open_and_apply (t : tactic) : tactic := fix open g :=
     match g return M _ with
@@ -125,6 +151,10 @@ Definition open_and_apply (t : tactic) : tactic := fix open g :=
       x <- get_binder_name f;
       tnu x None (fun x : C=>
         open (f x) >> close_goals x)
+    | @ADef C t f =>
+      x <- get_binder_name f;
+      tnu x (Some t) (fun x : C=>
+        open f >> let_close_goals x)
     end.
 
 Definition intros_all : tactic :=
@@ -232,7 +262,7 @@ Definition generalize1 (cont: tactic) : tactic := fun g=>
       | eq_refl => e
       end
     in
-    oeq <- munify g (@TheGoal (Q x) (e' x));
+    oeq <- munify g (@TheGoal (Q x) (e' x)) UniNormal;
     match oeq with
     | Some _ => MetaCoq.remove x (cont (TheGoal e))
     | _ => raise exception
@@ -289,7 +319,7 @@ Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 
 Definition apply {T} (c : T) : tactic := fun g=>
   (mfix2 app (U : Type) (d : U) : M (list goal) :=
-    oeq <- munify (TheGoal d) g;
+    oeq <- munify (TheGoal d) g UniNormal;
     match oeq with
     | Some _ => ret []
     | None =>
@@ -367,11 +397,11 @@ Notation "[[ x .. y |- ps ] ] => t" :=
 Delimit Scope goal_match_scope with goal_match.
 
 Definition jmeq {A} {B} (x:A) (y:B) : M bool :=
-  teq <- munify A B;
+  teq <- munify A B UniNormal;
   match teq with
   | Some e =>
     let x := match e in _ = B with eq_refl => x end in
-    veq <- munify x y;
+    veq <- munify x y UniNormal;
     match veq with
     | Some _ => ret true
     | None => ret false
@@ -389,12 +419,12 @@ Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
     if beq then t g
     else fail DoesNotMatchGoal g
   | @gtele C f, (@ahyp A a None :: l) =>
-    teq <- munify C A; (* same here *)
+    teq <- munify C A UniNormal; (* same here *)
     match teq with
     | Some eq =>
       e <- evar C;
       let e' := match eq with eq_refl => e end in
-      munify e' a;;
+      munify e' a UniNormal;;
       mtry match_goal' (f e) l g
       with DoesNotMatchGoal =>
         match_goal' p l g
@@ -424,9 +454,6 @@ Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   else
     ret (List.map dyn_to_goal l).
 
-Require Import Coq.omega.Omega.
-Definition omega := ltac "Coq.omega.Omega.omega" nil.
-
 Definition option_to_bool {A} (ox : option A) :=
   match ox with Some _ => true | _ => false end.
 
@@ -434,7 +461,7 @@ Definition destruct_all (T : Type) : tactic := fun g=>
   l <- hypotheses;
   l <- mfilter (fun h:Hyp=>
     let (Th, _, _) := h in
-    r <- munify Th T;
+    r <- munify Th T UniNormal;
     ret (option_to_bool r)) l;
   (fix f (l : list Hyp) : tactic :=
     match l with
@@ -448,7 +475,7 @@ Definition treduce (r : Reduction) : tactic := fun g=>
   let T := reduce r T in
   e <- evar T;
   let e := TheGoal e in
-  munify g e;;
+  munify g e UniMatch;;
   ret [e].
 
 Definition NotThatType : Exception. exact exception. Qed.
@@ -468,13 +495,19 @@ Definition typed_intros (T : Type) : tactic := fun g=>
     with NotThatType =>
       idtac g
     end) g.
-(*
+
 Definition pose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
   n <- get_binder_name cont;
-  tnu_let t (fun x=>
-    r <- cont x g;
-    abs_let x
-*)
+  tnu n (Some t) (fun x=>
+    match g with
+    | @TheGoal T e =>
+      r <- evar T;
+      value <- abs_let x r;
+      instantiate e value;;
+      cont x (TheGoal r) >> let_close_goals x
+    | _ => raise NotAGoal
+    end).
+
 Module MCTacticsNotations.
 
 Notation "t || u" := (OR t u).

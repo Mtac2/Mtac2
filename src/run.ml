@@ -79,6 +79,7 @@ module Exceptions = struct
   let error_abs_env = "Cannot abstract variable in a context depending on it"
   let error_abs_type = "Variable is appearing in the returning type"
   let error_abs_ref = "Variable is appearing in type of reference"
+  let error_abs_let = "Trying to let-abstract a variable without definition"
   let error_array_zero = "Array must have non-zero length"
   let unknown_reduction_strategy = "Unknown reduction strategy"
 
@@ -168,9 +169,9 @@ module ReductionStrategy = struct
 end
 
 module UnificationStrategy = struct
-  let isUniRed e = MetaCoqNames.isConstr "UniRed" e
-  let isUniSimpl e = MetaCoqNames.isConstr "UniSimpr" e
-  let isUniMuni e = MetaCoqNames.isConstr "UniMuni" e
+  let isUniNormal e = MetaCoqNames.isConstr "UniNormal" e
+  let isUniMatch e = MetaCoqNames.isConstr "UniMatch" e
+  let isUniCoq e = MetaCoqNames.isConstr "UniCoq" e
 
   let find_pbs sigma evars =
     let (_, pbs) = extract_all_conv_pbs sigma in
@@ -178,13 +179,25 @@ module UnificationStrategy = struct
       List.exists (fun e ->
         Termops.occur_term e c1 || Termops.occur_term e c2) evars) pbs
 
-  let unify rsigma env evars strategy t1 t2 =
-    if isUniRed strategy then
+  let unify sigma env strategy t1 t2 =
+    let open Evarsolve in
+    let ts = Conv_oracle.get_transp_state (Environ.oracle env) in
+    if isUniNormal strategy then
+      let r = Munify.unify_evar_conv ts env sigma Reduction.CUMUL t1 t2 in
+      match r with
+      | Success sigma -> Some sigma
+      | _ -> None
+    else if isUniMatch strategy then
+      let evars = Evar.Map.domain (Evd.undefined_map sigma) in
+      let r = Munify.unify_match evars ts env sigma Reduction.CUMUL t1 t2 in
+      match r with
+      | Success sigma -> Some sigma
+      | _ -> None
+    else if isUniCoq strategy then
       try
-        let sigma = the_conv_x env t2 t1 !rsigma in
-        rsigma := consider_remaining_unif_problems env sigma;
-        List.length (find_pbs !rsigma evars) = 0
-      with _ -> false
+        let sigma = the_conv_x ~ts env t2 t1 sigma in
+        Some (consider_remaining_unif_problems env sigma)
+      with _ -> None
     else
       Exceptions.block "Unknown unification strategy"
 
@@ -607,8 +620,10 @@ let check_dependencies env x t =
 
 
 (** Abstract *)
-let abs ?(mkprod=false) (env, sigma, metas) a p x y : data =
-  let x = whd_betadeltaiota env sigma x in
+type abs = AbsProd | AbsFun | AbsLet
+
+let abs case (env, sigma, metas) a p x y : data =
+  (*  let x = whdbetadeltaiota env sigma x in *) (* for let-ins is problemtaic *)
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
@@ -617,11 +632,15 @@ let abs ?(mkprod=false) (env, sigma, metas) a p x y : data =
       if isRel x then
         let rel = destRel x in
         try
-          let (name, _, _) = lookup_rel rel env in
+          let (name, ot, ty) = lookup_rel rel env in
           let y' = mysubstn (mkRel 1) rel y in
           let t =
-            if mkprod then Term.mkProd (name, a, y')
-            else Term.mkLambda (name, a, y') in
+            match case, ot with
+            | AbsProd, _ -> Term.mkProd (name, a, y')
+            | AbsFun, _ -> Term.mkLambda (name, a, y')
+            | AbsLet, Some t -> Term.mkLetIn (name, t, ty, y')
+            | AbsLet, None -> Exceptions.block Exceptions.error_abs_let
+          in
           return sigma metas t
         with AbstractingArrayType ->
           Exceptions.block Exceptions.error_abs_ref
@@ -629,8 +648,17 @@ let abs ?(mkprod=false) (env, sigma, metas) a p x y : data =
         let name = destVar x in
         let y' = Vars.subst_vars [name] y in
         let t =
-          if mkprod then Term.mkProd (Name name, a, y')
-          else Term.mkLambda (Name name, a, y') in
+          match case with
+          | AbsProd -> Term.mkProd (Name name, a, y')
+          | AbsFun -> Term.mkLambda (Name name, a, y')
+          | AbsLet ->
+              let (_, ot, ty) = lookup_named name env in
+              begin
+                match ot with
+                | Some t -> Term.mkLetIn (Name name, t, ty, y')
+                | None -> Exceptions.block Exceptions.error_abs_let
+              end
+        in
         return sigma metas t
     else
       Exceptions.block Exceptions.error_abs_env
@@ -704,6 +732,8 @@ let get_name (env, sigma) t =
       let (n, _, _) = destLambda t in Some n
     else if isProd t then
       let (n, _, _) = destProd t in Some n
+    else if isLetIn t then
+      let (n, _, _, _) = destLetIn t in Some n
     else
       None
   in
@@ -878,7 +908,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
     | 13 -> (* abs *)
         let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs (env, sigma, metas) a p x y
+        abs AbsFun (env, sigma, metas) a p x y
 (*
        | 14 -> (* abs_eq *)
        let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
@@ -992,17 +1022,15 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
     | 29 -> (* pabs *)
         let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs ~mkprod:true (env, sigma, metas) a p x y
+        abs AbsProd (env, sigma, metas) a p x y
 
     | 30 -> (* munify *)
-        let a, x, y = nth 0, nth 1, nth 2 in
+        let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in
         let feqT = CoqEq.mkAppEq a x y in
         begin
-          let ts = Conv_oracle.get_transp_state (Environ.oracle env) in
-          let r = Munify.unify_evar_conv ts env sigma Reduction.CUMUL x y in
-          let open Evarsolve in
+          let r = UnificationStrategy.unify sigma env uni x y in
           match r with
-          | Success sigma ->
+          | Some sigma ->
               let feq = CoqEq.mkAppEqRefl a x in
               let someFeq = CoqOption.mkSome feqT feq in
               return sigma metas someFeq
@@ -1079,6 +1107,10 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
             Exceptions.block "Environment or term depends on variable"
         else
           Exceptions.block "Not a variable"
+
+    | 36 -> (* abs_let *)
+        let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
+        abs AbsLet (env, sigma, metas) a p x y
 
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"

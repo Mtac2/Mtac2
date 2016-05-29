@@ -22,8 +22,9 @@ Definition not_yet_there :=
   discriminate || trivial.
 
 (* destruct_all doesn't work with dependencies (as it should!) *)
-Definition destr_bool :=
+Definition destr_bool := Eval cbv[the_value] in
  typed_intros bool;; destruct_all bool;; intros;; not_yet_there.
+
 (*
 Ltac destr_bool :=
  intros; destruct_all bool; simpl in *; trivial; discriminate.
@@ -660,7 +661,7 @@ MProof.
 Qed.
 
 Ltac auto_with_bool := auto with bool.
-Definition auto_with_bool : tactic := ltac "Top.auto_with_bool" nil.
+Definition auto_with_bool : tactic := ltac "Bool.auto_with_bool" nil.
 
 Lemma Is_true_eq_left : forall x:bool, x = true -> Is_true x.
 MProof.
@@ -827,11 +828,13 @@ Hint Constructors reflect : bool.
 
 (** Relation with iff : *)
 
+Require Import Lists.List.
+Import ListNotations.
+
 Lemma reflect_iff : forall P b, reflect P b -> (P<->b=true).
 MProof.
- intros P b.
- destruct b;; intuition;; discriminate.
-Grab Existential Variables. discriminate.
+ intros P b H.
+ Fail destruct H.
 Admitted.
 
 Lemma iff_reflect : forall P b, (P<->b=true) -> reflect P b.
