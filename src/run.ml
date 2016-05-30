@@ -929,25 +929,9 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
     | 17 -> (* hash *)
         return sigma metas (hash ctxt (nth 1) (nth 2))
 
-    | 18 -> (* nu_let *)
-        let a, t, f = nth 0, nth 2, nth 3 in
-        let fx = mkApp(Vars.lift 1 f, [|mkRel 1;CoqEq.mkAppEqRefl a (mkRel 1)|]) in
-        let renv = Vars.lift 1 renv in
-        let ur = ref [] in
-        begin
-          let env = push_rel (Anonymous, Some t, a) env in
-          let (sigma, renv) = Hypotheses.cons_hyp a (mkRel 1) (Some t) renv sigma env in
-          match run' (env, renv, sigma, (ur :: undo), metas) fx with
-          | Val (sigma', metas, e) ->
-              clean !ur;
-              return sigma' metas (mkLetIn (Anonymous, t, a, e))
-          | Err (sigma', metas, e) ->
-              clean !ur;
-              if Int.Set.mem 1 (free_rels e) then
-                Exceptions.block Exceptions.error_param
-              else
-                fail sigma' metas (pop e)
-        end
+    | 18 -> (* abs_let *)
+        let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
+        abs AbsLet (env, sigma, metas) a p x y
 
     | 19 -> (* solve_typeclasses *)
         let evd' = Typeclasses.resolve_typeclasses ~fail:false env sigma in
@@ -1107,10 +1091,6 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
             Exceptions.block "Environment or term depends on variable"
         else
           Exceptions.block "Not a variable"
-
-    | 36 -> (* abs_let *)
-        let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsLet (env, sigma, metas) a p x y
 
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"

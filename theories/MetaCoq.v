@@ -115,7 +115,7 @@ Inductive MetaCoq : Type -> Prop :=
 
 | hash : forall {A}, A -> N -> MetaCoq N
 
-| tnu_let : forall {A B}, forall t : A, (forall y : A, y = t -> MetaCoq B) -> MetaCoq B
+| abs_let : forall {A B}, A -> B -> MetaCoq B
 
 | solve_typeclasses : MetaCoq unit
 
@@ -142,7 +142,6 @@ Inductive MetaCoq : Type -> Prop :=
 | match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
 
 | remove : forall {A B}, A -> MetaCoq B -> MetaCoq B
-| abs_let : forall {A B}, A -> B -> MetaCoq B
 .
 
 Definition array_length : forall {A}, array A -> length :=
