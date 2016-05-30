@@ -172,6 +172,22 @@ Definition intros_all : tactic :=
         end
       end) g.
 
+(** Introduces up to n binders. Throws [NotAProduct] if there
+    aren't enough products in the goal.  *)
+Definition introsn : nat -> tactic :=
+  mfix2 f (n : nat) (g : goal) : M (list goal) :=
+    open_and_apply (fun g =>
+      mmatch (n, g) with
+      | (0, g) => ret [g]
+      | [? n' T e] (S n', @TheGoal T e) =>
+        mtry
+          xn <- get_binder_name T;
+          r <- intro_simpl xn g;
+          g <- hd_exception r;
+          f n' g
+        with WrongTerm => raise NotAProduct end
+      end) g.
+
 Definition NotSameSize (l : list tactic) (l' : list goal) : Exception. exact exception. Qed.
 Fixpoint gmap (funs : list tactic) (ass : list goal) : M (list (list goal)) :=
   match funs, ass with
@@ -312,6 +328,17 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
     unify_or_fail (@TheGoal Pn d) g;;
     let l := hnf (List.map dyn_to_goal l) in
     ret l.
+
+(** Destructs the n-th hypotheses in the goal (counting from 0) *)
+Definition destructn (n : nat) : tactic := fun g=>
+  goals <- introsn (S n) g;
+  goal <- hd_exception goals;
+  open_and_apply (fun g=>
+    hyps <- hypotheses;
+    var <- hd_exception hyps;
+    let (_, var, _) := var in
+    destruct var g
+  ) goal.
 
 Local Obligation Tactic := idtac.
 
@@ -508,6 +535,11 @@ Definition pose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
     | _ => raise NotAGoal
     end).
 
+(* It isn't quite right, it's making a transparent binding instead of an opaque one *)
+Definition assert {A} (cont: A -> tactic) : tactic := fun g=>
+  e <- evar _;
+  pose e cont g.
+
 Module MCTacticsNotations.
 
 Notation "t || u" := (OR t u).
@@ -529,4 +561,7 @@ Notation "a ;; b" := (@the_value _ _ _ a b _).
 
 Notation "'simpl'" := (treduce RedSimpl).
 Notation "'hnf'" := (treduce RedWhd).
+
+Notation "'pose' x := t" := (pose t (fun x=>idtac)) (at level 40, x at next level).
+Notation "'assert' x : T" := (assert (fun x:T=>idtac)) (at level 40, x at next level).
 End MCTacticsNotations.

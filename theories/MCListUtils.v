@@ -64,3 +64,12 @@ Definition mindex_of {A} (f : A -> M bool) (l : list A) : M (option nat) :=
   ) l (0, None);
   let (_, r) := ir in
   ret r.
+
+Definition NotThatManyElements : Exception. exact exception. Qed.
+
+Fixpoint nth_exception {A} n (l : list A) : M A :=
+  match n, l with
+  | 0, (a :: _) => ret a
+  | S n, (_ :: s) => nth_exception n s
+  | _, _ => raise NotThatManyElements
+  end.

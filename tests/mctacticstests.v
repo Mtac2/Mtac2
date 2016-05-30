@@ -272,6 +272,25 @@ MProof.
   Fail apply Gt.gt_n_S.
 Abort.
 
+Goal forall b1 b2 b3 : bool, andb b1 (andb b2 b3) = andb b1 (andb b2 b3).
+MProof.
+  introsn 1.
+  introsn 2.
+  Fail introsn 1.
+  introsn 0.
+  reflexivity.
+Qed.
+
+Goal forall b1 b2 b3 : bool, andb b1 (andb b2 b3) = andb b1 (andb b2 b3).
+MProof.
+  destructn 0.
+  - destructn 1.
+    + Fail destructn 0.
+      bindb (destruct b2) reflexivity.
+    + bindb (destruct b2) reflexivity.
+  - bindb (introsn 2) reflexivity.
+Qed.
+
 (* generalize1 *)
 Goal forall (x : nat) (z : bool) (y : nat), x > y.
 MProof.
