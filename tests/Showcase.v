@@ -45,7 +45,7 @@ Theorem plus_rearrange : forall n m p q : nat,
   (n + m) + (p + q) = (m + n) + (p + q).
 MProof.
   intros n m p q.
-  assert H : (n + m = m + n).
+  assert (H : n + m = m + n).
   - rewrite -> PeanoNat.Nat.add_comm;; reflexivity.
   rewrite -> H;; reflexivity.
 Qed.

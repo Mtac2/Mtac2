@@ -523,7 +523,7 @@ Definition typed_intros (T : Type) : tactic := fun g=>
       idtac g
     end) g.
 
-Definition pose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
+Definition cpose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
   n <- get_binder_name cont;
   tnu n (Some t) (fun x=>
     match g with
@@ -536,9 +536,19 @@ Definition pose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
     end).
 
 (* It isn't quite right, it's making a transparent binding instead of an opaque one *)
-Definition assert {A} (cont: A -> tactic) : tactic := fun g=>
-  e <- evar _;
-  pose e cont g.
+Definition cassert {A} (cont: A -> tactic) : tactic := fun g=>
+  a <- evar A; (* the goal to solve A *)
+  n <- get_binder_name cont;
+  tnu n None (fun x=>
+    match g with
+    | @TheGoal T e =>
+      r <- evar T; (* The new goal now referring to n *)
+      value <- abs x r;
+      instantiate e (value a);; (* instantiate the old goal with the new one *)
+      v <- cont x (TheGoal r) >> close_goals x;
+      ret (TheGoal a :: v) (* append the goal for a to the top of the goals *)
+    | _ => raise NotAGoal
+    end).
 
 Module MCTacticsNotations.
 
@@ -562,6 +572,6 @@ Notation "a ;; b" := (@the_value _ _ _ a b _).
 Notation "'simpl'" := (treduce RedSimpl).
 Notation "'hnf'" := (treduce RedWhd).
 
-Notation "'pose' x := t" := (pose t (fun x=>idtac)) (at level 40, x at next level).
-Notation "'assert' x : T" := (assert (fun x:T=>idtac)) (at level 40, x at next level).
+Notation "'pose' ( x := t )" := (cpose t (fun x=>idtac)) (at level 40, x at next level).
+Notation "'assert' ( x : T )" := (cassert (fun x:T=>idtac)) (at level 40, x at next level).
 End MCTacticsNotations.
