@@ -445,7 +445,7 @@ Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
     beq <- jmeq P gty;  (* actually, we want a match with reduction here *)
     if beq then t g
     else fail DoesNotMatchGoal g
-  | @gtele C f, (@ahyp A a None :: l) =>
+  | @gtele C f, (@ahyp A a _ :: l) =>
     teq <- munify C A UniNormal; (* same here *)
     match teq with
     | Some eq =>
@@ -568,6 +568,57 @@ Definition simpl_in_all : tactic := fun g=>
   | _ => raise exception (* should never happen *)
   end.
 
+(** exists tactic *)
+Definition mexists {A} (x: A) : tactic := fun g=>
+  P <- evar _;
+  e <- evar _;
+  oeq <- munify g (TheGoal (@ex_intro _ P x e)) UniNormal;
+  match oeq with
+  | Some eq_refl => ret [TheGoal e]
+  | _ => raise (NotUnifiable g (TheGoal (@ex_intro _ P x e)))
+  end.
+
+(** Printing of a goal *)
+Require Import Strings.String.
+
+Definition print_hypothesis (a:Hyp) :=
+  let (A, x, ot) := a in
+  sA <- pretty_print A;
+  sx <- pretty_print x;
+  match ot with
+  | Some t =>
+    st <- pretty_print t;
+    print (sx ++ " := " ++ st ++ " : " ++ sA)
+  | None => print (sx ++ " : " ++ sA)
+  end.
+
+Definition print_hypotheses :=
+  l <- hypotheses;
+  let l := List.rev l in
+  MCListUtils.miterate print_hypothesis l.
+
+Definition repeat c :=
+  (fix repeat s n :=
+    match n with
+    | 0 => s
+    | S n => repeat (c++s)%string n
+    end) "".
+
+Definition print_goal : tactic := fun g=>
+  G <- goal_type g;
+  sg <- pretty_print G;
+  let sep := repeat "=" 20 in
+  print_hypotheses;;
+  print sep;;
+  print sg;;
+  idtac g.
+
+(** Given a type [T] it searches for a hypothesis with that type and
+    executes the [cont]inuation on it.  *)
+Definition hyp_with_type T (cont: T -> tactic) : tactic := fun g=>
+  G <- goal_type g;
+  match_goal ([[(x : T) |- G ]] => cont x) g.
+
 Module MCTacticsNotations.
 
 Notation "t || u" := (OR t u).
@@ -587,8 +638,8 @@ Notation "'cintros' x .. y '{-' t '-}'" :=
 
 Notation "a ;; b" := (@the_value _ _ _ a b _).
 
-Notation "'simpl'" := (treduce RedSimpl).
-Notation "'hnf'" := (treduce RedWhd).
+Notation "'tsimpl'" := (treduce RedSimpl).
+Notation "'thnf'" := (treduce RedWhd).
 
 Notation "'pose' ( x := t )" := (cpose t (fun x=>idtac)) (at level 40, x at next level).
 Notation "'assert' ( x : T )" := (cassert (fun x:T=>idtac)) (at level 40, x at next level).

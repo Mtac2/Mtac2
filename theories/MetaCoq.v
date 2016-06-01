@@ -122,7 +122,7 @@ Inductive MetaCoq : Type -> Prop :=
 | array_make : forall {A}, N -> A -> MetaCoq (array A)
 | array_get : forall {A}, array A -> N -> MetaCoq A
 | array_set : forall {A}, array A -> N -> A -> MetaCoq unit
-| print_term : forall {A}, A -> MetaCoq unit
+| pretty_print : forall {A}, A -> MetaCoq string
 | hypotheses : MetaCoq (list Hyp)
 
 | destcase : forall {A} (a : A), MetaCoq (Case)
@@ -174,6 +174,11 @@ Arguments eval {A} _ {_}.
 
 Hint Extern 20 (runner ?f) =>
   (exact (Build_runner f ltac:(mrun f)))  : typeclass_instances.
+
+
+
+Definition print_term {A} (x : A) : MetaCoq unit :=
+  bind (pretty_print x) (fun s=> print s).
 
 End MetaCoq.
 

@@ -437,9 +437,6 @@ let fail s es t = Err (s, es, t)
 let print env sigma s = Printf.printf "[DEBUG] %s\n"
                           (CoqString.from_coq (env, sigma) s)
 
-let print_term t = Printf.printf "[DEBUG] ";
-  msg (Termops.print_constr t); Printf.printf "\n"
-
 exception AbstractingArrayType
 
 let mysubstn t n c =
@@ -975,11 +972,11 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
                  Exceptions.block "Wrong array!"
         end
 
-    | 23 -> (* print term *)
+    | 23 -> (* pretty_print *)
         let t = nth 1 in
         let t = nf_evar sigma t in
-        print_term t;
-        return sigma metas (Lazy.force CoqUnit.mkTT)
+        let s = string_of_ppcmds (Termops.print_constr_env env t) in
+        return sigma metas (CoqString.to_coq s)
 
     | 24 -> (* hypotheses *)
         return sigma metas renv

@@ -73,3 +73,10 @@ Fixpoint nth_exception {A} n (l : list A) : M A :=
   | S n, (_ :: s) => nth_exception n s
   | _, _ => raise NotThatManyElements
   end.
+
+Definition miterate {A} (f : A -> M unit) : list A -> M unit :=
+  fix loop l :=
+    match l with
+    | [] => ret tt
+    | b :: bs => f b;; loop bs
+    end.
