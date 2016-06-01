@@ -16,14 +16,12 @@ Import MCTacticsNotations.
 
 (** Most of the lemmas in this file are trivial after breaking all booleans *)
 
-Ltac simpl_in_all := simpl in *.
-
-Definition not_yet_there :=
+Definition not_yet_there : tactic :=
   discriminate || trivial.
 
 (* destruct_all doesn't work with dependencies (as it should!) *)
 Definition destr_bool := Eval cbv[the_value] in
- typed_intros bool;; destruct_all bool;; intros;; not_yet_there.
+ typed_intros bool;; destruct_all bool;; simpl_in_all;; intros;; not_yet_there.
 
 (*
 Ltac destr_bool :=
@@ -657,24 +655,20 @@ Hint Unfold Is_true: bool.
 
 Lemma Is_true_eq_true : forall x:bool, Is_true x -> x = true.
 MProof.
-  destr_bool;; auto.
+  destr_bool;; simpl_in_all;; tauto.
 Qed.
 
 Ltac auto_with_bool := auto with bool.
-Definition auto_with_bool : tactic := ltac "Bool.auto_with_bool" nil.
+Definition auto_with_bool : tactic := ltac "Top.auto_with_bool" nil.
 
 Lemma Is_true_eq_left : forall x:bool, x = true -> Is_true x.
 MProof.
-  intros;; subst.
-  Grab Existential Variables.
-  auto_with_bool.
+  intros;; subst;; auto_with_bool.
 Qed.
 
 Lemma Is_true_eq_right : forall x:bool, true = x -> Is_true x.
 MProof.
-  intros;; subst.
-  Grab Existential Variables.
-  auto_with_bool.
+  intros;; subst;; auto_with_bool.
 Qed.
 
 Notation Is_true_eq_true2 := Is_true_eq_right (only parsing).
@@ -688,7 +682,7 @@ Qed.
 
 Lemma eqb_eq : forall x y:bool, Is_true (eqb x y) -> x = y.
 MProof.
-  destr_bool;; simpl;; (OR contradiction auto).
+  destr_bool;; (OR contradiction auto).
 Qed.
 
 (** [Is_true] and connectives *)
@@ -704,22 +698,13 @@ Notation orb_prop2 := orb_prop_elim (only parsing).
 Lemma orb_prop_intro :
   forall a b:bool, Is_true a \/ Is_true b -> Is_true (a || b).
 MProof.
-  destr_bool.
-  Grab Existential Variables.
-  simpl.
-  destruct x;; intros;; assumption.
-Qed. (* tauto isn't working *)
+  destr_bool;; tauto.
+Qed.
 
 Lemma andb_prop_intro :
   forall b1 b2:bool, Is_true b1 /\ Is_true b2 -> Is_true (b1 && b2).
 MProof.
-  typed_intros bool.
-  destruct_all bool;; intro H.
-  destruct H. intros;; assumption.
-  destruct H. intros;; assumption.
-  destruct H. intros;; assumption.
-  destruct H. intros;; assumption.
-  (* can't do cintro H {- ... -} because H is typed *)
+  destr_bool;; tauto.
 Qed.
 Hint Resolve andb_prop_intro: bool v62.
 
@@ -730,7 +715,7 @@ Notation andb_true_intro2 :=
 Lemma andb_prop_elim :
   forall a b:bool, Is_true (a && b) -> Is_true a /\ Is_true b.
 MProof.
-  destr_bool;; auto.
+  destr_bool;; tauto.
 Qed.
 Hint Resolve andb_prop_elim: bool v62.
 
@@ -739,17 +724,12 @@ Notation andb_prop2 := andb_prop_elim (only parsing).
 Lemma eq_bool_prop_intro :
   forall b1 b2, (Is_true b1 <-> Is_true b2) -> b1 = b2.
 MProof.
-  destr_bool.
-  Grab Existential Variables.
-  simpl;; destruct x.
-  intros. auto.
-  simpl;; destruct x.
-  intros.
-Admitted.
+  destr_bool;; tauto.
+Qed.
 
 Lemma eq_bool_prop_elim : forall b1 b2, b1 = b2 -> (Is_true b1 <-> Is_true b2).
 MProof.
-  destr_bool;; split;; intros;; assumption.
+  destr_bool;; tauto.
 Qed.
 
 Lemma negb_prop_elim : forall b, Is_true (negb b) -> ~ Is_true b.
@@ -759,18 +739,18 @@ Qed.
 
 Lemma negb_prop_intro : forall b, ~ Is_true b -> Is_true (negb b).
 MProof.
-  destr_bool.
-Admitted.
+  destr_bool;; tauto.
+Qed.
 
 Lemma negb_prop_classical : forall b, ~ Is_true (negb b) -> Is_true b.
 MProof.
-  destr_bool.
-Admitted.
+  destr_bool;; tauto.
+Qed.
 
 Lemma negb_prop_involutive : forall b, Is_true b -> ~ Is_true (negb b).
 MProof.
-  destr_bool.
-Admitted.
+  destr_bool;; tauto.
+Qed.
 
 (** Rewrite rules about andb, orb and if (used in romega) *)
 
@@ -803,7 +783,7 @@ Local Open Scope lazy_bool_scope.
 
 Lemma andb_lazy_alt : forall a b : bool, a && b = a &&& b.
 MProof.
-  intros;;reflexivity.
+  intros;; reflexivity.
 Qed.
 
 Lemma orb_lazy_alt : forall a b : bool, a || b = a ||| b.
@@ -834,7 +814,7 @@ Import ListNotations.
 Lemma reflect_iff : forall P b, reflect P b -> (P<->b=true).
 MProof.
  intros P b H.
- Fail destruct H.
+ Fail destruct H. (* destruct isn't getting the 'in' predicate *)
 Admitted.
 
 Lemma iff_reflect : forall P b, (P<->b=true) -> reflect P b.

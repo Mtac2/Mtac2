@@ -550,6 +550,24 @@ Definition cassert {A} (cont: A -> tactic) : tactic := fun g=>
     | _ => raise NotAGoal
     end).
 
+(* performs simpl in each hypothesis and in the goal *)
+Definition simpl_in_all : tactic := fun g=>
+  l <- hypotheses;
+  l <- mfold_right (fun (hyp : Hyp) hyps =>
+    let (A, x, ot) := hyp in
+    let A := simpl A in
+    ret (@ahyp A x ot :: hyps)
+  ) [] l;
+  T <- goal_type g;
+  let T := simpl T in
+  e <- Cevar T l; (* create the new goal in the new context *)
+  (* we need normal unification since g might be a compound value *)
+  oeq <- munify g (TheGoal e) UniNormal;
+  match oeq with
+  | Some eq_refl => ret [TheGoal e]
+  | _ => raise exception (* should never happen *)
+  end.
+
 Module MCTacticsNotations.
 
 Notation "t || u" := (OR t u).

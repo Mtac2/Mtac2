@@ -22,8 +22,7 @@ Definition subst : tactic := ltac (qualify "subst") nil.
 Ltac contradiction := contradiction.
 Definition contradiction : tactic := ltac (qualify "contradiction") nil.
 
-Ltac tauto := tauto.
-Definition tauto : tactic := ltac (qualify "tauto") nil.
+Definition tauto : tactic := ltac ("Coq.Init.Notations.tauto") nil.
 
 Ltac rrewrite h := rewrite h.
 Definition rrewrite {A} (x:A) : tactic :=
@@ -33,5 +32,5 @@ Ltac lrewrite h := rewrite <- h.
 Definition lrewrite {A} (x:A) : tactic :=
   ltac (qualify "lrewrite") (cons (Dyn x) nil).
 
-Notation "rewrite ->" := rrewrite (at level 40).
-Notation "rewrite <-" := lrewrite (at level 40).
+Notation "'rewrite->'" := rrewrite (at level 40).
+Notation "'rewrite<-'" := lrewrite (at level 40).
