@@ -22,9 +22,9 @@ MProof.
   Fail exact I.
 Abort.
 
-Example fail_not_var : 0 = 0.
+Example not_fail_not_var : 0 = 0.
 MProof.
-  Fail destruct 0.
+  destruct 0. reflexivity.
 Abort.
 
 Example ex_destr (n:nat) : n = n.
@@ -346,7 +346,7 @@ Qed.
 
 Goal True.
 MProof.
-  pose I (fun x=>idtac).
+  cpose I (fun x=>idtac).
   exact I.
 Qed.
 
@@ -369,4 +369,16 @@ Ltac myapply H := apply H.
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
   cintros P Q f x {- ltac "Top.myapply" [Dyn f] ;; ltac "Top.myapply" [Dyn x] -}.
+Qed.
+
+Require Import MetaCoq.ImportedTactics.
+
+Example ex_destr_not_var (b c: bool) : (if b && c then c else c) = c.
+MProof.
+  pose (H := b && c).
+  assert (Heq : H = b && c).
+  - reflexivity.
+  rewrite<- Heq.
+  Grab Existential Variables.
+  destruct H;; reflexivity.
 Qed.

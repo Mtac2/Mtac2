@@ -299,35 +299,32 @@ Definition abstract_up_to n : tactic := fun g=>
 *)
 
 
-Definition NotAVariable : Exception. exact exception. Qed.
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
   b <- is_var n;
-  if negb b then raise NotAVariable
-  else
-    ctx <- hyps_except n;
-    P <- Cevar (A->Type) ctx;
-    let Pn := P n in
-    gT <- goal_type g;
-    unify_or_fail Pn gT;;
-    l <- constrs A;
-    l <- mmap (fun d : dyn =>
-      (* a constructor c has type (forall x, ... y, A) and we return
-         (forall x, ... y, P (c x .. y)) *)
-      t' <- copy_ctx P d;
-      e <- evar t';
-      ret {| elem := e |}) l;
-    let c := {| case_ind := A;
-                case_val := n;
-                case_type := Pn;
-                case_return := {| elem := P |};
-                case_branches := l
-             |} in
-    d <- makecase c;
-    d <- coerce (elem d);
-    let d := hnf d in
-    unify_or_fail (@TheGoal Pn d) g;;
-    let l := hnf (List.map dyn_to_goal l) in
-    ret l.
+  ctx <- if b then hyps_except n else hypotheses;
+  P <- Cevar (A->Type) ctx;
+  let Pn := P n in
+  gT <- goal_type g;
+  unify_or_fail Pn gT;;
+  l <- constrs A;
+  l <- MCListUtils.mmap (fun d : dyn =>
+    (* a constructor c has type (forall x, ... y, A) and we return
+       (forall x, ... y, P (c x .. y)) *)
+    t' <- copy_ctx P d;
+    e <- evar t';
+    ret {| elem := e |}) l;
+  let c := {| case_ind := A;
+              case_val := n;
+              case_type := Pn;
+              case_return := {| elem := P |};
+              case_branches := l
+           |} in
+  d <- makecase c;
+  d <- coerce (elem d);
+  let d := hnf d in
+  unify_or_fail (@TheGoal Pn d) g;;
+  let l := hnf (List.map dyn_to_goal l) in
+  ret l.
 
 (** Destructs the n-th hypotheses in the goal (counting from 0) *)
 Definition destructn (n : nat) : tactic := fun g=>

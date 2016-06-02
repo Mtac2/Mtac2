@@ -242,7 +242,7 @@ Qed.
 Lemma orb_true_elim :
   forall b1 b2:bool, b1 || b2 = true -> {b1 = true} + {b2 = true}.
 MProof.
-  cintro b1 {- destruct b1;; simpl;; auto -}.
+  cintro b1 {- destruct b1;; tsimpl;; auto -}.
 Defined.
 
 Lemma orb_prop : forall a b:bool, a || b = true -> a = true \/ b = true.
@@ -405,7 +405,7 @@ Notation andb_true_b := andb_true_l (only parsing).
 Lemma andb_false_elim :
   forall b1 b2:bool, b1 && b2 = false -> {b1 = false} + {b2 = false}.
 MProof.
-  cintro b1 {- destruct b1;; simpl;; auto -}.
+  cintro b1 {- destruct b1;; tsimpl;; auto -}.
 Defined.
 Hint Resolve andb_false_elim: bool v62.
 

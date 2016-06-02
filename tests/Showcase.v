@@ -22,6 +22,7 @@ Import MCTacticsNotations.
  - generalize.
  - assert.
  - pose.
+ - exists
 *)
 
 Theorem surjective_pairing : forall A B (p : A * B),
@@ -47,4 +48,13 @@ MProof.
   assert (H : n + m = m + n).
   - rewrite-> PeanoNat.Nat.add_comm;; reflexivity.
   rewrite-> H;; reflexivity.
+Qed.
+
+Theorem exists_example_2 : forall n,
+  (exists m, n = 4 + m) ->
+  (exists o, n = 2 + o).
+MProof.
+  intros n. destructn 0;; intros m Hm.
+  mexists (2 + m).
+  apply Hm.
 Qed.
