@@ -382,3 +382,8 @@ MProof.
   Grab Existential Variables.
   destruct H;; reflexivity.
 Qed.
+
+Example fix_tac_ex: forall x:nat, 0 <= x.
+MProof.
+  fix_tac "f" 0%N;; apply le_0_n.
+Qed.

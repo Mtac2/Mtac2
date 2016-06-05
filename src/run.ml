@@ -617,9 +617,10 @@ let check_dependencies env x t =
 
 
 (** Abstract *)
-type abs = AbsProd | AbsFun | AbsLet
+type abs = AbsProd | AbsFun | AbsLet | AbsFix
 
-let abs case (env, sigma, metas) a p x y : data =
+(* n is only for fixpoint *)
+let abs case (env, sigma, metas) a p x y n : data =
   (*  let x = whdbetadeltaiota env sigma x in *) (* for let-ins is problemtaic *)
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
@@ -637,6 +638,8 @@ let abs case (env, sigma, metas) a p x y : data =
             | AbsFun, _ -> Term.mkLambda (name, a, y')
             | AbsLet, Some t -> Term.mkLetIn (name, t, ty, y')
             | AbsLet, None -> Exceptions.block Exceptions.error_abs_let
+            | AbsFix, _ -> (* TODO: check enough products *)
+                Term.mkFix (([|n|], 0), ([|name|], [|ty|], [|y'|]))
           in
           return sigma metas t
         with AbstractingArrayType ->
@@ -655,6 +658,10 @@ let abs case (env, sigma, metas) a p x y : data =
                 | Some t -> Term.mkLetIn (Name name, t, ty, y')
                 | None -> Exceptions.block Exceptions.error_abs_let
               end
+          | AbsFix ->
+              (* TODO: check enough products *)
+              let (_, _, ty) = lookup_named name env in
+              Term.mkFix (([|n|], 0), ([|Name name|], [|ty|], [|y'|]))
         in
         return sigma metas t
     else
@@ -905,7 +912,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
     | 13 -> (* abs *)
         let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsFun (env, sigma, metas) a p x y
+        abs AbsFun (env, sigma, metas) a p x y 0
 (*
        | 14 -> (* abs_eq *)
        let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
@@ -928,7 +935,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
     | 18 -> (* abs_let *)
         let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsLet (env, sigma, metas) a p x y
+        abs AbsLet (env, sigma, metas) a p x y 0
 
     | 19 -> (* solve_typeclasses *)
         let evd' = Typeclasses.resolve_typeclasses ~fail:false env sigma in
@@ -1003,7 +1010,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
     | 29 -> (* pabs *)
         let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsProd (env, sigma, metas) a p x y
+        abs AbsProd (env, sigma, metas) a p x y 0
 
     | 30 -> (* munify *)
         let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in
@@ -1088,6 +1095,12 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
             Exceptions.block "Environment or term depends on variable"
         else
           Exceptions.block "Not a variable"
+
+    | 36 -> (* abs_fix *)
+        let a, f, t, n = nth 0, nth 1, nth 2, nth 3 in
+        let n = CoqN.from_coq (env, sigma) n in
+        (* HACK: put mkProp as returning type *)
+        abs AbsFix (env, sigma, metas) a mkProp f t n
 
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"

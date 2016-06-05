@@ -142,6 +142,12 @@ Inductive MetaCoq : Type -> Prop :=
 | match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
 
 | remove : forall {A B}, A -> MetaCoq B -> MetaCoq B
+
+(** [abs_fix f t n] creates a fixpoint with variable [f] as name,
+    with body t,
+    and reducing the n-th product of [f]. This means that [f]'s type
+    is expected to be of the form [forall x1, ..., xn, T] *)
+| abs_fix : forall {A}, A -> A -> N -> MetaCoq A
 .
 
 Definition array_length : forall {A}, array A -> length :=

@@ -616,6 +616,40 @@ Definition hyp_with_type T (cont: T -> tactic) : tactic := fun g=>
   G <- goal_type g;
   match_goal ([[(x : T) |- G ]] => cont x) g.
 
+Definition n_etas (n : nat) {A} (f:A) : M A :=
+  (fix loop (n : nat) (d : dyn) : M (type d) :=
+print_term d;;
+    match n with
+    | 0 => let r := one_step (elem d) in ret r
+    | S n' =>
+       mmatch d with
+       | [? B (T:B->Type) f] @Dyn (forall x:B, T x) f =>
+         name <- get_binder_name (type d);
+         tnu name None (fun x:B =>
+           r <- loop n' (Dyn (f x));
+           abs x r
+         )
+       end
+    end) n (Dyn f).
+
+
+Require Import NArith.BinNat.
+Require Import NArith.BinNatDef.
+
+Definition fix_tac f n : tactic := fun g=>
+  G <- goal_to_dyn g;
+  let (G, e) := G in
+  r <- tnu f None (fun f:G=>
+    new_goal <- evar G;
+    fixp <- n_etas (S (N.to_nat n)) new_goal;
+    fixp <- abs_fix f fixp n;
+    new_goal <- abs f (TheGoal new_goal);
+    ret (fixp, AHyp new_goal)
+  );
+  let (f, new_goal) := r in
+  instantiate e f;;
+  ret [new_goal].
+
 Module MCTacticsNotations.
 
 Notation "t || u" := (OR t u).
