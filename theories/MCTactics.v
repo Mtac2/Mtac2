@@ -616,19 +616,23 @@ Definition hyp_with_type T (cont: T -> tactic) : tactic := fun g=>
   G <- goal_type g;
   match_goal ([[(x : T) |- G ]] => cont x) g.
 
+(** [n_etas n f] takes a function f with type [forall x1, ..., xn, T]
+    and returns its eta-expansion: [fun x1, ..., xn=>f x1 .. xn].
+    Raises [NotAProduct] if there aren't that many absractions. *)
 Definition n_etas (n : nat) {A} (f:A) : M A :=
   (fix loop (n : nat) (d : dyn) : M (type d) :=
-print_term d;;
     match n with
-    | 0 => let r := one_step (elem d) in ret r
+    | 0 =>
+      (* we remove the wrapper of the element in [d] *)
+      let r := one_step (elem d) in ret r
     | S n' =>
        mmatch d with
        | [? B (T:B->Type) f] @Dyn (forall x:B, T x) f =>
          name <- get_binder_name (type d);
          tnu name None (fun x:B =>
-           r <- loop n' (Dyn (f x));
-           abs x r
+           loop n' (Dyn (f x)) >> abs x
          )
+       | _ => raise NotAProduct
        end
     end) n (Dyn f).
 
@@ -636,13 +640,22 @@ print_term d;;
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
 
+(** [fix_tac f n] is like Coq's [fix] tactic: it generates a fixpoint
+    with a new goal as body, containing a variable named [f] with
+    the current goal as type. The goal is expected to have at least
+    [n] products. *)
 Definition fix_tac f n : tactic := fun g=>
   G <- goal_to_dyn g;
   let (G, e) := G in
   r <- tnu f None (fun f:G=>
+    (* We introduce the recursive definition f and create the new
+       goal having it. *)
     new_goal <- evar G;
+    (* We need to enclose the body with n-abstractions *)
     fixp <- n_etas (S (N.to_nat n)) new_goal;
     fixp <- abs_fix f fixp n;
+    (* fixp is now the fixpoint with the evar as body *)
+    (* The new goal is enclosed with the definition of f *)
     new_goal <- abs f (TheGoal new_goal);
     ret (fixp, AHyp new_goal)
   );
