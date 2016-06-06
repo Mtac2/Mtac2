@@ -234,11 +234,11 @@ Definition copy_ctx {A} (B : A -> Type) :=
     | [? C (D : C -> Type) (c : forall y:C, D y)] {| elem := c |} =>
         nu y : C,
         r <- rec (Dyn (c y));
-        pabs y r
+        abs_prod y r
     | [? C D (c : C->D)] {| elem := c |} =>
         nu y : C,
         r <- rec (Dyn (c y));
-        pabs y r
+        abs_prod y r
     | _ => print_term A;; raise (SomethingNotRight d)
     end.
 
@@ -270,7 +270,7 @@ Definition generalize1 (cont: tactic) : tactic := fun g=>
   l <- hypotheses;
   ft <- hd_exception l;
   let (A, x, _) := ft in
-  aP <- pabs x P; (* aP = (forall x:A, P) *)
+  aP <- abs_prod x P; (* aP = (forall x:A, P) *)
   e <- Cevar aP (List.tl l);
   mmatch aP with
   | [? Q : A -> Type] (forall z:A, Q z) => [H]
@@ -651,7 +651,8 @@ Definition fix_tac f n : tactic := fun g=>
     (* We introduce the recursive definition f and create the new
        goal having it. *)
     new_goal <- evar G;
-    (* We need to enclose the body with n-abstractions *)
+    (* We need to enclose the body with n-abstractions as
+     required by the fix operator. *)
     fixp <- n_etas (S (N.to_nat n)) new_goal;
     fixp <- abs_fix f fixp n;
     (* fixp is now the fixpoint with the evar as body *)

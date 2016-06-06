@@ -309,7 +309,7 @@ Ltac rewrite h := rewrite h.
 Goal forall (x y z : nat) (H: x = y), y = x.
 MProof.
   intros.
-  ltac "Top.rewrite" [Dyn H].
+  ltac "mctacticstests.rewrite" [Dyn H].
   Grab Existential Variables.
   reflexivity.
 Qed.
@@ -368,7 +368,7 @@ Qed.
 Ltac myapply H := apply H.
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
-  cintros P Q f x {- ltac "Top.myapply" [Dyn f] ;; ltac "Top.myapply" [Dyn x] -}.
+  cintros P Q f x {- ltac "mctacticstests.myapply" [Dyn f] ;; ltac "mctacticstests.myapply" [Dyn x] -}.
 Qed.
 
 Require Import MetaCoq.ImportedTactics.

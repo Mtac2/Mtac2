@@ -874,10 +874,12 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
           nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9, nth 10, nth 11, nth 12, nth 13 in
         run_fix ctxt h [|a1; a2; a3; a4; a5|] b s i f [|x1; x2; x3; x4; x5|]
 
-    | 10 -> (* print *)
-        let s = nth 0 in
-        print env sigma s;
-        return sigma metas (Lazy.force CoqUnit.mkTT)
+    | 10 -> (* is_var *)
+        let e = whd_betadeltaiota env sigma (nth 1) in
+        if isRel e || isVar e then
+          return sigma metas CoqBool.mkTrue
+        else
+          return sigma metas CoqBool.mkFalse
 
     | 11 -> (* nu *)
         let a, s, ot, f = nth 0, nth 2, nth 3, nth 4 in
@@ -903,50 +905,77 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
                 fail sigma' metas (pop e)
         end
 
-    | 12 -> (* is_var *)
-        let e = whd_betadeltaiota env sigma (nth 1) in
-        if isRel e || isVar e then
-          return sigma metas CoqBool.mkTrue
-        else
-          return sigma metas CoqBool.mkFalse
-
-    | 13 -> (* abs *)
+    | 12 -> (* abs *)
         let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
         abs AbsFun (env, sigma, metas) a p x y 0
-(*
-       | 14 -> (* abs_eq *)
-       let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-       abs env sigma metas a p x y true
-    *)
-    | 15 -> (* evar *)
+
+    | 13 -> (* abs_let *)
+        let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
+        abs AbsLet (env, sigma, metas) a p x y 0
+
+    | 14 -> (* abs_prod *)
+        let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
+        abs AbsProd (env, sigma, metas) a p x y 0
+
+    | 15 -> (* abs_fix *)
+        let a, f, t, n = nth 0, nth 1, nth 2, nth 3 in
+        let n = CoqN.from_coq (env, sigma) n in
+        (* HACK: put mkProp as returning type *)
+        abs AbsFix (env, sigma, metas) a mkProp f t n
+
+    | 16 -> (* get_binder_name *)
+        let t = nth 1 in
+        let s = get_name (env, sigma) t in
+        begin
+          match s with
+          | Some s -> return sigma metas s
+          | None -> fail sigma metas (Lazy.force Exceptions.mkWrongTerm)
+        end
+
+    | 17 -> (* remove *)
+        let x, t = nth 2, nth 3 in
+        let x = whd_betadeltaiota env sigma x in
+        if isVar x || isRel x then
+          if check_dependencies env x t then
+            (* if it's a rel we need to update the indices in t, since there is one element less in the context *)
+            let t = if isRel x then Vars.liftn (-1) (destRel x) t else t in
+            let env, (sigma, renv) = env_without sigma env renv x in
+            run' (env, renv, sigma, undo, metas) t >>= fun (sigma, metas, v)->
+            return sigma metas (if isRel x then Vars.liftn (+1) (destRel x) v else v)
+          else
+            Exceptions.block "Environment or term depends on variable"
+        else
+          Exceptions.block "Not a variable"
+
+    | 18 -> (* evar *)
         let t = nth 0 in
         let (sigma', ev) = Evarutil.new_evar env sigma t in
         return sigma' (ExistentialSet.add (fst (destEvar ev)) metas) ev
 
-    | 16 -> (* is_evar *)
+    | 19 -> (* Cevar *)
+        let ty, hyp = nth 0, nth 1 in
+        cvar (env, sigma, metas) ty hyp
+
+    | 20 -> (* is_evar *)
         let e = whd_betadeltaiota env sigma (nth 1) in
         if isEvar e then
           return sigma metas CoqBool.mkTrue
         else
           return sigma metas CoqBool.mkFalse
 
-    | 17 -> (* hash *)
+    | 21 -> (* hash *)
         return sigma metas (hash ctxt (nth 1) (nth 2))
 
-    | 18 -> (* abs_let *)
-        let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsLet (env, sigma, metas) a p x y 0
-
-    | 19 -> (* solve_typeclasses *)
+    | 22 -> (* solve_typeclasses *)
         let evd' = Typeclasses.resolve_typeclasses ~fail:false env sigma in
         return evd' metas (Lazy.force CoqUnit.mkTT)
 
-    | 20 -> (* new_array *)
+    | 23 -> (* new_array *)
         let ty, n, c = nth 0, nth 1, nth 2 in
         let a = ArrayRefs.new_array env sigma undo ty n c in
         return sigma metas a
 
-    | 21 -> (* get *)
+    | 24 -> (* get *)
         let ty, a, i = nth 0, nth 1, nth 2 in
         begin
           try
@@ -964,7 +993,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
                  Exceptions.block "Wrong array!"
         end
 
-    | 22 -> (* set *)
+    | 25 -> (* set *)
         let ty, a, i, c = nth 0, nth 1, nth 2, nth 3 in
         begin
           try
@@ -979,40 +1008,37 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
                  Exceptions.block "Wrong array!"
         end
 
-    | 23 -> (* pretty_print *)
+    | 26 -> (* print *)
+        let s = nth 0 in
+        print env sigma s;
+        return sigma metas (Lazy.force CoqUnit.mkTT)
+
+    | 27 -> (* pretty_print *)
         let t = nth 1 in
         let t = nf_evar sigma t in
         let s = string_of_ppcmds (Termops.print_constr_env env t) in
         return sigma metas (CoqString.to_coq s)
 
-    | 24 -> (* hypotheses *)
+    | 28 -> (* hypotheses *)
         return sigma metas renv
 
-    | 25 -> (* dest case *)
+    | 29 -> (* dest case *)
         let t_type = nth 0 in
         let t = nth 1 in
         let (sigma', case) = dest_Case (env, sigma) t_type t in
         return sigma' metas case
 
-    | 26 -> (* get constrs *)
+    | 30 -> (* get constrs *)
         let t = nth 1 in
         let (sigma', constrs) = get_Constrs (env, sigma) t in
         return sigma' metas constrs
 
-    | 27 -> (* make case *)
+    | 31 -> (* make case *)
         let case = nth 0 in
         let (sigma', case) = make_Case (env, sigma) case in
         return sigma' metas case
 
-    | 28 -> (* Cevar *)
-        let ty, hyp = nth 0, nth 1 in
-        cvar (env, sigma, metas) ty hyp
-
-    | 29 -> (* pabs *)
-        let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsProd (env, sigma, metas) a p x y 0
-
-    | 30 -> (* munify *)
+    | 32 -> (* munify *)
         let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in
         let feqT = CoqEq.mkAppEq a x y in
         begin
@@ -1027,7 +1053,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
               return sigma metas none
         end
 
-    | 31 -> (* call_ltac *)
+    | 33 -> (* call_ltac *)
         let concl, name, args = nth 0, nth 1, nth 2 in
         let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq (env, sigma) args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
@@ -1063,44 +1089,14 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         end
     (* Tac (sigma, metas, Tacinterp.eval_tactic tac, fun v -> Val v) *)
 
-    | 32 -> (* list_ltac *)
+    | 34 -> (* list_ltac *)
         let aux k _ = Pp.msg_info (Pp.str (Names.KerName.to_string k)) in
         KNmap.iter aux (Tacenv.ltac_entries ());
         return sigma metas (nth 1)
 
-    | 33 -> (* get_name *)
-        let t = nth 1 in
-        let s = get_name (env, sigma) t in
-        begin
-          match s with
-          | Some s -> return sigma metas s
-          | None -> fail sigma metas (Lazy.force Exceptions.mkWrongTerm)
-        end
-
-    | 34 -> (* match_and_run *)
+    | 35 -> (* match_and_run *)
         let a, b, t, p = nth 0, nth 1, nth 2, nth 3 in
         match_and_run ctxt a b t p
-
-    | 35 -> (* remove *)
-        let x, t = nth 2, nth 3 in
-        let x = whd_betadeltaiota env sigma x in
-        if isVar x || isRel x then
-          if check_dependencies env x t then
-            (* if it's a rel we need to update the indices in t, since there is one element less in the context *)
-            let t = if isRel x then Vars.liftn (-1) (destRel x) t else t in
-            let env, (sigma, renv) = env_without sigma env renv x in
-            run' (env, renv, sigma, undo, metas) t >>= fun (sigma, metas, v)->
-            return sigma metas (if isRel x then Vars.liftn (+1) (destRel x) v else v)
-          else
-            Exceptions.block "Environment or term depends on variable"
-        else
-          Exceptions.block "Not a variable"
-
-    | 36 -> (* abs_fix *)
-        let a, f, t, n = nth 0, nth 1, nth 2, nth 3 in
-        let n = CoqN.from_coq (env, sigma) n in
-        (* HACK: put mkProp as returning type *)
-        abs AbsFix (env, sigma, metas) a mkProp f t n
 
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"

@@ -102,52 +102,54 @@ Inductive MetaCoq : Type -> Prop :=
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), MetaCoq (B x1 x2 x3 x4 x5)
-| print : string -> MetaCoq unit
 
+| is_var : forall {A}, A -> MetaCoq bool
 (* if the 4th argument is Some t, it adds x:=t to the local context *)
 | tnu : forall {A B}, string -> option A -> (A -> MetaCoq B) -> MetaCoq B
-| is_var : forall {A}, A -> MetaCoq bool
 | abs : forall {A P} (x : A), P x -> MetaCoq (forall x, P x)
-| abs_eq : forall {A} {P} (x : A) (y : P x),
-  MetaCoq (sigT (fun f : (forall x':A, P x')=> f x = y))
+| abs_let : forall {A B}, A -> B -> MetaCoq B
+| abs_prod : forall {A P} (x : A), P x -> MetaCoq Type
+(** [abs_fix f t n] creates a fixpoint with variable [f] as name,
+    with body t,
+    and reducing the n-th product of [f]. This means that [f]'s type
+    is expected to be of the form [forall x1, ..., xn, T] *)
+| abs_fix : forall {A}, A -> A -> N -> MetaCoq A
+
+(* [get_binder_name t] returns the name of variable [x] if:
+   - [t = x],
+   - [t = forall x, P x],
+   - [t = fun x=>b],
+   - [t = let x := d in b].
+*)
+| get_binder_name : forall {A}, A -> MetaCoq string
+| remove : forall {A B}, A -> MetaCoq B -> MetaCoq B
+
 | evar : forall A, MetaCoq A
+| Cevar : forall A, list Hyp -> MetaCoq A
 | is_evar : forall {A}, A -> MetaCoq bool
 
 | hash : forall {A}, A -> N -> MetaCoq N
-
-| abs_let : forall {A B}, A -> B -> MetaCoq B
-
 | solve_typeclasses : MetaCoq unit
 
 | array_make : forall {A}, N -> A -> MetaCoq (array A)
 | array_get : forall {A}, array A -> N -> MetaCoq A
 | array_set : forall {A}, array A -> N -> A -> MetaCoq unit
+
+| print : string -> MetaCoq unit
 | pretty_print : forall {A}, A -> MetaCoq string
+
 | hypotheses : MetaCoq (list Hyp)
 
 | destcase : forall {A} (a : A), MetaCoq (Case)
 | constrs : forall {A : Type} (a : A), MetaCoq (list dyn)
 | makecase : forall (C : Case), MetaCoq dyn
 
-| Cevar : forall A, list Hyp -> MetaCoq A
-
-| pabs : forall {A P} (x : A), P x -> MetaCoq Type
-
 | munify {A} (x y : A) : Unification -> MetaCoq (option (x = y))
 
 | call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (A * list dyn)
 | list_ltac : forall {A : Type} {_ : A}, MetaCoq A
 
-| get_binder_name : forall {A}, A -> MetaCoq string
 | match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
-
-| remove : forall {A B}, A -> MetaCoq B -> MetaCoq B
-
-(** [abs_fix f t n] creates a fixpoint with variable [f] as name,
-    with body t,
-    and reducing the n-th product of [f]. This means that [f]'s type
-    is expected to be of the form [forall x1, ..., xn, T] *)
-| abs_fix : forall {A}, A -> A -> N -> MetaCoq A
 .
 
 Definition array_length : forall {A}, array A -> length :=

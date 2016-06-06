@@ -1,7 +1,5 @@
-Require Import MetaCoq.MetaCoq.
+Require Import MetaCoq.MCTactics.
 Import MetaCoqNotations.
-
-Require Import MetaCoq.LtacEmu.
 
 Goal True.
 MProof.

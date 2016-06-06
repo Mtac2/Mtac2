@@ -1,4 +1,4 @@
-Require Import MetaCoq.MetaCoq.
+Require Import MetaCoq.MCTactics.
 Import MetaCoqNotations.
 
 Example reduce_no_reduction : True.

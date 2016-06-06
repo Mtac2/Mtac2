@@ -1,18 +1,17 @@
 Require Import MetaCoq.MetaCoq.
+Require Import MetaCoq.MCTactics.
 Import MetaCoqNotations.
 
-Goal True.
+Definition test {A} (o : M (option A)) :=
+  o <- o;
+  match o with Some x => ret x | _ => raise exception end.
+
+Goal True = True.
 MProof.
-  munify True True;; ret I.
+  test (munify True True UniNormal).
 Qed.
 
-Goal True.
+Goal True = False.
 MProof.
-  Fail munify True False.
+  Fail test (munify True False UniNormal).
 Abort.
-
-Goal True.
-MProof.
-  ttry (munify True False;; raise exception) (fun e=>
-    munify e (NotUnifiableException True False);; ret I).
-Qed.
