@@ -177,15 +177,16 @@ Definition intros_all : tactic :=
 Definition introsn : nat -> tactic :=
   mfix2 f (n : nat) (g : goal) : M (list goal) :=
     open_and_apply (fun g =>
-      mmatch (n, g) with
+      match (n, g) with
       | (0, g) => ret [g]
-      | [? n' T e] (S n', @TheGoal T e) =>
+      | (S n', @TheGoal T e) =>
         mtry
           xn <- get_binder_name T;
           r <- intro_simpl xn g;
           g <- hd_exception r;
           f n' g
         with WrongTerm => raise NotAProduct end
+      | (_, _) => failwith "Should never get here"
       end) g.
 
 Definition NotSameSize (l : list tactic) (l' : list goal) : Exception. exact exception. Qed.
@@ -612,7 +613,7 @@ Definition print_goal : tactic := fun g=>
 
 (** Given a type [T] it searches for a hypothesis with that type and
     executes the [cont]inuation on it.  *)
-Definition hyp_with_type T (cont: T -> tactic) : tactic := fun g=>
+Definition select T (cont: T -> tactic) : tactic := fun g=>
   G <- goal_type g;
   match_goal ([[(x : T) |- G ]] => cont x) g.
 

@@ -58,3 +58,15 @@ MProof.
   mexists (2 + m).
   apply Hm.
 Qed.
+
+
+Goal forall P Q, (P -> Q) -> P -> Q.
+MProof.
+  intros. select (_ -> _) apply;; assumption.
+Qed.
+
+Theorem tl_length_pred' : forall A (l: list A),
+  pred (length l) = length (tl l).
+MProof.
+  destructn 1;; intros;; reflexivity.
+Qed.

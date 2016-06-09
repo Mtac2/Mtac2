@@ -885,9 +885,14 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         let a, s, ot, f = nth 0, nth 2, nth 3, nth 4 in
         let x, fx = get_func_name env sigma s f in
         let ot = CoqOption.from_coq (env, sigma) ot in
-        let renv = Vars.lift 1 renv in
         let ur = ref [] in
         let env = push_rel (x, ot, a) env in
+        (* after extending the context we need to lift the variables
+           in the reified context, together with the definition and
+           type that we are going to append to it. *)
+        let renv = Vars.lift 1 renv in
+        let a = Vars.lift 1 a in
+        let ot = Option.map (Vars.lift 1) ot in
         let (sigma, renv) = Hypotheses.cons_hyp a (mkRel 1) ot renv sigma env in
         begin
           match run' (env, renv, sigma, (ur :: undo), metas) fx with

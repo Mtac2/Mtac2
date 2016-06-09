@@ -28,6 +28,8 @@ Definition LtacError (s:string) : Exception. exact exception. Qed.
 
 Definition NotUnifiable {A} (x y : A) : Exception. exact exception. Qed.
 
+Definition Failure (s : string) : Exception. exact exception. Qed.
+
 Record dyn := Dyn { type : Type; elem : type }.
 Arguments Dyn {_} _.
 
@@ -151,6 +153,8 @@ Inductive MetaCoq : Type -> Prop :=
 
 | match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
 .
+
+Definition failwith {A} s : MetaCoq A := raise (Failure s).
 
 Definition array_length : forall {A}, array A -> length :=
   fun A m => match m with carray _ _ l => l end.
