@@ -72,10 +72,10 @@ Definition reflexivity : tactic := fun g=>
   x <- evar A;
   unify_or_fail g (TheGoal (eq_refl x));; ret nil.
 
-Definition tryt (t:tactic) : tactic := fun g=>
+Definition try (t:tactic) : tactic := fun g=>
   mtry t g with _ => ret [g] end.
 
-Definition OR (t u : tactic) : tactic := fun g=>
+Definition or (t u : tactic) : tactic := fun g=>
   mtry t g with _ => u g end.
 
 Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
@@ -343,25 +343,23 @@ Local Obligation Tactic := idtac.
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 
 Definition apply {T} (c : T) : tactic := fun g=>
-  (mfix2 app (U : Type) (d : U) : M (list goal) :=
-    oeq <- munify (TheGoal d) g UniNormal;
+  (mfix1 app (d : dyn) : M (list goal) :=
+    let (_, el) := d in
+    oeq <- munify (TheGoal el) g UniNormal;
     match oeq with
     | Some _ => ret []
     | None =>
-      mmatch U return M (list goal) with
-      | [? (T1 : Type) (T2 : T1 -> Type)] (forall x:T1, T2 x) => [H]
+      mmatch d return M (list goal) with
+      | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- evar T1;
-          let d := match H in (_ = x) return x with
-          | eq_refl => d
-          end in
-          r <- app (T2 e) (d e);
+          r <- app (Dyn (f e));
           ret (TheGoal e :: r)
       | _ =>
           g <- goal_type g;
           raise (CantApply c g)
       end
     end
-    ) _ c.
+    ) (Dyn c).
 
 Definition transitivity {B : Type} (y : B) : tactic :=
   apply (fun x => @eq_trans B x y).
