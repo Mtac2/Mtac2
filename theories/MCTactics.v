@@ -8,7 +8,7 @@ Require Import Lists.List.
 Import ListNotations.
 
 Definition metaCoqReduceGoal {A : Type} : M A :=
-  let A' := simpl A in
+  let A' := one_step A in (* to remove spurious beta-redexes *)
   evar A'.
 
 Definition coerce_rect {A : Type} (B : Type) (H : A = B) (x : A) : B :=
@@ -593,14 +593,12 @@ Definition print_hypotheses :=
   let l := List.rev l in
   MCListUtils.miterate print_hypothesis l.
 
-Definition repeat c :=
-  (fix repeat s n :=
+Definition print_goal : tactic := fun g=>
+  let repeat c := (fix repeat s n :=
     match n with
     | 0 => s
     | S n => repeat (c++s)%string n
-    end) "".
-
-Definition print_goal : tactic := fun g=>
+    end) "" in
   G <- goal_type g;
   sg <- pretty_print G;
   let sep := repeat "=" 20 in
@@ -663,9 +661,30 @@ Definition fix_tac f n : tactic := fun g=>
   instantiate e f;;
   ret [new_goal].
 
+(** [nofail t] applies [t] and if it fails returns the goal unchanged *)
+Definition nofail t : tactic := fun g=>
+  mtry t g with _ => ret [g] end.
+
+(** [repeat t] applies tactic [t] to the goal several times
+    (it should only generate at most 1 subgoal), until no
+    changes or no goal is left. *)
+Definition repeat t : tactic := fun g=>
+  (mfix1 f (g : goal) : M (list goal) :=
+    r <- nofail t g; (* if it fails, the execution will stop below *)
+    r <- filter_goals r;
+    match r with
+    | [] => ret []
+    | [g'] =>
+      mmatch g with
+      | g' => ret [g] (* the goal is the same, return *)
+      | _ => f g'
+      end
+    | _ => print_term r;; failwith "The tactic generated more than a goal"
+    end) g.
+
 Module MCTacticsNotations.
 
-Notation "t || u" := (OR t u).
+Notation "t || u" := (or t u).
 
 (* We need a fresh evar to be able to use intro with ;; *)
 Notation "'intro' x" :=

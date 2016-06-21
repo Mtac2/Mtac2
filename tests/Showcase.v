@@ -54,7 +54,7 @@ Theorem exists_example_2 : forall n,
   (exists m, n = 4 + m) ->
   (exists o, n = 2 + o).
 MProof.
-  intros n. destructn 0;; intros m Hm.
+  cintros n {- destructn 0;; intros m Hm -}.
   mexists (2 + m).
   apply Hm.
 Qed.
@@ -69,4 +69,32 @@ Theorem tl_length_pred' : forall A (l: list A),
   pred (length l) = length (tl l).
 MProof.
   destructn 1;; intros;; reflexivity.
+Qed.
+
+
+(** Ltac allows certain FP patterns. *)
+Require Import Lists.ListTactics.
+
+Ltac apply_one_of l :=
+  list_fold_left ltac:(fun a b => (b || apply (elem a))) fail l.
+
+Goal forall x y z : nat, In x (z :: y :: x :: nil).
+Proof.
+  intros.
+  repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
+Qed.
+
+Definition apply_one_of l : tactic :=
+  fold_left (fun a b=>a || (apply (elem b))) l (fail exception).
+
+Goal forall x y z : nat, In x (z :: y :: x :: nil).
+MProof.
+  intros;; MCTactics.repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
+(* Spurious evars that shouldn't be here *)
+exact Prop.
+exact True.
+exact [].
+exact Prop.
+exact True.
+exact [].
 Qed.
