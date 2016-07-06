@@ -328,6 +328,9 @@ Example reflect_reflect P := iTele (fun b=>iBase (reflect P b)).
 Example reflect_RTrue P : CTele (reflect_reflect P) :=
   cInst true (cProd (fun p=>cBase (RTrue P p))).
 
+Example reflect_RFalse P : CTele (reflect_reflect P) :=
+  cInst _ (cProd (fun p=>cBase (RFalse P p))).
+
 Example reflect_args P b : ATele (reflect_reflect P) :=
   aTele b aBase.
 
@@ -404,6 +407,82 @@ Defined.
 *)
 
 Example bla_branch P b := Eval simpl in get_type_of_branch (bla P b) (reflect_RTrue P).
+
+Definition new_destruct_goals {i : IndType} (g : RTele (ind_type i)) :=
+  map (fun cs => get_type_of_branch g cs) (ind_constructors i).
+
+Polymorphic Definition RTele_of_goal {it} (a : ATele it) (g : Type) : M (RTele it) :=
+  (fix rec it g : ATele it -> M (RTele it) :=
+    match it as it' return ATele it' -> M (RTele it') with
+    | iBase t => fun _ => ret (rBase g)
+    | @iTele T f =>
+      fun a =>
+        let
+          rec
+          (* : forall t : T, Type -> ATele (f t) -> M (RTele (f t)) *)
+          := fun t => rec (f t)
+        in
+        (match a in ATele it'' return
+               match it'' with
+               | iBase _ => True
+               | @iTele T' f =>
+                 forall (rec : (forall t : T', Type -> ATele (f t) -> M (RTele (f t)))),
+                   M (RTele (iTele f))
+               end
+         with
+         | aBase => I
+         | @aTele T f t a =>
+           fun rec =>
+             r <- (rec t g a) : M (RTele (f t));
+               r' <- @abs T (fun t => RTele (f t)) t r;
+               ret (rTele r')
+         end)
+          rec
+    end) it g a.
+
+Example bla_RTele P b :=
+  Eval compute in eval (RTele_of_goal (reflect_args P b) ((P <-> b = true))).
+
+Example bla_goals P b : list dyn :=
+  Eval compute in
+    map (fun cs => Dyn (get_type_of_branch (bla_RTele P b) cs))
+        (reflect_RTrue P :: reflect_RFalse P :: nil).
+
+Example reflectP_it : ITele :=
+  iTele (fun P => iTele (fun b => iBase (reflect P b))).
+Example reflectP_RTrue : CTele reflectP_it :=
+  cProd (fun P => cProd (fun p => cInst P (cInst true (cBase (@RTrue P p))))).
+Example reflectP_RFalse : CTele reflectP_it :=
+  cProd (fun P => cProd (fun p => cInst P (cInst false (cBase (@RFalse P p))))).
+Example reflectP_args P b : ATele reflectP_it :=
+  aTele P (aTele b (aBase)).
+
+Example blaP_RTele P b :=
+  Eval compute in eval (RTele_of_goal (reflectP_args P b) ((P <-> b = true))).
+
+Example blaP_goals P b : list dyn :=
+  Eval compute in
+    map (fun cs => Dyn (get_type_of_branch (blaP_RTele P b) cs))
+        (reflectP_RTrue :: reflectP_RFalse :: nil).
+
+Polymorphic Definition RTele_App : forall {it}, RTele it -> ATele it -> Type :=
+  fix rec it r :=
+    match r with
+    | rBase t => fun _ => t
+    | @rTele T f r =>
+      let rec' := fun t => rec _ (r t) in
+      fun a : ATele (iTele f) =>
+        match a in ATele it' return
+              match it' with
+              | iBase _ => True
+              | iTele f => _ -> _
+              end
+        with
+        | aBase => I
+        | aTele t a => fun rec => rec t a
+        end rec'
+    end
+.
 
 Definition new_destruct {A : Type} (n : A) : tactic := fun g=>
   b <- is_var n;
