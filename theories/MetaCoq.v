@@ -82,7 +82,7 @@ Polymorphic Inductive ATele : ITele -> Type :=
 | aTele : forall {T f} (a:T), ATele (f a) -> ATele (iTele f).
 
 Polymorphic Inductive RTele : ITele -> Type :=
-| rBase : forall {T U} {t:T}, U -> RTele (iBase t)
+| rBase : forall {T} {t:T}, Type -> RTele (iBase t)
 | rTele : forall {T f}, (forall (t : T), RTele (f t)) -> RTele (iTele f).
 
 Section ExampleRemove2.

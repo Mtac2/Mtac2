@@ -300,22 +300,22 @@ Definition abstract_up_to n : tactic := fun g=>
 *)
 
 
-Polymorphic Inductive ITele : Type :=
-| iBase : forall {T}, T -> ITele
-| iTele : forall {T}, (T -> ITele) -> ITele.
+(* Polymorphic Inductive ITele : Type := *)
+(* | iBase : forall {T}, T -> ITele *)
+(* | iTele : forall {T}, (T -> ITele) -> ITele. *)
 
-Polymorphic Inductive CTele : ITele -> Type :=
-| cBase : forall {T:Type}, T -> CTele (iBase T)
-| cInst : forall {T f} (t:T), CTele (f t) -> CTele (iTele f)
-| cProd : forall {T it}, (T -> CTele it) -> CTele it.
+(* Polymorphic Inductive CTele : ITele -> Type := *)
+(* | cBase : forall {T:Type}, T -> CTele (iBase T) *)
+(* | cInst : forall {T f} (t:T), CTele (f t) -> CTele (iTele f) *)
+(* | cProd : forall {T it}, (T -> CTele it) -> CTele it. *)
 
-Polymorphic Inductive ATele : ITele -> Type :=
-| aBase : forall {T:Type}, ATele (iBase T)
-| aTele : forall {T f} (a:T), ATele (f a) -> ATele (iTele f).
+(* Polymorphic Inductive ATele : ITele -> Type := *)
+(* | aBase : forall {T:Type}, ATele (iBase T) *)
+(* | aTele : forall {T f} (a:T), ATele (f a) -> ATele (iTele f). *)
 
-Polymorphic Inductive RTele : ITele -> Type :=
-| rBase : forall {T} {t:T}, Type -> RTele (iBase t)
-| rTele : forall {T f}, (forall (t : T), RTele (f t)) -> RTele (iTele f).
+(* Polymorphic Inductive RTele : ITele -> Type := *)
+(* | rBase : forall {T} {t:T}, Type -> RTele (iBase t) *)
+(* | rTele : forall {T f}, (forall (t : T), RTele (f t)) -> RTele (iTele f). *)
 
 Section ExampleReflect.
 
