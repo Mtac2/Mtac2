@@ -477,13 +477,13 @@ let dest_Case (env, sigma) t_type t =
   let dyn = Lazy.force MetaCoqNames.mkdyn in
   let cDyn = Lazy.force MetaCoqNames.mkDyn in
   try
-    let t = whd_betadeltaiota env sigma t in
+    let t = whd_betadelta env sigma t in
     let (info, return_type, discriminant, branches) = Term.destCase t in
     let branch_dyns = Array.fold_left (
       fun l t ->
         let dyn_type = Retyping.get_type_of env sigma t in
         Term.applist (Lazy.force cons, [dyn; Term.applist (cDyn, [dyn_type; t]); l])
-    ) (Lazy.force nil) branches in
+    ) (CoqList.makeNil dyn) branches in
     let ind_type = Retyping.get_type_of env sigma discriminant in
     let return_type_type = Retyping.get_type_of env sigma return_type in
     (sigma, (Term.applist(mkCase,
