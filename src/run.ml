@@ -702,9 +702,20 @@ let int_set_map f =
   let open Int.Set in
   fold (fun e ->add (f e)) empty
 
+(* given a named_context env and a variable x it returns all the
+   (named) variables that depends transitively on x *)
+let depends_on env x =
+  let open Idset in
+  let deps = singleton x in
+  Context.fold_named_context (fun (n, ot, ty) deps->
+    if name_depends_on deps ty ot then
+      add n deps
+    else
+      deps) env ~init:deps
+
 let name_deps env x =
   let rel_env = rel_context env in
-  let deps = Environ.really_needed env (Idset.singleton x) in
+  let deps = depends_on (named_context env) x in
   let ixdeps = Context.fold_rel_context (fun (_, ot, ty) ixdeps ->
     (* we have to return the set increased by 1 to make sure all the
        indices are right when we return it *)

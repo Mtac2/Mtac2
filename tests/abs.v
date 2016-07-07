@@ -61,3 +61,14 @@ Goal forall n m:nat, True.
   intros n m.
   Fail mrun (nu H: n=m, r <- abs (P:=fun n'=>n'=m) n H; ret I).
 Abort.
+
+(* No dependency in the term should raise no problem *)
+Goal True.
+  mrun (nu x:nat, r <- abs (P:=fun _ :nat=>nat) x 0; assert_eq r (fun _=>0)).
+Qed.
+
+(* Dependency in the type of *)
+Goal forall x, x>0 -> True.
+  intros x H.
+  mrun (r <- abs (P:=fun _:x >0=>nat) H x; assert_eq r (fun _=>x)).
+Qed.
