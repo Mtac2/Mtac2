@@ -555,11 +555,11 @@ let dest_Case (env, sigma) t_type t =
   try
     let t = whd_betadelta env sigma t in
     let (info, return_type, discriminant, branches) = Term.destCase t in
-    let branch_dyns = Array.fold_left (
-      fun l t ->
+    let branch_dyns = Array.fold_right (
+      fun t l ->
         let dyn_type = Retyping.get_type_of env sigma t in
         CoqList.makeCons dyn (Term.applist (cDyn, [dyn_type; t])) l
-    ) (CoqList.makeNil dyn) branches in
+    ) branches (CoqList.makeNil dyn) in
     let ind_type = Retyping.get_type_of env sigma discriminant in
     let return_type_type = Retyping.get_type_of env sigma return_type in
     (sigma, (Term.applist(mkCase,
@@ -682,6 +682,75 @@ let multi_subst l c =
     | _ -> map_constr_with_binders succ substrec depth c in
   substrec 0 c
 
+let name_depends_on deps ty ot =
+  let open Idset in let open Termops in
+  let vars = collect_vars ty in
+  let vars = if Option.has_some ot then
+      union (collect_vars (Option.get ot)) vars
+    else vars in
+  not (is_empty (inter vars deps))
+
+let index_depends_on deps ty ot =
+  let open Int.Set in let open Termops in
+  let rels = free_rels ty in
+  let rels = if Option.has_some ot then
+      union (free_rels (Option.get ot)) rels
+    else rels in
+  not (is_empty (inter rels deps))
+
+let int_set_map f =
+  let open Int.Set in
+  fold (fun e ->add (f e)) empty
+
+let name_deps env x =
+  let rel_env = rel_context env in
+  let deps = Environ.really_needed env (Idset.singleton x) in
+  let ixdeps = Context.fold_rel_context (fun (_, ot, ty) ixdeps ->
+    (* we have to return the set increased by 1 to make sure all the
+       indices are right when we return it *)
+    let ixdeps' = int_set_map (fun n->n+1) ixdeps in
+    if name_depends_on deps ty ot || index_depends_on ixdeps ty ot then
+      Int.Set.add 1 ixdeps'
+    else
+      ixdeps') ~init:(Int.Set.empty) rel_env in
+  (deps, ixdeps)
+
+let index_deps env ix =
+  let env = pop_rel_context ix env in
+  let rel_env = rel_context env in
+  Context.fold_rel_context (fun (_, ot, ty) ixdeps ->
+    (* we have to return the set increased by 1 to make sure all the
+       indices are right when we return it *)
+    let ixdeps' = int_set_map (fun n->n+1) ixdeps in
+    if index_depends_on ixdeps ty ot then
+      Int.Set.add 1 ixdeps'
+    else
+      ixdeps') ~init:(Int.Set.singleton 1) rel_env
+
+let compute_deps env x =
+  if isRel x then
+    let rel = destRel x in
+    (Idset.empty, index_deps env rel)
+  else if isVar x then
+    let name = destVar x in
+    name_deps env name
+  else
+    failwith "check_dependencies should not be called with not a var or rel"
+
+(* given a rel or var x and a term t and its type ty, it checks if t or ty does not depend on x *)
+let check_abs_deps env x t ty =
+  let (ndeps, ixdeps) = compute_deps env x in
+  let b = let open Idset in
+    is_empty ndeps ||
+    (* The term might depend on x, which by invariant we now is a
+       variable (since ndeps is not empty) *)
+    (subset (inter (collect_vars t) ndeps) (singleton (destVar x)) &&
+     is_empty (inter (collect_vars ty) ndeps)) in
+  let open Int.Set in
+  let base_set = if isRel x then singleton (destRel x) else empty in
+  b && subset (inter (free_rels t) ixdeps) base_set &&
+  is_empty (inter (free_rels ty) ixdeps)
+
 (* check if x \not\in FV(t) union FV(env) *)
 let check_dependencies env x t =
   if isRel x then
@@ -697,14 +766,15 @@ let check_dependencies env x t =
 (** Abstract *)
 type abs = AbsProd | AbsFun | AbsLet | AbsFix
 
-(* n is only for fixpoint, t for let-ins *)
+(* abs case env a p x y n abstract variable x from term y according to the case.
+   if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
 let abs case (env, sigma, metas) a p x y n t : data =
   (*  let x = whdbetadeltaiota env sigma x in *) (* for let-ins is problemtaic *)
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
   if isRel x || isVar x then
-    if check_dependencies env x p then
+    if check_abs_deps env x y p then
       if isRel x then
         let rel = destRel x in
         try
