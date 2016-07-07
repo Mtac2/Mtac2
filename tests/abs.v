@@ -67,8 +67,14 @@ Goal True.
   mrun (nu x:nat, r <- abs (P:=fun _ :nat=>nat) x 0; assert_eq r (fun _=>0)).
 Qed.
 
-(* Dependency in the type of *)
+(* Abstracting a term depending on the return element is fine (the other way around is the problem) *)
 Goal forall x, x>0 -> True.
   intros x H.
   mrun (r <- abs (P:=fun _:x >0=>nat) H x; assert_eq r (fun _=>x)).
 Qed.
+
+(* Evars prevent abstracting of a var *)
+Goal forall A (x : A), True.
+  intros A x.
+  Fail mrun (e <- evar True; r <- abs A e; ret e).
+Abort.
