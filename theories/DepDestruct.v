@@ -1,30 +1,52 @@
-Require Export MetaCoq.MetaCoq.
-Require Import MetaCoq.MCListUtils.
+From MetaCoq
+Require Export MetaCoq MCListUtils MCTactics.
 Import MetaCoqNotations.
+Import MCTacticsNotations.
 
 Require Import Strings.String.
 
 Require Import Lists.List.
 Import ListNotations.
 
+Inductive Bla : Prop := Ble.
 
+Inductive Sort := SType | SProp.
+Polymorphic Definition stype_of s := match s with SType => Type | SProp => Prop end.
+Polymorphic Definition selem_of {s} (x : stype_of s) : Type :=
+  match s return stype_of s -> Type with
+  | SType => id
+  | SProp => id
+  end x.
 
-(* Polymorphic Inductive ITele : Type := *)
-(* | iBase : forall {T}, T -> ITele *)
-(* | iTele : forall {T}, (T -> ITele) -> ITele. *)
+Polymorphic Inductive ITele (sort : Sort) : Type :=
+| iBase : stype_of sort -> ITele sort
+| iTele : forall {T}, (T -> ITele sort) -> ITele sort.
 
-(* Polymorphic Inductive CTele : ITele -> Type := *)
-(* | cBase : forall {T:Type}, T -> CTele (iBase T) *)
-(* | cInst : forall {T f} (t:T), CTele (f t) -> CTele (iTele f) *)
-(* | cProd : forall {T it}, (T -> CTele it) -> CTele it. *)
+Arguments iBase {_} _.
+Arguments iTele {_ _} _.
 
-(* Polymorphic Inductive ATele : ITele -> Type := *)
-(* | aBase : forall {T:Type}, ATele (iBase T) *)
-(* | aTele : forall {T f} (a:T), ATele (f a) -> ATele (iTele f). *)
+Polymorphic Inductive CTele {sort} : ITele sort -> Type :=
+| cBase : forall {T: stype_of sort}, selem_of T -> CTele (iBase T)
+| cInst : forall {T f} (t:T), CTele (f t) -> CTele (iTele f)
+| cProd : forall {T it}, (T -> CTele it) -> CTele it.
 
-(* Polymorphic Inductive RTele : ITele -> Type := *)
-(* | rBase : forall {T} {t:T}, Type -> RTele (iBase t) *)
-(* | rTele : forall {T f}, (forall (t : T), RTele (f t)) -> RTele (iTele f). *)
+Arguments cBase {_ _} _.
+Arguments cInst {_ _ _} _ _.
+Arguments cProd {_ _ _} _.
+
+Polymorphic Inductive ATele {sort} : ITele sort -> Type :=
+| aBase : forall {T: stype_of sort}, ATele (iBase T)
+| aTele : forall {T f} (a:T), ATele (f a) -> ATele (iTele f).
+
+Arguments aBase {_ _}.
+Arguments aTele {_ _ _} _ _.
+
+Polymorphic Inductive RTele {isort} rsort : ITele isort -> Type :=
+| rBase : forall {T : stype_of isort}, (selem_of T -> stype_of rsort) -> RTele rsort (iBase T)
+| rTele : forall {T f}, (forall (t : T), RTele rsort (f t)) -> RTele rsort (iTele f).
+
+Arguments rBase {_ _ _} _.
+Arguments rTele {_ _ _ _} _.
 
 Section ExampleReflect.
 
@@ -32,13 +54,13 @@ Inductive reflect (P :Prop) : bool -> Type :=
 | RTrue : P -> reflect P true
 | RFalse : ~P -> reflect P false.
 
-Example reflect_reflect P := iTele (fun b=>iBase (reflect P b)).
+Example reflect_reflect P : ITele SType := iTele (fun b=>@iBase SType (reflect P b)).
 
 Example reflect_RTrue P : CTele (reflect_reflect P) :=
-  cInst true (cProd (fun p=>cBase (RTrue P p))).
+  cInst true (cProd (fun p=>@cBase SType _ (RTrue P p))).
 
 Example reflect_RFalse P : CTele (reflect_reflect P) :=
-  cInst _ (cProd (fun p=>cBase (RFalse P p))).
+  cInst _ (cProd (fun p=>cBase (sort:=SType) (RFalse P p))).
 
 Example reflect_args P b : ATele (reflect_reflect P) :=
   aTele b aBase.
@@ -60,47 +82,65 @@ Program Fixpoint abstract_goal (it : ITele) (args : ATele it) (G : Type) : M (RT
   end.
 *)
 
-Polymorphic Fixpoint abstract_goal {it : ITele} (args : ATele it) (G : Type) : M (RTele it) :=
+Polymorphic Fixpoint ITele_App {sort} {it : ITele sort} (args : ATele it) : stype_of sort :=
   match args with
-  | aBase => ret (rBase G)
-  | @aTele _ f v args =>
-      r <- abstract_goal args G;
+  | @aBase _ T => T
+  | @aTele _ _ f v args =>
+     ITele_App args
+  end.
+
+Example reflect_app P b := Eval compute in ITele_App (reflect_args P b).
+
+Definition type_of {A} (x : A) := A.
+
+(* We need to handle Prop (maybe) *)
+Polymorphic Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (args : ATele it) (G : stype_of rsort) :
+  selem_of (ITele_App args) -> M (RTele rsort it) :=
+  match args with
+  | @aBase _ T => fun t =>
+    b <- is_var t;
+    if b then
+      r <- abs t G;
+      ret (rBase r)
+    else
+      failwith "Argument t should be a variable"
+  | @aTele _ _ f v args => fun t=>
+      r <- abstract_goal args G t;
       b <- is_var v;
       if b then
-        r <- abs v r;
+        r <- abs (P:=fun v'=>RTele rsort (f v')) v r;
         ret (rTele r)
       else
         failwith "All indices need to be variables"
   end.
 
-Example bla P b := Eval hnf in eval (abstract_goal (reflect_args P b) (P <-> b = true)).
-
-Definition outer_type_of (it : ITele) :=
-  match it with
-  | @iBase T _ => T
-  | @iTele T _ => T
-  end.
-
-Require Import Program.
-
-Polymorphic Fixpoint get_type_of_branch {it : ITele} (rt : RTele it) (ct : CTele it) : Type :=
-  match ct in CTele it' return RTele it' -> Type with
-  | cBase b => fun rt=>match rt with rBase g => g | rTele _ => False end
+Polymorphic Fixpoint get_type_of_branch {isort} {rsort} {it : ITele isort} (ct : CTele it) : RTele rsort it -> stype_of rsort :=
+  match ct in CTele it' return RTele _ it' -> _ with
+  | @cBase _ T b =>
+    fun rt : RTele _ (iBase T) =>
+      match rt in RTele _ it'' return match it'' with iTele _ => True | iBase T' => selem_of T' -> _ end with
+      | rTele _ => I
+      | rBase f => f
+      end b
   | cProd f =>
-    fun rt=>forall x, get_type_of_branch rt (f x)
-  | @cInst T f v ct' =>
-    let rec := fun rt => get_type_of_branch rt ct' in
-    fun rt : RTele (iTele f) =>
-      match rt in RTele it'' return
+    match rsort as sort' return RTele sort' _ -> stype_of sort' with
+    | SProp => fun rt=>forall x, get_type_of_branch (f x) rt : Prop
+    | SType => fun rt=>forall x, get_type_of_branch (f x) rt
+    end
+  | @cInst _ T f v ct' =>
+    let rec := get_type_of_branch ct' in
+    fun rt : RTele _ (iTele f) =>
+      match rt in RTele _ it'' return
             match it'' with
               | iBase _ => True
-              | iTele f => forall v, (RTele (f v) -> Type) -> Type
+              | iTele f => forall v, (RTele _ (f v) -> _) -> _
             end
       with
         | rBase G => I
-        | @rTele T' f' rt' => fun v' rec' => rec' (rt' v')
+        | rTele rt' => fun v' rec' => rec' (rt' v')
       end v rec
-  end rt.
+  end.
+
 
 (*
 Polymorphic Definition get_type_of_branch {it : ITele} (rt : RTele it) (ct : CTele it) : Type.
@@ -115,42 +155,16 @@ Proof.
 Defined.
 *)
 
-Example bla_branch P b := Eval simpl in get_type_of_branch (bla P b) (reflect_RTrue P).
+Example bla P : RTele _ (reflect_reflect P) :=
+  Eval simpl in rTele (fun b=>rBase (rsort:=SProp) (fun _=>P <-> b = true)).
+Example bla_branch P := Eval simpl in get_type_of_branch (reflect_RTrue P) (bla P).
 
 Definition new_destruct_goals {i : IndType} (g : RTele (ind_type i)) :=
   map (fun cs => get_type_of_branch g cs) (ind_constructors i).
 
-Polymorphic Definition RTele_of_goal {it} (a : ATele it) (g : Type) : M (RTele it) :=
-  (fix rec it g : ATele it -> M (RTele it) :=
-    match it as it' return ATele it' -> M (RTele it') with
-    | iBase t => fun _ => ret (rBase g)
-    | @iTele T f =>
-      fun a =>
-        let
-          rec
-          (* : forall t : T, Type -> ATele (f t) -> M (RTele (f t)) *)
-          := fun t => rec (f t)
-        in
-        (match a in ATele it'' return
-               match it'' with
-               | iBase _ => True
-               | @iTele T' f =>
-                 forall (rec : (forall t : T', Type -> ATele (f t) -> M (RTele (f t)))),
-                   M (RTele (iTele f))
-               end
-         with
-         | aBase => I
-         | @aTele T f t a =>
-           fun rec =>
-             r <- (rec t g a) : M (RTele (f t));
-               r' <- @abs T (fun t => RTele (f t)) t r;
-               ret (rTele r')
-         end)
-          rec
-    end) it g a.
 
 Example bla_RTele P b :=
-  Eval compute in eval (RTele_of_goal (reflect_args P b) ((P <-> b = true))).
+  Eval compute in eval (abstract_goal (reflect_args P b) ((P <-> b = true))).
 
 Example bla_goals P b : list dyn :=
   Eval compute in
@@ -167,7 +181,7 @@ Example reflectP_args P b : ATele reflectP_it :=
   aTele P (aTele b (aBase)).
 
 Example blaP_RTele P b :=
-  Eval compute in eval (RTele_of_goal (reflectP_args P b) ((P <-> b = true))).
+  Eval compute in eval (abstract_goal (reflectP_args P b) ((P <-> b = true))).
 
 Example blaP_goals P b : list dyn :=
   Eval compute in
@@ -192,6 +206,37 @@ Polymorphic Definition RTele_App : forall {it}, RTele it -> ATele it -> Type :=
         end rec'
     end
 .
+
+Goal True.
+MProof.
+  (fun g =>
+  r <- destcase (match 3 with 0 => true | S _ => false end);
+  print_term r;;
+  cpose r (fun r=>idtac) g) : tactic.
+  (fun g=>
+  case <- makecase r;
+  cpose case (fun y=>idtac) g) : tactic.
+Abort.
+
+Require Import Vector.
+
+Goal forall n (v : t nat n), n = length (to_list v).
+
+Goal forall P b, reflect P b -> P <-> b = true.
+MProof.
+  intros P b.
+  (fun g=>
+   G <- goal_type g;
+   rG <- abstract_goal (reflectP_args P b) G;
+   pose (rG := rG) g) : tactic.
+  select (reflect _ _) (fun x=>
+  case <- makecase {|
+    case_val := x;
+    case_type := RTele_App (
+;
+  cpose case (fun y=>idtac) g) : tactic.
+Abort.
+
 
 Definition new_destruct {A : Type} (n : A) : tactic := fun g=>
   b <- is_var n;
