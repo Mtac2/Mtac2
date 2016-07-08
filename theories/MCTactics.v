@@ -23,11 +23,6 @@ Definition coerce {A B : Type} (x : A) : M B :=
   | _ => raise CantCoerce
   end.
 
-Inductive goal :=
-| TheGoal : forall {A}, A -> goal
-| AHyp : forall {A}, (A -> goal) -> goal
-| ADef : forall {A}, A -> goal -> goal.
-
 Definition tactic := (goal -> M (list goal)).
 
 Definition run_tac {P} (t : tactic) : M P :=
@@ -475,7 +470,7 @@ Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   if b then
     ret [TheGoal v] (* it wasn't solved *)
   else
-    ret (List.map dyn_to_goal l).
+    ret l.
 
 Definition option_to_bool {A} (ox : option A) :=
   match ox with Some _ => true | _ => false end.

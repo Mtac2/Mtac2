@@ -75,6 +75,13 @@ Inductive pattern (M : Type->Prop) A (B : A -> Type) (t : A) : Prop :=
 | pbase : forall (x:A), (t = x -> M (B x)) -> pattern M A B t
 | ptele : forall {C}, (forall (x : C), pattern M A B t) -> pattern M A B t.
 
+(** goal type *)
+Inductive goal :=
+| TheGoal : forall {A}, A -> goal
+| AHyp : forall {A}, (A -> goal) -> goal
+| ADef : forall {A}, A -> goal -> goal.
+
+(** THE definition of MetaCoq *)
 Inductive MetaCoq : Type -> Prop :=
 | tret : forall {A}, A -> MetaCoq A
 | bind : forall {A B}, MetaCoq A -> (A -> MetaCoq B) -> MetaCoq B
@@ -148,7 +155,7 @@ Inductive MetaCoq : Type -> Prop :=
 
 | munify {A} (x y : A) : Unification -> MetaCoq (option (x = y))
 
-| call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (A * list dyn)
+| call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (A * list goal)
 | list_ltac : forall {A : Type} {_ : A}, MetaCoq A
 
 | match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))

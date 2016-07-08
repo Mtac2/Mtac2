@@ -365,12 +365,6 @@ MProof.
   trivial;; intros ;; contradiction.
 Qed.
 
-Ltac myapply H := apply H.
-Goal forall P Q, (P -> Q) -> P -> Q.
-MProof.
-  cintros P Q f x {- ltac "mctacticstests.myapply" [Dyn f] ;; ltac "mctacticstests.myapply" [Dyn x] -}.
-Qed.
-
 Require Import MetaCoq.ImportedTactics.
 
 Example ex_destr_not_var (b c: bool) : (if b && c then c else c) = c.

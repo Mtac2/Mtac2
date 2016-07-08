@@ -45,6 +45,40 @@ module MetaCoqNames = struct
 
 end
 
+module Goal = struct
+  open MetaCoqNames
+
+  let goal () = Lazy.force (mkConstr "goal")
+
+  let mkTheGoal ty ev = mkApp (Lazy.force (mkConstr "TheGoal"), [|ty;ev|])
+
+  let mkAHyp ty name body =
+    (* we are going to wrap the body in a function, so we need to lift
+       the indices. we also replace the name with index 1 *)
+    let body = replace_term (mkVar name) (mkRel 1) (Vars.lift 1 body) in
+    mkApp (Lazy.force (mkConstr "AHyp"), [|ty; mkLambda(Name name,ty,body)|])
+
+  let goal_of_evar env sigma ev =
+    let evinfo = Evd.find_undefined sigma ev in
+    let evenv = named_context_of_val (evar_hyps evinfo) in
+    (* we remove the elements in the hypotheses that are shared with
+       the current env (old to new). *)
+    let newenv =
+      let rec remove = function
+        | (nd1 :: evenv) as l1, (nd2 :: env) ->
+            if Context.eq_named_declaration nd1 nd2 then
+              remove (evenv, env)
+            else
+              l1
+        | l1, _ -> l1 in
+      List.rev (remove (List.rev evenv, List.rev env)) in
+    let ids = Context.fold_named_context (fun (n,_,_) s -> mkVar n :: s) evenv ~init:[] in
+    let evar = (ev, Array.of_list ids) in
+    let tg = mkTheGoal (Evd.existential_type sigma evar) (mkEvar evar) in
+    Context.fold_named_context_reverse (fun s (n,_,ty) -> mkAHyp ty n s) newenv ~init:tg
+
+end
+
 let constr_to_string t = string_of_ppcmds (Termops.print_constr t)
 
 module Exceptions = struct
@@ -1082,13 +1116,13 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         in
         begin
           try
+            let undef = Evar.Map.domain (Evd.undefined_map sigma) in
             let (c, sigma) = Pfedit.refine_by_tactic env sigma concl (Tacinterp.eval_tactic tac) in
-            let evars = List.filter (fun (i, _)->Evd.is_undefined sigma i) (Evd.evar_list c) in
-            let cDyn = Lazy.force MetaCoqNames.mkDyn in
-            let dyn = Lazy.force MetaCoqNames.mkdyn in
-            let evars = CoqList.to_coq (Lazy.force MetaCoqNames.mkdyn) (fun e->
-              mkApp(cDyn, [|Evd.existential_type sigma e; mkEvar e|])) evars in
-            return sigma metas (CoqPair.mkPair concl (CoqList.makeType dyn) c evars)
+            let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
+            let new_undef = Evar.Set.elements new_undef in
+            let named_env = Environ.named_context env in
+            let goals = CoqList.to_coq (Goal.goal ()) (Goal.goal_of_evar named_env sigma) new_undef in
+            return sigma metas (CoqPair.mkPair concl (Goal.goal ()) c goals)
           with Errors.UserError(s,ppm) ->
             fail sigma metas (Exceptions.mkLtacError (s, ppm))
         end
