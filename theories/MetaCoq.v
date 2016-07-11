@@ -143,7 +143,11 @@ Inductive MetaCoq : Type -> Prop :=
 | hypotheses : MetaCoq (list Hyp)
 
 | destcase : forall {A} (a : A), MetaCoq (Case)
-| constrs : forall {A : Type} (a : A), MetaCoq (list dyn)
+
+(** Given an inductive type A, applied to all its parameters (but not
+    necessarily indices), it returns the type applied to exactly the
+    parameters, and a list of constructors (applied to the parameters). *)
+| constrs : forall {A : Type} (a : A), MetaCoq (dyn * list dyn)
 | makecase : forall (C : Case), MetaCoq dyn
 
 | munify {A} (x y : A) : Unification -> MetaCoq (option (x = y))

@@ -312,7 +312,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
        (forall x, ... y, P (c x .. y)) *)
     t' <- copy_ctx P d;
     e <- evar t';
-    ret {| elem := e |}) l;
+    ret {| elem := e |}) (snd l);
   let c := {| case_ind := A;
               case_val := n;
               case_type := Pn;
@@ -375,7 +375,7 @@ Definition constructor (n : nat) : tactic := fun g=>
   | 0 => raise ConstructorsStartsFrom1
   | S n =>
       l <- constrs A;
-      match nth_error l n with
+      match nth_error (snd l) n with
         | Some x => apply (elem x) g
         | None => fail CantFindConstructor g
       end
@@ -386,7 +386,7 @@ Definition Not1Constructor : Exception. exact exception. Qed.
 Definition split : tactic := fun g=>
   A <- goal_type g;
   l <- constrs A;
-  match l with
+  match snd l with
   | [_] =>  constructor 1 g
   | _ => raise Not1Constructor
   end.
@@ -396,7 +396,7 @@ Definition Not2Constructor : Exception. exact exception. Qed.
 Definition left : tactic := fun g=>
   A <- goal_type g;
   l <- constrs A;
-  match l with
+  match snd l with
   | [x; _] => apply (elem x) g
   | _ => raise Not2Constructor
   end.
@@ -404,7 +404,7 @@ Definition left : tactic := fun g=>
 Definition right : tactic := fun g=>
   A <- goal_type g;
   l <- constrs A;
-  match l with
+  match snd l with
   | [_; x] => apply (elem x) g
   | _ => raise Not2Constructor
   end.
