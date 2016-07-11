@@ -58,49 +58,6 @@ Inductive Hyps : Type :=
 | hminus : Hyps -> Hyps -> Hyps
 | hhyps : list Hyp -> Hyps.
 
-
-Polymorphic Inductive ITele : Type :=
-| iBase : forall {T}, T -> ITele
-| iTele : forall {T}, (T -> ITele) -> ITele.
-
-Section ExampleRemove.
-Inductive reflect (P :Prop) : bool -> Type :=
-| RTrue : P -> reflect P true
-| RFalse : ~P -> reflect P false.
-
-Example reflect_reflect P := iTele (fun b=>iBase (reflect P b)).
-End ExampleRemove.
-
-Polymorphic Inductive CTele : ITele -> Type :=
-| cBase : forall {T:Type}, T -> CTele (iBase T)
-| cInst : forall {T f} (t:T), CTele (f t) -> CTele (iTele f)
-| cProd : forall {T it}, (T -> CTele it) -> CTele it.
-
-
-Polymorphic Inductive ATele : ITele -> Type :=
-| aBase : forall {T:Type}, ATele (iBase T)
-| aTele : forall {T f} (a:T), ATele (f a) -> ATele (iTele f).
-
-Polymorphic Inductive RTele : ITele -> Type :=
-| rBase : forall {T} {t:T}, Type -> RTele (iBase t)
-| rTele : forall {T f}, (forall (t : T), RTele (f t)) -> RTele (iTele f).
-
-Section ExampleRemove2.
-
-Example reflect_RTrue P : CTele (reflect_reflect P) :=
-  cInst true (cProd (fun p=>@cBase (reflect P true) (RTrue P p))).
-
-Example reflect_args P b : ATele (reflect_reflect P) :=
-  aTele b aBase.
-
-End ExampleRemove2.
-
-Record IndType := mkIndType {
-  ind_type : ITele;
-  ind_constructors : list (CTele ind_type);
-  ind_num_params : nat
-}.
-
 Record Case :=
     mkCase {
         case_ind : Type;
@@ -195,8 +152,6 @@ Inductive MetaCoq : Type -> Prop :=
 | list_ltac : forall {A : Type} {_ : A}, MetaCoq A
 
 | match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
-
-| get_inductive : Type -> MetaCoq IndType
 .
 
 Definition failwith {A} s : MetaCoq A := raise (Failure s).
