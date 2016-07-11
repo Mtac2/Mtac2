@@ -1,5 +1,5 @@
 From MetaCoq
-Require Export MetaCoq MCListUtils MCTactics.
+Require Export MetaCoq MCListUtils MCTactics ImportedTactics.
 Import MetaCoqNotations.
 Import MCTacticsNotations.
 
@@ -7,8 +7,6 @@ Require Import Strings.String.
 
 Require Import Lists.List.
 Import ListNotations.
-
-Inductive Bla : Prop := Ble.
 
 Polymorphic Inductive Sort := SType | SProp.
 Polymorphic Definition stype_of s := match s with SType => Type | SProp => Prop end.
@@ -258,12 +256,53 @@ Proof.
               case_return := Dyn (RTele_Fun rG);
               case_branches := (Dyn T) :: (Dyn F) :: nil
             |}).
-  unfold blaP_goals in mc.
   compute in mc.
   pose (c := eval mc).
+  unfold eval in c.
   exact (elem c).
 Qed.
 
+Notation "'mpose' ( x := t )" := ((fun g=>r <- t; cpose r (fun x=>idtac) g) : tactic)
+  (at level 40, x at next level).
+
+Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
+  match n with
+  | 0 => ret t
+  | S n' =>
+    mmatch A as A' return M A' with
+    | [? B (fty : B -> Type)] forall x, fty x => [H]
+      let t' := match H in _ = P return P with eq_refl => t end in (* we need to reduce this *)
+      nu x,
+        r <- unfold_funs (t' x) n';
+      abs x r
+    | [? A'] A' => [H]
+      match H in _ = P return M P with eq_refl => ret t end
+    end
+  end.
+
+(* MetaCoq version *)
+Goal forall P b, reflect P b -> P <-> b = true.
+MProof.
+  intros P b r.
+  mpose (rG := abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r).
+  tsimpl.
+  assert (T : get_type_of_branch (reflect_RTrue P) rG).
+  - cintros x {- MCTactics.split;; [cintros P {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *)
+  assert (F : get_type_of_branch (reflect_RFalse P) rG).
+  - tsimpl. intros. MCTactics.split. intros. exact (match x x0 with end). intros;; discriminate.
+  mpose (typ0 := unfold_funs (RTele_Fun rG) 0).
+  mpose (typ1 := unfold_funs (RTele_Fun rG) 1).
+  mpose (typ2 := unfold_funs (RTele_Fun rG) 10).
+  pose (mc :=
+          makecase {|
+              case_val := r;
+              case_type := RTele_App rG (reflect_args P b) r;
+              case_return := Dyn (typ2);
+              case_branches := (Dyn T) :: (Dyn F) :: nil
+            |}).
+  mpose (c := mc).
+  exact (elem c).
+Qed.
 
 Section VectorExample.
 Require Import Vector.
@@ -280,7 +319,7 @@ Proof.
   assert (N : get_type_of_branch vnil rt).
   { now auto. }
   assert (C : get_type_of_branch vcons rt).
-  { intros x k v'. cbv. f_equal. exact (f _ _). }
+  { intros x k v'. hnf. simpl. f_equal. exact (f _ _). }
   pose (mc :=
           makecase {|
               case_val := v;
@@ -297,9 +336,64 @@ Proof.
   (* pose (c' := eval (destcase ma)). *)
   (* unfold eval in c'. *)
   pose (c := eval mc).
+  unfold eval in c.
   exact (elem c).
 Qed.
 End VectorExample.
+
+Definition get_ITele : forall {T : Type} (ind : T), M ({s : Sort & ITele s}) :=
+mfix2 f (T : _) (ind : _) : M _ :=
+  mmatch T with
+  | [? (A : Type) (F : A -> Type)] forall a, F a =>
+    [H]
+        let indFun := match H in eq _ P return P with eq_refl => ind end
+                     in nu a : A,
+                               r <- f (F a) (indFun a) : M ({s : Sort & ITele s});
+                     let (sort, it) := r in
+                     f <- abs a it;
+                       ret (existT _ sort (iTele f))
+  | Prop =>
+   [H]
+      let indProp := match H in eq _ P return P with eq_refl => ind end
+                    in ret (existT _ SProp (iBase (sort := SProp) indProp))
+  | Type =>
+    [H]
+       let indType := match H in eq _ P return P with eq_refl => ind end
+                      in ret (existT _ SType (iBase (sort := SType) indType))
+  | Set =>
+    [H]
+       let indType := match H in eq _ P return P with eq_refl => ind end
+                      in ret (existT _ SType (iBase (sort := SType) indType))
+            end.
+
+Example get_reflect_ITele := Eval compute in eval (get_ITele (reflect True)).
+
+
+
+Program Definition get_CTele : forall {isort} (it : ITele isort) {A : Type}, A -> M (CTele it) :=
+  mfix4 rec (isort : Sort) (it : ITele isort) (A : Type) (a : A) : M (CTele it) :=
+  mmatch A with
+  | [? (A : Type) (F : A -> stype_of isort)] forall a, selem_of (F a) => [H]
+    let f := match H in _ = P return P with eq_refl => a end in
+               nu a : A,
+                      r <- rec _ it (selem_of (F a)) (f a);
+               f' <- abs a r;
+               ret (cProd f')
+  | _ =>
+    match it with
+      | iBase T => oH <- munify A (selem_of T) UniNormal;
+                  match oH with
+                    | None => failwith "Term is not a constructor of the inductive telescope"
+                    | Some H =>
+                      match H in _ = T return M T with eq_refl => ret a end
+                  end
+      | @iTele _ T f =>
+        mmatch A with
+        | [? ] (* shouldn't we match on A to see if it is the application of somethin to a value of the right type? and use that value to instantiate the CTele? *)
+        end
+    end
+     end.
+
 
 Definition new_destruct {A : Type} (n : A) : tactic := fun g=>
   b <- is_var n;
