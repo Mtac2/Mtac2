@@ -536,26 +536,25 @@ let make_Case (env, sigma) case =
 let get_Constrs (env, sigma) t =
   let t_type, args = Term.decompose_app (whd_betadeltaiota env sigma t) in
   if Term.isInd t_type then
-    match Term.kind_of_term t_type with
-    | Term.Ind ((mind, ind_i), _) ->
-        let mbody = Environ.lookup_mind mind env in
-        let ind = Array.get (mbody.mind_packets) ind_i in
-        let dyn = Lazy.force MetaCoqNames.mkdyn in
-        let cDyn = Lazy.force MetaCoqNames.mkDyn in
-        let l = Array.fold_right
-                  (fun i l ->
-                     let constr = Names.ith_constructor_of_inductive (mind, ind_i) i in
-                     let coq_constr = Term.applist (Term.mkConstruct constr, args) in
-                     let ty = Retyping.get_type_of env sigma coq_constr in
-                     let dyn_constr = Term.applist (cDyn, [ty; coq_constr]) in
-                     CoqList.makeCons dyn dyn_constr l
-                  )
-                  (* this is just a dirty hack to get the indices of constructors *)
-                  (Array.mapi (fun i t -> i+1) ind.mind_consnames)
-                  (CoqList.makeNil dyn)
-        in
-        (sigma, l)
-    | _ -> assert false
+    let (mind, ind_i), _ = destInd t_type in
+    let mbody = Environ.lookup_mind mind env in
+    let ind = Array.get (mbody.mind_packets) ind_i in
+    let dyn = Lazy.force MetaCoqNames.mkdyn in
+    let cDyn = Lazy.force MetaCoqNames.mkDyn in
+    let l = Array.fold_right
+              (fun i l ->
+                 let constr = Names.ith_constructor_of_inductive (mind, ind_i) i in
+                 let args = CList.firstn mbody.mind_nparams_rec args in
+                 let coq_constr = Term.applist (Term.mkConstruct constr, args) in
+                 let ty = Retyping.get_type_of env sigma coq_constr in
+                 let dyn_constr = Term.applist (cDyn, [ty; coq_constr]) in
+                 CoqList.makeCons dyn dyn_constr l
+              )
+              (* this is just a dirty hack to get the indices of constructors *)
+              (Array.mapi (fun i t -> i+1) ind.mind_consnames)
+              (CoqList.makeNil dyn)
+    in
+    (sigma, l)
   else
     Exceptions.block "The argument of Mconstrs is not an inductive type"
 
