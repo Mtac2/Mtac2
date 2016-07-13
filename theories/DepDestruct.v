@@ -154,6 +154,12 @@ Polymorphic Definition Fun {sort} {A} :
   | SType => fun _ f => f
   end.
 
+Polymorphic Definition App {sort} {A} : forall {F : A -> _},  selem_of (ForAll (sort := sort) F) -> forall a, selem_of (F a) :=
+  match sort as sort' return forall F, selem_of (ForAll (sort := sort') F) -> forall a, selem_of (F a) with
+  | SProp => fun F f a => f a
+  | SType => fun F f a => f a
+  end.
+
 Polymorphic Fixpoint RTele_Type {isort} {it : ITele isort} {rsort} (rt : RTele rsort it) : Type :=
   match rt with
   | @rBase _ _ s r =>
@@ -370,32 +376,112 @@ Example get_reflect_ITele := Eval compute in eval (get_ITele (reflect True)).
 
 
 
-Program Definition get_CTele : forall {isort} (it : ITele isort) {A : Type}, A -> M (CTele it) :=
-  mfix4 rec (isort : Sort) (it : ITele isort) (A : Type) (a : A) : M (CTele it) :=
-  mmatch A with
-  | [? (A : Type) (F : A -> stype_of isort)] forall a, selem_of (F a) => [H]
-    let f := match H in _ = P return P with eq_refl => a end in
-               nu a : A,
-                      r <- rec _ it (selem_of (F a)) (f a);
-               f' <- abs a r;
-               ret (cProd f')
-  | _ =>
-    match it with
-      | iBase T => oH <- munify A (selem_of T) UniNormal;
-                  match oH with
-                    | None => failwith "Term is not a constructor of the inductive telescope"
-                    | Some H =>
-                      match H in _ = T return M T with eq_refl => ret a end
-                  end
-      | @iTele _ T f =>
+(* This get's called when there are no lambda abstractions left in (a : A) *)
+Fixpoint get_CTele_nofun {isort} (it : ITele isort) : forall {A : Type}, A -> M (CTele it) :=
+  match it as it' return forall A, A -> M (CTele it') with
+  | iBase T => fun A a =>
+    oH <- munify A (selem_of T) UniNormal;
+      match oH return M (CTele (iBase T)) with
+      | None => failwith "Term is not a constructor of the inductive telescope"
+      | Some H =>
+        match H in _ = T' return (T' -> CTele (iBase T)) -> A -> M (CTele (iBase T)) with
+          eq_refl => fun f a => ret (f a)
+        end cBase a
+      end
+  | @iTele _ T f => fun A a =>
         mmatch A with
-        | [? ] (* shouldn't we match on A to see if it is the application of somethin to a value of the right type? and use that value to instantiate the CTele? *)
-        end
-    end
-     end.
+      | [? (t : T) F] F t => [H]
+                               let a' := match H in _ = P return P with eq_refl => a end in
+                                       r <- get_CTele_nofun (f t) a';
+                                           ret (cInst (f := f) t r)
+                                   end
+  end.
+
+Fixpoint get_CTele_nofun' {isort} (it : ITele isort) : forall {A : stype_of isort}, selem_of A -> M (CTele it) :=
+  match it as it' return forall A, selem_of A -> M (CTele it') with
+  | iBase T => fun A a =>
+    oH <- munify A T UniNormal;
+      match oH return M (CTele (iBase T)) with
+      | None => failwith "Term is not a constructor of the inductive telescope"
+      | Some H =>
+        match H in _ = T' return (selem_of T' -> CTele (iBase T)) -> selem_of A -> M (CTele (iBase T)) with
+          eq_refl => fun f a => ret (f a)
+        end cBase a
+      end
+  | @iTele _ T f => fun A a =>
+                      mmatch selem_of A with
+  | [? (t : T) F] F t => [H]
+                           let a' := match H in _ = P return P with eq_refl => a end in
+                                   r <- get_CTele_nofun (f t) a';
+                                       ret (cInst (f := f) t r)
+                               end
+                               end.
+
+Definition get_CTele_raw : forall {isort} (it : ITele isort) {A : stype_of isort}, selem_of A -> M (CTele it) :=
+  fun isort =>
+  mfix3 rec (it : ITele isort) (A : stype_of isort) (a : selem_of A) : M (CTele it) :=
+        mmatch A return M (CTele it) with
+                      | [? (B : Type) (F : B -> stype_of isort)] ForAll (sort := isort) F =>
+                        [H]
+                          print "Prod case";; print_term F;;
+                          let f := match H in _ = P return selem_of P with eq_refl => a end in
+                                  nu a : B,
+                                         r <- rec it (F a) (App f a);
+                                     f' <- abs a r;
+                                     ret (cProd f')
+                                 | _ => print "NoFun case";; get_CTele_nofun' it a
+                              end.
+
+Definition get_CTele_SType := Eval compute in @get_CTele_raw SType.
+Definition get_CTele_SProp := Eval compute in @get_CTele_raw SProp.
+
+Definition get_CTele :=
+  fun isort =>
+    match isort as sort return forall {it : ITele sort} {A : stype_of sort}, selem_of A -> M (CTele it) with
+    | SProp => get_CTele_SProp
+    | SType => get_CTele_SType
+    end.
+
+Definition reflect_sort := Eval compute in let (sort, _) := get_reflect_ITele in sort.
+Definition reflect_itele : ITele reflect_sort :=
+  match get_reflect_ITele as pair return let (sort, _) := pair in ITele sort with
+  | existT _ s it => it
+  end.
+Example get_RTrue_CTele := Eval compute in eval (get_CTele_SType reflect_itele _ (RTrue True)).
+Example get_RFalse_CTele := Eval compute in eval (get_CTele_SType reflect_itele _ (RFalse True)).
+
+(* Record sdyn sort : Type := *)
+(*   { sdyn_type : stype_of sort; sdyn_elem : selem_of sdyn_type }. *)
+(* Arguments sdyn_type [_] _. *)
+(* Arguments sdyn_elem [_] _. *)
+
+Definition coerce_bla {S : Type} (F : S -> Type) s s' (t : F s) : M (F s') :=
+  oEqTy <- munify (F s') (F s) UniNormal;
+    match oEqTy with
+    | Some EqTy => match EqTy in _ = T return T -> M (F s') with
+                   | eq_refl => fun t => ret t
+                   end t
+    | None => raise CantCoerce
+    end.
+
+Definition new_destruct {A : Type} (n : A) : tactic :=
+  fun g=>
+    r <- constrs n;
+      let (indP, constrs) := r in
+      sortit <- get_ITele indP;
+        let (isort, it) := sortit in
+        cts <- mmap (fun c_dyn =>
+                       let F sort := dyn -> @sigT (stype_of sort) (fun sty => selem_of sty) in
+                       let t : F SType := fun d => @existT (stype_of SType) (fun sty => selem_of sty) (type d) (elem d) in
+                       c_sorted <- coerce_bla _ SType isort t;
+                         let (ty, el) := c_sorted c_dyn in
+                         get_CTele _ it ty el
+                    ) constrs;
+          print_term cts;;
+          ret [].
 
 
-Definition new_destruct {A : Type} (n : A) : tactic := fun g=>
+
   b <- is_var n;
   ctx <- if b then hyps_except n else hypotheses;
   P <- Cevar (A->Type) ctx;
