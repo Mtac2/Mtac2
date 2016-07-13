@@ -16,6 +16,28 @@ Polymorphic Definition selem_of {s} (x : stype_of s) : Type :=
   | SProp => fun x => x
   end x.
 
+Polymorphic Definition ForAll {sort} {A} : (A -> stype_of sort) -> stype_of sort :=
+  match sort with
+  | SProp => fun F => forall (a : A), F a
+  | SType => fun F => forall (a : A), F a
+  end.
+
+Polymorphic Definition Fun {sort} {A} :
+  forall {F : A -> stype_of sort}, (forall a, selem_of (F a)) -> selem_of (ForAll F) :=
+  match sort as sort' return
+  forall {F : A -> stype_of sort'}, (forall a, selem_of (F a)) -> selem_of (ForAll F)
+  with
+  | SProp => fun _ f => f
+  | SType => fun _ f => f
+  end.
+
+Polymorphic Definition App {sort} {A} : forall {F : A -> _},  selem_of (ForAll (sort := sort) F) -> forall a, selem_of (F a) :=
+  match sort as sort' return forall F, selem_of (ForAll (sort := sort') F) -> forall a, selem_of (F a) with
+  | SProp => fun F f a => f a
+  | SType => fun F f a => f a
+  end.
+
+
 Polymorphic Inductive ITele (sort : Sort) : Type :=
 | iBase : stype_of sort -> ITele sort
 | iTele : forall {T}, (T -> ITele sort) -> ITele sort.
@@ -65,22 +87,21 @@ Example reflect_args P b : ATele (reflect_reflect P) :=
 
 End ExampleReflect.
 
+Polymorphic Definition ITele_Fun_Type {isort} : ITele isort -> Type :=
+  fix rec it :=
+    match it with
+    | iBase T => stype_of isort
+    | iTele f => forall t, rec (f t)
+    end.
 
-(*
-Require Import Program.
-Program Fixpoint abstract_goal (it : ITele) (args : ATele it) (G : Type) : M (RTele it) :=
-  match it, args with
-  | iBase t, aBase => ret (rBase G)
-  | iTele f, aTele v args =>
-    nu x,
-      r <- abstract_goal (f x) args G;
-      r <- abs x r;
-      ret (rTele r)
-  | _, _ => failwith "WHAAA??"
-  end.
-*)
+Polymorphic Definition ITele_Fun_App {isort} : forall {it : ITele isort}, ITele_Fun_Type it :=
+  fix rec it :=
+    match it as it' return ITele_Fun_Type it' with
+    | iBase T => T
+    | iTele f => fun t => rec (f t)
+    end.
 
-Polymorphic Fixpoint ITele_App {sort} {it : ITele sort} (args : ATele it) : stype_of sort :=
+Polymorphic Fixpoint ITele_App {isort} {it : ITele isort} (args : ATele it) : stype_of isort :=
   match args with
   | @aBase _ T => T
   | @aTele _ _ f v args =>
@@ -137,27 +158,6 @@ Polymorphic Fixpoint get_type_of_branch {isort} {rsort} {it : ITele isort} (ct :
         | rBase G => I
         | rTele rt' => fun v' rec' => rec' (rt' v')
       end v rec
-  end.
-
-Polymorphic Definition ForAll {sort} {A} : (A -> stype_of sort) -> stype_of sort :=
-  match sort with
-  | SProp => fun F => forall (a : A), F a
-  | SType => fun F => forall (a : A), F a
-  end.
-
-Polymorphic Definition Fun {sort} {A} :
-  forall {F : A -> stype_of sort}, (forall a, selem_of (F a)) -> selem_of (ForAll F) :=
-  match sort as sort' return
-  forall {F : A -> stype_of sort'}, (forall a, selem_of (F a)) -> selem_of (ForAll F)
-  with
-  | SProp => fun _ f => f
-  | SType => fun _ f => f
-  end.
-
-Polymorphic Definition App {sort} {A} : forall {F : A -> _},  selem_of (ForAll (sort := sort) F) -> forall a, selem_of (F a) :=
-  match sort as sort' return forall F, selem_of (ForAll (sort := sort') F) -> forall a, selem_of (F a) with
-  | SProp => fun F f a => f a
-  | SType => fun F f a => f a
   end.
 
 Polymorphic Fixpoint RTele_Type {isort} {it : ITele isort} {rsort} (rt : RTele rsort it) : Type :=
@@ -310,7 +310,7 @@ MProof.
   exact (elem c).
 Qed.
 
-Section VectorExample.
+Module VectorExample.
 Require Import Vector.
 Goal forall n (v : t nat n), n = length (to_list v).
 Proof.
@@ -373,7 +373,6 @@ mfix2 f (T : _) (ind : _) : M _ :=
             end.
 
 Example get_reflect_ITele := Eval compute in eval (get_ITele (reflect True)).
-
 
 
 (* This get's called when there are no lambda abstractions left in (a : A) *)
