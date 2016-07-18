@@ -220,6 +220,15 @@ Instance i_bindb (t:tactic) (u:tactic) : semicolon t u | 100:=
 Instance i_mtac A B (t:M A) (u:M B) : semicolon t u | 100 :=
   SemiColon _ _ (_ <- t; u).
 
+(** Overloaded binding *)
+Class binding {A} {B} {P} (t:P A) (u: A -> B) := Binding { result : B }.
+Arguments Binding {A} {B} {P} t u result.
+
+Instance binding_mtac A B (t:M A) (u:A -> M B) : binding t u | 100 :=
+  Binding _ _ (bind t u).
+
+Instance binding_tactic A (t:M A) (u:A -> tactic) : binding t u | 100 :=
+  Binding _ _ (fun g:goal=>x <- t; u x g).
 
 Definition SomethingNotRight {A} (t : A) : Exception. exact exception. Qed.
 Definition copy_ctx {A} (B : A -> Type) :=
@@ -695,6 +704,8 @@ Notation "'cintros' x .. y '{-' t '-}'" :=
     (at level 0, x binder, y binder, t at next level, right associativity).
 
 Notation "a ;; b" := (@the_value _ _ _ a b _).
+
+Notation "r '<-' t1 ';' t2" := (@result _ _ _ t1 (fun r=> t2) _).
 
 Notation "'tsimpl'" := (treduce RedSimpl).
 Notation "'thnf'" := (treduce RedWhd).

@@ -65,6 +65,16 @@ MProof.
   intros. select (_ -> _) apply;; assumption.
 Qed.
 
+Definition apply_fun : tactic :=
+  A <- evar Type;
+  B <- evar Type;
+  select (A -> B) apply.
+
+Goal forall P Q, (P -> Q) -> P -> Q.
+MProof.
+  intros;; apply_fun;; assumption.
+Qed.
+
 Theorem tl_length_pred' : forall A (l: list A),
   pred (length l) = length (tl l).
 MProof.
