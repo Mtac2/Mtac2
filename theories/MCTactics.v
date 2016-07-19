@@ -665,16 +665,12 @@ Definition fix_tac f n : tactic := fun g=>
   instantiate e f;;
   ret [new_goal].
 
-(** [nofail t] applies [t] and if it fails returns the goal unchanged *)
-Definition nofail t : tactic := fun g=>
-  mtry t g with _ => ret [g] end.
-
 (** [repeat t] applies tactic [t] to the goal several times
     (it should only generate at most 1 subgoal), until no
     changes or no goal is left. *)
 Definition repeat t : tactic := fun g=>
   (mfix1 f (g : goal) : M (list goal) :=
-    r <- nofail t g; (* if it fails, the execution will stop below *)
+    r <- try t g; (* if it fails, the execution will stop below *)
     r <- filter_goals r;
     match r with
     | [] => ret []
