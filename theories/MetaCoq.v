@@ -43,6 +43,7 @@ Inductive Reduction : Type :=
 | RedNone : Reduction
 | RedSimpl : Reduction
 | RedWhd : Reduction
+| RedNF : Reduction
 | RedOneStep : Reduction.
 
 Inductive Unification : Type :=
@@ -116,7 +117,7 @@ Inductive MetaCoq : Type -> Prop :=
 (* if the 4th argument is Some t, it adds x:=t to the local context *)
 | tnu : forall {A B}, string -> option A -> (A -> MetaCoq B) -> MetaCoq B
 | abs : forall {A P} (x : A), P x -> MetaCoq (forall x, P x)
-| abs_let : forall {A B}, A -> B -> MetaCoq B
+| abs_let : forall {A P} (x: A) (t: A), P x -> MetaCoq (let x := t in P x)
 | abs_prod : forall {A P} (x : A), P x -> MetaCoq Type
 (** [abs_fix f t n] creates a fixpoint with variable [f] as name,
     with body t,

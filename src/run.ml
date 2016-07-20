@@ -25,6 +25,7 @@ module Stack = Reductionops.Stack
 
 let reduce_value = Tacred.compute
 
+let get_ts env = Conv_oracle.get_transp_state (Environ.oracle env)
 
 module MetaCoqNames = struct
   let metaCoq_module_name = "MetaCoq.MetaCoq.MetaCoq"
@@ -52,11 +53,15 @@ module Goal = struct
 
   let mkTheGoal ty ev = mkApp (Lazy.force (mkConstr "TheGoal"), [|ty;ev|])
 
-  let mkAHyp ty name body =
+  let mkAHypOrDef ty name odef body =
     (* we are going to wrap the body in a function, so we need to lift
        the indices. we also replace the name with index 1 *)
     let body = replace_term (mkVar name) (mkRel 1) (Vars.lift 1 body) in
-    mkApp (Lazy.force (mkConstr "AHyp"), [|ty; mkLambda(Name name,ty,body)|])
+    match odef with
+    | Some def ->
+        mkApp (Lazy.force (mkConstr "ADef"), [|ty; def; mkLetIn(Name name,def,ty,body)|])
+    | None ->
+        mkApp (Lazy.force (mkConstr "AHyp"), [|ty; mkLambda(Name name,ty,body)|])
 
   let goal_of_evar env sigma ev =
     let evinfo = Evd.find_undefined sigma ev in
@@ -75,7 +80,7 @@ module Goal = struct
     let ids = Context.fold_named_context (fun (n,_,_) s -> mkVar n :: s) evenv ~init:[] in
     let evar = (ev, Array.of_list ids) in
     let tg = mkTheGoal (Evd.existential_type sigma evar) (mkEvar evar) in
-    Context.fold_named_context_reverse (fun s (n,_,ty) -> mkAHyp ty n s) newenv ~init:tg
+    Context.fold_named_context_reverse (fun s (n,odef,ty) -> mkAHypOrDef ty n odef s) newenv ~init:tg
 
 end
 
@@ -114,6 +119,7 @@ module Exceptions = struct
   let error_abs_type = "Variable is appearing in the returning type"
   let error_abs_ref = "Variable is appearing in type of reference"
   let error_abs_let = "Trying to let-abstract a variable without definition"
+  let error_abs_let_noconv = "Not the right definition in abs_let"
   let error_array_zero = "Array must have non-zero length"
   let unknown_reduction_strategy = "Unknown reduction strategy"
 
@@ -125,6 +131,7 @@ module ReductionStrategy = struct
   let isRedSimpl c = MetaCoqNames.isConstr "RedSimpl" c
   let isRedWhd c = MetaCoqNames.isConstr "RedWhd" c
   let isRedOneStep c = MetaCoqNames.isConstr "RedOneStep" c
+  let isRedNF c = MetaCoqNames.isConstr "RedNF" c
   let isReduce c = MetaCoqNames.isConstr "reduce" c
 
   let has_definition ts env t =
@@ -176,7 +183,7 @@ module ReductionStrategy = struct
       t
 
   let one_step env sigma c =
-    let ts = Conv_oracle.get_transp_state (Environ.oracle env) in
+    let ts = get_ts env in
     let h, args = decompose_app c in
     let h = whd_evar sigma h in
     let r =
@@ -195,6 +202,8 @@ module ReductionStrategy = struct
       Tacred.simpl env sigma c
     else if isRedWhd strategy then
       whd_betadeltaiota env sigma c
+    else if isRedNF strategy then
+      nf_betadeltaiota env sigma c
     else if isRedOneStep strategy then
       one_step env sigma c
     else
@@ -215,7 +224,7 @@ module UnificationStrategy = struct
 
   let unify sigma env strategy t1 t2 =
     let open Evarsolve in
-    let ts = Conv_oracle.get_transp_state (Environ.oracle env) in
+    let ts = get_ts env in
     if isUniNormal strategy then
       let r = Munify.unify_evar_conv ts env sigma Reduction.CUMUL t1 t2 in
       match r with
@@ -653,8 +662,8 @@ let check_dependencies env x t =
 (** Abstract *)
 type abs = AbsProd | AbsFun | AbsLet | AbsFix
 
-(* n is only for fixpoint *)
-let abs case (env, sigma, metas) a p x y n : data =
+(* n is only for fixpoint, t for let-ins *)
+let abs case (env, sigma, metas) a p x y n t : data =
   (*  let x = whdbetadeltaiota env sigma x in *) (* for let-ins is problemtaic *)
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
@@ -670,7 +679,11 @@ let abs case (env, sigma, metas) a p x y n : data =
             match case, ot with
             | AbsProd, _ -> Term.mkProd (name, a, y')
             | AbsFun, _ -> Term.mkLambda (name, a, y')
-            | AbsLet, Some t -> Term.mkLetIn (name, t, ty, y')
+            | AbsLet, Some t' ->
+                if is_trans_conv (get_ts env) env sigma t t' then
+                  Term.mkLetIn (name, t, ty, y')
+                else
+                  Exceptions.block Exceptions.error_abs_let_noconv
             | AbsLet, None -> Exceptions.block Exceptions.error_abs_let
             | AbsFix, _ -> (* TODO: check enough products *)
                 Term.mkFix (([|n|], 0), ([|name|], [|ty|], [|y'|]))
@@ -689,7 +702,11 @@ let abs case (env, sigma, metas) a p x y n : data =
               let (_, ot, ty) = lookup_named name env in
               begin
                 match ot with
-                | Some t -> Term.mkLetIn (Name name, t, ty, y')
+                | Some t' ->
+                    if is_trans_conv (get_ts env) env sigma t t' then
+                      Term.mkLetIn (Name name, t, ty, y')
+                    else
+                      Exceptions.block Exceptions.error_abs_let_noconv
                 | None -> Exceptions.block Exceptions.error_abs_let
               end
           | AbsFix ->
@@ -761,7 +778,7 @@ let get_func_name env sigma s f =
   Names.Name s, Term.mkApp(Vars.lift 1 f, [|Term.mkRel 1|])
 
 let get_name (env, sigma) t =
-  let t = whd_betadeltaiota env sigma t in
+  let t = whd_betadeltaiota_nolet env sigma t in
   let name =
     if isVar t then Some (Name (destVar t))
     else if isRel t then
@@ -946,21 +963,21 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
     | 12 -> (* abs *)
         let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsFun (env, sigma, metas) a p x y 0
+        abs AbsFun (env, sigma, metas) a p x y 0 mkProp
 
     | 13 -> (* abs_let *)
-        let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsLet (env, sigma, metas) a p x y 0
+        let a, p, x, t, y = nth 0, nth 1, nth 2, nth 3, nth 4 in
+        abs AbsLet (env, sigma, metas) a p x y 0 t
 
     | 14 -> (* abs_prod *)
         let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsProd (env, sigma, metas) a p x y 0
+        abs AbsProd (env, sigma, metas) a p x y 0 mkProp
 
     | 15 -> (* abs_fix *)
         let a, f, t, n = nth 0, nth 1, nth 2, nth 3 in
         let n = CoqN.from_coq (env, sigma) n in
         (* HACK: put mkProp as returning type *)
-        abs AbsFix (env, sigma, metas) a mkProp f t n
+        abs AbsFix (env, sigma, metas) a mkProp f t n mkProp
 
     | 16 -> (* get_binder_name *)
         let t = nth 1 in

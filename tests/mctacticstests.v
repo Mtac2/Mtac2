@@ -6,12 +6,6 @@ Import ListNotations.
 Import MetaCoqNotations.
 Import MCTacticsNotations.
 
-
-Definition tbind {A} (f : A -> tactic) (x : M A) : tactic :=
-  fun g=> x <- x; f x g.
-Notation "r '<--' t1 ';' t2" := (tbind (fun r=>t2) t1)
-  (at level 81, right associativity).
-
 Goal True.
 MProof.
   exact I.
@@ -309,7 +303,7 @@ Ltac rewrite h := rewrite h.
 Goal forall (x y z : nat) (H: x = y), y = x.
 MProof.
   intros.
-  ltac "mctacticstests.rewrite" [Dyn H].
+  ltac "Top.rewrite" [Dyn H].
   Grab Existential Variables.
   reflexivity.
 Qed.
@@ -362,7 +356,8 @@ Qed.
 
 Goal forall x:nat, False -> x = 0.
 MProof.
-  trivial;; intros ;; contradiction.
+  (** trivial is just testing that if it does not solve the goal, the goal is still there *)
+  trivial;; intros;; contradiction.
 Qed.
 
 Require Import MetaCoq.ImportedTactics.
@@ -372,12 +367,14 @@ MProof.
   pose (H := b && c).
   assert (Heq : H = b && c).
   - reflexivity.
-  rewrite<- Heq.
-  Grab Existential Variables.
-  destruct H;; reflexivity.
+  rewrite<- Heq;; destruct H;; reflexivity.
 Qed.
 
 Example fix_tac_ex: forall x:nat, 0 <= x.
 MProof.
   fix_tac "f" 0%N;; apply le_0_n.
 Qed.
+
+Example intros_def: let x := 0 in forall y, x <= y.
+MProof.
+  intros.

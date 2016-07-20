@@ -80,9 +80,10 @@ Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
 Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
 
 Definition instantiate {A} (x t : A) : M unit :=
+  let x := reduce RedNF x in
   b <- is_evar x;
   if b then
-    r <- munify x t UniMatch;
+    r <- munify x t UniCoq;
     match r with
     | Some _ => ret tt
     | _ => raise (CantInstantiate x t)
@@ -111,15 +112,25 @@ Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
   | _ => raise NotAProduct
   end.
 
+(** Given a name of a variable, it introduces it in the context *)
 Definition intro_simpl (var: string) : tactic := fun g=>
   mmatch g with
+  | [? B t (P:B -> Type) e] @TheGoal (let x := t in P x) e =>
+    tnu var (Some t) (fun x=>
+      e' <- evar (P x);
+      g <- abs_let x t e';
+      instantiate e g;;
+      g' <- abs_let x t (TheGoal e');
+      ret [ADef t g'])
+
   | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
     tnu var None (fun x=>
       e' <- evar _;
       g <- abs x e';
-      unify_or_fail e g;;
+      instantiate e g;;
       g' <- abs x (TheGoal e');
       ret [AHyp g'])
+
   | _ => raise NotAProduct
   end.
 
@@ -132,9 +143,9 @@ Fixpoint is_open (g : goal) : M bool :=
 
 Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
 
-Definition let_close_goals {A} (x: A) : list goal -> M (list goal) :=
+Definition let_close_goals {A} (x: A) (t: A) : list goal -> M (list goal) :=
   mmap (fun g'=>
-          r <- abs_let x g';
+          r <- abs_let x t g';
           let t := one_step x in
           ret (@ADef A t r)
           ).
@@ -147,9 +158,10 @@ Definition open_and_apply (t : tactic) : tactic := fix open g :=
       tnu x None (fun x : C=>
         open (f x) >> close_goals x)
     | @ADef C t f =>
+      print_term f;;
       x <- get_binder_name f;
       tnu x (Some t) (fun x : C=>
-        open f >> let_close_goals x)
+        open f >> let_close_goals x t)
     end.
 
 Definition intros_all : tactic :=
@@ -162,7 +174,7 @@ Definition intros_all : tactic :=
           r <- intro_simpl xn g;
           g <- hd_exception r;
           f g
-        with _ =>
+        with WrongTerm =>
           ret [g]
         end
       end) g.
@@ -529,15 +541,15 @@ Definition cpose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
     match g with
     | @TheGoal T e =>
       r <- evar T;
-      value <- abs_let x r;
+      value <- abs_let x t r;
       instantiate e value;;
-      cont x (TheGoal r) >> let_close_goals x
+      cont x (TheGoal r) >> let_close_goals x t
     | _ => raise NotAGoal
     end).
 
 (* It isn't quite right, it's making a transparent binding instead of an opaque one *)
 Definition cassert {A} (cont: A -> tactic) : tactic := fun g=>
-  a <- evar A; (* the goal to solve A *)
+  a <- evar A; (* [a] will be the goal to solve [A] *)
   n <- get_binder_name cont;
   tnu n None (fun x=>
     match g with
