@@ -1034,8 +1034,13 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
           Exceptions.block "Not a variable"
 
     | 18 -> (* evar *)
-        let t = nth 0 in
-        let (sigma', ev) = Evarutil.new_evar env sigma t in
+        let ty = nth 0 in
+        let (sigma', ev) = if Term.isSort ty && ty <> mkProp then
+            let (sigma, (evar, _)) = Evarutil.new_type_evar env sigma Evd.UnivRigid in
+            (sigma, evar)
+          else
+            Evarutil.new_evar env sigma ty
+        in
         return sigma' (ExistentialSet.add (fst (destEvar ev)) metas) ev
 
     | 19 -> (* Cevar *)
