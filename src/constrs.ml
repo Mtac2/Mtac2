@@ -91,6 +91,11 @@ module CoqOption = struct
       let arr = ConstrBuilder.from_coq someBuilder ctx cterm in
       Some arr.(1)
 
+  let to_coq ty oterm =
+    match oterm with
+    | None -> mkNone ty
+    | Some t -> mkSome ty t
+
 end
 
 module CoqList = struct

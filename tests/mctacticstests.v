@@ -378,3 +378,12 @@ Qed.
 Example intros_def: let x := 0 in forall y, x <= y.
 MProof.
   intros.
+  apply le_0_n.
+Qed.
+
+Example intros_def': let x := 0 in forall y, x <= y.
+MProof.
+  intros.
+  Ltac ind x :=induction x.
+  ltac "Top.ind" [Dyn y];;(fun g=>print_term g;; apply le_0_n g).
+Qed.

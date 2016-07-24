@@ -74,7 +74,7 @@ Definition or (t u : tactic) : tactic := fun g=>
   mtry t g with _ => u g end.
 
 Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
-  mmap (fun g'=>r <- abs x g'; ret (@AHyp A r)).
+  mmap (fun g'=>r <- abs x g'; ret (@AHyp A None r)).
 
 Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
 Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
@@ -120,8 +120,8 @@ Definition intro_simpl (var: string) : tactic := fun g=>
       e' <- evar (P x);
       g <- abs_let x t e';
       instantiate e g;;
-      g' <- abs_let x t (TheGoal e');
-      ret [ADef t g'])
+      g' <- abs x (TheGoal e');
+      ret [AHyp (Some t) g'])
 
   | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
     tnu var None (fun x=>
@@ -129,7 +129,7 @@ Definition intro_simpl (var: string) : tactic := fun g=>
       g <- abs x e';
       instantiate e g;;
       g' <- abs x (TheGoal e');
-      ret [AHyp g'])
+      ret [AHyp None g'])
 
   | _ => raise NotAProduct
   end.
@@ -137,31 +137,29 @@ Definition intro_simpl (var: string) : tactic := fun g=>
 Fixpoint is_open (g : goal) : M bool :=
   match g with
   | TheGoal e => is_evar e
-  | @AHyp C f => nu x:C, is_open (f x)
-  | ADef _ f => is_open f
+  | @AHyp C _ f => nu x:C, is_open (f x)
   end.
 
 Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
 
 Definition let_close_goals {A} (x: A) (t: A) : list goal -> M (list goal) :=
-  mmap (fun g'=>
-          r <- abs_let x t g';
-          let t := one_step x in
-          ret (@ADef A t r)
-          ).
+  let t := one_step x in
+  mmap (fun g':goal=>
+          r <- abs x g';
+          ret (@AHyp A (Some t) r)
+       ).
 
 Definition open_and_apply (t : tactic) : tactic := fix open g :=
     match g return M _ with
     | TheGoal _ => t g
-    | @AHyp C f =>
+    | @AHyp C None f =>
       x <- get_binder_name f;
       tnu x None (fun x : C=>
         open (f x) >> close_goals x)
-    | @ADef C t f =>
-      print_term f;;
+    | @AHyp C (Some t) f =>
       x <- get_binder_name f;
       tnu x (Some t) (fun x : C=>
-        open f >> let_close_goals x t)
+        open (f x) >> let_close_goals x t)
     end.
 
 Definition intros_all : tactic :=
@@ -175,6 +173,8 @@ Definition intros_all : tactic :=
           g <- hd_exception r;
           f g
         with WrongTerm =>
+          ret [g]
+        | NotAProduct =>
           ret [g]
         end
       end) g.
@@ -671,7 +671,7 @@ Definition fix_tac f n : tactic := fun g=>
     (* fixp is now the fixpoint with the evar as body *)
     (* The new goal is enclosed with the definition of f *)
     new_goal <- abs f (TheGoal new_goal);
-    ret (fixp, AHyp new_goal)
+    ret (fixp, AHyp None new_goal)
   );
   let (f, new_goal) := r in
   instantiate e f;;

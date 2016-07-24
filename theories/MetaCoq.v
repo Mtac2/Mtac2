@@ -79,8 +79,7 @@ Inductive pattern (M : Type->Prop) A (B : A -> Type) (t : A) : Prop :=
 (** goal type *)
 Inductive goal :=
 | TheGoal : forall {A}, A -> goal
-| AHyp : forall {A}, (A -> goal) -> goal
-| ADef : forall {A}, A -> goal -> goal.
+| AHyp : forall {A}, option A -> (A -> goal) -> goal.
 
 (** THE definition of MetaCoq *)
 Inductive MetaCoq : Type -> Prop :=

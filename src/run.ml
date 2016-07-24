@@ -57,11 +57,9 @@ module Goal = struct
     (* we are going to wrap the body in a function, so we need to lift
        the indices. we also replace the name with index 1 *)
     let body = replace_term (mkVar name) (mkRel 1) (Vars.lift 1 body) in
-    match odef with
-    | Some def ->
-        mkApp (Lazy.force (mkConstr "ADef"), [|ty; def; mkLetIn(Name name,def,ty,body)|])
-    | None ->
-        mkApp (Lazy.force (mkConstr "AHyp"), [|ty; mkLambda(Name name,ty,body)|])
+    let odef_coq = CoqOption.to_coq ty odef in
+    mkApp (Lazy.force (mkConstr "AHyp"),
+           [|ty; odef_coq; mkLambda(Name name,ty,body)|])
 
   let goal_of_evar env sigma ev =
     let evinfo = Evd.find_undefined sigma ev in
