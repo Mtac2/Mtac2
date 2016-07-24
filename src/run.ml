@@ -1146,7 +1146,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
     | 34 -> (* list_ltac *)
         let aux k _ = Pp.msg_info (Pp.str (Names.KerName.to_string k)) in
         KNmap.iter aux (Tacenv.ltac_entries ());
-        return sigma metas (nth 1)
+        return sigma metas (Lazy.force CoqUnit.mkTT)
 
     | 35 -> (* match_and_run *)
         let a, b, t, p = nth 0, nth 1, nth 2, nth 3 in

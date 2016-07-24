@@ -156,7 +156,7 @@ Inductive MetaCoq : Type -> Prop :=
 | munify {A} (x y : A) : Unification -> MetaCoq (option (x = y))
 
 | call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (A * list goal)
-| list_ltac : forall {A : Type} {_ : A}, MetaCoq A
+| list_ltac : MetaCoq unit
 
 | match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
 .
