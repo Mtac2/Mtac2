@@ -8,8 +8,6 @@ Require Import Strings.String.
 Require Import Lists.List.
 Import ListNotations.
 
-Set Printing Universes.
-
 Section Sorts.
   Inductive Sort : Type := SProp | SType.
   Polymorphic Definition type_of@{i} {A : Type@{i}} (x : A) : Type@{i} := A.
@@ -51,7 +49,7 @@ Polymorphic Inductive ITele@{inner inner_1 outer} (sort : Sort) : Type@{outer} :
 Arguments iBase {_} _.
 Arguments iTele {_ _} _.
 
-Polymorphic Inductive ATele@{i j k l} {sort} : ITele@{i j k} sort -> Type@{l} :=
+Polymorphic Inductive ATele@{i j k} {sort} : ITele@{i j k} sort -> Type@{k} :=
 | aBase : forall {T: stype_of@{i j} sort}, ATele (iBase T)
 | aTele : forall {T : Type@{j}} {f : T -> ITele@{i j k} sort} (a:T), ATele (f a) -> ATele (iTele f).
 
@@ -87,9 +85,9 @@ Arguments cBase {_ _} _ _.
 Arguments cProd {_ _ _} _.
 
 
-Polymorphic Inductive RTele {isort} rsort : ITele isort -> Type :=
-| rBase : forall {T : stype_of isort}, (selem_of T -> stype_of rsort) -> RTele rsort (iBase T)
-| rTele : forall {T f}, (forall (t : T), RTele rsort (f t)) -> RTele rsort (iTele f).
+Polymorphic Inductive RTele@{r1 r2 i i1 o} {isort} rsort : ITele isort -> Type@{r2} :=
+| rBase : forall {T : stype_of@{i i1} isort}, (selem_of@{i i1} T -> stype_of@{r1 r2} rsort) -> RTele rsort (iBase@{i i1 o} T)
+| rTele : forall {T:Type@{i1}} {f}, (forall (t : T), RTele rsort (f t)) -> RTele rsort (iTele@{i i1 o} f).
 
 Arguments rBase {_ _ _} _.
 Arguments rTele {_ _ _ _} _.
@@ -459,17 +457,16 @@ Definition sort_dyn (isort : Sort) A (a : A) : M (sigT (@selem_of isort)) :=
     p <- @coerce _ (selem_of P) a;
     ret ((existT _ _ p)).
 
-Polymorphic Definition sort_goal (A : Type) : M (sigT stype_of) :=
-  mtry P <- @coerce _ (stype_of SProp) A;
-       ret (existT _ SProp P)
-  with | _ =>
-    ret (existT _ SType A)
-           end.
+Polymorphic Definition sort_goal {T : Type} (A : T) : M (sigT stype_of) :=
+  mmatch T with
+| Prop => [H] let A_Prop := match H in _ = R return R with eq_refl => A end in
+                      ret (existT _ SProp A_Prop)
+| Type => [H] let A_Type := match H in _ = R return R with eq_refl => A end in
+                      ret (existT _ SType A_Type)
+end.
 
 Polymorphic Definition map' := map.
 Arguments map' [_ _] _ _.
-
-Set Printing Universes.
 
 Definition dyn_of_stype {sort} : stype_of sort -> dyn :=
   match sort with
@@ -507,6 +504,18 @@ Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) :=
       atele <- get_ATele it indlist : M (ATele it);
       ret atele.
 
+Definition makecase_wrapper {i r} {it : ITele i} (a : ATele it) (rt : RTele r it) (branches : list goal) v  : M (selem_of (RTele_App rt a v)) :=
+  branches <- mmap goal_to_dyn branches;
+  mc <- makecase
+     {|
+       case_val := v;
+       case_type := selem_of (RTele_App rt a v);
+       case_return := Dyn (RTele_Fun rt);
+       case_branches := branches
+     |};
+    wt <- (coerce (elem mc));
+    ret wt
+.
 Definition new_destruct {A : Type} (n : A) : tactic :=
   fun g=>
     ind <- get_ind n;
@@ -524,20 +533,53 @@ Definition new_destruct {A : Type} (n : A) : tactic :=
         gt <- goal_type g;
         rsG <- sort_goal gt;
         let (rsort, sG) := rsG in
+        print_term (isort, rsort);;
         n' <- coerce n;
           rt <- abstract_goal atele sG n';
-          sg <- mmap (
-                        fun ct =>
-                           @coerce _ Type  (selem_of (get_type_of_branch rt ct))
-                                  ) cts;
           print "before type coercion";;
-          let h'' := map Dyn sg in
-          ret (map dyn_to_goal h'')
+          let sg := reduce RedSimpl (map (
+                        fun ct =>
+                           (selem_of (get_type_of_branch rt ct))
+                                  ) cts) in
+          goals <- mmap (fun ty=>r <- evar ty; ret (TheGoal r)) sg;
+          branches <- mmap goal_to_dyn goals;
+          let tsg := reduce RedWhd (type_of sg) in
+          print_term tsg;;
+          print_term sg;;
+          let rrf := reduce RedSimpl (RTele_Fun rt) in
+          let rrt := reduce RedSimpl (RTele_Type rt) in
+          print_term rrt;;
+          print_term rrf;;
+          rf <- @coerce _ (RTele_Type rt) (RTele_Fun rt);
+          print "after coerce";;
+            caseterm <- makecase {|
+                       case_val := n';
+                       case_type := selem_of (RTele_App rt atele n');
+                       case_return := Dyn rf;
+                       case_branches := branches
+                     |};
+          ret goals
+          (* let h'' := map Dyn sg in *)
+          (* ret (map dyn_to_goal h'') *)
 .
 
+(* Definition test (P : Prop) (b : bool) := *)
+(*   c <- coerce (reflect P b); *)
+(*     let x := iff c c in *)
+(*     ret tt. *)
+(* Example blafu := ltac:(mrun (test True true)). *)
 
-Set Printing All.
-Example test P b (r : reflect P b) : P <-> b = true :=
+Example fubar (T : Type) (A : T) := mmatch T with | Prop => ret true | _ => ret false end.
+Example fubar2 (T : Type) (A : T) := mtry r <- @coerce _ Prop A; ret true with _ => ret false end.
+Definition fubarProp := Eval compute in ltac:(mrun (fubar Prop (True <-> True))).
+Definition fubarType := Eval compute in ltac:(mrun (fubar Type (True <-> True))).
+Definition fubar2Prop := Eval compute in ltac:(mrun (fubar2 Prop (True <-> True))).
+Definition fubar2Type := Eval compute in ltac:(mrun (fubar2 Type (True <-> True))).
+Compute (fubarProp, fubarType, fubar2Prop, fubar2Type).
+
+Example test P b (r : reflect P b) : P <-> b = true.
+MProof.
+  new_destruct r.
   ltac:(
     mrun ((fun g =>
              t <- new_destruct r g;
