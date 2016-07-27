@@ -20,11 +20,12 @@ Section Sorts.
     end x.
 End Sorts.
 
-Polymorphic Definition ForAll@{i j} {sort : Sort} {A : Type@{i}}
-  : (A -> stype_of@{i j} sort) -> stype_of sort :=
-  match sort as sort' return (A -> stype_of@{i j} sort') -> stype_of sort'  with
-  | SProp => fun (F : A -> Prop) => (forall (a : A), F a) : stype_of SProp
-  | SType => fun (F : A -> Type@{i}) => (forall (a : A), F a) : stype_of SType
+Set Printing Universes.
+Polymorphic Definition ForAll {sort : Sort} {A : Type}
+  : (A -> stype_of sort) -> stype_of sort :=
+  match sort as sort' return (A -> stype_of sort') -> stype_of sort'  with
+  | SProp => fun (F : A -> Prop) => (forall (a : A), F a)
+  | SType => fun (F : A -> _) => (forall (a : A), F a)
   end.
 
 Polymorphic Definition Fun {sort} {A} :
@@ -56,10 +57,10 @@ Polymorphic Inductive ATele@{i j k} {sort} : ITele@{i j k} sort -> Type@{k} :=
 Arguments aBase {_ _}.
 Arguments aTele {_ _ _} _ _.
 
-Polymorphic Definition ITele_Fun_Type {isort} : ITele isort -> Type :=
+Polymorphic Definition ITele_Fun_Type@{i i1 o} {isort} : ITele@{i i1 o} isort -> Type@{o} :=
   fix rec it :=
     match it with
-    | iBase T => stype_of isort
+    | iBase T => stype_of@{i i1} isort
     | iTele f => forall t, rec (f t)
     end.
 
@@ -77,9 +78,9 @@ Polymorphic Fixpoint ITele_App {isort} {it : ITele isort} (args : ATele it) : st
      ITele_App args
   end.
 
-Polymorphic Inductive CTele {sort} (it : ITele sort) : Type :=
-| cBase : forall {a : ATele it} (c : selem_of (ITele_App a)), CTele it
-| cProd : forall {T}, (T -> CTele it) -> CTele it.
+Polymorphic Inductive CTele@{i i1 o} {sort} (it : ITele@{i i1 o} sort) : Type@{o} :=
+| cBase : forall {a : ATele@{i i1 o} it} (c : selem_of (ITele_App a)), CTele it
+| cProd : forall {T : Type@{i1}}, (T -> CTele it) -> CTele it.
 
 Arguments cBase {_ _} _ _.
 Arguments cProd {_ _ _} _.
@@ -92,7 +93,7 @@ Polymorphic Inductive RTele@{r1 r2 i i1 o} {isort} rsort : ITele isort -> Type@{
 Arguments rBase {_ _ _} _.
 Arguments rTele {_ _ _ _} _.
 
-Polymorphic Fixpoint RTele_App {isort rsort} {it : ITele isort} (rt : RTele rsort it) : forall (a : ATele it), selem_of (ITele_App a) -> stype_of rsort :=
+Polymorphic Fixpoint RTele_App@{r1 r2 i i1 o} {isort rsort} {it : ITele@{i i1 o} isort} (rt : RTele@{r1 r2 i i1 o} rsort it) : forall (a : ATele it), selem_of (ITele_App a) -> stype_of rsort :=
   match rt in RTele _ it'
   with
   | @rBase _ _ T t =>
@@ -120,10 +121,10 @@ Polymorphic Fixpoint RTele_App {isort rsort} {it : ITele isort} (rt : RTele rsor
       end rec
   end.
 
-Polymorphic Fixpoint RTele_Type {isort} {it : ITele isort} {rsort} (rt : RTele rsort it) : Type :=
+Polymorphic Fixpoint RTele_Type@{r1 r2 i i1 o} {isort} {it : ITele@{i i1 o} isort} {rsort} (rt : RTele@{r1 r2 i i1 o} rsort it) : Type@{r2} :=
   match rt with
   | @rBase _ _ s r =>
-    (forall (t : selem_of s), stype_of rsort) : Type
+    (forall (t : selem_of s), stype_of@{r1 r2} rsort)
   | rTele rt => forall t, RTele_Type (rt t)
   end.
 
@@ -452,9 +453,9 @@ Example get_RFalse_CTele := Eval compute in ltac:(mrun (get_CTele reflect_itele 
 (* Arguments sdyn_elem [_] _. *)
 
 
-Definition sort_dyn (isort : Sort) A (a : A) : M (sigT (@selem_of isort)) :=
-    P <- @coerce _ (stype_of isort) A;
-    p <- @coerce _ (selem_of P) a;
+Polymorphic Definition sort_dyn@{i i1} (isort : Sort) (A : Type@{i}) (a : A) : M (sigT (@selem_of@{i i1} isort)) :=
+    P <- @coerce (Type@{i}) (stype_of@{i i1} isort) A;
+    p <- @coerce _ (selem_of@{i i1} P) a;
     ret ((existT _ _ p)).
 
 Polymorphic Definition sort_goal {T : Type} (A : T) : M (sigT stype_of) :=
@@ -484,6 +485,7 @@ match oH with
 end.
 
 
+Set Printing Universes.
 
 Definition get_ind {A : Type} (n : A) :
   M (nat * sigT (fun s => (ITele s)) * list dyn) :=
@@ -525,6 +527,7 @@ Definition new_destruct {A : Type} (n : A) : tactic :=
       atele <- get_ind_atele it nindx A;
                  (* Compute CTeles *)
         cts <- mmap (fun c_dyn : dyn =>
+          print "mobile debug";;
                        c <- sort_dyn isort (type c_dyn) (elem c_dyn);
                          let (ty, el) := c in
                          get_CTele it nindx ty el
@@ -536,7 +539,6 @@ Definition new_destruct {A : Type} (n : A) : tactic :=
         print_term (isort, rsort);;
         n' <- coerce n;
           rt <- abstract_goal atele sG n';
-          print "before type coercion";;
           let sg := reduce RedSimpl (map (
                         fun ct =>
                            (selem_of (get_type_of_branch rt ct))
@@ -550,12 +552,11 @@ Definition new_destruct {A : Type} (n : A) : tactic :=
           let rrt := reduce RedSimpl (RTele_Type rt) in
           print_term rrt;;
           print_term rrf;;
-          rf <- @coerce _ (RTele_Type rt) (RTele_Fun rt);
           print "after coerce";;
             caseterm <- makecase {|
                        case_val := n';
                        case_type := selem_of (RTele_App rt atele n');
-                       case_return := Dyn rf;
+                       case_return := Dyn rrf;
                        case_branches := branches
                      |};
           ret goals
@@ -577,7 +578,7 @@ Definition fubar2Prop := Eval compute in ltac:(mrun (fubar2 Prop (True <-> True)
 Definition fubar2Type := Eval compute in ltac:(mrun (fubar2 Type (True <-> True))).
 Compute (fubarProp, fubarType, fubar2Prop, fubar2Type).
 
-Example test P b (r : reflect P b) : P <-> b = true.
+Example test P b (r : reflect P b) : P -> if b then nat else True -> nat.
 MProof.
   new_destruct r.
   ltac:(
