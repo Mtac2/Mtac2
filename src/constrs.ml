@@ -42,7 +42,7 @@ module ConstrBuilder = struct
 
   exception WrongConstr of t * constr
 
-  let from_coq s (env, sigma as ctx) cterm =
+  let from_coq s (env, sigma) cterm =
     let (head, args) = whd_betadeltaiota_stack env sigma cterm in
     let args = Array.of_list args in
     if equal s head then
@@ -65,7 +65,7 @@ module UConstrBuilder = struct
 
   exception WrongConstr of t * constr
 
-  let from_coq s (env, sigma as ctx) cterm =
+  let from_coq s (env, sigma) cterm =
     let (head, args) = whd_betadeltaiota_stack env sigma cterm in
     let args = Array.of_list args in
     if equal s sigma env head then
