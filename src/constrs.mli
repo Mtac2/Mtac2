@@ -65,6 +65,9 @@ module CoqOption : sig
 
   val from_coq : (Environ.env * Evd.evar_map) -> constr
     -> constr option
+
+  (** to_coq ty ot constructs an option type with type ty *)
+  val to_coq : types -> constr option -> constr
 end
 
 module CoqUnit : sig

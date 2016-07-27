@@ -43,6 +43,7 @@ Inductive Reduction : Type :=
 | RedNone : Reduction
 | RedSimpl : Reduction
 | RedWhd : Reduction
+| RedNF : Reduction
 | RedOneStep : Reduction.
 
 Inductive Unification : Type :=
@@ -75,6 +76,12 @@ Inductive pattern (M : Type->Prop) A (B : A -> Type) (t : A) : Prop :=
 | pbase : forall (x:A), (t = x -> M (B x)) -> pattern M A B t
 | ptele : forall {C}, (forall (x : C), pattern M A B t) -> pattern M A B t.
 
+(** goal type *)
+Inductive goal :=
+| TheGoal : forall {A}, A -> goal
+| AHyp : forall {A}, option A -> (A -> goal) -> goal.
+
+(** THE definition of MetaCoq *)
 Inductive MetaCoq : Type -> Prop :=
 | tret : forall {A}, A -> MetaCoq A
 | bind : forall {A B}, MetaCoq A -> (A -> MetaCoq B) -> MetaCoq B
@@ -109,7 +116,7 @@ Inductive MetaCoq : Type -> Prop :=
 (* if the 4th argument is Some t, it adds x:=t to the local context *)
 | tnu : forall {A B}, string -> option A -> (A -> MetaCoq B) -> MetaCoq B
 | abs : forall {A P} (x : A), P x -> MetaCoq (forall x, P x)
-| abs_let : forall {A B}, A -> B -> MetaCoq B
+| abs_let : forall {A P} (x: A) (t: A), P x -> MetaCoq (let x := t in P x)
 | abs_prod : forall {A P} (x : A), P x -> MetaCoq Type
 (** [abs_fix f t n] creates a fixpoint with variable [f] as name,
     with body t,
@@ -152,8 +159,8 @@ Inductive MetaCoq : Type -> Prop :=
 
 | munify {A} (x y : A) : Unification -> MetaCoq (option (x = y))
 
-| call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (A * list dyn)
-| list_ltac : forall {A : Type} {_ : A}, MetaCoq A
+| call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (A * list goal)
+| list_ltac : MetaCoq unit
 
 | match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
 .
