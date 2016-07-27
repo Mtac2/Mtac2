@@ -224,13 +224,13 @@ module UnificationStrategy = struct
     let open Evarsolve in
     let ts = get_ts env in
     if isUniNormal strategy then
-      let r = Munify.unify_evar_conv ts env sigma Reduction.CUMUL t1 t2 in
+      let r = Munify.unify_evar_conv ts env sigma Reduction.CONV t1 t2 in
       match r with
       | Success sigma -> Some sigma
       | _ -> None
     else if isUniMatch strategy then
       let evars = Evar.Map.domain (Evd.undefined_map sigma) in
-      let r = Munify.unify_match evars ts env sigma Reduction.CUMUL t1 t2 in
+      let r = Munify.unify_match evars ts env sigma Reduction.CONV t1 t2 in
       match r with
       | Success sigma -> Some sigma
       | _ -> None
