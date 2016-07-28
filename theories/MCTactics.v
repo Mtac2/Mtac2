@@ -713,7 +713,7 @@ Notation "'cintros' x .. y '{-' t '-}'" :=
 
 Notation "a ;; b" := (@the_value _ _ _ a b _).
 
-Notation "r '<-' t1 ';' t2" := (@result _ _ _ t1 (fun r=> t2) _).
+(* Notation "r '<-' t1 ';' t2" := (@result _ _ _ t1 (fun r=> t2) _). *)
 
 Notation "'tsimpl'" := (treduce RedSimpl).
 Notation "'thnf'" := (treduce RedWhd).
