@@ -65,9 +65,12 @@ MProof.
   intros. select (_ -> _) apply;; assumption.
 Qed.
 
+Notation "r '<--' t1 ';' t2" := ((fun g=>r <- t1; t2 g):tactic)
+  (at level 81, right associativity).
+
 Definition apply_fun : tactic :=
-  A <- evar Type;
-  B <- evar Type;
+  A <-- evar Type;
+  B <-- evar Type;
   select (A -> B) apply.
 
 Goal forall P Q, (P -> Q) -> P -> Q.

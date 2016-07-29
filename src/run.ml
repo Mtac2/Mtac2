@@ -220,23 +220,23 @@ module UnificationStrategy = struct
       List.exists (fun e ->
         Termops.occur_term e c1 || Termops.occur_term e c2) evars) pbs
 
-  let unify sigma env strategy t1 t2 =
+  let unify sigma env strategy conv_pb t1 t2 =
     let open Evarsolve in
     let ts = get_ts env in
     if isUniNormal strategy then
-      let r = Munify.unify_evar_conv ts env sigma Reduction.CONV t1 t2 in
+      let r = Munify.unify_evar_conv ts env sigma conv_pb t1 t2 in
       match r with
       | Success sigma -> Some sigma
       | _ -> None
     else if isUniMatch strategy then
       let evars = Evar.Map.domain (Evd.undefined_map sigma) in
-      let r = Munify.unify_match evars ts env sigma Reduction.CONV t1 t2 in
+      let r = Munify.unify_match evars ts env sigma conv_pb t1 t2 in
       match r with
       | Success sigma -> Some sigma
       | _ -> None
     else if isUniCoq strategy then
       try
-        let sigma = the_conv_x ~ts env t2 t1 sigma in
+        let sigma = (if conv_pb = Reduction.CONV then the_conv_x else the_conv_x_leq) ~ts env t2 t1 sigma in
         Some (consider_remaining_unif_problems env sigma)
       with _ -> None
     else
@@ -1096,7 +1096,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in
         let feqT = CoqEq.mkAppEq a x y in
         begin
-          let r = UnificationStrategy.unify sigma env uni x y in
+          let r = UnificationStrategy.unify sigma env uni Reduction.CONV x y in
           match r with
           | Some sigma ->
               let feq = CoqEq.mkAppEqRefl a x in
@@ -1151,6 +1151,17 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
     | 35 -> (* match_and_run *)
         let a, b, t, p = nth 0, nth 1, nth 2, nth 3 in
         match_and_run ctxt a b t p
+
+    | 36 -> (* munify_cumul *)
+        let x, y, uni = nth 2, nth 3, nth 4 in
+        begin
+          let r = UnificationStrategy.unify sigma env uni Reduction.CUMUL x y in
+          match r with
+          | Some sigma ->
+              return sigma metas CoqBool.mkTrue
+          | _ ->
+              return sigma metas CoqBool.mkFalse
+        end
 
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"

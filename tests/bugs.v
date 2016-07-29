@@ -39,7 +39,7 @@ Definition fubarType_mmatch :=
   ltac:(mrun (mtry fubar_mmatch Type (True <-> True) with _ => ret True end)).
 
 (** the bind overloaded notation is reducing terms. destcase expects a match, but it finds false *)
-Fail Definition destcase_fail := ltac:(mrun (r <- ret (match 3 with 0 => true | _ => false end); _ <- destcase r; ret I)).
+Definition destcase_fail := ltac:(mrun (r <- ret (match 3 with 0 => true | _ => false end); _ <- destcase r; ret I)).
 
 (** with the bind construct it works. this proves that the <- ; notation is reducing *)
 Definition destcase_work := ltac:(mrun (bind (destcase (match 3 with 0 => true | _ => false end)) (fun _=> ret I))).

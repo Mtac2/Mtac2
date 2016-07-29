@@ -435,26 +435,13 @@ Notation "[[ x .. y |- ps ] ] => t" :=
   (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
 Delimit Scope goal_match_scope with goal_match.
 
-Definition jmeq {A} {B} (x:A) (y:B) : M bool :=
-  teq <- munify A B UniNormal;
-  match teq with
-  | Some e =>
-    let x := match e in _ = B with eq_refl => x end in
-    veq <- munify x y UniNormal;
-    match veq with
-    | Some _ => ret true
-    | None => ret false
-    end
-  | None => ret false
-  end.
-
 Definition DoesNotMatchGoal : Exception. exact exception. Qed.
 
 Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
   match p, l with
   | gbase P t, _ =>
     gty <- goal_type g;
-    beq <- jmeq P gty;  (* actually, we want a match with reduction here *)
+    beq <- munify_cumul P gty UniNormal;  (* actually, we want a match with reduction here *)
     if beq then t g
     else fail DoesNotMatchGoal g
   | @gtele C f, (@ahyp A a _ :: l) =>

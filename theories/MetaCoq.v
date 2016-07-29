@@ -153,12 +153,19 @@ Inductive MetaCoq : Type -> Prop :=
 | constrs : forall {A : Type} (a : A), MetaCoq (list dyn)
 | makecase : forall (C : Case), MetaCoq dyn
 
+(** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
+    It uses convertibility of universes. *)
 | munify {A} (x y : A) : Unification -> MetaCoq (option (x = y))
 
 | call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (A * list goal)
 | list_ltac : MetaCoq unit
 
 | match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
+
+(** [munify_cumul x y r] uses reduction strategy [r] to equate [x] and [y].
+    Note that they might have different types.
+    It uses cumulativity of universes, e.g., it succeeds if [x] is [Prop] and [y] is [Type]. *)
+| munify_cumul {A B} (x: A) (y: B) : Unification -> MetaCoq bool
 .
 
 Definition failwith {A} s : MetaCoq A := raise (Failure s).

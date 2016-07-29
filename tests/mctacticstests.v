@@ -303,7 +303,7 @@ Ltac rewrite h := rewrite h.
 Goal forall (x y z : nat) (H: x = y), y = x.
 MProof.
   intros.
-  ltac "Top.rewrite" [Dyn H].
+  ltac "mctacticstests.rewrite" [Dyn H].
   Grab Existential Variables.
   reflexivity.
 Qed.
@@ -385,5 +385,5 @@ Example intros_def': let x := 0 in forall y, x <= y.
 MProof.
   intros.
   Ltac ind x :=induction x.
-  ltac "Top.ind" [Dyn y];;(fun g=>print_term g;; apply le_0_n g).
+  ltac "mctacticstests.ind" [Dyn y];;(fun g=>print_term g;; apply le_0_n g).
 Qed.
