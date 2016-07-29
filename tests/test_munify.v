@@ -8,10 +8,10 @@ Definition test {A} (o : M (option A)) :=
 
 Goal True = True.
 MProof.
-  test (munify True True UniNormal).
+  test (munify True True UniCoq).
 Qed.
 
 Goal True = False.
 MProof.
-  Fail test (munify True False UniNormal).
+  Fail test (munify True False UniCoq).
 Abort.

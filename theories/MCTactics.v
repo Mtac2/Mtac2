@@ -17,7 +17,7 @@ Definition coerce_rect {A : Type} (B : Type) (H : A = B) (x : A) : B :=
 Definition CantCoerce : Exception. exact exception. Qed.
 
 Definition coerce {A B : Type} (x : A) : M B :=
-  oH <- munify A B UniNormal;
+  oH <- munify A B UniCoq;
   match oH with
   | Some H => retS (coerce_rect B H x)
   | _ => raise CantCoerce
@@ -53,7 +53,7 @@ Definition idtac : tactic := fun g=>ret [g].
 Definition fail (e : Exception) : tactic := fun g=>raise e.
 
 Definition unify_or_fail {A} (x y : A) : M (x = y) :=
-  oeq <- munify x y UniNormal;
+  oeq <- munify x y UniCoq;
   match oeq with
   | None => raise (NotUnifiable x y)
   | Some eq=> ret eq
@@ -83,7 +83,7 @@ Definition instantiate {A} (x t : A) : M unit :=
   let x := reduce RedNF x in
   b <- is_evar x;
   if b then
-    r <- munify x t UniCoq;
+    r <- munify x t UniStandard;
     match r with
     | Some _ => ret tt
     | _ => raise (CantInstantiate x t)
@@ -295,7 +295,7 @@ Definition generalize1 (cont: tactic) : tactic := fun g=>
       | eq_refl => e
       end
     in
-    oeq <- munify g (@TheGoal (Q x) (e' x)) UniNormal;
+    oeq <- munify g (@TheGoal (Q x) (e' x)) UniCoq;
     match oeq with
     | Some _ => MetaCoq.remove x (cont (TheGoal e))
     | _ => raise exception
@@ -361,7 +361,7 @@ Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 Definition apply {T} (c : T) : tactic := fun g=>
   (mfix1 app (d : dyn) : M (list goal) :=
     let (_, el) := d in
-    oeq <- munify (TheGoal el) g UniNormal;
+    oeq <- munify (TheGoal el) g UniCoq;
     match oeq with
     | Some _ => ret []
     | None =>
@@ -441,16 +441,16 @@ Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
   match p, l with
   | gbase P t, _ =>
     gty <- goal_type g;
-    beq <- munify_cumul P gty UniNormal;  (* actually, we want a match with reduction here *)
+    beq <- munify_cumul P gty UniCoq;  (* actually, we want a match with reduction here *)
     if beq then t g
     else fail DoesNotMatchGoal g
   | @gtele C f, (@ahyp A a _ :: l) =>
-    teq <- munify C A UniNormal; (* same here *)
+    teq <- munify C A UniCoq; (* same here *)
     match teq with
     | Some eq =>
       e <- evar C;
       let e' := match eq with eq_refl => e end in
-      munify e' a UniNormal;;
+      munify e' a UniCoq;;
       mtry match_goal' (f e) l g
       with DoesNotMatchGoal =>
         match_goal' p l g
@@ -487,7 +487,7 @@ Definition destruct_all (T : Type) : tactic := fun g=>
   l <- hypotheses;
   l <- mfilter (fun h:Hyp=>
     let (Th, _, _) := h in
-    r <- munify Th T UniNormal;
+    r <- munify Th T UniCoq;
     ret (option_to_bool r)) l;
   (fix f (l : list Hyp) : tactic :=
     match l with
@@ -561,7 +561,7 @@ Definition simpl_in_all : tactic := fun g=>
   let T := simpl T in
   e <- Cevar T l; (* create the new goal in the new context *)
   (* we need normal unification since g might be a compound value *)
-  oeq <- munify g (TheGoal e) UniNormal;
+  oeq <- munify g (TheGoal e) UniCoq;
   match oeq with
   | Some eq_refl => ret [TheGoal e]
   | _ => raise exception (* should never happen *)
@@ -571,7 +571,7 @@ Definition simpl_in_all : tactic := fun g=>
 Definition mexists {A} (x: A) : tactic := fun g=>
   P <- evar _;
   e <- evar _;
-  oeq <- munify g (TheGoal (@ex_intro _ P x e)) UniNormal;
+  oeq <- munify g (TheGoal (@ex_intro _ P x e)) UniCoq;
   match oeq with
   | Some eq_refl => ret [TheGoal e]
   | _ => raise (NotUnifiable g (TheGoal (@ex_intro _ P x e)))

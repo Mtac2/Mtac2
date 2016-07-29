@@ -210,7 +210,7 @@ module ReductionStrategy = struct
 end
 
 module UnificationStrategy = struct
-  let isUniNormal e = MetaCoqNames.isConstr "UniNormal" e
+  let isUniStandard e = MetaCoqNames.isConstr "UniStandard" e
   let isUniMatch e = MetaCoqNames.isConstr "UniMatch" e
   let isUniCoq e = MetaCoqNames.isConstr "UniCoq" e
 
@@ -223,7 +223,7 @@ module UnificationStrategy = struct
   let unify sigma env strategy conv_pb t1 t2 =
     let open Evarsolve in
     let ts = get_ts env in
-    if isUniNormal strategy then
+    if isUniCoq strategy then
       let r = Munify.unify_evar_conv ts env sigma conv_pb t1 t2 in
       match r with
       | Success sigma -> Some sigma
@@ -234,7 +234,7 @@ module UnificationStrategy = struct
       match r with
       | Success sigma -> Some sigma
       | _ -> None
-    else if isUniCoq strategy then
+    else if isUniStandard strategy then
       try
         let sigma = (if conv_pb = Reduction.CONV then the_conv_x else the_conv_x_leq) ~ts env t2 t1 sigma in
         Some (consider_remaining_unif_problems env sigma)
@@ -512,8 +512,6 @@ let name_occurn_env env n =
 
 
 let dest_Case (env, sigma) t_type t =
-  let nil = Constr.mkConstr "Coq.Init.Datatypes.nil" in
-  let cons = Constr.mkConstr "Coq.Init.Datatypes.cons" in
   let mkCase = Lazy.force MetaCoqNames.mkCase in
   let dyn = Lazy.force MetaCoqNames.mkdyn in
   let cDyn = Lazy.force MetaCoqNames.mkDyn in
@@ -523,7 +521,7 @@ let dest_Case (env, sigma) t_type t =
     let branch_dyns = Array.fold_left (
       fun l t ->
         let dyn_type = Retyping.get_type_of env sigma t in
-        Term.applist (Lazy.force cons, [dyn; Term.applist (cDyn, [dyn_type; t]); l])
+        CoqList.makeCons dyn (Term.applist (cDyn, [dyn_type; t])) l
     ) (CoqList.makeNil dyn) branches in
     let ind_type = Retyping.get_type_of env sigma discriminant in
     let return_type_type = Retyping.get_type_of env sigma return_type in

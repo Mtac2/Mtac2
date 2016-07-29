@@ -47,9 +47,9 @@ Inductive Reduction : Type :=
 | RedOneStep : Reduction.
 
 Inductive Unification : Type :=
-| UniNormal : Unification
+| UniCoq : Unification
 | UniMatch : Unification
-| UniCoq : Unification.
+| UniStandard : Unification.
 
 Inductive Hyp : Type :=
 | ahyp : forall {A}, A -> option A -> Hyp.

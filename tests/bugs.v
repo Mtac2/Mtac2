@@ -17,7 +17,7 @@ Abort.
 
 (** A bug with the call to UniCoq *)
 Example fubar (T : Type) (A : T) : M Prop:=
-  oeq <- munify Prop T UniNormal;
+  oeq <- munify Prop T UniCoq;
   match oeq with
   | Some eq => ret (eq_rect Prop (fun T=>T -> Prop) id T eq A)
   | _ => raise exception
