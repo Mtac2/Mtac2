@@ -541,34 +541,36 @@ let dest_Case (env, sigma) t_type t =
       Exceptions.block "Something not so specific went wrong."
 
 let make_Case (env, sigma) case =
-  let elem = Lazy.force MetaCoqNames.mkelem in
-  let cDyn = Lazy.force MetaCoqNames.mkDyn in
-  let case_ind = Lazy.force (MetaCoqNames.mkConstr "case_ind") in
-  let case_val = Lazy.force (MetaCoqNames.mkConstr "case_val") in
-  let case_return = Lazy.force (MetaCoqNames.mkConstr "case_return") in
-  let case_branches = Lazy.force (MetaCoqNames.mkConstr "case_branches") in
-  let repr_ind = Term.applist(case_ind, [case]) in
-  let repr_val = Term.applist(case_val, [case]) in
+  let open MetaCoqNames in
+  let open Lazy in
+  let open Term in
+  let elem = force mkelem in
+  let cDyn = force mkDyn in
+  let case_ind = force (mkConstr "case_ind") in
+  let case_val = force (mkConstr "case_val") in
+  let case_return = force (mkConstr "case_return") in
+  let case_branches = force (mkConstr "case_branches") in
+  let repr_ind = applist(case_ind, [case]) in
+  let repr_val = applist(case_val, [case]) in
   let repr_val_red = whd_betadeltaiota env sigma repr_val in
-  let repr_return = Term.applist(case_return, [case]) in
-  let repr_return_unpack = Term.applist(elem, [repr_return]) in
+  let repr_return = applist(case_return, [case]) in
+  let repr_return_unpack = applist(elem, [repr_return]) in
   let repr_return_red = whd_betadeltaiota env sigma repr_return_unpack in
-  let repr_branches = Term.applist(case_branches, [case]) in
+  let repr_branches = applist(case_branches, [case]) in
   let repr_branches_list = CoqList.from_coq (env, sigma) repr_branches in
   let repr_branches_dyns =
-    List.map (fun t -> Term.applist(elem, [t])) repr_branches_list in
+    List.map (fun t -> applist(elem, [t])) repr_branches_list in
   let repr_branches_red =
     List.map (fun t -> whd_betadeltaiota env sigma t) repr_branches_dyns in
-  let t_type, l = Term.decompose_app (whd_betadeltaiota env sigma repr_ind) in
-  if Term.isInd t_type then
-    match Term.kind_of_term t_type with
-    | Term.Ind ((mind, ind_i), _) ->
-        let case_info = Inductiveops.make_case_info env (mind, ind_i)
-                          Term.LetPatternStyle in
-        let match_term = Term.mkCase (case_info, repr_return_red, repr_val_red,
-                                      Array.of_list (repr_branches_red)) in
+  let t_type, l = decompose_app (whd_betadeltaiota env sigma repr_ind) in
+  if isInd t_type then
+    match kind_of_term t_type with
+    | Ind ((mind, ind_i), _) ->
+        let case_info = Inductiveops.make_case_info env (mind, ind_i) LetPatternStyle in
+        let match_term = mkCase (case_info, repr_return_red, repr_val_red,
+                                 Array.of_list (repr_branches_red)) in
         let match_type = Retyping.get_type_of env sigma match_term in
-        (sigma, Term.applist(cDyn, [match_type;  match_term]))
+        (sigma, applist(cDyn, [match_type;  match_term]))
     | _ -> assert false
   else
     Exceptions.block "case_type is not an inductive type"
