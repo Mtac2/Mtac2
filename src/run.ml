@@ -125,17 +125,17 @@ module Exceptions = struct
 end
 
 module ReductionStrategy = struct
-  let isRedNone c = MetaCoqNames.isConstr "RedNone" c
-  let isRedSimpl c = MetaCoqNames.isConstr "RedSimpl" c
-  let isRedWhd c = MetaCoqNames.isConstr "RedWhd" c
-  let isRedOneStep c = MetaCoqNames.isConstr "RedOneStep" c
-  let isRedNF c = MetaCoqNames.isConstr "RedNF" c
-  let isReduce c = MetaCoqNames.isConstr "reduce" c
+  open MetaCoqNames
+  open Reductionops
+  open Closure
+  open Closure.RedFlags
+
+  let isReduce c = isConstr "reduce" c
 
   let has_definition ts env t =
     if isVar t then
       let var = destVar t in
-      if not (Closure.is_transparent_variable ts var) then
+      if not (is_transparent_variable ts var) then
         false
       else
         let (_, v,_) = Environ.lookup_named var env in
@@ -150,7 +150,7 @@ module ReductionStrategy = struct
       | _ -> false
     else if isConst t then
       let (c, _) = destConst t in
-      Closure.is_transparent_constant ts c && Environ.evaluable_constant c env
+      is_transparent_constant ts c && Environ.evaluable_constant c env
     else
       false
 
@@ -193,19 +193,35 @@ module ReductionStrategy = struct
       | _ -> h, args
     in applist r
 
+  let redflags = [|fBETA;fDELTA;fIOTA;fZETA|]
+
+  let get_flags ctx flags =
+    (* we assume flags have the right type and are in nf *)
+    let flags = CoqList.from_coq_conv ctx (fun f->
+      let ((_, pos), _) = destConstruct f in redflags.(pos-1)
+    ) flags in
+    mkflags flags
+
+  let redfuns = [|
+    (fun _ _ _ c -> c);
+    (fun _ -> Tacred.simpl);
+    (fun _ ->one_step);
+    (fun fs env sigma c->
+       let evars ev = safe_evar_value sigma ev in
+       whd_val
+         (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
+         (inject c));
+    (fun fs env sigma c->
+       let evars ev = safe_evar_value sigma ev in
+       norm_val
+         (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
+         (inject c))
+  |]
+
   let reduce sigma env strategy c =
-    if isRedNone strategy then
-      c
-    else if isRedSimpl strategy then
-      Tacred.simpl env sigma c
-    else if isRedWhd strategy then
-      whd_betadeltaiota env sigma c
-    else if isRedNF strategy then
-      nf_betadeltaiota env sigma c
-    else if isRedOneStep strategy then
-      one_step env sigma c
-    else
-      Exceptions.block Exceptions.unknown_reduction_strategy
+    let strategy, args = decompose_appvect strategy in
+    let (_, pos), _ = destConstruct strategy in
+    redfuns.(pos-1) args env sigma c
 
 end
 

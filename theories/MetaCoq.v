@@ -7,6 +7,7 @@ Require Import Strings.String.
 Require Import Lists.List.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
+Import ListNotations.
 
 Module MetaCoq.
 
@@ -39,12 +40,17 @@ Definition length := N.
 Inductive array (A:Type) : Type :=
 | carray : index -> length -> array A.
 
-Inductive Reduction : Type :=
-| RedNone : Reduction
-| RedSimpl : Reduction
-| RedWhd : Reduction
-| RedNF : Reduction
-| RedOneStep : Reduction.
+Inductive RedFlags : Set := RedBeta | RedDelta | RedIota | RedZeta.
+
+Inductive Reduction : Set :=
+| RedNone
+| RedSimpl
+| RedOneStep
+| RedWhd : list RedFlags -> Reduction
+| RedStrong : list RedFlags -> Reduction.
+
+Notation RedNF := (RedStrong [RedBeta;RedDelta;RedZeta;RedIota]).
+Notation RedHNF := (RedWhd [RedBeta;RedDelta;RedZeta;RedIota]).
 
 Inductive Unification : Type :=
 | UniCoq : Unification
@@ -216,7 +222,7 @@ Module MetaCoqNotations.
 Notation "'M'" := MetaCoq.
 
 Notation "'simpl'" := (reduce RedSimpl).
-Notation "'hnf'" := (reduce RedWhd).
+Notation "'hnf'" := (reduce RedHNF).
 Notation "'one_step'" := (reduce RedOneStep).
 
 Notation "'ret'" := (tret).
@@ -278,7 +284,6 @@ Definition type_inside {A} (x : M A) := A.
 Definition NoPatternMatches : Exception. exact exception. Qed.
 Definition Anomaly : Exception. exact exception. Qed.
 Definition Continue : Exception. exact exception. Qed.
-Import ListNotations.
 
 Notation pattern := (pattern MetaCoq).
 

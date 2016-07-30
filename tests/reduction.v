@@ -18,7 +18,7 @@ Defined.
 
 Example reduce_whd : True.
 MProof.
- let x := reduce RedWhd (id ((fun x=>x) I)) in ret x.
+ let x := reduce RedHNF (id ((fun x=>x) I)) in ret x.
 Defined.
 
 
@@ -34,3 +34,13 @@ MProof.
   let x := id I in ret x.
 Qed.
 Print is_not_breaking_letins.
+
+Example reduce_beta : True.
+MProof.
+ let x := reduce (RedWhd (RedBeta::nil)) (id ((fun x=>x) I)) in ret x.
+Defined.
+
+Example reduce_beta2 : True.
+MProof.
+ let x := reduce (RedWhd (RedBeta::nil)) ((fun x=>x) (fun x=>x) I) in ret x.
+Defined.

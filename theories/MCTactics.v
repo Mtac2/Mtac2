@@ -703,7 +703,7 @@ Notation "a ;; b" := (@the_value _ _ _ a b _).
 (* Notation "r '<-' t1 ';' t2" := (@result _ _ _ t1 (fun r=> t2) _). *)
 
 Notation "'tsimpl'" := (treduce RedSimpl).
-Notation "'thnf'" := (treduce RedWhd).
+Notation "'thnf'" := (treduce RedHNF).
 
 Notation "'pose' ( x := t )" := (cpose t (fun x=>idtac)) (at level 40, x at next level).
 Notation "'assert' ( x : T )" := (cassert (fun x:T=>idtac)) (at level 40, x at next level).
