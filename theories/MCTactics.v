@@ -79,9 +79,17 @@ Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
 Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
 Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
 
+Definition head :=
+  mfix1 f (d : dyn) : M dyn :=
+    mmatch d with
+    | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1)
+    | _ => ret d
+    end.
+
 Definition instantiate {A} (x t : A) : M unit :=
-  let x := reduce RedNF x in
-  b <- is_evar x;
+  h <- head (Dyn x);
+  b <- is_evar h.(elem);
+  let t := reduce (RedWhd [RedBeta]) t in
   if b then
     r <- munify x t UniStandard;
     match r with
@@ -102,12 +110,13 @@ Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
     eq <- unify_or_fail B A;
     n <- get_binder_name t;
     tnu n None (fun x=>
-      e' <- evar _;
-      g <- abs x e';
+      let Px := reduce (RedWhd [RedBeta]) (P x) in
+      e' <- evar Px;
+      g <- abs (P:=P) x e';
       instantiate e g;;
-      let x := hnf match eq in _ = x with
+      let x := reduce (RedWhd [RedIota]) (match eq in _ = x with
                  | eq_refl => x
-               end in
+               end) in
       t x (TheGoal e') >> close_goals x)
   | _ => raise NotAProduct
   end.
@@ -117,16 +126,18 @@ Definition intro_simpl (var: string) : tactic := fun g=>
   mmatch g with
   | [? B t (P:B -> Type) e] @TheGoal (let x := t in P x) e =>
     tnu var (Some t) (fun x=>
-      e' <- evar (P x);
-      g <- abs_let x t e';
+      let Px := reduce (RedWhd [RedBeta]) (P x) in
+      e' <- evar Px;
+      g <- abs_let (P:=P) x t e';
       instantiate e g;;
       g' <- abs x (TheGoal e');
       ret [AHyp (Some t) g'])
 
   | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
     tnu var None (fun x=>
-      e' <- evar _;
-      g <- abs x e';
+      let Px := reduce (RedWhd [RedBeta]) (P x) in
+      e' <- evar Px;
+      g <- abs (P:=P) x e';
       instantiate e g;;
       g' <- abs x (TheGoal e');
       ret [AHyp None g'])
@@ -143,7 +154,7 @@ Fixpoint is_open (g : goal) : M bool :=
 Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
 
 Definition let_close_goals {A} (x: A) (t: A) : list goal -> M (list goal) :=
-  let t := one_step x in
+  let t := one_step x in (* to obtain x's definition *)
   mmap (fun g':goal=>
           r <- abs x g';
           ret (@AHyp A (Some t) r)
@@ -247,7 +258,8 @@ Definition copy_ctx {A} (B : A -> Type) :=
   mfix1 rec (d : dyn) : M Type :=
     mmatch d with
     | [? c : A] {| elem := c |} =>
-        ret (B c)
+        let Bc := reduce (RedWhd [RedBeta]) (B c) in
+        ret Bc
     | [? C (D : C -> Type) (c : forall y:C, D y)] {| elem := c |} =>
         nu y : C,
         r <- rec (Dyn (c y));
@@ -314,7 +326,6 @@ Definition abstract_up_to n : tactic := fun g=>
   let l' := hnf (skipn n l) in
   e <- Cevar pP l';
 *)
-
 
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
   b <- is_var n;

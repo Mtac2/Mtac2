@@ -112,21 +112,12 @@ let interp_mproof_command () =
 let interp_instr = function
   | MetaCoqInstr.MetaCoq_constr c -> MetaCoqRun.run_tac c
 
-let exec_again f =
-  let pf = Proof_global.give_me_the_proof () in
-  if not (Proof.is_done pf) then begin
-    MetaCoqProofInfos.focus ();
-    ignore (Pfedit.by (f ()));
-    MetaCoqProofInfos.maximal_unfocus ();
-  end
-
-let exec f l =
+let exec f =
   ignore (Pfedit.by (f ()));
-  MetaCoqProofInfos.maximal_unfocus ();
-  List.iter exec_again l
+  MetaCoqProofInfos.maximal_unfocus ()
 
 (** Interpreter of a constr :
     - Interpretes the constr
     - Unfocus on the current proof *)
 let interp_proof_constr instr =
-  exec (fun () -> interp_instr instr) [MetaCoqRun.normalizer]
+  exec (fun () -> interp_instr instr)

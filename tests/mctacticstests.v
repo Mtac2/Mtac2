@@ -282,7 +282,7 @@ MProof.
     + Fail destructn 0.
       bindb (destruct b2) reflexivity.
     + bindb (destruct b2) reflexivity.
-  - bindb (introsn 2) reflexivity.
+    + bindb (introsn 2) reflexivity. (* why is it now forcing me to use + instead of - as bullet? *)
 Qed.
 
 (* generalize1 *)
