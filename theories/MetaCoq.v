@@ -42,10 +42,21 @@ and "x :: xs" := (cons _ x xs)
 and "[ x ]" := (cons _ x (nil _)).
 Arguments nil [_].
 Arguments cons [_] _ _.
-Fixpoint append {X} (l1 l2 : list X) {struct l1} : list X :=
+Definition tl {X} (l : list X) : list X :=
+  match l with
+  | nil => nil
+  | x :: xs => xs
+  end.
+Fixpoint app {X} (l1 l2 : list X) {struct l1} : list X :=
   match l1 with
   | nil => l2
-  | x :: xs => x :: append xs l2
+  | x :: xs => x :: app xs l2
+  end.
+Infix "++" := app.
+Fixpoint concat {X} (l : list (list X)) : list X :=
+  match l with
+  | nil => nil
+  | x :: xs => x ++ (concat xs)
   end.
 Fixpoint map {X Y} (f : X -> Y) (l : list X) : list Y :=
   match l with
@@ -57,17 +68,26 @@ Fixpoint length {X} (l : list X) : nat :=
   | nil => 0
   | _ :: xs => S (length xs)
   end.
-Infix "++" := append.
+Fixpoint nth_error {X} (l:list X) (n:nat) {struct n} : option X :=
+  match n, l with
+  | O, x :: _ => Some x
+  | S n, _ :: l => nth_error l n
+  | _, _ => None
+  end.
+Fixpoint rev {X} (l:list X) : list X :=
+  match l with
+  | [] => []
+  | x :: l' => rev l' ++ [x]
+  end.
 
 
 Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
 
 Definition index := N.
-Definition length := N.
 
 Inductive array (A:Type) : Type :=
-| carray : index -> length -> array A.
+| carray : index -> N -> array A.
 
 Inductive Reduction : Type :=
 | RedNone : Reduction
@@ -197,7 +217,7 @@ Inductive MetaCoq : Type -> Prop :=
 
 Definition failwith {A} s : MetaCoq A := raise (Failure s).
 
-Definition array_length : forall {A}, array A -> length :=
+Definition array_length : forall {A}, array A -> N :=
   fun A m => match m with carray _ _ l => l end.
 
 

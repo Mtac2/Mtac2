@@ -217,7 +217,7 @@ Definition bindb (t u:tactic) : tactic := fun g=>
   l <- t g;
   l <- filter_goals l;
   r <- mmap (open_and_apply u) l;
-  let r := hnf List.concat _ r in
+  let r := hnf concat r in
   ret r.
 
 Class semicolon {A} {B} {C} (t:A) (u:B) := SemiColon { the_value : C }.
@@ -288,7 +288,7 @@ Definition generalize1 (cont: tactic) : tactic := fun g=>
   ft <- hd_exception l;
   let (A, x, _) := ft in
   aP <- abs_prod x P; (* aP = (forall x:A, P) *)
-  e <- Cevar aP (List.tl l);
+  e <- Cevar aP (tl l);
   mmatch aP with
   | [? Q : A -> Type] (forall z:A, Q z) => [H]
     let e' := match H in _ = Q return Q with
@@ -339,19 +339,19 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
   d <- coerce (elem d);
   let d := hnf d in
   unify_or_fail (@TheGoal Pn d) g;;
-  let l := hnf (List.map dyn_to_goal l) in
+  let l := hnf (map dyn_to_goal l) in
   ret l.
 
 (** Destructs the n-th hypotheses in the goal (counting from 0) *)
-Definition destructn (n : nat) : tactic := fun g=>
-  goals <- introsn (S n) g;
-  goal <- hd_exception goals;
-  open_and_apply (fun g=>
-    hyps <- hypotheses;
-    var <- hd_exception hyps;
-    let (_, var, _) := var in
-    destruct var g
-  ) goal.
+(* Definition destructn (n : nat) : tactic := fun g=> *)
+(*   goals <- introsn (S n) g; *)
+(*   goal <- hd_exception goals; *)
+(*   open_and_apply (fun g=> *)
+(*     hyps <- hypotheses; *)
+(*     var <- hd_exception hyps; *)
+(*     let (_, var, _) := var in *)
+(*     destruct var g *)
+(*   ) goal. *)
 
 Local Obligation Tactic := idtac.
 
@@ -413,7 +413,7 @@ Definition left : tactic := fun g=>
   A <- goal_type g;
   l <- constrs A;
   match snd l with
-  | [x; _] => apply (elem x) g
+  | cons x nil => apply (elem x) g
   | _ => raise Not2Constructor
   end.
 
@@ -421,7 +421,7 @@ Definition right : tactic := fun g=>
   A <- goal_type g;
   l <- constrs A;
   match snd l with
-  | [_; x] => apply (elem x) g
+  | cons _ (cons x nil) => apply (elem x) g
   | _ => raise Not2Constructor
   end.
 
@@ -472,7 +472,7 @@ Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
   end.
 
 Definition match_goal p : tactic := fun g=>
-  r <- hypotheses; let r := simpl (List.rev r) in match_goal' p r g.
+  r <- hypotheses; let r := simpl (rev r) in match_goal' p r g.
 Arguments match_goal p%goal_match _.
 
 
@@ -605,7 +605,7 @@ Definition print_hypothesis (a:Hyp) :=
 
 Definition print_hypotheses :=
   l <- hypotheses;
-  let l := List.rev l in
+  let l := rev l in
   MCListUtils.miterate print_hypothesis l.
 
 Definition print_goal : tactic := fun g=>

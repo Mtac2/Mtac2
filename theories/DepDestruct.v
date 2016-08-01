@@ -192,7 +192,7 @@ Polymorphic Fixpoint get_type_of_branch {isort} {rsort} {it : ITele isort} (rt :
 Definition args_of : forall A, A -> M (list dyn) :=
   mfix2 rec (A : Type) (a : A) : M _ :=
     mmatch a with
-    | [? T (t : T) f] f t => r <- rec _ f; ret (MetaCoq.append r [Dyn t])
+    | [? T (t : T) f] f t => r <- rec _ f; ret (app r [Dyn t])
     | _ => ret nil
     end.
 
@@ -203,7 +203,7 @@ Fixpoint args_of_max (max : nat) : forall {A}, A -> M (list dyn) :=
     | 0 => fun _ _ => ret nil
     | S max => fun A a =>
       mmatch a with
-      | [? T (t : T) f] f t => r <- args_of_max max f; ret (MetaCoq.append r (Dyn t :: nil))
+      | [? T (t : T) f] f t => r <- args_of_max max f; ret (app r (Dyn t :: nil))
       | _ => raise NotEnoughArguments
       end
   end.
@@ -417,7 +417,6 @@ Definition new_destruct {A : Type} (n : A) : goal -> M (list goal) :=
                         fun ct =>
                            (selem_of (get_type_of_branch rt ct))
                                        ) cts) in
-          print_term sg;;
           ret nil
           (* goals <- mmap (fun ty=> r <- evar ty; ret (TheGoal r)) sg; *)
           (* branches <- mmap goal_to_dyn goals; *)

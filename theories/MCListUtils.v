@@ -2,6 +2,7 @@ Require Import MetaCoq.MetaCoq.
 Import MetaCoqNotations.
 
 Local Set Universe Polymorphism.
+Local Unset Universe Minimization ToSet.
 
 Definition mmap {A B : Type} (f : A -> M B) :=
   mfix1 rec (l : list A) : M (list B) :=
