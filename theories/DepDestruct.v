@@ -7,8 +7,11 @@ Import MetaCoqNotations.
 Require Import Strings.String.
 
 Unset Universe Minimization ToSet.
-
 Set Printing Universes.
+
+
+Polymorphic Inductive sigT {A : Type} (P : A -> Type) : Type :=  existT : forall x : A, P x -> sigT P.
+
 Section Sorts.
   Inductive Sort : Type := SProp | SType.
   Polymorphic Definition type_of@{type_of1} {A : Type@{type_of1}} (x : A) : Type@{type_of1} := A.
@@ -293,8 +296,8 @@ Definition dyn_of_stype {sort} : stype_of sort -> dyn :=
   | SType => fun s => Dyn (selem_of s)
   end.
 
-Polymorphic Definition get_ITele : forall {T : Type} (ind : T), MetaCoq (nat * {s : Sort & ITele s}) :=
-mfix2 f (T : _) (ind : _) : M (nat * {s : Sort & ITele s})%type :=
+Polymorphic Definition get_ITele : forall {T : Type} (ind : T), MetaCoq (nat * (sigT ITele)) :=
+mfix2 f (T : _) (ind : _) : M (nat * sigT ITele)%type :=
   print_term ind;;
   mmatch T with
   | [? (A : Type) (F : A -> Type)] forall a, F a =>
@@ -303,7 +306,7 @@ mfix2 f (T : _) (ind : _) : M (nat * {s : Sort & ITele s})%type :=
                      in nu a : A,
                                r <- f (F a) (indFun a);
                      let (n, sit) := r in
-                     let (sort, it) := sit : {s : Sort & ITele s} in
+                     let (sort, it) := sit in
                      f <- abs a it;
                        ret (S n, existT _ sort (iTele f))
   | Prop =>
@@ -390,7 +393,7 @@ Polymorphic Definition goal_to_dyn : goal -> M dyn := fun g =>
   | TheGoal d => ret (Dyn d)
   | _ => raise NotAGoal
   end.
-Definition new_destruct {A : Type} (n : A) : goal -> list goal :=
+Definition new_destruct {A : Type} (n : A) : goal -> M (list goal) :=
   fun g=>
     ind <- get_ind n;
       let (nsortit, constrs) := ind in
@@ -408,38 +411,39 @@ Definition new_destruct {A : Type} (n : A) : goal -> list goal :=
         rsG <- sort_goal gt;
         let (rsort, sG) := rsG in
         print_term (isort, rsort);;
-        n' <- coerce n;
+                   n' <- coerce n;
           rt <- abstract_goal atele sG n';
           let sg := reduce RedSimpl (map (
                         fun ct =>
                            (selem_of (get_type_of_branch rt ct))
-                                  ) cts) in
-          goals <- mmap (fun ty=> r <- evar ty; ret (TheGoal r)) sg;
-          branches <- mmap goal_to_dyn goals;
-          let tsg := reduce RedWhd (type_of sg) in
-          print_term tsg;;
+                                       ) cts) in
           print_term sg;;
-          let rrf := reduce RedSimpl (RTele_Fun rt) in
-          let rrt := reduce RedSimpl (RTele_Type rt) in
-          print_term rrt;;
-          print_term rrf;;
-          print "after coerce";;
-            caseterm <- makecase {|
-                       case_val := n';
-                       case_type := selem_of (RTele_App rt atele n');
-                       case_return := Dyn rrf;
-                       case_branches := branches
-                     |};
-          ret goals
-          (* let h'' := map Dyn sg in *)
-          (* ret (map dyn_to_goal h'') *)
+          ret nil
+          (* goals <- mmap (fun ty=> r <- evar ty; ret (TheGoal r)) sg; *)
+          (* branches <- mmap goal_to_dyn goals; *)
+          (* let tsg := reduce RedWhd (type_of sg) in *)
+          (* print_term tsg;; *)
+          (* print_term sg;; *)
+        (*   let rrf := reduce RedSimpl (RTele_Fun rt) in *)
+        (*   let rrt := reduce RedSimpl (RTele_Type rt) in *)
+        (*   print_term rrt;; *)
+        (*   print_term rrf;; *)
+        (*   print "after coerce";; *)
+        (*     caseterm <- makecase {| *)
+        (*                case_val := n'; *)
+        (*                case_type := selem_of (RTele_App rt atele n'); *)
+        (*                case_return := Dyn rrf; *)
+        (*                case_branches := branches *)
+        (*              |}; *)
+        (*   ret goals *)
 .
-Need this at some point:
-                            let polyconstrs :=
-                                (fix f constrs := match constrs with
-                                                  | Datatypes.cons c cs => c :: f cs
-                                                  | Datatypes.nil => nil
-                                                  end) constrs
+
+(* Need this at some point: *)
+(*                             let polyconstrs := *)
+(*                                 (fix f constrs := match constrs with *)
+(*                                                   | Datatypes.cons c cs => c :: f cs *)
+(*                                                   | Datatypes.nil => nil *)
+(*                                                   end) constrs *)
 
   (* b <- is_var n; *)
   (* ctx <- if b then hyps_except n else hypotheses; *)

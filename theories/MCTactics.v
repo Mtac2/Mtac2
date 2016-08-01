@@ -4,6 +4,9 @@ Import MetaCoqNotations.
 
 Require Import Strings.String.
 
+Local Set Universe Polymorphism.
+Local Unset Universe Minimization ToSet.
+
 Definition metaCoqReduceGoal {A : Type} : M A :=
   let A' := one_step A in (* to remove spurious beta-redexes *)
   evar A'.
@@ -65,7 +68,7 @@ Definition reflexivity : tactic := fun g=>
   unify_or_fail g (TheGoal (eq_refl x));; ret nil.
 
 Definition try (t:tactic) : tactic := fun g=>
-  mtry t g with _ => ret [g] end.
+  mtry t g with _ => ret ( g :: nil) end.
 
 Definition or (t u : tactic) : tactic := fun g=>
   mtry t g with _ => u g end.

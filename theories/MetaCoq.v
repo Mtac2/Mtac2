@@ -52,6 +52,11 @@ Fixpoint map {X Y} (f : X -> Y) (l : list X) : list Y :=
   | nil => nil
   | x :: xs => f x :: map f xs
   end.
+Fixpoint length {X} (l : list X) : nat :=
+  match l with
+  | nil => 0
+  | _ :: xs => S (length xs)
+  end.
 Infix "++" := append.
 
 
