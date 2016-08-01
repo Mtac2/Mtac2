@@ -25,6 +25,7 @@ module Stack = Reductionops.Stack
 
 let reduce_value = Tacred.compute
 
+let get_ts env = Conv_oracle.get_transp_state (Environ.oracle env)
 
 module MetaCoqNames = struct
   let metaCoq_module_name = "MetaCoq.MetaCoq.MetaCoq"
@@ -47,6 +48,41 @@ module MetaCoqNames = struct
 end
 
 open MetaCoqNames
+
+module Goal = struct
+
+  let goal () = Lazy.force (mkConstr "goal")
+
+  let mkTheGoal ty ev = mkApp (Lazy.force (mkConstr "TheGoal"), [|ty;ev|])
+
+  let mkAHypOrDef ty name odef body =
+    (* we are going to wrap the body in a function, so we need to lift
+       the indices. we also replace the name with index 1 *)
+    let body = replace_term (mkVar name) (mkRel 1) (Vars.lift 1 body) in
+    let odef_coq = CoqOption.to_coq ty odef in
+    mkApp (Lazy.force (mkConstr "AHyp"),
+           [|ty; odef_coq; mkLambda(Name name,ty,body)|])
+
+  let goal_of_evar env sigma ev =
+    let evinfo = Evd.find_undefined sigma ev in
+    let evenv = named_context_of_val (evar_hyps evinfo) in
+    (* we remove the elements in the hypotheses that are shared with
+       the current env (old to new). *)
+    let newenv =
+      let rec remove = function
+        | (nd1 :: evenv) as l1, (nd2 :: env) ->
+            if Context.eq_named_declaration nd1 nd2 then
+              remove (evenv, env)
+            else
+              l1
+        | l1, _ -> l1 in
+      List.rev (remove (List.rev evenv, List.rev env)) in
+    let ids = Context.fold_named_context (fun (n,_,_) s -> mkVar n :: s) evenv ~init:[] in
+    let evar = (ev, Array.of_list ids) in
+    let tg = mkTheGoal (Evd.existential_type sigma evar) (mkEvar evar) in
+    Context.fold_named_context_reverse (fun s (n,odef,ty) -> mkAHypOrDef ty n odef s) newenv ~init:tg
+
+end
 
 let constr_to_string t = string_of_ppcmds (Termops.print_constr t)
 
@@ -83,6 +119,7 @@ module Exceptions = struct
   let error_abs_type = "Variable is appearing in the returning type"
   let error_abs_ref = "Variable is appearing in type of reference"
   let error_abs_let = "Trying to let-abstract a variable without definition"
+  let error_abs_let_noconv = "Not the right definition in abs_let"
   let error_array_zero = "Array must have non-zero length"
   let unknown_reduction_strategy = "Unknown reduction strategy"
 
@@ -90,11 +127,12 @@ module Exceptions = struct
 end
 
 module ReductionStrategy = struct
-  let isRedNone c = isConstr "RedNone" c
-  let isRedSimpl c = isConstr "RedSimpl" c
-  let isRedWhd c = isConstr "RedWhd" c
-  let isRedOneStep c = isConstr "RedOneStep" c
-  let isReduce c = isConstr "reduce" c
+  let isRedNone c = MetaCoqNames.isConstr "RedNone" c
+  let isRedSimpl c = MetaCoqNames.isConstr "RedSimpl" c
+  let isRedWhd c = MetaCoqNames.isConstr "RedWhd" c
+  let isRedOneStep c = MetaCoqNames.isConstr "RedOneStep" c
+  let isRedNF c = MetaCoqNames.isConstr "RedNF" c
+  let isReduce c = MetaCoqNames.isConstr "reduce" c
 
   let has_definition ts env t =
     if isVar t then
@@ -145,7 +183,7 @@ module ReductionStrategy = struct
       t
 
   let one_step env sigma c =
-    let ts = Conv_oracle.get_transp_state (Environ.oracle env) in
+    let ts = get_ts env in
     let h, args = decompose_app c in
     let h = whd_evar sigma h in
     let r =
@@ -164,6 +202,8 @@ module ReductionStrategy = struct
       Tacred.simpl env sigma c
     else if isRedWhd strategy then
       whd_betadeltaiota env sigma c
+    else if isRedNF strategy then
+      nf_betadeltaiota env sigma c
     else if isRedOneStep strategy then
       one_step env sigma c
     else
@@ -184,15 +224,15 @@ module UnificationStrategy = struct
 
   let unify sigma env strategy t1 t2 =
     let open Evarsolve in
-    let ts = Conv_oracle.get_transp_state (Environ.oracle env) in
+    let ts = get_ts env in
     if isUniNormal strategy then
-      let r = Munify.unify_evar_conv ts env sigma Reduction.CUMUL t1 t2 in
+      let r = Munify.unify_evar_conv ts env sigma Reduction.CONV t1 t2 in
       match r with
       | Success sigma -> Some sigma
       | _ -> None
     else if isUniMatch strategy then
       let evars = Evar.Map.domain (Evd.undefined_map sigma) in
-      let r = Munify.unify_match evars ts env sigma Reduction.CUMUL t1 t2 in
+      let r = Munify.unify_match evars ts env sigma Reduction.CONV t1 t2 in
       match r with
       | Success sigma -> Some sigma
       | _ -> None
@@ -701,7 +741,8 @@ type abs = AbsProd | AbsFun | AbsLet | AbsFix
 
 (* abs case env a p x y n abstract variable x from term y according to the case.
    if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
-let abs (case : abs) (env, sigma, metas) a p x y n : data =
+(* t for let-ins *)
+let abs case (env, sigma, metas) a p x y n t : data =
   (*  let x = whdbetadeltaiota env sigma x in *) (* for let-ins is problemtaic *)
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
@@ -717,7 +758,11 @@ let abs (case : abs) (env, sigma, metas) a p x y n : data =
             match case, ot with
             | AbsProd, _ -> Term.mkProd (name, a, y')
             | AbsFun, _ -> Term.mkLambda (name, a, y')
-            | AbsLet, Some t -> Term.mkLetIn (name, t, ty, y')
+            | AbsLet, Some t' ->
+                if is_trans_conv (get_ts env) env sigma t t' then
+                  Term.mkLetIn (name, t, ty, y')
+                else
+                  Exceptions.block Exceptions.error_abs_let_noconv
             | AbsLet, None -> Exceptions.block Exceptions.error_abs_let
             | AbsFix, _ -> (* TODO: check enough products *)
                 Term.mkFix (([|n|], 0), ([|name|], [|ty|], [|y'|]))
@@ -736,7 +781,11 @@ let abs (case : abs) (env, sigma, metas) a p x y n : data =
               let (_, ot, ty) = lookup_named name env in
               begin
                 match ot with
-                | Some t -> Term.mkLetIn (Name name, t, ty, y')
+                | Some t' ->
+                    if is_trans_conv (get_ts env) env sigma t t' then
+                      Term.mkLetIn (Name name, t, ty, y')
+                    else
+                      Exceptions.block Exceptions.error_abs_let_noconv
                 | None -> Exceptions.block Exceptions.error_abs_let
               end
           | AbsFix ->
@@ -808,7 +857,7 @@ let get_func_name env sigma s f =
   Names.Name s, Term.mkApp(Vars.lift 1 f, [|Term.mkRel 1|])
 
 let get_name (env, sigma) t =
-  let t = whd_betadeltaiota env sigma t in
+  let t = whd_betadeltaiota_nolet env sigma t in
   let name =
     if isVar t then Some (Name (destVar t))
     else if isRel t then
@@ -993,21 +1042,21 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
     | 12 -> (* abs *)
         let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsFun (env, sigma, metas) a p x y 0
+        abs AbsFun (env, sigma, metas) a p x y 0 mkProp
 
     | 13 -> (* abs_let *)
-        let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsLet (env, sigma, metas) a p x y 0
+        let a, p, x, t, y = nth 0, nth 1, nth 2, nth 3, nth 4 in
+        abs AbsLet (env, sigma, metas) a p x y 0 t
 
     | 14 -> (* abs_prod *)
         let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsProd (env, sigma, metas) a p x y 0
+        abs AbsProd (env, sigma, metas) a p x y 0 mkProp
 
     | 15 -> (* abs_fix *)
         let a, f, t, n = nth 0, nth 1, nth 2, nth 3 in
         let n = CoqN.from_coq (env, sigma) n in
         (* HACK: put mkProp as returning type *)
-        abs AbsFix (env, sigma, metas) a mkProp f t n
+        abs AbsFix (env, sigma, metas) a mkProp f t n mkProp
 
     | 16 -> (* get_binder_name *)
         let t = nth 1 in
@@ -1168,12 +1217,13 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         in
         begin
           try
+            let undef = Evar.Map.domain (Evd.undefined_map sigma) in
             let (c, sigma) = Pfedit.refine_by_tactic env sigma concl (Tacinterp.eval_tactic tac) in
-            let evars = List.filter (fun (i, _)->Evd.is_undefined sigma i) (Evd.evar_list c) in
-            let dyn = Lazy.force mkdyn in
-            let evars = CoqList.to_coq (Lazy.force mkdyn) (fun e->
-              mkDyn (Evd.existential_type sigma e) (mkEvar e)) evars in
-            return sigma metas (CoqPair.mkPair concl (CoqList.makeType dyn) c evars)
+            let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
+            let new_undef = Evar.Set.elements new_undef in
+            let named_env = Environ.named_context env in
+            let goals = CoqList.to_coq (Goal.goal ()) (Goal.goal_of_evar named_env sigma) new_undef in
+            return sigma metas (CoqPair.mkPair concl (Goal.goal ()) c goals)
           with Errors.UserError(s,ppm) ->
             fail sigma metas (Exceptions.mkLtacError (s, ppm))
         end
@@ -1182,7 +1232,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
     | 34 -> (* list_ltac *)
         let aux k _ = Pp.msg_info (Pp.str (Names.KerName.to_string k)) in
         KNmap.iter aux (Tacenv.ltac_entries ());
-        return sigma metas (nth 1)
+        return sigma metas (Lazy.force CoqUnit.mkTT)
 
     | 35 -> (* match_and_run *)
         let a, b, t, p = nth 0, nth 1, nth 2, nth 3 in

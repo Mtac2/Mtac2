@@ -23,11 +23,6 @@ Definition coerce {A B : Type} (x : A) : M B :=
   | _ => raise CantCoerce
   end.
 
-Inductive goal :=
-| TheGoal : forall {A}, A -> goal
-| AHyp : forall {A}, (A -> goal) -> goal
-| ADef : forall {A}, A -> goal -> goal.
-
 Definition tactic := (goal -> M (list goal)).
 
 Definition run_tac {P} (t : tactic) : M P :=
@@ -79,15 +74,16 @@ Definition or (t u : tactic) : tactic := fun g=>
   mtry t g with _ => u g end.
 
 Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
-  mmap (fun g'=>r <- abs x g'; ret (@AHyp A r)).
+  mmap (fun g'=>r <- abs x g'; ret (@AHyp A None r)).
 
 Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
 Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
 
 Definition instantiate {A} (x t : A) : M unit :=
+  let x := reduce RedNF x in
   b <- is_evar x;
   if b then
-    r <- munify x t UniMatch;
+    r <- munify x t UniCoq;
     match r with
     | Some _ => ret tt
     | _ => raise (CantInstantiate x t)
@@ -116,45 +112,54 @@ Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
   | _ => raise NotAProduct
   end.
 
+(** Given a name of a variable, it introduces it in the context *)
 Definition intro_simpl (var: string) : tactic := fun g=>
   mmatch g with
+  | [? B t (P:B -> Type) e] @TheGoal (let x := t in P x) e =>
+    tnu var (Some t) (fun x=>
+      e' <- evar (P x);
+      g <- abs_let x t e';
+      instantiate e g;;
+      g' <- abs x (TheGoal e');
+      ret [AHyp (Some t) g'])
+
   | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
     tnu var None (fun x=>
       e' <- evar _;
       g <- abs x e';
-      unify_or_fail e g;;
+      instantiate e g;;
       g' <- abs x (TheGoal e');
-      ret [AHyp g'])
+      ret [AHyp None g'])
+
   | _ => raise NotAProduct
   end.
 
 Fixpoint is_open (g : goal) : M bool :=
   match g with
   | TheGoal e => is_evar e
-  | @AHyp C f => nu x:C, is_open (f x)
-  | ADef _ f => is_open f
+  | @AHyp C _ f => nu x:C, is_open (f x)
   end.
 
 Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
 
-Definition let_close_goals {A} (x: A) : list goal -> M (list goal) :=
-  mmap (fun g'=>
-          r <- abs_let x g';
-          let t := one_step x in
-          ret (@ADef A t r)
-          ).
+Definition let_close_goals {A} (x: A) (t: A) : list goal -> M (list goal) :=
+  let t := one_step x in
+  mmap (fun g':goal=>
+          r <- abs x g';
+          ret (@AHyp A (Some t) r)
+       ).
 
 Definition open_and_apply (t : tactic) : tactic := fix open g :=
     match g return M _ with
     | TheGoal _ => t g
-    | @AHyp C f =>
+    | @AHyp C None f =>
       x <- get_binder_name f;
       tnu x None (fun x : C=>
         open (f x) >> close_goals x)
-    | @ADef C t f =>
+    | @AHyp C (Some t) f =>
       x <- get_binder_name f;
       tnu x (Some t) (fun x : C=>
-        open f >> let_close_goals x)
+        open (f x) >> let_close_goals x t)
     end.
 
 Definition intros_all : tactic :=
@@ -167,7 +172,9 @@ Definition intros_all : tactic :=
           r <- intro_simpl xn g;
           g <- hd_exception r;
           f g
-        with _ =>
+        with WrongTerm =>
+          ret [g]
+        | NotAProduct =>
           ret [g]
         end
       end) g.
@@ -225,6 +232,15 @@ Instance i_bindb (t:tactic) (u:tactic) : semicolon t u | 100:=
 Instance i_mtac A B (t:M A) (u:M B) : semicolon t u | 100 :=
   SemiColon _ _ (_ <- t; u).
 
+(** Overloaded binding *)
+Class binding {A} {B} {P} (t:P A) (u: A -> B) := Binding { result : B }.
+Arguments Binding {A} {B} {P} t u result.
+
+Instance binding_mtac A B (t:M A) (u:A -> M B) : binding t u | 100 :=
+  Binding _ _ (bind t u).
+
+Instance binding_tactic A (t:M A) (u:A -> tactic) : binding t u | 100 :=
+  Binding _ _ (fun g:goal=>x <- t; u x g).
 
 Definition SomethingNotRight {A} (t : A) : Exception. exact exception. Qed.
 Definition copy_ctx {A} (B : A -> Type) :=
@@ -474,7 +490,7 @@ Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   if b then
     ret [TheGoal v] (* it wasn't solved *)
   else
-    ret (List.map dyn_to_goal l).
+    ret l.
 
 Definition option_to_bool {A} (ox : option A) :=
   match ox with Some _ => true | _ => false end.
@@ -524,15 +540,15 @@ Definition cpose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
     match g with
     | @TheGoal T e =>
       r <- evar T;
-      value <- abs_let x r;
+      value <- abs_let x t r;
       instantiate e value;;
-      cont x (TheGoal r) >> let_close_goals x
+      cont x (TheGoal r) >> let_close_goals x t
     | _ => raise NotAGoal
     end).
 
 (* It isn't quite right, it's making a transparent binding instead of an opaque one *)
 Definition cassert {A} (cont: A -> tactic) : tactic := fun g=>
-  a <- evar A; (* the goal to solve A *)
+  a <- evar A; (* [a] will be the goal to solve [A] *)
   n <- get_binder_name cont;
   tnu n None (fun x=>
     match g with
@@ -654,22 +670,18 @@ Definition fix_tac f n : tactic := fun g=>
     (* fixp is now the fixpoint with the evar as body *)
     (* The new goal is enclosed with the definition of f *)
     new_goal <- abs f (TheGoal new_goal);
-    ret (fixp, AHyp new_goal)
+    ret (fixp, AHyp None new_goal)
   );
   let (f, new_goal) := r in
   instantiate e f;;
   ret [new_goal].
-
-(** [nofail t] applies [t] and if it fails returns the goal unchanged *)
-Definition nofail t : tactic := fun g=>
-  mtry t g with _ => ret [g] end.
 
 (** [repeat t] applies tactic [t] to the goal several times
     (it should only generate at most 1 subgoal), until no
     changes or no goal is left. *)
 Definition repeat t : tactic := fun g=>
   (mfix1 f (g : goal) : M (list goal) :=
-    r <- nofail t g; (* if it fails, the execution will stop below *)
+    r <- try t g; (* if it fails, the execution will stop below *)
     r <- filter_goals r;
     match r with
     | [] => ret []
@@ -699,6 +711,8 @@ Notation "'cintros' x .. y '{-' t '-}'" :=
     (at level 0, x binder, y binder, t at next level, right associativity).
 
 Notation "a ;; b" := (@the_value _ _ _ a b _).
+
+(* Notation "r '<-' t1 ';' t2" := (@result _ _ _ t1 (fun r=> t2) _). *)
 
 Notation "'tsimpl'" := (treduce RedSimpl).
 Notation "'thnf'" := (treduce RedWhd).
