@@ -1,8 +1,7 @@
 Require Import MetaCoq.MetaCoq.
 Import MetaCoqNotations.
 
-Require Import Lists.List.
-Import ListNotations.
+Local Set Universe Polymorphism.
 
 Definition mmap {A B : Type} (f : A -> M B) :=
   mfix1 rec (l : list A) : M (list B) :=

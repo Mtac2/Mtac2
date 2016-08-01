@@ -4,9 +4,6 @@ Import MetaCoqNotations.
 
 Require Import Strings.String.
 
-Require Import Lists.List.
-Import ListNotations.
-
 Definition metaCoqReduceGoal {A : Type} : M A :=
   let A' := one_step A in (* to remove spurious beta-redexes *)
   evar A'.
@@ -48,7 +45,7 @@ Definition goal_to_dyn : goal -> M dyn := fun g =>
   | _ => raise NotAGoal
   end.
 
-Definition idtac : tactic := fun g=>ret [g].
+Definition idtac : tactic := fun g => ret [g].
 
 Definition fail (e : Exception) : tactic := fun g=>raise e.
 

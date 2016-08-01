@@ -4,9 +4,11 @@ Declare ML Module "unicoq".
 Declare ML Module "MetaCoqPlugin".
 
 Require Import Strings.String.
-Require Import Lists.List.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
+
+Set Universe Polymorphism.
+Unset Universe Minimization ToSet.
 
 Module MetaCoq.
 
@@ -29,6 +31,29 @@ Definition LtacError (s:string) : Exception. exact exception. Qed.
 Definition NotUnifiable {A} (x y : A) : Exception. exact exception. Qed.
 
 Definition Failure (s : string) : Exception. exact exception. Qed.
+
+Reserved Notation "[]" (at level 0).
+Reserved Notation "[ x ]" (at level 0).
+Polymorphic Inductive list (X : Type) : Type :=
+| nil : list X
+| cons (x : X) (xs : list X) : list X
+where "[]" := (nil _)
+and "x :: xs" := (cons _ x xs)
+and "[ x ]" := (cons _ x (nil _)).
+Arguments nil [_].
+Arguments cons [_] _ _.
+Fixpoint append {X} (l1 l2 : list X) {struct l1} : list X :=
+  match l1 with
+  | nil => l2
+  | x :: xs => x :: append xs l2
+  end.
+Fixpoint map {X Y} (f : X -> Y) (l : list X) : list Y :=
+  match l with
+  | nil => nil
+  | x :: xs => f x :: map f xs
+  end.
+Infix "++" := append.
+
 
 Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
@@ -275,7 +300,6 @@ Definition type_inside {A} (x : M A) := A.
 Definition NoPatternMatches : Exception. exact exception. Qed.
 Definition Anomaly : Exception. exact exception. Qed.
 Definition Continue : Exception. exact exception. Qed.
-Import ListNotations.
 
 Notation pattern := (pattern MetaCoq).
 

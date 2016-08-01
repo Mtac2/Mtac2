@@ -6,9 +6,6 @@ Import MetaCoqNotations.
 
 Require Import Strings.String.
 
-Require Import Lists.List.
-Import ListNotations.
-
 Unset Universe Minimization ToSet.
 
 Set Printing Universes.
@@ -192,25 +189,9 @@ Polymorphic Fixpoint get_type_of_branch {isort} {rsort} {it : ITele isort} (rt :
 Definition args_of : forall A, A -> M (list dyn) :=
   mfix2 rec (A : Type) (a : A) : M _ :=
     mmatch a with
-    | [? T (t : T) f] f t => r <- rec _ f; ret (r ++ [Dyn t])
+    | [? T (t : T) f] f t => r <- rec _ f; ret (MetaCoq.append r [Dyn t])
     | _ => ret nil
     end.
-
-Reserved Notation "++" (at level 10).
-Reserved Notation "[ x ]" (at level 0).
-Polymorphic Inductive list (X : Type) : Type :=
-| nil : list X
-| cons (x : X) (xs : list X) : list X
-where "x :: xs" := (cons _ x xs)
-and "[ x ]" := (cons _ x (nil _)).
-Arguments nil [_].
-Arguments cons [_] _ _.
-Fixpoint append {X} (l1 l2 : list X) {struct l1} : list X :=
-  match l1 with
-  | nil => l2
-  | x :: xs => x :: append xs l2
-  end
-where "++" := append.
 
 (* Get exactly `max` many arguments *)
 Definition NotEnoughArguments : Exception. exact exception. Qed.
@@ -219,7 +200,7 @@ Fixpoint args_of_max (max : nat) : forall {A}, A -> M (list dyn) :=
     | 0 => fun _ _ => ret nil
     | S max => fun A a =>
       mmatch a with
-      | [? T (t : T) f] f t => r <- args_of_max max f; ret (append r (Dyn t :: nil))
+      | [? T (t : T) f] f t => r <- args_of_max max f; ret (MetaCoq.append r (Dyn t :: nil))
       | _ => raise NotEnoughArguments
       end
   end.
@@ -342,7 +323,7 @@ mfix2 f (T : _) (ind : _) : M (nat * {s : Sort & ITele s})%type :=
                       .
 
 Polymorphic Definition get_ind {A : Type} (n : A) :
-  M (nat * sigT (fun s => (ITele s)) * Datatypes.list dyn) :=
+  M (nat * sigT (fun s => (ITele s)) * list dyn) :=
   r <- constrs A;
     print_term r;;
                let (indP, constrs) := r in
@@ -398,18 +379,18 @@ Polymorphic Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A
 (*     ret wt *)
 (* . *)
 
-Definition NotAGoal : Exception. exact exception. Qed.
-Definition goal_type g : M Type :=
+Polymorphic Definition NotAGoal : Exception. exact exception. Qed.
+Polymorphic Definition goal_type g : M Type :=
   match g with
     | @TheGoal A _ => ret A
     | _ => raise NotAGoal
   end.
-Definition goal_to_dyn : goal -> M dyn := fun g =>
+Polymorphic Definition goal_to_dyn : goal -> M dyn := fun g =>
   match g with
   | TheGoal d => ret (Dyn d)
   | _ => raise NotAGoal
   end.
-Definition new_destruct {A : Type} (n : A) : goal -> Datatypes.list goal :=
+Definition new_destruct {A : Type} (n : A) : goal -> list goal :=
   fun g=>
     ind <- get_ind n;
       let (nsortit, constrs) := ind in
