@@ -102,3 +102,64 @@ Definition test_return_in (t : nat) : M (t = t) :=
   mmatch 0+t as x return M (x = x) with
   | 0 => ret (eq_refl 0)
   end.
+
+(* testing no reducing patterns *)
+(* note that in this case we change the order (it doesn't matter) *)
+Definition inlist_nored A (x : A) : forall l : list A, M (In x l) :=
+  mfix1 f (l : list A) : M (In x l) :=
+  mmatch l with
+  | [? s] (x :: s) =n> ret (in_eq _ _)
+  | [? y s] (y :: s) =n> r <- f s; ret (in_cons y _ _ r)
+  | [? l r] l ++ r =n>
+    mtry
+      il <- f l;
+      ret (in_or_app l r x (or_introl il))
+    with NotFound =>
+      ir <- f r;
+      ret (in_or_app l r x (or_intror ir))
+    end
+  | _ => raise NotFound
+  end.
+
+Example with_red : In 0 ([1;2]++[0;4]).
+MProof.
+  inlist _ _ _.
+Defined.
+
+Example with_nored : In 0 ([1;2]++[0;4]).
+MProof.
+  inlist_nored _ _ _.
+Defined.
+
+(* we prove that we get the same proof: the list wasn't reduce to cons
+in the second case *)
+Lemma are_equal : with_nored = with_red.
+Proof. reflexivity. Qed.
+
+(* if instead we use reduction (in the first two patterns),
+   the proof is not the same: *)
+Definition inlist_redcons A (x : A) : forall l : list A, M (In x l) :=
+  mfix1 f (l : list A) : M (In x l) :=
+  mmatch l with
+  | [? s] (x :: s) => ret (in_eq _ _)
+  | [? y s] (y :: s) => r <- f s; ret (in_cons y _ _ r)
+  | [? l r] l ++ r =n>
+    mtry
+      il <- f l;
+      ret (in_or_app l r x (or_introl il))
+    with NotFound =>
+      ir <- f r;
+      ret (in_or_app l r x (or_intror ir))
+    end
+  | _ => raise NotFound
+  end.
+
+Example with_redcons : In 0 ([1;2]++[0;4]).
+MProof.
+  inlist_redcons _ _ _.
+Defined.
+
+(* we can't prove we get the same proof: the list was reduce to cons
+in the second case *)
+Lemma are_not_equal : with_nored = with_redcons.
+Proof. Fail reflexivity. Abort.

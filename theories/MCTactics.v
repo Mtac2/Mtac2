@@ -91,7 +91,7 @@ Definition instantiate {A} (x t : A) : M unit :=
   b <- is_evar h.(elem);
   let t := reduce (RedWhd [RedBeta]) t in
   if b then
-    r <- munify x t UniStandard;
+    r <- munify x t UniEvarconv;
     match r with
     | Some _ => ret tt
     | _ => raise (CantInstantiate x t)
@@ -441,6 +441,10 @@ Inductive goal_pattern : Type :=
 | gbase : forall {A}, A -> tactic -> goal_pattern
 | gtele : forall {C}, (C -> goal_pattern) -> goal_pattern.
 
+Notation "[[ |- ps ] ] => t" :=
+  (gbase ps t)
+  (at level 202, ps at next level) : goal_match_scope.
+
 Notation "[[ x .. y |- ps ] ] => t" :=
   (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
   (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
@@ -452,11 +456,11 @@ Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
   match p, l with
   | gbase P t, _ =>
     gty <- goal_type g;
-    beq <- munify_cumul P gty UniCoq;  (* actually, we want a match with reduction here *)
+    beq <- munify_cumul P gty UniCoq;
     if beq then t g
     else fail DoesNotMatchGoal g
   | @gtele C f, (@ahyp A a _ :: l) =>
-    teq <- munify C A UniCoq; (* same here *)
+    teq <- munify C A UniCoq;
     match teq with
     | Some eq =>
       e <- evar C;

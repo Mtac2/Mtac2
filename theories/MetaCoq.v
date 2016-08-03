@@ -55,7 +55,8 @@ Notation RedHNF := (RedWhd [RedBeta;RedDelta;RedZeta;RedIota]).
 Inductive Unification : Type :=
 | UniCoq : Unification
 | UniMatch : Unification
-| UniStandard : Unification.
+| UniMatchNoRed : Unification
+| UniEvarconv : Unification.
 
 Inductive Hyp : Type :=
 | ahyp : forall {A}, A -> option A -> Hyp.
@@ -79,7 +80,7 @@ Definition reduce (r : Reduction) {A} (x : A) := x.
 
 (** Pattern matching without pain *)
 Inductive pattern (M : Type->Prop) A (B : A -> Type) (t : A) : Prop :=
-| pbase : forall (x:A), (t = x -> M (B x)) -> pattern M A B t
+| pbase : forall (x:A), (t = x -> M (B x)) -> Unification -> pattern M A B t
 | ptele : forall {C}, (forall (x : C), pattern M A B t) -> pattern M A B t.
 
 (** goal type *)
@@ -298,18 +299,23 @@ Fixpoint tmatch {A P} t (ps : list (pattern A P t)) : M (P t) :=
     end
   end.
 
-Arguments ptele {_ A B t C} f.
-Arguments pbase {_ A B t} x b.
+Arguments ptele {_ A B t C} _.
+Arguments pbase {_ A B t} _ _ _.
 
 
 Notation "[? x .. y ] ps" := (ptele (fun x=> .. (ptele (fun y=>ps)).. ))
   (at level 202, x binder, y binder, ps at next level) : metaCoq_pattern_scope.
-Notation "p => b" := (pbase p%core (fun _=>b%core))
+Notation "p => b" := (pbase p%core (fun _=>b%core) UniMatch)
   (no associativity, at level 201) : metaCoq_pattern_scope.
-Notation "p => [ H ] b" := (pbase p%core (fun H=>b%core))
+Notation "p => [ H ] b" := (pbase p%core (fun H=>b%core) UniMatch)
   (no associativity, at level 201, H at next level) : metaCoq_pattern_scope.
-Notation "'_' => b " := (ptele (fun x=> pbase x (fun _=>b%core)))
+Notation "'_' => b " := (ptele (fun x=> pbase x (fun _=>b%core) UniMatch))
   (at level 201, b at next level) : metaCoq_pattern_scope.
+
+Notation "p '=n>' b" := (pbase p%core (fun _=>b%core) UniMatchNoRed)
+  (no associativity, at level 201) : metaCoq_pattern_scope.
+Notation "p '=n>' [ H ] b" := (pbase p%core (fun H=>b%core) UniMatchNoRed)
+  (no associativity, at level 201, H at next level) : metaCoq_pattern_scope.
 
 Delimit Scope metaCoq_pattern_scope with metaCoq_pattern.
 
