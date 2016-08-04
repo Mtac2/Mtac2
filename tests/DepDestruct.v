@@ -112,9 +112,9 @@ MProof.
   mpose (rG := abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r).
   tsimpl.
   assert (T : get_type_of_branch rG (reflect_RTrue P)).
-  - cintros x {- MCTactics.split;; [cintros P {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *)
+  { cintros x {- MCTactics.split;; [cintros P {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
   assert (F : get_type_of_branch rG (reflect_RFalse P)).
-  - tsimpl. intros. MCTactics.split. intros. exact (match a x with end). intros;; discriminate.
+  { tsimpl. intros. MCTactics.split. intros. exact (match a x with end). intros;; discriminate. }
   mpose (return_type := unfold_funs (RTele_Fun rG) 5).
   pose (mc :=
           makecase {|
