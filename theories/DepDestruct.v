@@ -215,7 +215,7 @@ Polymorphic Definition coerce_rect {A : Type} (B : Type) (H : A = B) : forall (x
 Polymorphic Definition CantCoerce : Exception. exact exception. Qed.
 
 Polymorphic Definition coerce {A B : Type} (x : A) : M B :=
-  oH <- munify A B UniNormal;
+  oH <- munify A B UniCoq;
   match oH with
   | Some H => retS (coerce_rect B H x)
   | _ => raise CantCoerce
@@ -239,7 +239,7 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
     print_term ("get_CTele_raw: A", A);;
                B <- evar Type;
       F <- evar (B -> stype_of isort);
-      oH <- munify A (ForAll F) UniNormal;
+      oH <- munify A (ForAll F) UniCoq;
       match oH with
       | Some H =>
         print "Prod case";;
@@ -250,7 +250,7 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
                    print "After Abs";;
                    ret (cProd f')
       | None =>
-        m1 <- munify B (stype_of isort) UniNormal;
+        m1 <- munify B (stype_of isort) UniCoq;
           match m1 with
           | None =>
                        print_term ("get_CTele_raw: B", B);;
@@ -258,7 +258,7 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
           | Some H => let idB := reduce RedWhd (match H in _ = T' return B -> T' with
                                  | eq_refl _ => fun (x : _) => x
                                  end) in
-                              munify F idB UniNormal;; ret tt
+                              munify F idB UniCoq;; ret tt
                           end;;
                              print_term ("get_CTele_raw: B", B);;
                              print_term ("get_CTele_raw: F", F);;

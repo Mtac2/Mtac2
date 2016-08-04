@@ -43,17 +43,23 @@ Definition index := N.
 Inductive array (A:Type) : Type :=
 | carray : index -> N -> array A.
 
-Inductive Reduction : Type :=
-| RedNone : Reduction
-| RedSimpl : Reduction
-| RedWhd : Reduction
-| RedNF : Reduction
-| RedOneStep : Reduction.
+Inductive RedFlags : Set := RedBeta | RedDelta | RedIota | RedZeta.
+
+Inductive Reduction : Set :=
+| RedNone
+| RedSimpl
+| RedOneStep
+| RedWhd : list RedFlags -> Reduction
+| RedStrong : list RedFlags -> Reduction.
+
+Notation RedNF := (RedStrong [RedBeta;RedDelta;RedZeta;RedIota]).
+Notation RedHNF := (RedWhd [RedBeta;RedDelta;RedZeta;RedIota]).
 
 Inductive Unification : Type :=
-| UniNormal : Unification
+| UniCoq : Unification
 | UniMatch : Unification
-| UniCoq : Unification.
+| UniMatchNoRed : Unification
+| UniEvarconv : Unification.
 
 Inductive Hyp : Type :=
 | ahyp : forall {A}, A -> option A -> Hyp.
@@ -77,7 +83,7 @@ Definition reduce (r : Reduction) {A} (x : A) := x.
 
 (** Pattern matching without pain *)
 Inductive pattern (M : Type->Prop) A (B : A -> Type) (t : A) : Prop :=
-| pbase : forall (x:A), (t = x -> M (B x)) -> pattern M A B t
+| pbase : forall (x:A), (t = x -> M (B x)) -> Unification -> pattern M A B t
 | ptele : forall {C}, (forall (x : C), pattern M A B t) -> pattern M A B t.
 
 (** goal type *)
@@ -166,12 +172,19 @@ Inductive MetaCoq
 | constrs : forall {A : Type} (a : A), MetaCoq (prod dyn (list dyn))
 | makecase : forall (C : Case), MetaCoq dyn
 
-| munify {A : Type} (x y : A) : Unification -> MetaCoq (option (eq x y))
+(** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
+    It uses convertibility of universes. *)
+| munify {A} (x y : A) : Unification -> MetaCoq (option (x = y))
 
 | call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (prod A (list goal))
 | list_ltac : MetaCoq unit
 
 | match_and_run : forall {A : Type} {B : A -> Type} {t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
+
+(** [munify_cumul x y r] uses reduction strategy [r] to equate [x] and [y].
+    Note that they might have different types.
+    It uses cumulativity of universes, e.g., it succeeds if [x] is [Prop] and [y] is [Type]. *)
+| munify_cumul {A B} (x: A) (y: B) : Unification -> MetaCoq bool
 .
 (* Inductive MetaCoq *)
 (*           @{ mc_max *)
@@ -396,7 +409,7 @@ Module MetaCoqNotations.
 Notation "'M'" := MetaCoq.
 
 Notation "'simpl'" := (reduce RedSimpl).
-Notation "'hnf'" := (reduce RedWhd).
+Notation "'hnf'" := (reduce RedHNF).
 Notation "'one_step'" := (reduce RedOneStep).
 
 Notation "'ret'" := (tret).
@@ -472,18 +485,23 @@ Fixpoint tmatch {A P} t (ps : list (pattern A P t)) : M (P t) :=
     end
   end.
 
-Arguments ptele {_ A B t C} f.
-Arguments pbase {_ A B t} x b.
+Arguments ptele {_ A B t C} _.
+Arguments pbase {_ A B t} _ _ _.
 
 
 Notation "[? x .. y ] ps" := (ptele (fun x=> .. (ptele (fun y=>ps)).. ))
   (at level 202, x binder, y binder, ps at next level) : metaCoq_pattern_scope.
-Notation "p => b" := (pbase p%core (fun _=>b%core))
+Notation "p => b" := (pbase p%core (fun _=>b%core) UniMatch)
   (no associativity, at level 201) : metaCoq_pattern_scope.
-Notation "p => [ H ] b" := (pbase p%core (fun H=>b%core))
+Notation "p => [ H ] b" := (pbase p%core (fun H=>b%core) UniMatch)
   (no associativity, at level 201, H at next level) : metaCoq_pattern_scope.
-Notation "'_' => b " := (ptele (fun x=> pbase x (fun _=>b%core)))
+Notation "'_' => b " := (ptele (fun x=> pbase x (fun _=>b%core) UniMatch))
   (at level 201, b at next level) : metaCoq_pattern_scope.
+
+Notation "p '=n>' b" := (pbase p%core (fun _=>b%core) UniMatchNoRed)
+  (no associativity, at level 201) : metaCoq_pattern_scope.
+Notation "p '=n>' [ H ] b" := (pbase p%core (fun H=>b%core) UniMatchNoRed)
+  (no associativity, at level 201, H at next level) : metaCoq_pattern_scope.
 
 Delimit Scope metaCoq_pattern_scope with metaCoq_pattern.
 

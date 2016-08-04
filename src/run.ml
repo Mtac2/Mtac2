@@ -27,6 +27,9 @@ let reduce_value = Tacred.compute
 
 let get_ts env = Conv_oracle.get_transp_state (Environ.oracle env)
 
+(** returns the i-th position of constructor c (starting from 0) *)
+let get_constructor_pos c = let (_, pos), _ = destConstruct c in pos-1
+
 module MetaCoqNames = struct
   let metaCoq_module_name = "MetaCoq.MetaCoq.MetaCoq"
   let mkConstr e = Constr.mkConstr (metaCoq_module_name ^ "." ^ e)
@@ -127,17 +130,17 @@ module Exceptions = struct
 end
 
 module ReductionStrategy = struct
-  let isRedNone c = MetaCoqNames.isConstr "RedNone" c
-  let isRedSimpl c = MetaCoqNames.isConstr "RedSimpl" c
-  let isRedWhd c = MetaCoqNames.isConstr "RedWhd" c
-  let isRedOneStep c = MetaCoqNames.isConstr "RedOneStep" c
-  let isRedNF c = MetaCoqNames.isConstr "RedNF" c
-  let isReduce c = MetaCoqNames.isConstr "reduce" c
+  open MetaCoqNames
+  open Reductionops
+  open Closure
+  open Closure.RedFlags
+
+  let isReduce c = isConstr "reduce" c
 
   let has_definition ts env t =
     if isVar t then
       let var = destVar t in
-      if not (Closure.is_transparent_variable ts var) then
+      if not (is_transparent_variable ts var) then
         false
       else
         let (_, v,_) = Environ.lookup_named var env in
@@ -152,7 +155,7 @@ module ReductionStrategy = struct
       | _ -> false
     else if isConst t then
       let (c, _) = destConst t in
-      Closure.is_transparent_constant ts c && Environ.evaluable_constant c env
+      is_transparent_constant ts c && Environ.evaluable_constant c env
     else
       false
 
@@ -195,26 +198,39 @@ module ReductionStrategy = struct
       | _ -> h, args
     in applist r
 
+  let redflags = [|fBETA;fDELTA;fIOTA;fZETA|]
+
+  let get_flags ctx flags =
+    (* we assume flags have the right type and are in nf *)
+    let flags = CoqList.from_coq_conv ctx (fun f->
+      redflags.(get_constructor_pos f)
+    ) flags in
+    mkflags flags
+
+  let redfuns = [|
+    (fun _ _ _ c -> c);
+    (fun _ -> Tacred.simpl);
+    (fun _ ->one_step);
+    (fun fs env sigma c->
+       let evars ev = safe_evar_value sigma ev in
+       whd_val
+         (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
+         (inject c));
+    (fun fs env sigma c->
+       let evars ev = safe_evar_value sigma ev in
+       norm_val
+         (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
+         (inject c))
+  |]
+
   let reduce sigma env strategy c =
-    if isRedNone strategy then
-      c
-    else if isRedSimpl strategy then
-      Tacred.simpl env sigma c
-    else if isRedWhd strategy then
-      whd_betadeltaiota env sigma c
-    else if isRedNF strategy then
-      nf_betadeltaiota env sigma c
-    else if isRedOneStep strategy then
-      one_step env sigma c
-    else
-      Exceptions.block Exceptions.unknown_reduction_strategy
+    let strategy, args = decompose_appvect strategy in
+    redfuns.(get_constructor_pos strategy) args env sigma c
 
 end
 
 module UnificationStrategy = struct
-  let isUniNormal e = isConstr "UniNormal" e
-  let isUniMatch e = isConstr "UniMatch" e
-  let isUniCoq e = isConstr "UniCoq" e
+  open Evarsolve
 
   let find_pbs sigma evars =
     let (_, pbs) = extract_all_conv_pbs sigma in
@@ -222,27 +238,39 @@ module UnificationStrategy = struct
       List.exists (fun e ->
         Termops.occur_term e c1 || Termops.occur_term e c2) evars) pbs
 
-  let unify sigma env strategy t1 t2 =
-    let open Evarsolve in
+  let funs = [|
+    (fun _-> Munify.unify_evar_conv);
+    Munify.unify_match;
+    Munify.unify_match_nored;
+    (fun _ ts env sigma conv_pb t1 t2->
+       try
+         match evar_conv_x ts env sigma conv_pb t1 t2 with
+         | Success sigma -> Success (consider_remaining_unif_problems env sigma)
+         | e -> e
+       with _ -> UnifFailure (sigma, Pretype_errors.ProblemBeyondCapabilities))
+  |]
+
+  let unicoq_pos = 0
+  let evarconv_pos = Array.length funs -1
+
+  (** unify oevars sigma env strategy conv_pb t1 t2 unifies t1 and t2
+      according to universe restrictions conv_pb (CUMUL or CONV) and
+      strategy (UniCoq,UniMatch,UniMatchNoRed,UniEvarconv). In the
+      UniMatch and UniMatchNoRed cases, it only instantiates evars in
+      the evars set, assuming oevars = Some evars. If oevars = None,
+      then the whole set of evars is assumed.  The idea is to avoid
+      pattern matching to instantiate external evars. It returns
+      Success or UnifFailure and a bool stating if the strategy used
+      was one of the Match. *)
+  let unify oevars sigma env strategy conv_pb t1 t2 =
     let ts = get_ts env in
-    if isUniNormal strategy then
-      let r = Munify.unify_evar_conv ts env sigma Reduction.CONV t1 t2 in
-      match r with
-      | Success sigma -> Some sigma
-      | _ -> None
-    else if isUniMatch strategy then
-      let evars = Evar.Map.domain (Evd.undefined_map sigma) in
-      let r = Munify.unify_match evars ts env sigma Reduction.CONV t1 t2 in
-      match r with
-      | Success sigma -> Some sigma
-      | _ -> None
-    else if isUniCoq strategy then
-      try
-        let sigma = the_conv_x ~ts env t2 t1 sigma in
-        Some (consider_remaining_unif_problems env sigma)
-      with _ -> None
-    else
-      Exceptions.block "Unknown unification strategy"
+    let pos = get_constructor_pos strategy in
+    let evars =
+      match oevars with
+      | Some e -> e
+      | _ -> Evar.Map.domain (Evd.undefined_map sigma) in
+    (funs.(pos) evars ts env sigma conv_pb t1 t2,
+     pos > unicoq_pos && pos < evarconv_pos)
 
 end
 
@@ -254,11 +282,20 @@ module Pattern = struct
 
   exception NotAPattern
 
+  type pattern = {
+    sigma : evar_map;
+    evars : Evar.Set.t;
+    patt : constr;
+    body : constr;
+    strategy : constr (* unification strategy *)
+  }
+
   let open_pattern env sigma p =
     let rec op sigma p evars =
       let (c, args) = whd_betadeltaiota_stack env sigma p in
       if equal baseB c then
-        (sigma, evars, List.nth args 4, List.nth args 5)
+        {sigma=sigma; evars=evars; patt=List.nth args 4;
+         body=List.nth args 5; strategy=List.nth args 6}
       else if equal teleB c then
         begin
           let ty = List.nth args 4 in
@@ -542,31 +579,32 @@ let dest_Case (env, sigma) t_type t =
       Exceptions.block "Something not so specific went wrong."
 
 let make_Case (env, sigma) case =
-  let elem = Lazy.force mkelem in
-  let case_ind = Lazy.force (mkConstr "case_ind") in
-  let case_val = Lazy.force (mkConstr "case_val") in
-  let case_return = Lazy.force (mkConstr "case_return") in
-  let case_branches = Lazy.force (mkConstr "case_branches") in
-  let repr_ind = Term.applist(case_ind, [case]) in
-  let repr_val = Term.applist(case_val, [case]) in
+  let open Lazy in
+  let open Term in
+  let elem = force mkelem in
+  let case_ind = force (mkConstr "case_ind") in
+  let case_val = force (mkConstr "case_val") in
+  let case_return = force (mkConstr "case_return") in
+  let case_branches = force (mkConstr "case_branches") in
+  let repr_ind = applist(case_ind, [case]) in
+  let repr_val = applist(case_val, [case]) in
   let repr_val_red = whd_betadeltaiota env sigma repr_val in
-  let repr_return = Term.applist(case_return, [case]) in
-  let repr_return_unpack = Term.applist(elem, [repr_return]) in
+  let repr_return = applist(case_return, [case]) in
+  let repr_return_unpack = applist(elem, [repr_return]) in
   let repr_return_red = whd_betadeltaiota env sigma repr_return_unpack in
-  let repr_branches = Term.applist(case_branches, [case]) in
+  let repr_branches = applist(case_branches, [case]) in
   let repr_branches_list = CoqList.from_coq (env, sigma) repr_branches in
   let repr_branches_dyns =
-    List.map (fun t -> Term.applist(elem, [t])) repr_branches_list in
+    List.map (fun t -> applist(elem, [t])) repr_branches_list in
   let repr_branches_red =
     List.map (fun t -> whd_betadeltaiota env sigma t) repr_branches_dyns in
-  let t_type, l = Term.decompose_app (whd_betadeltaiota env sigma repr_ind) in
-  if Term.isInd t_type then
-    match Term.kind_of_term t_type with
-    | Term.Ind ((mind, ind_i), _) ->
-        let case_info = Inductiveops.make_case_info env (mind, ind_i)
-                          Term.LetPatternStyle in
-        let match_term = Term.mkCase (case_info, repr_return_red, repr_val_red,
-                                      Array.of_list (repr_branches_red)) in
+  let t_type, l = decompose_app (whd_betadeltaiota env sigma repr_ind) in
+  if isInd t_type then
+    match kind_of_term t_type with
+    | Ind ((mind, ind_i), _) ->
+        let case_info = Inductiveops.make_case_info env (mind, ind_i) LetPatternStyle in
+        let match_term = mkCase (case_info, repr_return_red, repr_val_red,
+                                 Array.of_list (repr_branches_red)) in
         let match_type = Retyping.get_type_of env sigma match_term in
         (sigma, mkDyn match_type match_term)
     | _ -> assert false
@@ -1182,13 +1220,13 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in
         let feqT = CoqEq.mkAppEq a x y in
         begin
-          let r = UnificationStrategy.unify sigma env uni x y in
+          let r = UnificationStrategy.unify None sigma env uni Reduction.CONV x y in
           match r with
-          | Some sigma ->
+          | Evarsolve.Success sigma, _ ->
               let feq = CoqEq.mkAppEqRefl a x in
               let someFeq = CoqOption.mkSome feqT feq in
               return sigma metas someFeq
-          | _ ->
+          | _, _ ->
               let none = CoqOption.mkNone feqT in
               return sigma metas none
         end
@@ -1238,6 +1276,17 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         let a, b, t, p = nth 0, nth 1, nth 2, nth 3 in
         match_and_run ctxt a b t p
 
+    | 36 -> (* munify_cumul *)
+        let x, y, uni = nth 2, nth 3, nth 4 in
+        begin
+          let r = UnificationStrategy.unify None sigma env uni Reduction.CUMUL x y in
+          match r with
+          | Evarsolve.Success sigma, _ ->
+              return sigma metas CoqBool.mkTrue
+          | _, _ ->
+              return sigma metas CoqBool.mkFalse
+        end
+
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"
 
@@ -1252,16 +1301,19 @@ and match_and_run (env, renv, sigma0, undo, metas) a b t p =
     let open Munify in
     let open Pattern in
     let open Evarsolve in
-    let (sigma, evars, x, func) = open_pattern env sigma0 p in
+    let {sigma=sigma; evars=evars; patt=x; body=func;strategy=strategy} =
+      open_pattern env sigma0 p in
     (* func has Coq type x = t -> M (B x) *)
-    let ts = Conv_oracle.get_transp_state (Environ.oracle env) in
     let bt = mkApp(b, [|t|]) in
-    match unify_match evars ts env sigma Reduction.CONV x t with
-    | Success sigma ->
+    match UnificationStrategy.unify (Some evars) sigma env strategy Reduction.CONV x t with
+    | Success sigma, b ->
         if Evar.Set.for_all (Evd.is_defined sigma) evars then
           begin
             let func = Evarutil.nf_evar sigma func in
-            let sigma = Evar.Set.fold (fun e sigma->Evd.remove sigma e) evars sigma in
+            let sigma =
+              if b then
+                Evar.Set.fold (fun e sigma->Evd.remove sigma e) evars sigma
+              else sigma in
             let eqrefl = CoqEq.mkAppEqRefl a t in
             let r = run' (env, renv, sigma, undo, metas) (mkApp (func, [|eqrefl|])) in
             match r with
@@ -1271,7 +1323,7 @@ and match_and_run (env, renv, sigma0, undo, metas) a b t p =
           end
         else
           Exceptions.(block (error_stuck p))
-    | _ ->
+    | _, _ ->
         return sigma0 metas (CoqOption.mkNone bt)
   with Pattern.NotAPattern ->
     Exceptions.(block (error_stuck p))

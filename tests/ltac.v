@@ -10,7 +10,7 @@ Import MCTacticsNotations.
 
 Ltac induction n := induction n.
 
-Definition qualify s := String.append "Top." s.
+Definition qualify s := String.append "ltac." s.
 
 Definition induction {A} (n:A) : tactic := ltac (qualify "induction") [Dyn n].
 

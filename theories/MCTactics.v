@@ -20,7 +20,7 @@ Definition coerce_rect {A : Type} (B : Type) (H : A = B) : forall (x : A), B :=
 Definition CantCoerce : Exception. exact exception. Qed.
 
 Definition coerce {A B : Type} (x : A) : M B :=
-  oH <- munify A B UniNormal;
+  oH <- munify A B UniCoq;
   match oH with
   | Some H => retS (coerce_rect B H x)
   | _ => raise CantCoerce
@@ -56,7 +56,7 @@ Definition idtac : tactic := fun g => ret [g].
 Definition fail (e : Exception) : tactic := fun g=>raise e.
 
 Definition unify_or_fail {A} (x y : A) : M (x = y) :=
-  oeq <- munify x y UniNormal;
+  oeq <- munify x y UniCoq;
   match oeq with
   | None => raise (NotUnifiable x y)
   | Some eq=> ret eq
@@ -82,11 +82,19 @@ Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
 Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
 Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
 
+Definition head :=
+  mfix1 f (d : dyn) : M dyn :=
+    mmatch d with
+    | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1)
+    | _ => ret d
+    end.
+
 Definition instantiate {A} (x t : A) : M unit :=
-  let x := reduce RedNF x in
-  b <- is_evar x;
+  h <- head (Dyn x);
+  b <- is_evar h.(elem);
+  let t := reduce (RedWhd [RedBeta]) t in
   if b then
-    r <- munify x t UniCoq;
+    r <- munify x t UniEvarconv;
     match r with
     | Some _ => ret tt
     | _ => raise (CantInstantiate x t)
@@ -105,12 +113,13 @@ Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
     eq <- unify_or_fail B A;
     n <- get_binder_name t;
     tnu n None (fun x=>
-      e' <- evar _;
-      g <- abs x e';
+      let Px := reduce (RedWhd [RedBeta]) (P x) in
+      e' <- evar Px;
+      g <- abs (P:=P) x e';
       instantiate e g;;
-      let x := hnf match eq in _ = x with
-                 | eq_refl _ => x
-               end in
+      let x := reduce (RedWhd [RedIota]) (match eq in _ = x with
+                 | eq_refl => x
+               end) in
       t x (TheGoal e') >> close_goals x)
   | _ => raise NotAProduct
   end.
@@ -120,16 +129,18 @@ Definition intro_simpl (var: string) : tactic := fun g=>
   mmatch g with
   | [? B t (P:B -> Type) e] @TheGoal (let x := t in P x) e =>
     tnu var (Some t) (fun x=>
-      e' <- evar (P x);
-      g <- abs_let x t e';
+      let Px := reduce (RedWhd [RedBeta]) (P x) in
+      e' <- evar Px;
+      g <- abs_let (P:=P) x t e';
       instantiate e g;;
       g' <- abs x (TheGoal e');
       ret [AHyp (Some t) g'])
 
   | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
     tnu var None (fun x=>
-      e' <- evar _;
-      g <- abs x e';
+      let Px := reduce (RedWhd [RedBeta]) (P x) in
+      e' <- evar Px;
+      g <- abs (P:=P) x e';
       instantiate e g;;
       g' <- abs x (TheGoal e');
       ret [AHyp None g'])
@@ -146,7 +157,7 @@ Fixpoint is_open (g : goal) : M bool :=
 Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
 
 Definition let_close_goals {A} (x: A) (t: A) : list goal -> M (list goal) :=
-  let t := one_step x in
+  let t := one_step x in (* to obtain x's definition *)
   mmap (fun g':goal=>
           r <- abs x g';
           ret (@AHyp A (Some t) r)
@@ -250,7 +261,8 @@ Definition copy_ctx {A} (B : A -> Type) :=
   mfix1 rec (d : dyn) : M Type :=
     mmatch d with
     | [? c : A] {| elem := c |} =>
-        ret (B c)
+        let Bc := reduce (RedWhd [RedBeta]) (B c) in
+        ret Bc
     | [? C (D : C -> Type) (c : forall y:C, D y)] {| elem := c |} =>
         nu y : C,
         r <- rec (Dyn (c y));
@@ -298,7 +310,7 @@ Definition generalize1 (cont: tactic) : tactic := fun g=>
       | eq_refl _ => e
       end
     in
-    oeq <- munify g (@TheGoal (Q x) (e' x)) UniNormal;
+    oeq <- munify g (@TheGoal (Q x) (e' x)) UniCoq;
     match oeq with
     | Some _ => MetaCoq.remove x (cont (TheGoal e))
     | _ => raise exception
@@ -317,7 +329,7 @@ Definition abstract_up_to n : tactic := fun g=>
   let l' := hnf (skipn n l) in
   e <- Cevar pP l';
 *)
-Unset Printing Notations.
+
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
   b <- is_var n;
   ctx <- if b then hyps_except n else hypotheses;
@@ -363,7 +375,7 @@ Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 Definition apply {T} (c : T) : tactic := fun g=>
   (mfix1 app (d : dyn) : M (list goal) :=
     let (_, el) := d in
-    oeq <- munify (TheGoal el) g UniNormal;
+    oeq <- munify (TheGoal el) g UniCoq;
     match oeq with
     | Some _ => ret []
     | None =>
@@ -432,23 +444,14 @@ Inductive goal_pattern : Type :=
 | gbase : forall {A}, A -> tactic -> goal_pattern
 | gtele : forall {C}, (C -> goal_pattern) -> goal_pattern.
 
+Notation "[[ |- ps ] ] => t" :=
+  (gbase ps t)
+  (at level 202, ps at next level) : goal_match_scope.
+
 Notation "[[ x .. y |- ps ] ] => t" :=
   (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
   (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
 Delimit Scope goal_match_scope with goal_match.
-
-Definition jmeq {A} {B} (x:A) (y:B) : M bool :=
-  teq <- munify A B UniNormal;
-  match teq with
-  | Some e =>
-    let x := match e in _ = B with eq_refl _ => x end in
-    veq <- munify x y UniNormal;
-    match veq with
-    | Some _ => ret true
-    | None => ret false
-    end
-  | None => ret false
-  end.
 
 Definition DoesNotMatchGoal : Exception. exact exception. Qed.
 
@@ -456,16 +459,16 @@ Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
   match p, l with
   | gbase P t, _ =>
     gty <- goal_type g;
-    beq <- jmeq P gty;  (* actually, we want a match with reduction here *)
+    beq <- munify_cumul P gty UniCoq;
     if beq then t g
     else fail DoesNotMatchGoal g
   | @gtele C f, (@ahyp A a _ :: l) =>
-    teq <- munify C A UniNormal; (* same here *)
+    teq <- munify C A UniCoq;
     match teq with
     | Some eq =>
       e <- evar C;
-      let e' := match eq with eq_refl _ => e end in
-      munify e' a UniNormal;;
+      let e' := match eq with eq_refl => e end in
+      munify e' a UniCoq;;
       mtry match_goal' (f e) l g
       with DoesNotMatchGoal =>
         match_goal' p l g
@@ -502,7 +505,7 @@ Definition destruct_all (T : Type) : tactic := fun g=>
   l <- hypotheses;
   l <- mfilter (fun h:Hyp=>
     let (Th, _, _) := h in
-    r <- munify Th T UniNormal;
+    r <- munify Th T UniCoq;
     ret (option_to_bool r)) l;
   (fix f (l : list Hyp) : tactic :=
     match l with
@@ -576,7 +579,7 @@ Definition simpl_in_all : tactic := fun g=>
   let T := simpl T in
   e <- Cevar T l; (* create the new goal in the new context *)
   (* we need normal unification since g might be a compound value *)
-  oeq <- munify g (TheGoal e) UniNormal;
+  oeq <- munify g (TheGoal e) UniCoq;
   match oeq with
   | Some (eq_refl _) => ret [TheGoal e]
   | _ => raise exception (* should never happen *)
@@ -586,7 +589,7 @@ Definition simpl_in_all : tactic := fun g=>
 Definition mexists {A} (x: A) : tactic := fun g=>
   P <- evar _;
   e <- evar _;
-  oeq <- munify g (TheGoal (@ex_intro _ P x e)) UniNormal;
+  oeq <- munify g (TheGoal (@ex_intro _ P x e)) UniCoq;
   match oeq with
   | Some (eq_refl _) => ret [TheGoal e]
   | _ => raise (NotUnifiable g (TheGoal (@ex_intro _ P x e)))
@@ -718,7 +721,7 @@ Notation "a ;; b" := (@the_value _ _ _ a b _).
 (* Notation "r '<-' t1 ';' t2" := (@result _ _ _ t1 (fun r=> t2) _). *)
 
 Notation "'tsimpl'" := (treduce RedSimpl).
-Notation "'thnf'" := (treduce RedWhd).
+Notation "'thnf'" := (treduce RedHNF).
 
 Notation "'pose' ( x := t )" := (cpose t (fun x=>idtac)) (at level 40, x at next level).
 Notation "'assert' ( x : T )" := (cassert (fun x:T=>idtac)) (at level 40, x at next level).
