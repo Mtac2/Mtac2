@@ -1,4 +1,5 @@
-Require Export MetaCoq.MetaCoq.
+Require Import Strings.String.
+From MetaCoq Require Import MetaCoq.
 Require Import MetaCoq.MCListUtils.
 Import MetaCoqNotations.
 
@@ -11,8 +12,10 @@ Definition metaCoqReduceGoal {A : Type} : M A :=
   let A' := one_step A in (* to remove spurious beta-redexes *)
   evar A'.
 
-Definition coerce_rect {A : Type} (B : Type) (H : A = B) (x : A) : B :=
-  eq_rect A (fun T => T) x B H.
+Definition coerce_rect {A : Type} (B : Type) (H : A = B) : forall (x : A), B :=
+  match H in _ = T return A -> T with
+  | eq_refl _ => id
+  end.
 
 Definition CantCoerce : Exception. exact exception. Qed.
 
@@ -106,7 +109,7 @@ Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
       g <- abs x e';
       instantiate e g;;
       let x := hnf match eq in _ = x with
-                 | eq_refl => x
+                 | eq_refl _ => x
                end in
       t x (TheGoal e') >> close_goals x)
   | _ => raise NotAProduct
@@ -217,7 +220,7 @@ Definition bindb (t u:tactic) : tactic := fun g=>
   l <- t g;
   l <- filter_goals l;
   r <- mmap (open_and_apply u) l;
-  let r := hnf concat r in
+  let r := hnf (concat r) in
   ret r.
 
 Class semicolon {A} {B} {C} (t:A) (u:B) := SemiColon { the_value : C }.
@@ -292,7 +295,7 @@ Definition generalize1 (cont: tactic) : tactic := fun g=>
   mmatch aP with
   | [? Q : A -> Type] (forall z:A, Q z) => [H]
     let e' := match H in _ = Q return Q with
-      | eq_refl => e
+      | eq_refl _ => e
       end
     in
     oeq <- munify g (@TheGoal (Q x) (e' x)) UniNormal;
@@ -314,7 +317,7 @@ Definition abstract_up_to n : tactic := fun g=>
   let l' := hnf (skipn n l) in
   e <- Cevar pP l';
 *)
-
+Unset Printing Notations.
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
   b <- is_var n;
   ctx <- if b then hyps_except n else hypotheses;
@@ -438,7 +441,7 @@ Definition jmeq {A} {B} (x:A) (y:B) : M bool :=
   teq <- munify A B UniNormal;
   match teq with
   | Some e =>
-    let x := match e in _ = B with eq_refl => x end in
+    let x := match e in _ = B with eq_refl _ => x end in
     veq <- munify x y UniNormal;
     match veq with
     | Some _ => ret true
@@ -461,7 +464,7 @@ Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
     match teq with
     | Some eq =>
       e <- evar C;
-      let e' := match eq with eq_refl => e end in
+      let e' := match eq with eq_refl _ => e end in
       munify e' a UniNormal;;
       mtry match_goal' (f e) l g
       with DoesNotMatchGoal =>
@@ -575,7 +578,7 @@ Definition simpl_in_all : tactic := fun g=>
   (* we need normal unification since g might be a compound value *)
   oeq <- munify g (TheGoal e) UniNormal;
   match oeq with
-  | Some eq_refl => ret [TheGoal e]
+  | Some (eq_refl _) => ret [TheGoal e]
   | _ => raise exception (* should never happen *)
   end.
 
@@ -585,7 +588,7 @@ Definition mexists {A} (x: A) : tactic := fun g=>
   e <- evar _;
   oeq <- munify g (TheGoal (@ex_intro _ P x e)) UniNormal;
   match oeq with
-  | Some eq_refl => ret [TheGoal e]
+  | Some (eq_refl _) => ret [TheGoal e]
   | _ => raise (NotUnifiable g (TheGoal (@ex_intro _ P x e)))
   end.
 

@@ -7,7 +7,9 @@ Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
 
-Set Universe Polymorphism.
+From MetaCoq Require Export Types.
+
+(* Set Universe Polymorphism. *)
 Unset Universe Minimization ToSet.
 
 Module MetaCoq.
@@ -31,54 +33,6 @@ Definition LtacError (s:string) : Exception. exact exception. Qed.
 Definition NotUnifiable {A} (x y : A) : Exception. exact exception. Qed.
 
 Definition Failure (s : string) : Exception. exact exception. Qed.
-
-Reserved Notation "[]" (at level 0).
-Reserved Notation "[ x ]" (at level 0).
-Polymorphic Inductive list (X : Type) : Type :=
-| nil : list X
-| cons (x : X) (xs : list X) : list X
-where "[]" := (nil _)
-and "x :: xs" := (cons _ x xs)
-and "[ x ]" := (cons _ x (nil _)).
-Arguments nil [_].
-Arguments cons [_] _ _.
-Definition tl {X} (l : list X) : list X :=
-  match l with
-  | nil => nil
-  | x :: xs => xs
-  end.
-Fixpoint app {X} (l1 l2 : list X) {struct l1} : list X :=
-  match l1 with
-  | nil => l2
-  | x :: xs => x :: app xs l2
-  end.
-Infix "++" := app.
-Fixpoint concat {X} (l : list (list X)) : list X :=
-  match l with
-  | nil => nil
-  | x :: xs => x ++ (concat xs)
-  end.
-Fixpoint map {X Y} (f : X -> Y) (l : list X) : list Y :=
-  match l with
-  | nil => nil
-  | x :: xs => f x :: map f xs
-  end.
-Fixpoint length {X} (l : list X) : nat :=
-  match l with
-  | nil => 0
-  | _ :: xs => S (length xs)
-  end.
-Fixpoint nth_error {X} (l:list X) (n:nat) {struct n} : option X :=
-  match n, l with
-  | O, x :: _ => Some x
-  | S n, _ :: l => nth_error l n
-  | _, _ => None
-  end.
-Fixpoint rev {X} (l:list X) : list X :=
-  match l with
-  | [] => []
-  | x :: l' => rev l' ++ [x]
-  end.
 
 
 Record dyn := Dyn { type : Type; elem :> type }.
@@ -132,88 +86,267 @@ Inductive goal :=
 | AHyp : forall {A}, option A -> (A -> goal) -> goal.
 
 (** THE definition of MetaCoq *)
-Inductive MetaCoq : Type -> Prop :=
-| tret : forall {A}, A -> MetaCoq A
-| bind : forall {A B}, MetaCoq A -> (A -> MetaCoq B) -> MetaCoq B
-| ttry : forall {A}, MetaCoq A -> (Exception -> MetaCoq A) -> MetaCoq A
-| raise : forall {A}, Exception -> MetaCoq A
-| tfix1' : forall {A B} (S : Type -> Prop),
-  (forall a, S a -> MetaCoq a) ->
+Set Printing Universes.
+Unset Printing Notations.
+
+Inductive MetaCoq
+           : Type -> Prop :=
+| tret : forall {A : Type}, A -> MetaCoq A
+| bind : forall {A : Type} {B : Type},
+    MetaCoq A -> (A -> MetaCoq B) -> MetaCoq B
+| ttry : forall {A : Type}, MetaCoq A -> (Exception -> MetaCoq A) -> MetaCoq A
+| raise : forall {A : Type}, Exception -> MetaCoq A
+| tfix1' : forall {A : Type} {B : A -> Type} (S : Type -> Prop),
+  (forall a : Type, S a -> MetaCoq a) ->
   ((forall x : A, S (B x)) -> (forall x : A, S (B x))) ->
   forall x : A, MetaCoq (B x)
-| tfix2' : forall {A1 A2 B} (S : Type -> Prop),
-  (forall a, S a -> MetaCoq a) ->
+| tfix2' : forall {A1 : Type} {A2 : A1 -> Type} {B : forall (a1 : A1), A2 a1 -> Type} (S : Type -> Prop),
+  (forall a : Type, S a -> MetaCoq a) ->
   ((forall (x1 : A1) (x2 : A2 x1), S (B x1 x2)) ->
     (forall (x1 : A1) (x2 : A2 x1), S (B x1 x2))) ->
   forall (x1 : A1) (x2 : A2 x1), MetaCoq (B x1 x2)
-| tfix3' : forall {A1 A2 A3 B} (S : Type -> Prop),
-  (forall a, S a -> MetaCoq a) ->
+| tfix3' : forall {A1 : Type} {A2 : A1 -> Type}  {A3 : forall (a1 : A1), A2 a1 -> Type} {B : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type} (S : Type -> Prop),
+  (forall a : Type, S a -> MetaCoq a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), S (B x1 x2 x3)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), S (B x1 x2 x3))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), MetaCoq (B x1 x2 x3)
-| tfix4' : forall {A1 A2 A3 A4 B} (S : Type -> Prop),
-  (forall a, S a -> MetaCoq a) ->
+| tfix4' : forall {A1 : Type} {A2 : A1 -> Type} {A3 : forall (a1 : A1), A2 a1 -> Type} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type} (S : Type -> Prop),
+  (forall a : Type, S a -> MetaCoq a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), MetaCoq (B x1 x2 x3 x4)
-| tfix5' : forall {A1 A2 A3 A4 A5 B} (S : Type -> Prop),
-  (forall a, S a -> MetaCoq a) ->
+| tfix5' : forall {A1 : Type} {A2 : A1 -> Type} {A3 : forall (a1 : A1), A2 a1 -> Type} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type} {A5 : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2) (a4 : A4 a1 a2 a3), A5 a1 a2 a3 a4 -> Type} (S : Type -> Prop),
+  (forall a : Type, S a -> MetaCoq a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), MetaCoq (B x1 x2 x3 x4 x5)
 
-| is_var : forall {A}, A -> MetaCoq bool
+| is_var : forall {A : Type}, A -> MetaCoq bool
 (* if the 4th argument is Some t, it adds x:=t to the local context *)
-| tnu : forall {A B}, string -> option A -> (A -> MetaCoq B) -> MetaCoq B
-| abs : forall {A P} (x : A), P x -> MetaCoq (forall x, P x)
-| abs_let : forall {A P} (x: A) (t: A), P x -> MetaCoq (let x := t in P x)
-| abs_prod : forall {A P} (x : A), P x -> MetaCoq Type
-(** [abs_fix f t n] creates a fixpoint with variable [f] as name,
-    with body t,
-    and reducing the n-th product of [f]. This means that [f]'s type
-    is expected to be of the form [forall x1, ..., xn, T] *)
-| abs_fix : forall {A}, A -> A -> N -> MetaCoq A
+| tnu : forall {A : Type} {B : Type}, string -> option A -> (A -> MetaCoq B) -> MetaCoq B
+| abs : forall {A : Type} {P : A -> Type} (x : A), P x -> MetaCoq (forall x, P x)
+| abs_let : forall {A : Type} {P : A -> Type} (x: A) (t: A), P x -> MetaCoq (let x := t in P x)
+| abs_prod : forall {A : Type} {P : A -> Type} (x : A), P x -> MetaCoq Type
+(** [abs_fix f t n] creates a fixpoint with variable [f] as name, *)
+(*     with body t, *)
+(*     and reducing the n-th product of [f]. This means that [f]'s type *)
+(*     is expected to be of the form [forall x1, ..., xn, T] *)
+| abs_fix : forall {A : Type}, A -> A -> N -> MetaCoq A
 
-(* [get_binder_name t] returns the name of variable [x] if:
-   - [t = x],
-   - [t = forall x, P x],
-   - [t = fun x=>b],
-   - [t = let x := d in b].
-*)
-| get_binder_name : forall {A}, A -> MetaCoq string
-| remove : forall {A B}, A -> MetaCoq B -> MetaCoq B
+(* [get_binder_name t] returns the name of variable [x] if: *)
+(*    - [t = x], *)
+(*    - [t = forall x, P x], *)
+(*    - [t = fun x=>b], *)
+(*    - [t = let x := d in b]. *)
+(* *)
+| get_binder_name : forall {A : Type}, A -> MetaCoq string
+| remove : forall {A : Type} {B : Type}, A -> MetaCoq B -> MetaCoq B
 
-| evar : forall A, MetaCoq A
-| Cevar : forall A, list Hyp -> MetaCoq A
-| is_evar : forall {A}, A -> MetaCoq bool
+| evar : forall (A : Type), MetaCoq A
+| Cevar : forall (A : Type), list Hyp -> MetaCoq A
+| is_evar : forall {A : Type}, A -> MetaCoq bool
 
-| hash : forall {A}, A -> N -> MetaCoq N
+| hash : forall {A : Type}, A -> N -> MetaCoq N
 | solve_typeclasses : MetaCoq unit
 
-| array_make : forall {A}, N -> A -> MetaCoq (array A)
-| array_get : forall {A}, array A -> N -> MetaCoq A
-| array_set : forall {A}, array A -> N -> A -> MetaCoq unit
+| array_make : forall {A : Type}, N -> A -> MetaCoq (array A)
+| array_get : forall {A : Type}, array A -> N -> MetaCoq A
+| array_set : forall {A : Type}, array A -> N -> A -> MetaCoq unit
 
 | print : string -> MetaCoq unit
-| pretty_print : forall {A}, A -> MetaCoq string
+| pretty_print : forall {A : Type}, A -> MetaCoq string
 
 | hypotheses : MetaCoq (list Hyp)
 
-| destcase : forall {A} (a : A), MetaCoq (Case)
+| destcase : forall {A : Type} (a : A), MetaCoq (Case)
 
-(** Given an inductive type A, applied to all its parameters (but not
-    necessarily indices), it returns the type applied to exactly the
-    parameters, and a list of constructors (applied to the parameters). *)
-| constrs : forall {A : Type} (a : A), MetaCoq (dyn * list dyn)
+(** Given an inductive type A, applied to all its parameters (but not *)
+(*     necessarily indices), it returns the type applied to exactly the *)
+(*     parameters, and a list of constructors (applied to the parameters). *)
+| constrs : forall {A : Type} (a : A), MetaCoq (prod dyn (list dyn))
 | makecase : forall (C : Case), MetaCoq dyn
 
-| munify {A} (x y : A) : Unification -> MetaCoq (option (x = y))
+| munify {A : Type} (x y : A) : Unification -> MetaCoq (option (eq x y))
 
-| call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (A * list goal)
+| call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (prod A (list goal))
 | list_ltac : MetaCoq unit
 
-| match_and_run : forall {A B t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
+| match_and_run : forall {A : Type} {B : A -> Type} {t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
 .
+(* Inductive MetaCoq *)
+(*           @{ mc_max *)
+(* mc_tret *)
+(* mc_tbindA *)
+(* mc_tbindB *)
+(* mc_ttry *)
+(* mc_ttry_exc *)
+(* mc_raise *)
+(* mc_raise_exc *)
+(* mc_tfix1_A *)
+(* mc_tfix1_B *)
+(* mc_tfix1_S *)
+(* mc_tfix1_a *)
+(* mc_tfix2_A1 *)
+(* mc_tfix2_A2 *)
+(* mc_tfix2_B *)
+(* mc_tfix2_S *)
+(* mc_tfix2_a *)
+(* mc_tfix3_A1 *)
+(* mc_tfix3_A2 *)
+(* mc_tfix3_A3 *)
+(* mc_tfix3_B *)
+(* mc_tfix3_S *)
+(* mc_tfix3_a *)
+(* mc_tfix4_A1 *)
+(* mc_tfix4_A2 *)
+(* mc_tfix4_A3 *)
+(* mc_tfix4_A4 *)
+(* mc_tfix4_B *)
+(* mc_tfix4_S *)
+(* mc_tfix4_a *)
+(* mc_tfix5_A1 *)
+(* mc_tfix5_A2 *)
+(* mc_tfix5_A3 *)
+(* mc_tfix5_A4 *)
+(* mc_tfix5_A5 *)
+(* mc_tfix5_B *)
+(* mc_tfix5_S *)
+(* mc_tfix5_a *)
+(* mc_is_var_A *)
+(* mc_tnu_A *)
+(* mc_tnu_B *)
+(* mc_tnu_opt *)
+(* mc_abs_A *)
+(* mc_abs_P *)
+(* mc_abs_let_A *)
+(* mc_abs_let_P *)
+(* mc_abs_prod_A *)
+(* mc_abs_prod_P *)
+(* mc_abs_result *)
+(* mc_abs_fix_A *)
+(* mc_get_binder_name_A *)
+(* mc_remove_A *)
+(* mc_remove_B *)
+(* mc_evar_A *)
+(* mc_Cevar_A *)
+(* mc_Cevar_list *)
+(* mc_Cevar_Hyp *)
+(* mc_is_evar_A *)
+(* mc_hash_A *)
+(* mc_array_make_A *)
+(* mc_array_get_A *)
+(* mc_array_set_A *)
+(* mc_array_make_array *)
+(* mc_array_get_array *)
+(* mc_array_set_array *)
+(* mc_pretty_print_A *)
+(* mc_makecase_dyn *)
+(* mc_destcase_A *)
+(* mc_constrs_A *)
+(* mc_constrs_prod1 mc_constrs_prod2 *)
+(* mc_munify_A *)
+(* mc_munify_eq1 mc_munify_eq_2 *)
+(* mc_munify_opt *)
+(* mc_call_ltac_A *)
+(* mc_match_and_run_A *)
+(* mc_match_and_run_B *)
+(* mc_match_and_run_pat1 mc_match_and_run_pat2 mc_match_and_run_pat3 mc_match_and_run_pat4 mc_match_and_run_pat5 *)
+(* mc_match_and_run_opt *)
+(* mc_hypotheses_list *)
+(* mc_hypotheses_Hyp *)
+(* mc_call_ltac_list_dyn *)
+(* mc_call_ltac_dyn *)
+(* mc_call_ltac_list_result *)
+(* mc_constrs_dyn1 *)
+(* mc_constrs_dyn2 *)
+(* mc_constrs_list *)
+(* mc_call_ltac_goal1 mc_call_ltac_goal2 *)
+(* mc_destcase_case1 mc_destcase_case2 mc_destcase_case3 mc_destcase_cas4 mc_destcase_case5 *)
+(* mc_makecase_case1 mc_makecase_case2 mc_makecase_case3 mc_makecase_cas4 mc_makecase_case5 *)
+(* mc_call_ltac_prod1 mc_call_ltac_prod2 *)
+(*           } : Type@{mc_max} -> Prop := *)
+(* | tret : forall {A : Type@{mc_tret}}, A -> MetaCoq A *)
+(* | bind : forall {A : Type@{mc_tbindA}} {B : Type@{mc_tbindB}}, *)
+(*     MetaCoq A -> (A -> MetaCoq B) -> MetaCoq B *)
+(* | ttry : forall {A : Type@{mc_ttry}}, MetaCoq A -> (Exception@{mc_ttry_exc} -> MetaCoq A) -> MetaCoq A *)
+(* | raise : forall {A : Type@{mc_raise}}, Exception@{mc_raise_exc} -> MetaCoq A *)
+(* | tfix1' : forall {A : Type@{mc_tfix1_A}} {B : A -> Type@{mc_tfix1_B}} (S : Type@{mc_tfix1_S} -> Prop), *)
+(*   (forall a : Type@{mc_tfix1_a}, S a -> MetaCoq a) -> *)
+(*   ((forall x : A, S (B x)) -> (forall x : A, S (B x))) -> *)
+(*   forall x : A, MetaCoq (B x) *)
+(* | tfix2' : forall {A1 : Type@{mc_tfix2_A1}} {A2 : A1 -> Type@{mc_tfix2_A2}} {B : forall (a1 : A1), A2 a1 -> Type@{mc_tfix2_B}} (S : Type@{mc_tfix2_S} -> Prop), *)
+(*   (forall a : Type@{mc_tfix2_a}, S a -> MetaCoq a) -> *)
+(*   ((forall (x1 : A1) (x2 : A2 x1), S (B x1 x2)) -> *)
+(*     (forall (x1 : A1) (x2 : A2 x1), S (B x1 x2))) -> *)
+(*   forall (x1 : A1) (x2 : A2 x1), MetaCoq (B x1 x2) *)
+(* | tfix3' : forall {A1 : Type@{mc_tfix3_A1}} {A2 : A1 -> Type@{mc_tfix3_A2}}  {A3 : forall (a1 : A1), A2 a1 -> Type@{mc_tfix3_A3}} {B : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type@{mc_tfix3_B}} (S : Type@{mc_tfix3_S} -> Prop), *)
+(*   (forall a : Type@{mc_tfix3_a}, S a -> MetaCoq a) -> *)
+(*   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), S (B x1 x2 x3)) -> *)
+(*     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), S (B x1 x2 x3))) -> *)
+(*   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), MetaCoq (B x1 x2 x3) *)
+(* | tfix4' : forall {A1 : Type@{mc_tfix4_A1}} {A2 : A1 -> Type@{mc_tfix4_A2}} {A3 : forall (a1 : A1), A2 a1 -> Type@{mc_tfix4_A3}} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type@{mc_tfix4_A4}} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type@{mc_tfix4_B}} (S : Type@{mc_tfix4_S} -> Prop), *)
+(*   (forall a : Type@{mc_tfix4_a}, S a -> MetaCoq a) -> *)
+(*   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4)) -> *)
+(*     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4))) -> *)
+(*   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), MetaCoq (B x1 x2 x3 x4) *)
+(* | tfix5' : forall {A1 : Type@{mc_tfix5_A1}} {A2 : A1 -> Type@{mc_tfix5_A2}} {A3 : forall (a1 : A1), A2 a1 -> Type@{mc_tfix5_A3}} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type@{mc_tfix5_A4}} {A5 : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type@{mc_tfix5_A5}} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2) (a4 : A4 a1 a2 a3), A5 a1 a2 a3 a4 -> Type@{mc_tfix5_B}} (S : Type@{mc_tfix5_S} -> Prop), *)
+(*   (forall a : Type@{mc_tfix5_a}, S a -> MetaCoq a) -> *)
+(*   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5)) -> *)
+(*     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5))) -> *)
+(*   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), MetaCoq (B x1 x2 x3 x4 x5) *)
+
+(* | is_var : forall {A : Type@{mc_is_var_A}}, A -> MetaCoq bool *)
+(* (* if the 4th argument is Some t, it adds x:=t to the local context *) *)
+(* | tnu : forall {A : Type@{mc_tnu_A}} {B : Type@{mc_tnu_B}}, string -> option@{mc_tnu_opt} A -> (A -> MetaCoq B) -> MetaCoq B *)
+(* | abs : forall {A : Type@{mc_abs_A}} {P : A -> Type@{mc_abs_P}} (x : A), P x -> MetaCoq (forall x, P x) *)
+(* | abs_let : forall {A : Type@{mc_abs_let_A}} {P : A -> Type@{mc_abs_let_P}} (x: A) (t: A), P x -> MetaCoq (let x := t in P x) *)
+(* | abs_prod : forall {A : Type@{mc_abs_prod_A}} {P : A -> Type@{mc_abs_prod_P}} (x : A), P x -> MetaCoq Type@{mc_abs_result} *)
+(* (** [abs_fix f t n] creates a fixpoint with variable [f] as name, *) *)
+(* (*     with body t, *) *)
+(* (*     and reducing the n-th product of [f]. This means that [f]'s type *) *)
+(* (*     is expected to be of the form [forall x1, ..., xn, T] *) *)
+(* | abs_fix : forall {A : Type@{mc_abs_fix_A}}, A -> A -> N -> MetaCoq A *)
+
+(* (* [get_binder_name t] returns the name of variable [x] if: *)
+(*    - [t = x], *)
+(*    - [t = forall x, P x], *)
+(*    - [t = fun x=>b], *)
+(*    - [t = let x := d in b]. *)
+(* *) *)
+(* | get_binder_name : forall {A : Type@{mc_get_binder_name_A}}, A -> MetaCoq string *)
+(* | remove : forall {A : Type@{mc_remove_A}} {B : Type@{mc_remove_B}}, A -> MetaCoq B -> MetaCoq B *)
+
+(* | evar : forall {A : Type@{mc_evar_A}}, MetaCoq A *)
+(* | Cevar : forall {A : Type@{mc_Cevar_A}}, list@{mc_Cevar_list} Hyp@{mc_Cevar_Hyp} -> MetaCoq A *)
+(* | is_evar : forall {A : Type@{mc_is_evar_A}}, A -> MetaCoq bool *)
+
+(* | hash : forall {A : Type@{mc_hash_A}}, A -> N -> MetaCoq N *)
+(* | solve_typeclasses : MetaCoq unit *)
+
+(* | array_make : forall {A : Type@{mc_array_make_A}}, N -> A -> MetaCoq (array@{mc_array_make_array} A) *)
+(* | array_get : forall {A : Type@{mc_array_get_A}}, array@{mc_array_get_array} A -> N -> MetaCoq A *)
+(* | array_set : forall {A : Type@{mc_array_set_A}}, array@{mc_array_set_array} A -> N -> A -> MetaCoq unit *)
+
+(* | print : string -> MetaCoq unit *)
+(* | pretty_print : forall {A : Type@{mc_pretty_print_A}}, A -> MetaCoq string *)
+
+(* | hypotheses : MetaCoq (list@{mc_hypotheses_list} Hyp@{mc_hypotheses_Hyp}) *)
+
+(* | destcase : forall {A : Type@{mc_destcase_A}} (a : A), MetaCoq (Case@{mc_destcase_case1 mc_destcase_case2 mc_destcase_case3 mc_destcase_cas4 mc_destcase_case5}) *)
+
+(* (** Given an inductive type A, applied to all its parameters (but not *)
+(*     necessarily indices), it returns the type applied to exactly the *)
+(*     parameters, and a list of constructors (applied to the parameters). *) *)
+(* | constrs : forall {A : Type@{mc_constrs_A}} (a : A), MetaCoq (prod@{mc_constrs_prod1 mc_constrs_prod2} dyn@{mc_constrs_dyn1} (list@{mc_constrs_list} dyn@{mc_constrs_dyn2})) *)
+(* | makecase : forall (C : Case@{mc_makecase_case1 mc_makecase_case2 mc_makecase_case3 mc_makecase_cas4 mc_makecase_case5}), MetaCoq dyn@{mc_makecase_dyn} *)
+
+(* | munify {A : Type@{mc_munify_A}} (x y : A) : Unification -> MetaCoq (option@{mc_munify_opt} (eq@{mc_munify_eq1 mc_munify_eq_2} x y)) *)
+
+(* | call_ltac : forall {A : Type@{mc_call_ltac_A}}, string -> list@{mc_call_ltac_list_dyn} dyn@{mc_call_ltac_dyn} -> MetaCoq (prod@{mc_call_ltac_prod1 mc_call_ltac_prod2} A (list@{mc_call_ltac_list_result} goal@{mc_call_ltac_goal1 mc_call_ltac_goal2})) *)
+(* | list_ltac : MetaCoq unit *)
+
+(* | match_and_run : forall {A : Type@{mc_match_and_run_A}} {B : A -> Type@{mc_match_and_run_B}} {t}, pattern@{mc_match_and_run_pat1 mc_match_and_run_pat2 mc_match_and_run_pat3 mc_match_and_run_pat4 mc_match_and_run_pat5} MetaCoq A B t -> MetaCoq (option@{mc_match_and_run_opt} (B t)) *)
+(* . *)
 
 Definition failwith {A} s : MetaCoq A := raise (Failure s).
 
@@ -426,15 +559,15 @@ Module Array.
         ret a
     end.
 
-  Definition to_list {A} (a : t A) :=
-    let n := length a in
-    r <- N.iter n (fun l : M (N * list A)%type =>
-      l' <- l;
-      let (i, s) := l' in
-      e <- get a i;
-      retS (N.succ i, e :: s))
-    (ret (0%N, nil));
-    retS (snd r).
+  (* Definition to_list {A} (a : t A) := *)
+  (*   let n := length a in *)
+  (*   r <- N.iter n (fun l : M (N * list A)%type => *)
+  (*     l' <- l; *)
+  (*     let (i, s) := l' in *)
+  (*     e <- get a i; *)
+  (*     retS (N.succ i, e :: s)) *)
+  (*   (ret (0%N, nil)); *)
+  (*   retS (snd r). *)
 
   Definition copy {A} (a b : t A) :=
     let n := length a in

@@ -96,7 +96,7 @@ Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
   | S n' =>
     mmatch A as A' return M A' with
     | [? B (fty : B -> Type)] forall x, fty x => [H]
-      let t' := match H in _ = P return P with eq_refl => t end in (* we need to reduce this *)
+      let t' := reduce RedSimpl match H in _ = P return P with eq_refl => t end in (* we need to reduce this *)
       nu x,
         r <- unfold_funs (t' x) n';
       abs x r
@@ -115,11 +115,12 @@ MProof.
   - cintros x {- MCTactics.split;; [cintros P {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *)
   assert (F : get_type_of_branch rG (reflect_RFalse P)).
   - tsimpl. intros. MCTactics.split. intros. exact (match a x with end). intros;; discriminate.
+  mpose (return_type := unfold_funs (RTele_Fun rG) 5).
   pose (mc :=
           makecase {|
               case_val := r;
               case_type := RTele_App rG (reflect_args P b) r;
-              case_return := Dyn (typ2);
+              case_return := Dyn (return_type);
               case_branches := (Dyn T) :: (Dyn F) :: nil
             |}).
   mpose (c := mc).

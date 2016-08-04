@@ -1,8 +1,7 @@
 From MetaCoq
-     Require Export MetaCoq MCListUtils.
-(* ImportedTactics. *)
+     Require Export MetaCoq MCListUtils MCTactics ImportedTactics.
 Import MetaCoqNotations.
-(* Import MCTacticsNotations. *)
+Import MCTacticsNotations.
 
 Require Import Strings.String.
 
@@ -210,7 +209,7 @@ Fixpoint args_of_max (max : nat) : forall {A}, A -> M (list dyn) :=
 
 Polymorphic Definition coerce_rect {A : Type} (B : Type) (H : A = B) : forall (x : A), B :=
   match H in _ = T return A -> T with
-  | eq_refl => id
+  | eq_refl _ => id
   end.
 
 Polymorphic Definition CantCoerce : Exception. exact exception. Qed.
@@ -237,15 +236,14 @@ Polymorphic Program Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn
 Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (CTele it) :=
   fun isort it nindx =>
     mfix2 rec (A : stype_of isort) (a : selem_of A) : M (CTele it) :=
-    print "get_CTele_raw: A";;
-    print_term A;;
+    print_term ("get_CTele_raw: A", A);;
                B <- evar Type;
       F <- evar (B -> stype_of isort);
       oH <- munify A (ForAll F) UniNormal;
       match oH with
       | Some H =>
         print "Prod case";;
-        let f := reduce RedWhd (match H in _ = P return selem_of P with eq_refl => a end) in
+        let f := reduce RedWhd (match H in _ = P return selem_of P with eq_refl _ => a end) in
                 nu b : B,
                        r <- rec (F b) (App f b);
                    f' <- abs b r;
@@ -254,14 +252,17 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
       | None =>
         m1 <- munify B (stype_of isort) UniNormal;
           match m1 with
-          | None => print_term B;; failwith "Should never happen"
+          | None =>
+                       print_term ("get_CTele_raw: B", B);;
+                       failwith "Should never happen"
           | Some H => let idB := reduce RedWhd (match H in _ = T' return B -> T' with
-                                 | eq_refl => fun (x : _) => x
+                                 | eq_refl _ => fun (x : _) => x
                                  end) in
                               munify F idB UniNormal;; ret tt
                           end;;
-                               print_term B;; print_term F;;
-        print "NoFun case";;
+                             print_term ("get_CTele_raw: B", B);;
+                             print_term ("get_CTele_raw: F", F);;
+        print ("get_CTele_raw: NoFun case");;
               let A_red := reduce RedWhd  A in
                          args <- args_of_max nindx A_red;
                            atele <- get_ATele it args;
@@ -284,9 +285,9 @@ Polymorphic Definition sort_dyn (isort : Sort) (A : Type) (a : A) : M (sigT (@se
 
 Polymorphic Definition sort_goal {T : Type} (A : T) : M (sigT stype_of) :=
   mmatch T with
-| Prop => [H] let A_Prop := match H in _ = R return R with eq_refl => A end in
+| Prop => [H] let A_Prop := reduce RedSimpl match H in _ = R return R with eq_refl _ => A end in
                       ret (existT _ SProp A_Prop)
-| Type => [H] let A_Type := match H in _ = R return R with eq_refl => A end in
+| Type => [H] let A_Type := reduce RedSimpl match H in _ = R return R with eq_refl _ => A end in
                       ret (existT _ SType A_Type)
 end.
 
@@ -298,11 +299,11 @@ Definition dyn_of_stype {sort} : stype_of sort -> dyn :=
 
 Polymorphic Definition get_ITele : forall {T : Type} (ind : T), MetaCoq (nat * (sigT ITele)) :=
 mfix2 f (T : _) (ind : _) : M (nat * sigT ITele)%type :=
-  print_term ind;;
+  print_term ("get_ITele", ind);;
   mmatch T with
   | [? (A : Type) (F : A -> Type)] forall a, F a =>
     [H]
-        let indFun := match H in eq _ P return P with eq_refl => ind end
+        let indFun := reduce RedSimpl match H in eq _ P return P with eq_refl _ => ind end
                      in nu a : A,
                                r <- f (F a) (indFun a);
                      let (n, sit) := r in
@@ -311,15 +312,15 @@ mfix2 f (T : _) (ind : _) : M (nat * sigT ITele)%type :=
                        ret (S n, existT _ sort (iTele f))
   | Prop =>
    [H]
-      let indProp := match H in eq _ P return P with eq_refl => ind end
+      let indProp := reduce RedSimpl match H in eq _ P return P with eq_refl _ => ind end
                     in ret (0, existT _ SProp (iBase (sort := SProp) indProp))
   | Type =>
     [H]
-       let indType := match H in eq _ P return P with eq_refl => ind end
+       let indType := reduce RedSimpl match H in eq _ P return P with eq_refl _ => ind end
                       in ret (0, existT _ (SType) (iBase (sort := SType) indType))
   | Set =>
     [H]
-       let indType := match H in eq _ P return P with eq_refl => ind end
+       let indType := reduce RedSimpl match H in eq _ P return P with eq_refl _ => ind end
                       in ret (0, existT _ (SType) (iBase (sort := SType) indType))
                     | _ => failwith "Impossible ITele"
            end
@@ -328,10 +329,10 @@ mfix2 f (T : _) (ind : _) : M (nat * sigT ITele)%type :=
 Polymorphic Definition get_ind {A : Type} (n : A) :
   M (nat * sigT (fun s => (ITele s)) * list dyn) :=
   r <- constrs A;
-    print_term r;;
+    print_term ("get_ind", r);;
                let (indP, constrs) := r in
                sortit <- get_ITele (elem indP) : M (nat * sigT ITele);
-                 print_term sortit;;
+                 print_term ("get_ind", sortit);;
                             let nindx : nat := fst sortit in
                             let (isort, it) := snd sortit in
                             ret (nindx, existT _ _ it, constrs)
@@ -393,8 +394,8 @@ Polymorphic Definition goal_to_dyn : goal -> M dyn := fun g =>
   | TheGoal d => ret (Dyn d)
   | _ => raise NotAGoal
   end.
-Definition new_destruct {A : Type} (n : A) : goal -> M (list goal) :=
-  fun g=>
+Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
+  fun (g : goal) =>
     ind <- get_ind n;
       let (nsortit, constrs) := ind in
       let (nindx, sortit) := nsortit in
@@ -410,31 +411,30 @@ Definition new_destruct {A : Type} (n : A) : goal -> M (list goal) :=
         gt <- goal_type g;
         rsG <- sort_goal gt;
         let (rsort, sG) := rsG in
-        print_term (isort, rsort);;
+        print_term ("new_destruct isort, rsort", (isort, rsort));;
                    n' <- coerce n;
           rt <- abstract_goal atele sG n';
           let sg := reduce RedSimpl (map (
                         fun ct =>
                            (selem_of (get_type_of_branch rt ct))
                                        ) cts) in
-          ret nil
-          (* goals <- mmap (fun ty=> r <- evar ty; ret (TheGoal r)) sg; *)
-          (* branches <- mmap goal_to_dyn goals; *)
-          (* let tsg := reduce RedWhd (type_of sg) in *)
-          (* print_term tsg;; *)
-          (* print_term sg;; *)
-        (*   let rrf := reduce RedSimpl (RTele_Fun rt) in *)
-        (*   let rrt := reduce RedSimpl (RTele_Type rt) in *)
-        (*   print_term rrt;; *)
-        (*   print_term rrf;; *)
-        (*   print "after coerce";; *)
-        (*     caseterm <- makecase {| *)
-        (*                case_val := n'; *)
-        (*                case_type := selem_of (RTele_App rt atele n'); *)
-        (*                case_return := Dyn rrf; *)
-        (*                case_branches := branches *)
-        (*              |}; *)
-        (*   ret goals *)
+          goals <- mmap (fun ty=> r <- evar ty; ret (TheGoal r)) sg;
+          branches <- mmap goal_to_dyn goals;
+          let tsg := reduce RedWhd (type_of sg) in
+          print_term tsg;;
+          print_term sg;;
+          let rrf := reduce RedSimpl (RTele_Fun rt) in
+          let rrt := reduce RedSimpl (RTele_Type rt) in
+          print_term rrt;;
+          print_term rrf;;
+          print "after coerce";;
+            caseterm <- makecase {|
+                       case_val := n';
+                       case_type := selem_of (RTele_App rt atele n');
+                       case_return := Dyn rrf;
+                       case_branches := branches
+                     |};
+          ret goals
 .
 
 (* Need this at some point: *)

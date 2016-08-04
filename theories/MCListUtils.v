@@ -1,4 +1,4 @@
-Require Import MetaCoq.MetaCoq.
+From MetaCoq Require Export MetaCoq.
 Import MetaCoqNotations.
 
 Local Set Universe Polymorphism.

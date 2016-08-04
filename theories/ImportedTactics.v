@@ -1,4 +1,4 @@
-Require Import MetaCoq.MCTactics.
+From MetaCoq Require Import MetaCoq MCTactics.
 Import MetaCoqNotations.
 Import MCTacticsNotations.
 
