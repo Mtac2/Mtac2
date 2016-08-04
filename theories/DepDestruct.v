@@ -226,6 +226,7 @@ Polymorphic Program Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn
     match it as it', al return M (ATele it') with
     | iBase T, nil => ret (@aBase _ T)
     | iTele f, t_dyn :: al =>
+      print_term ("get_ATele before coerce", t_dyn);;
       t <- coerce (elem t_dyn);
         r <- (get_ATele (f t) al);
         ret (aTele t r)
@@ -264,9 +265,12 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
                              print_term ("get_CTele_raw: B", B);;
                              print_term ("get_CTele_raw: F", F);;
         print ("get_CTele_raw: NoFun case");;
-              let A_red := reduce RedMatch  A in
+              let A_red := reduce RedHNF A in
+                           print_term ("get_CTele_raw before args_of_max in NoFun", nindx, A_red);;
                          args <- args_of_max nindx A_red;
+                             print_term ("get_CTele_raw before get_ATele with args:", args);;
                            atele <- get_ATele it args;
+                           print "(get_CTele_raw before coerce in NoFun)";;
                            a' <- @coerce _ (selem_of (ITele_App (isort := isort) atele)) a ;
                              ret (cBase atele a')
 end.
