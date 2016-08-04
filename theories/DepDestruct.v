@@ -8,7 +8,7 @@ Require Import Strings.String.
 Unset Universe Minimization ToSet.
 Set Printing Universes.
 
-Definition RedMatch := RedWhd [RedIota].
+Notation RedMatch := (RedWhd [RedIota]).
 
 Polymorphic Inductive sigT {A : Type} (P : A -> Type) : Type :=  existT : forall x : A, P x -> sigT P.
 
