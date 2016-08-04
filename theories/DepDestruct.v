@@ -8,6 +8,7 @@ Require Import Strings.String.
 Unset Universe Minimization ToSet.
 Set Printing Universes.
 
+Definition RedMatch := RedWhd [RedIota].
 
 Polymorphic Inductive sigT {A : Type} (P : A -> Type) : Type :=  existT : forall x : A, P x -> sigT P.
 
@@ -243,7 +244,7 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
       match oH with
       | Some H =>
         print "Prod case";;
-        let f := reduce RedWhd (match H in _ = P return selem_of P with eq_refl _ => a end) in
+        let f := reduce RedMatch (match H in _ = P return selem_of P with eq_refl _ => a end) in
                 nu b : B,
                        r <- rec (F b) (App f b);
                    f' <- abs b r;
@@ -255,7 +256,7 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
           | None =>
                        print_term ("get_CTele_raw: B", B);;
                        failwith "Should never happen"
-          | Some H => let idB := reduce RedWhd (match H in _ = T' return B -> T' with
+          | Some H => let idB := reduce RedMatch (match H in _ = T' return B -> T' with
                                  | eq_refl _ => fun (x : _) => x
                                  end) in
                               munify F idB UniCoq;; ret tt
@@ -263,7 +264,7 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
                              print_term ("get_CTele_raw: B", B);;
                              print_term ("get_CTele_raw: F", F);;
         print ("get_CTele_raw: NoFun case");;
-              let A_red := reduce RedWhd  A in
+              let A_red := reduce RedMatch  A in
                          args <- args_of_max nindx A_red;
                            atele <- get_ATele it args;
                            a' <- @coerce _ (selem_of (ITele_App (isort := isort) atele)) a ;
@@ -420,7 +421,7 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
                                        ) cts) in
           goals <- mmap (fun ty=> r <- evar ty; ret (TheGoal r)) sg;
           branches <- mmap goal_to_dyn goals;
-          let tsg := reduce RedWhd (type_of sg) in
+          let tsg := reduce RedHNF (type_of sg) in
           print_term tsg;;
           print_term sg;;
           let rrf := reduce RedSimpl (RTele_Fun rt) in
