@@ -35,7 +35,7 @@ Definition NotUnifiable {A} (x y : A) : Exception. exact exception. Qed.
 Definition Failure (s : string) : Exception. exact exception. Qed.
 
 
-Record dyn := Dyn { type : Type; elem :> type }.
+Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
 
 Definition index := N.

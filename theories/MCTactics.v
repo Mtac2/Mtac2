@@ -1,5 +1,5 @@
 Require Import Strings.String.
-From MetaCoq Require Import MetaCoq.
+From MetaCoq Require Export MetaCoq.
 Require Import MetaCoq.MCListUtils.
 Import MetaCoqNotations.
 

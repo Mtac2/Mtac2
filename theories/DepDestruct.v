@@ -399,6 +399,7 @@ Polymorphic Definition goal_to_dyn : goal -> M dyn := fun g =>
   | TheGoal d => ret (Dyn d)
   | _ => raise NotAGoal
   end.
+
 Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
   fun (g : goal) =>
     ind <- get_ind n;
@@ -408,9 +409,9 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
       atele <- get_ind_atele it nindx A;
                  (* Compute CTeles *)
         cts <- mmap (fun c_dyn : dyn =>
-                       c <- sort_dyn isort (type c_dyn) (elem c_dyn);
-                         let (ty, el) := c in
-                         get_CTele it nindx ty el
+                     ty <- coerce c_dyn.(type);
+                     el <- coerce c_dyn.(elem);
+                     get_CTele it nindx ty el
                     ) constrs;
                      (* Compute return type RTele *)
         gt <- goal_type g;
@@ -441,6 +442,12 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
                      |};
           ret goals
 .
+
+Goal forall n, n <= 0 : Type.
+MProof.
+  intros.
+Set Unicoq Debug.
+  new_destruct n.
 
 (* Need this at some point: *)
 (*                             let polyconstrs := *)

@@ -43,10 +43,15 @@ module MetaCoqNames = struct
 
   let mkCase = mkConstr "mkCase"
 
-  let mkelem = mkConstr "elem"
-  let mkdyn = mkConstr "dyn"
+  let mkelem d sigma env =
+    let sigma, c = mkUConstr "elem" sigma env in
+    sigma, mkApp(c, [|d|])
 
-  let mkDyn ty el = mkApp(Lazy.force (mkConstr "Dyn"), [|ty;el|])
+  let mkdyn = mkUConstr "dyn"
+
+  let mkDyn ty el sigma env =
+    let sigma, c = mkUConstr "Dyn" sigma env in
+    sigma, mkApp(c, [|ty;el|])
 
 end
 
@@ -552,20 +557,22 @@ let name_occurn_env env n =
 
 let dest_Case (env, sigma) t_type t =
   let mkCase = Lazy.force mkCase in
-  let dyn = Lazy.force mkdyn in
+  let sigma, dyn = mkdyn sigma env in
   try
     let t = whd_betadelta env sigma t in
     let (info, return_type, discriminant, branches) = Term.destCase t in
-    let branch_dyns = Array.fold_right (
-      fun t l ->
+    let sigma, branch_dyns = Array.fold_right (
+      fun t (sigma,l) ->
         let dyn_type = Retyping.get_type_of env sigma t in
-        CoqList.makeCons dyn (mkDyn dyn_type t) l
-    ) branches (CoqList.makeNil dyn) in
+        let sigma, cdyn = mkDyn dyn_type t sigma env in
+        sigma, CoqList.makeCons dyn cdyn l
+    ) branches (sigma, CoqList.makeNil dyn) in
     let ind_type = Retyping.get_type_of env sigma discriminant in
     let return_type_type = Retyping.get_type_of env sigma return_type in
+    let sigma, ret_dyn = mkDyn return_type_type return_type sigma env in
     (sigma, (Term.applist(mkCase,
                           [ind_type; discriminant; t_type;
-                           mkDyn return_type_type return_type;
+                           ret_dyn;
                            branch_dyns
                           ])
             )
@@ -581,21 +588,25 @@ let dest_Case (env, sigma) t_type t =
 let make_Case (env, sigma) case =
   let open Lazy in
   let open Term in
-  let elem = force mkelem in
   let case_ind = force (mkConstr "case_ind") in
   let case_val = force (mkConstr "case_val") in
   let case_return = force (mkConstr "case_return") in
   let case_branches = force (mkConstr "case_branches") in
-  let repr_ind = applist(case_ind, [case]) in
-  let repr_val = applist(case_val, [case]) in
+  let repr_ind = mkApp(case_ind, [|case|]) in
+  let repr_val = mkApp(case_val, [|case|]) in
   let repr_val_red = whd_betadeltaiota env sigma repr_val in
-  let repr_return = applist(case_return, [case]) in
-  let repr_return_unpack = applist(elem, [repr_return]) in
+  let repr_return = mkApp(case_return, [|case|]) in
+  let sigma, repr_return_unpack = mkelem repr_return sigma env in
   let repr_return_red = whd_betadeltaiota env sigma repr_return_unpack in
-  let repr_branches = applist(case_branches, [case]) in
+  let repr_branches = mkApp(case_branches, [|case|]) in
   let repr_branches_list = CoqList.from_coq (env, sigma) repr_branches in
+  let rsigma = ref sigma in
   let repr_branches_dyns =
-    List.map (fun t -> applist(elem, [t])) repr_branches_list in
+    List.map (fun t ->
+      let sigma, c = mkelem t !rsigma env in
+      rsigma := sigma;
+      c) repr_branches_list in
+  let sigma = !rsigma in
   let repr_branches_red =
     List.map (fun t -> whd_betadeltaiota env sigma t) repr_branches_dyns in
   let t_type, l = decompose_app (whd_betadeltaiota env sigma repr_ind) in
@@ -606,7 +617,7 @@ let make_Case (env, sigma) case =
         let match_term = mkCase (case_info, repr_return_red, repr_val_red,
                                  Array.of_list (repr_branches_red)) in
         let match_type = Retyping.get_type_of env sigma match_term in
-        (sigma, mkDyn match_type match_term)
+        mkDyn match_type match_term sigma env
     | _ -> assert false
   else
     Exceptions.block "case_type is not an inductive type"
@@ -618,23 +629,24 @@ let get_Constrs (env, sigma) t =
     let (mind, ind_i), _ = destInd t_type in
     let mbody = Environ.lookup_mind mind env in
     let ind = Array.get (mbody.mind_packets) ind_i in
-    let dyn = Lazy.force mkdyn in
+    let sigma, dyn = mkdyn sigma env in
     let args = CList.firstn mbody.mind_nparams_rec args in
-    let l = Array.fold_right
-              (fun i l ->
-                 let constr = Names.ith_constructor_of_inductive (mind, ind_i) i in
-                 let coq_constr = Term.applist (Term.mkConstruct constr, args) in
-                 let ty = Retyping.get_type_of env sigma coq_constr in
-                 let dyn_constr = mkDyn ty coq_constr in
-                 CoqList.makeCons dyn dyn_constr l
-              )
-              (* this is just a dirty hack to get the indices of constructors *)
-              (Array.mapi (fun i t -> i+1) ind.mind_consnames)
-              (CoqList.makeNil dyn)
+    let sigma, l = Array.fold_right
+                     (fun i (sigma, l) ->
+                        let constr = Names.ith_constructor_of_inductive (mind, ind_i) i in
+                        let coq_constr = Term.applist (Term.mkConstruct constr, args) in
+                        let ty = Retyping.get_type_of env sigma coq_constr in
+                        let sigma, dyn_constr = mkDyn ty coq_constr sigma env in
+                        sigma, CoqList.makeCons dyn dyn_constr l
+                     )
+                     (* this is just a dirty hack to get the indices of constructors *)
+                     (Array.mapi (fun i t -> i+1) ind.mind_consnames)
+                     (sigma, CoqList.makeNil dyn)
     in
     let indty = Term.applist (t_type, args) in
     let indtyty = Retyping.get_type_of env sigma indty in
-    let pair = CoqPair.mkPair dyn (CoqList.makeType dyn) (mkDyn indtyty indty) l in
+    let sigma, indtydyn = mkDyn indtyty indty sigma env in
+    let pair = CoqPair.mkPair dyn (CoqList.makeType dyn) indtydyn l in
     (sigma, pair)
   else
     Exceptions.block "The argument of Mconstrs is not an inductive type"
