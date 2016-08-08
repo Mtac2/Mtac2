@@ -9,14 +9,14 @@ module MetaCoqRun = struct
   (**  *)
   let pretypeT env sigma t c =
     let metaCoqType = Lazy.force Run.MetaCoqNames.mkT_lazy in
-    let tacticType = Lazy.force MCTactics.mkTactic in
+    let sigma, tacticType = MCTactics.mkTactic sigma env in
     let ty = Retyping.get_type_of env sigma c in
     let (h, args) = Reductionops.whd_betadeltaiota_stack env sigma ty in
     if Term.eq_constr_nounivs metaCoqType h && List.length args = 1 then
       let sigma = Evarconv.the_conv_x_leq env t (List.hd args) sigma in
       (sigma, c)
     else if Term.eq_constr_nounivs tacticType ty && List.length args = 0 then
-      let runTac = Lazy.force MCTactics.mkRunTac in
+      let sigma, runTac = MCTactics.mkRunTac sigma env in
       (sigma, Term.mkApp(runTac, [|t; c|]))
     else
       Errors.error "Not a Mtactic"

@@ -324,16 +324,21 @@ module MCTactics = struct
   let runTac = "run_tac"
   let tactic = "tactic"
 
-  let mkConst s =
+  let mkConstr s =
     let open Nametab in let open Libnames in
-    try Term.mkConst (locate_constant (qualid_of_string s))
+    try Universes.constr_of_global (locate (qualid_of_string s))
     with _ -> raise (Constr.Constr_not_found s)
 
-  let mkReduceGoal = lazy (mkConst reduceGoal)
+  let mkUConstr s sigma env =
+    let open Nametab in let open Libnames in
+    try Evd.fresh_global env sigma (locate (qualid_of_string s))
+    with _ -> raise (Constr.Constr_not_found s)
 
-  let mkRunTac = lazy (mkConst runTac)
+  let mkReduceGoal = lazy (mkConstr reduceGoal)
 
-  let mkTactic = lazy (mkConst tactic)
+  let mkRunTac = mkUConstr runTac
+
+  let mkTactic = mkUConstr tactic
 
 end
 

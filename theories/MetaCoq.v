@@ -87,7 +87,7 @@ Inductive pattern (M : Type->Prop) A (B : A -> Type) (t : A) : Prop :=
 | ptele : forall {C}, (forall (x : C), pattern M A B t) -> pattern M A B t.
 
 (** goal type *)
-Inductive goal :=
+Polymorphic Inductive goal :=
 | TheGoal : forall {A}, A -> goal
 | AHyp : forall {A}, option A -> (A -> goal) -> goal.
 

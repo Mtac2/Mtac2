@@ -90,8 +90,8 @@ end
 
 module MCTactics : sig
   val mkReduceGoal : constr Lazy.t
-  val mkRunTac : constr Lazy.t
-  val mkTactic : constr Lazy.t
+  val mkRunTac : Evd.evar_map -> Environ.env -> Evd.evar_map * Term.constr
+  val mkTactic : Evd.evar_map -> Environ.env -> Evd.evar_map * Term.constr
 end
 
 module CoqPair : sig
