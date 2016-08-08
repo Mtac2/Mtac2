@@ -14,7 +14,7 @@ Definition metaCoqReduceGoal {A : Type} : M A :=
 
 Definition coerce_rect {A : Type} (B : Type) (H : A = B) : forall (x : A), B :=
   match H in _ = T return A -> T with
-  | eq_refl _ => id
+  | eq_refl _ => fun x=>x
   end.
 
 Definition CantCoerce : Exception. exact exception. Qed.
