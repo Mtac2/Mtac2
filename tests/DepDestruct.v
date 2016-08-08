@@ -105,6 +105,20 @@ Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
     end
   end.
 
+
+(** FOR JANNO *)
+Goal forall P b, reflect P b -> P <-> b = true.
+MProof.
+  intros P b r.
+  new_destruct r.
+Abort.
+
+Goal forall n, 0 <= n.
+MProof.
+  intros n.
+  new_destruct n.
+Abort.
+
 (* MetaCoq version *)
 Goal forall P b, reflect P b -> P <-> b = true.
 MProof.

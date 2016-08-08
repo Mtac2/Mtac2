@@ -221,7 +221,10 @@ Polymorphic Definition coerce {A B : Type} (x : A) : M B :=
   oH <- munify A B UniCoq;
   match oH with
   | Some H => retS (coerce_rect B H x)
-  | _ => raise CantCoerce
+  | _ =>
+    print "Coerce failure:";;
+    print_term A;; print_term B;;
+    raise CantCoerce
   end.
 
 Polymorphic Program Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn) {struct al} : M (ATele it) :=
@@ -435,20 +438,17 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
           let rrt := reduce RedSimpl (RTele_Type rt) in
           print_term rrt;;
           print_term rrf;;
-          print "after coerce";;
-            caseterm <- makecase {|
+          caseterm <- makecase {|
                        case_val := n';
                        case_type := selem_of (RTele_App rt atele n');
                        case_return := Dyn rrf;
                        case_branches := branches
                      |};
+          let gterm := dyn_to_goal caseterm in
+          unify_or_fail gterm g;;
           ret goals
 .
 
-Goal forall n, n <= 0 : Type.
-MProof.
-  intros.
-  new_destruct n.
 
 (* Need this at some point: *)
 (*                             let polyconstrs := *)
