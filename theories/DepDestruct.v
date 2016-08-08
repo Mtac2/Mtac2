@@ -8,50 +8,83 @@ Require Import Strings.String.
 Unset Universe Minimization ToSet.
 Set Printing Universes.
 
-Definition abs {A} {P} (x:A) (t:P x) := (let y := reduce RedHNF x in abs y t).
+Section PolymorphicStdLib.
+
+Polymorphic Inductive sigT {A : Type} (P : A -> Type) : Type :=
+  existT : forall x : A, P x -> sigT P.
+
+End PolymorphicStdLib.
+
+(** This is the [abs] from [MetaCoq] but first reducing the variable
+    [x] (in case it is [id x] or some convertible term to a variable)
+    *)
+Definition abs {A} {P} (x:A) (t:P x) :=
+  let y := reduce RedHNF x in abs y t.
 
 Notation RedMatch := (RedWhd [RedIota]).
 
-Polymorphic Inductive sigT {A : Type} (P : A -> Type) : Type :=  existT : forall x : A, P x -> sigT P.
+(** [match_eq E P A] takes an equality of [T = S] and an element [A]
+    of type [T], and returns [A] casted to [P S], but without any match
+    (it reduces it). *)
+Notation match_eq E P A :=
+  (reduce RedMatch match E in _ = R return P R with eq_refl => A end).
 
+(** A polymorphic function that returns the type of an element. *)
+Polymorphic Definition type_of@{tof} {A : Type@{tof}} (x : A) : Type@{tof} := A.
+
+
+(** Types that can hold either a [Prop] or a [Type] *)
 Section Sorts.
-  Inductive Sort : Type := SProp | SType.
-  Polymorphic Definition type_of@{type_of1} {A : Type@{type_of1}} (x : A) : Type@{type_of1} := A.
-  Polymorphic Definition stype_of@{stype_of1 stype_of2} (s : Sort) : Type@{stype_of2}
-    := match s with SType => Type@{stype_of1} | SProp => Prop end.
-  Polymorphic Definition selem_of@{selem_of1 selem_of2} {s : Sort} (x : stype_of@{selem_of1 selem_of2} s) : Type@{selem_of2} :=
-    match s return stype_of@{selem_of1 selem_of2} s -> Type@{selem_of2} with
-    | SType => fun x => x
-    | SProp => fun x => x
-    end x.
 
-  Polymorphic Definition ForAll@{ForAll_A ForAll_st1 ForAll_st2 ForAll_max1 ForAll_max2}
-              {sort : Sort} {A : Type@{ForAll_A}} :
-    (A -> stype_of@{ForAll_st1 ForAll_st2} sort) -> stype_of@{ForAll_max1 ForAll_max2} sort :=
-    match
-      sort as sort'
-      return ((A -> stype_of@{ForAll_st1 ForAll_st2} sort') -> stype_of@{ForAll_max1 ForAll_max2} sort')
-    with
-    | SProp => fun F => forall a : A, F a
-    | SType => fun F => forall a : A, F a
-    end.
+Inductive Sort : Type := SProp | SType.
 
-  Polymorphic Definition Fun@{Fun_A Fun_st1 Fun_st2 Fun_max1 Fun_max2} {sort} {A : Type@{Fun_A}} :
-    forall {F : A -> stype_of sort}, (forall a, selem_of (F a)) -> selem_of (ForAll@{Fun_A Fun_st1 Fun_st2 Fun_max1 Fun_max2} F) :=
-    match sort as sort' return
-          forall {F : A -> stype_of sort'}, (forall a, selem_of (F a)) -> selem_of (ForAll F)
-    with
-    | SProp => fun _ f => f
-    | SType => fun _ f => f
-    end.
+(** Creates a fresh type according to [s] *)
+Polymorphic Definition stype_of@{stof1 stof2} (s : Sort) : Type@{stof2} :=
+  match s with SType => Type@{stof1} | SProp => Prop end.
 
-  Polymorphic Definition App@{App_A App_st1 App_st2 App_max1 App_max2} {sort} {A : Type@{App_A}} : forall {F : A -> _},  selem_of (ForAll@{App_A App_st1 App_st2 App_max1 App_max2} (sort := sort) F) -> forall a, selem_of (F a) :=
-    match sort as sort' return forall F, selem_of (ForAll (sort := sort') F) -> forall a, selem_of (F a) with
-    | SProp => fun F f a => f a
-    | SType => fun F f a => f a
-    end.
+(** When working with a sort [s], we cannot simply say "we have an
+    element of [stype_of s]". For that, we make [selem_of T], where
+    [T] is a [stype_of s]. *)
+Polymorphic Definition selem_of@{seof1 seof2} {s : Sort} (x : stype_of@{seof1 seof2} s) : Type@{seof2} :=
+  match s return stype_of@{seof1 seof2} s -> Type@{seof2} with
+  | SType => fun x => x
+  | SProp => fun x => x
+  end x.
+
+Fail Example CannotMakeAnElementOfaSort s (P : stype_of s) (x : P) := x.
+
+Example WeCanWithElemOf s (P : stype_of s) (x : selem_of P) := x.
+
+
+Polymorphic Definition ForAll@{FA_A FA_st1 FA_st2 FA_max1 FA_max2}
+            {sort : Sort} {A : Type@{FA_A}} :
+  (A -> stype_of@{FA_st1 FA_st2} sort) -> stype_of@{FA_max1 FA_max2} sort :=
+  match
+    sort as sort'
+    return ((A -> stype_of@{FA_st1 FA_st2} sort') -> stype_of@{FA_max1 FA_max2} sort')
+  with
+  | SProp => fun F => forall a : A, F a
+  | SType => fun F => forall a : A, F a
+  end.
+
+Polymorphic Definition Fun@{F_A F_st1 F_st2 F_max1 F_max2} {sort} {A : Type@{F_A}} :
+  forall {F : A -> stype_of sort}, (forall a, selem_of (F a)) -> selem_of (ForAll@{F_A F_st1 F_st2 F_max1 F_max2} F) :=
+  match sort as sort' return
+        forall {F : A -> stype_of sort'}, (forall a, selem_of (F a)) -> selem_of (ForAll F)
+  with
+  | SProp => fun _ f => f
+  | SType => fun _ f => f
+  end.
+
+Polymorphic Definition App@{App_A App_st1 App_st2 App_max1 App_max2} {sort} {A : Type@{App_A}} : forall {F : A -> _},  selem_of (ForAll@{App_A App_st1 App_st2 App_max1 App_max2} (sort := sort) F) -> forall a, selem_of (F a) :=
+  match sort as sort' return forall F, selem_of (ForAll (sort := sort') F) -> forall a, selem_of (F a) with
+  | SProp => fun F f a => f a
+  | SType => fun F f a => f a
+  end.
 End Sorts.
 
+(** [ITele s] described a sorted type [forall x, ..., y, P] with
+    [P] a [stype_of s]. *)
 Polymorphic Inductive ITele@{it_base1 it_base2 it_tele it_max} (sort : Sort) : Type@{it_max} :=
 | iBase : stype_of@{it_base1 it_base2} sort -> ITele sort
 | iTele : forall {T : Type@{it_tele}}, (T -> ITele sort) -> ITele sort.
@@ -61,37 +94,20 @@ Bind Scope ITele_scope with ITele.
 Arguments iBase {_} _.
 Arguments iTele {_ _%type} _.
 
+(** [ATele it] describes a applied version of the type described in
+    [it]. For instance, if [it] represents the type [T] equals to
+    [forall x, ..., y, P], [ATele it] represents [T c1 ... cn]. *)
 Polymorphic Inductive ATele {sort} : ITele sort -> Type :=
 | aBase : forall {T: stype_of sort}, ATele (iBase T)
 | aTele : forall {T : Type} {f : T -> ITele sort} (a:T), ATele (f a) -> ATele (iTele f).
-(* Polymorphic Inductive ATele@{at_base1 at_base2 at_tele at_max} {sort} : ITele@{at_base1 at_base2 at_tele at_max} sort -> Type@{at_max} := *)
-(* | aBase : forall {T: stype_of@{at_base1 at_base2} sort}, ATele (iBase T) *)
-(* | aTele : forall {T : Type@{at_tele}} {f : T -> ITele@{at_base1 at_base2 at_tele at_max} sort} (a:T), ATele (f a) -> ATele (iTele f). *)
+
 Delimit Scope ATele_scope with AT.
 Bind Scope ATele_scope with ATele.
 Arguments ATele {_} _%IT.
 Arguments aBase {_ _}.
 Arguments aTele {_ _%type _} _%AT _.
 
-(* it_FT_res1 and it_FT_res2 will be equal to
-    it_FT_base1 and it_FT_base2.
-    However, Coq does not realize that there is no need to have them.
-    Accordingly, we put them in for now.
-  *)
-Polymorphic Definition ITele_Fun_Type@{it_FT_base1 it_FT_base2 it_FT_tele it_FT_max it_FT_res1 it_FT_res2} {isort} : ITele@{it_FT_base1 it_FT_base2 it_FT_tele it_FT_max} isort -> Type@{it_FT_res2} :=
-  fix rec it :=
-    match it with
-    | iBase T => stype_of@{it_FT_res1 it_FT_res2} isort
-    | iTele f => forall t, rec (f t)
-    end.
-
-Polymorphic Definition ITele_Fun_App@{it_FA_base1 it_FA_base2 it_FA_tele it_FA_max} {isort} : forall {it : ITele@{it_FA_base1 it_FA_base2 it_FA_tele it_FA_max} isort}, ITele_Fun_Type it :=
-  fix rec it :=
-    match it as it' return ITele_Fun_Type it' with
-    | iBase T => T
-    | iTele f => fun t => rec (f t)
-    end.
-
+(** Returns the type resulting from the [ATele] [args] *)
 Polymorphic Fixpoint ITele_App {isort} {it : ITele isort} (args : ATele it) : stype_of isort :=
   match args with
   | @aBase _ T => T
@@ -99,6 +115,7 @@ Polymorphic Fixpoint ITele_App {isort} {it : ITele isort} (args : ATele it) : st
     ITele_App args
   end.
 
+(** Represents a constructor of an inductive type. *)
 Polymorphic Inductive CTele {sort} (it : ITele sort) : Type :=
 | cBase : forall {a : ATele it} (c : selem_of (ITele_App a)), CTele it
 | cProd : forall {T : Type}, (T -> CTele it) -> CTele it.
@@ -108,6 +125,7 @@ Arguments CTele {_} _%IT.
 Arguments cBase {_ _%AT} _ _.
 Arguments cProd {_ _%type _} _.
 
+(** Represents the result type of a branch. *)
 Polymorphic Inductive RTele {isort} rsort : ITele isort -> Type :=
 | rBase : forall {T : stype_of isort}, (selem_of T -> stype_of rsort) -> RTele rsort (iBase T)
 | rTele : forall {T:Type} {f}, (forall (t : T), RTele rsort (f t)) -> RTele rsort (iTele f).
@@ -191,13 +209,6 @@ Polymorphic Fixpoint get_type_of_branch {isort} {rsort} {it : ITele isort} (rt :
   end.
 
 
-Definition args_of : forall A, A -> M (list dyn) :=
-  mfix2 rec (A : Type) (a : A) : M _ :=
-    mmatch a with
-    | [? T (t : T) f] f t => r <- rec _ f; ret (app r [Dyn t])
-    | _ => ret nil
-    end.
-
 (* Get exactly `max` many arguments *)
 Definition NotEnoughArguments : Exception. exact exception. Qed.
 Fixpoint args_of_max (max : nat) : forall {A}, A -> M (list dyn) :=
@@ -210,74 +221,41 @@ Fixpoint args_of_max (max : nat) : forall {A}, A -> M (list dyn) :=
       end
   end.
 
-Polymorphic Definition coerce_rect {A : Type} (B : Type) (H : A = B) : forall (x : A), B :=
-  match H in _ = T return A -> T with
-  | eq_refl _ => id
-  end.
-
-Polymorphic Definition CantCoerce : Exception. exact exception. Qed.
-
-Polymorphic Definition coerce {A B : Type} (x : A) : M B :=
-  oH <- munify A B UniCoq;
-  match oH with
-  | Some H => retS (coerce_rect B H x)
-  | _ =>
-    print "Coerce failure:";;
-    print_term A;; print_term B;;
-    raise CantCoerce
-  end.
-
+(** Given a inductive described in [it] and a list of elements [al],
+    it returns the [ATele] describing the applied version of [it] with [al]. *)
 Polymorphic Program Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn) {struct al} : M (ATele it) :=
     match it as it', al return M (ATele it') with
     | iBase T, nil => ret (@aBase _ T)
     | iTele f, t_dyn :: al =>
-      print_term ("get_ATele before coerce", t_dyn);;
+      (* We coerce the type of the element in [t_dyn] to match that expected by f *)
       t <- coerce (elem t_dyn);
-        r <- (get_ATele (f t) al);
-        ret (aTele t r)
+      r <- (get_ATele (f t) al);
+      ret (aTele t r)
     | _, _ => raise NoPatternMatches
     end.
-
-
 
 Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (CTele it) :=
   fun isort it nindx =>
     mfix2 rec (A : stype_of isort) (a : selem_of A) : M (CTele it) :=
-    print_term ("get_CTele_raw: A", A);;
-               B <- evar Type;
+      B <- evar Type;
       F <- evar (B -> stype_of isort);
       oH <- munify A (ForAll F) UniCoq;
       match oH with
       | Some H =>
-        print "Prod case";;
-        let f := reduce RedMatch (match H in _ = P return selem_of P with eq_refl _ => a end) in
-                nu b : B,
-                       r <- rec (F b) (App f b);
-                   f' <- abs b r;
-                   print "After Abs";;
-                   ret (cProd f')
+        let f := match_eq H selem_of a in
+        nu b : B,
+          r <- rec (F b) (App f b);
+          f' <- abs b r;
+          ret (cProd f')
       | None =>
-        m1 <- munify B (stype_of isort) UniCoq;
-          match m1 with
-          | None =>
-                       print_term ("get_CTele_raw: B", B);;
-                       failwith "Should never happen"
-          | Some H => let idB := reduce RedMatch (match H in _ = T' return B -> T' with
-                                 | eq_refl _ => fun (x : _) => x
-                                 end) in
-                              munify F idB UniCoq;; ret tt
-                          end;;
-                             print_term ("get_CTele_raw: B", B);;
-                             print_term ("get_CTele_raw: F", F);;
-        print ("get_CTele_raw: NoFun case");;
-              let A_red := reduce RedHNF A in
-                           print_term ("get_CTele_raw before args_of_max in NoFun", nindx, A_red);;
-                         args <- args_of_max nindx A_red;
-                             print_term ("get_CTele_raw before get_ATele with args:", args);;
-                           atele <- get_ATele it args;
-                           print "(get_CTele_raw before coerce in NoFun)";;
-                           a' <- @coerce _ (selem_of (ITele_App (isort := isort) atele)) a ;
-                             ret (cBase atele a')
+        H <- unify_or_fail B (stype_of isort);
+        let idB := match_eq H (fun T=>B->T) (fun x=>x) in
+        unify_or_fail F idB;;
+        let A_red := reduce RedHNF A in (* why the reduction here? *)
+        args <- args_of_max nindx A_red;
+        atele <- get_ATele it args;
+        a' <- @coerce _ (selem_of (ITele_App (isort := isort) atele)) a ;
+        ret (cBase atele a')
 end.
 
 Polymorphic Definition get_CTele :=
@@ -287,24 +265,13 @@ Polymorphic Definition get_CTele :=
     | SType => get_CTele_raw (isort := SType)
     end.
 
-
-Polymorphic Definition sort_dyn (isort : Sort) (A : Type) (a : A) : M (sigT (@selem_of isort)) :=
-    P <- @coerce (Type) (stype_of isort) A;
-    p <- @coerce _ (selem_of P) a;
-    ret ((existT _ _ p)).
-
+(** Given a goal, it returns its sorted version *)
 Polymorphic Definition sort_goal {T : Type} (A : T) : M (sigT stype_of) :=
   mmatch T with
-| Prop => [H] let A_Prop := reduce RedSimpl match H in _ = R return R with eq_refl _ => A end in
-                      ret (existT _ SProp A_Prop)
-| Type => [H] let A_Type := reduce RedSimpl match H in _ = R return R with eq_refl _ => A end in
-                      ret (existT _ SType A_Type)
-end.
-
-Definition dyn_of_stype {sort} : stype_of sort -> dyn :=
-  match sort with
-  | SProp => fun s => Dyn (selem_of s)
-  | SType => fun s => Dyn (selem_of s)
+  | Prop => [H] let A_Prop := match_eq H id A in
+                ret (existT _ SProp A_Prop)
+  | Type => [H] let A_Type := match_eq H id A in
+                ret (existT _ SType A_Type)
   end.
 
 Polymorphic Definition get_ITele : forall {T : Type} (ind : T), MetaCoq (nat * (sigT ITele)) :=
@@ -448,37 +415,3 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
           unify_or_fail gterm g;;
           ret goals
 .
-
-
-(* Need this at some point: *)
-(*                             let polyconstrs := *)
-(*                                 (fix f constrs := match constrs with *)
-(*                                                   | Datatypes.cons c cs => c :: f cs *)
-(*                                                   | Datatypes.nil => nil *)
-(*                                                   end) constrs *)
-
-  (* b <- is_var n; *)
-  (* ctx <- if b then hyps_except n else hypotheses; *)
-  (* P <- Cevar (A->Type) ctx; *)
-  (* let Pn := P n in *)
-  (* gT <- goal_type g; *)
-  (* unify_or_fail Pn gT;; *)
-  (* l <- get_inductive A; *)
-  (* l <- MCListUtils.mmap (fun d : dyn => *)
-  (*   (* a constructor c has type (forall x, ... y, A) and we return *)
-  (*      (forall x, ... y, P (c x .. y)) *) *)
-  (*   t' <- copy_ctx P d; *)
-  (*   e <- evar t'; *)
-  (*   ret {| elem := e |}) l; *)
-  (* let c := {| case_ind := A; *)
-  (*             case_val := n; *)
-  (*             case_type := Pn; *)
-  (*             case_return := {| elem := P |}; *)
-  (*             case_branches := l *)
-  (*          |} in *)
-  (* d <- makecase c; *)
-  (* d <- coerce (elem d); *)
-  (* let d := hnf d in *)
-  (* unify_or_fail (@TheGoal Pn d) g;; *)
-  (* let l := hnf (List.map dyn_to_goal l) in *)
-  (* ret l. *)
