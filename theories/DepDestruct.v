@@ -8,6 +8,8 @@ Require Import Strings.String.
 Unset Universe Minimization ToSet.
 Set Printing Universes.
 
+Definition abs {A} {P} (x:A) (t:P x) := (let y := reduce RedHNF x in abs y t).
+
 Notation RedMatch := (RedWhd [RedIota]).
 
 Polymorphic Inductive sigT {A : Type} (P : A -> Type) : Type :=  existT : forall x : A, P x -> sigT P.
@@ -446,7 +448,6 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
 Goal forall n, n <= 0 : Type.
 MProof.
   intros.
-Set Unicoq Debug.
   new_destruct n.
 
 (* Need this at some point: *)
