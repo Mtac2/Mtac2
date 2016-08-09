@@ -188,16 +188,22 @@ Polymorphic Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (args : AT
   | @aBase _ T => fun t =>
     b <- is_var t;
     if b then
-      r <- abs t G;
-      ret (rBase r)
+      let Gty := reduce RedNF (type_of G) in
+      let T' := reduce RedNF (type_of t) in
+      r <- @abs T' (fun _=>Gty) t G;
+      let r := reduce RedNF (rBase r) in
+      ret r
     else
       failwith "Argument t should be a variable"
   | @aTele _ _ f v args => fun t=>
       r <- abstract_goal args G t;
       b <- is_var v;
       if b then
-        r <- abs (P:=fun v'=>RTele rsort (f v')) v r;
-        ret (rTele r)
+        let Gty := reduce RedNF (fun v'=>RTele rsort (f v')) in
+        let T' := reduce RedNF (type_of v) in
+        r <- @abs T' Gty v r;
+        let r := reduce RedNF (rTele r) in
+        ret r
       else
         failwith "All indices need to be variables"
   end.
@@ -208,18 +214,29 @@ Polymorphic Fixpoint get_type_of_branch {isort} {rsort} {it : ITele isort} (rt :
   | cProd f => ForAll (fun t => get_type_of_branch rt (f t))
   end.
 
-
 (* Get exactly `max` many arguments *)
 Definition NotEnoughArguments : Exception. exact exception. Qed.
-Fixpoint args_of_max (max : nat) : forall {A}, A -> M (list dyn) :=
+Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
     match max with
-    | 0 => fun _ _ => ret nil
-    | S max => fun A a =>
-      mmatch a with
-      | [? T (t : T) f] f t => r <- args_of_max max f; ret (app r (Dyn t :: nil))
-      | _ => raise NotEnoughArguments
+    | 0 => fun _ => ret nil
+    | S max => fun d=>
+      mmatch d with
+      | [? T Q (t : T) (f : T -> Q)] Dyn (f t) => r <- args_of_max max (Dyn f); ret (app r (Dyn t :: nil))
+                                                                           | _ =>
+        T <- evar Type;
+        P <- evar (T -> Type);
+        f <- evar (forall x:T, P x);
+        t <- evar T;
+        let el := hnf (d.(elem)) in
+        b <- munify_cumul el (f t) UniCoq;
+        if b then
+          r <- args_of_max max (Dyn f); ret (app r (Dyn t :: nil))
+        else
+          print "Failed args_of_max while matching:";;
+          print_term d;;
+          raise NotEnoughArguments
       end
-  end.
+    end.
 
 (** Given a inductive described in [it] and a list of elements [al],
     it returns the [ATele] describing the applied version of [it] with [al]. *)
@@ -252,7 +269,7 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
         let idB := match_eq H (fun T=>B->T) (fun x=>x) in
         unify_or_fail F idB;;
         let A_red := reduce RedHNF A in (* why the reduction here? *)
-        args <- args_of_max nindx A_red;
+        args <- args_of_max nindx (Dyn A_red);
         atele <- get_ATele it args;
         a' <- @coerce _ (selem_of (ITele_App (isort := isort) atele)) a ;
         ret (cBase atele a')
@@ -275,102 +292,42 @@ Polymorphic Definition sort_goal {T : Type} (A : T) : M (sigT stype_of) :=
   end.
 
 Polymorphic Definition get_ITele : forall {T : Type} (ind : T), MetaCoq (nat * (sigT ITele)) :=
-mfix2 f (T : _) (ind : _) : M (nat * sigT ITele)%type :=
-  print_term ("get_ITele", ind);;
-  mmatch T with
-  | [? (A : Type) (F : A -> Type)] forall a, F a =>
-    [H]
-        let indFun := reduce RedSimpl match H in eq _ P return P with eq_refl _ => ind end
-                     in nu a : A,
-                               r <- f (F a) (indFun a);
-                     let (n, sit) := r in
-                     let (sort, it) := sit in
-                     f <- abs a it;
-                       ret (S n, existT _ sort (iTele f))
-  | Prop =>
-   [H]
-      let indProp := reduce RedSimpl match H in eq _ P return P with eq_refl _ => ind end
-                    in ret (0, existT _ SProp (iBase (sort := SProp) indProp))
-  | Type =>
-    [H]
-       let indType := reduce RedSimpl match H in eq _ P return P with eq_refl _ => ind end
-                      in ret (0, existT _ (SType) (iBase (sort := SType) indType))
-  | Set =>
-    [H]
-       let indType := reduce RedSimpl match H in eq _ P return P with eq_refl _ => ind end
-                      in ret (0, existT _ (SType) (iBase (sort := SType) indType))
-                    | _ => failwith "Impossible ITele"
-           end
-                      .
+  mfix2 f (T : _) (ind : _) : M (nat * sigT ITele)%type :=
+    mmatch T with
+    | [? (A : Type) (F : A -> Type)] forall a, F a => [H]
+      let indFun := match_eq H (fun x=>x) ind in
+      nu a : A,
+        r <- f (F a) (indFun a);
+        let (n, sit) := r in
+        let (sort, it) := sit in
+        f <- abs a it;
+        ret (S n, existT _ sort (iTele f))
+    | Prop => [H]
+      let indProp := match_eq H (fun x=>x) ind in
+      ret (0, existT _ SProp (iBase (sort := SProp) indProp))
+    | Type => [H]
+      let indType := match_eq H (fun x=>x) ind in
+      ret (0, existT _ (SType) (iBase (sort := SType) indType))
+    | Set => [H]
+      let indType := match_eq H (fun x=>x) ind in
+      ret (0, existT _ (SType) (iBase (sort := SType) indType))
+    | _ => failwith "Impossible ITele"
+    end.
 
 Polymorphic Definition get_ind {A : Type} (n : A) :
   M (nat * sigT (fun s => (ITele s)) * list dyn) :=
   r <- constrs A;
-    print_term ("get_ind", r);;
-               let (indP, constrs) := r in
-               sortit <- get_ITele (elem indP) : M (nat * sigT ITele);
-                 print_term ("get_ind", sortit);;
-                            let nindx : nat := fst sortit in
-                            let (isort, it) := snd sortit in
-                            ret (nindx, existT _ _ it, constrs)
-.
-(* Section Test. *)
-(*   Polymorphic Universe uA uMax. *)
-(*   Polymorphic Definition get_ITele2 : forall {A : Type@{uA}} (ind : A), MetaCoq (nat * {s : Sort & ITele@{uA uMax uA uMax} s}) := *)
-(*   @tfix2 Type@{uA} (fun A => A) (fun A a => (nat * {s : Sort & ITele s})%type) *)
-(*          (fun f (T : Type@{uA}) ind => *)
-(*             mmatch T return M (nat * {s : Sort & ITele@{uA uMax uA uMax} s})%type with *)
-(*                           | Type@{uA} => *)
-(*                             [H] *)
-(*                               let indType := match H in eq _ P return P with eq_refl => ind end *)
-(*                                     in ret (0, existT _ (SType) (iBase@{uA uMax uA uMax} (sort := SType) indType)) *)
-(*                                   end *)
-(*          ) *)
-(* . *)
-
-(* Polymorphic Definition get_ind2 {A : Type} (n : A) : *)
-(*   M (nat * sigT (fun s => (ITele s)) * list dyn) := *)
-(*   r <- constrs A; *)
-(*     print_term r;; *)
-(*                let (indP, constrs) := r in *)
-(*                sortit <- get_ITele2 (elem indP) : M (nat * sigT ITele); *)
-(*                  print_term sortit;; *)
-(*                             let nindx : nat := fst sortit in *)
-(*                             let (isort, it) := snd sortit in *)
-(*                             ret (nindx, existT _ _ it, constrs) *)
-(* . *)
-(* End Test. *)
+  let (indP, constrs) := r in
+  sortit <- get_ITele (elem indP) : M (nat * sigT ITele);
+  let nindx : nat := fst sortit in
+  let (isort, it) := snd sortit in
+  ret (nindx, existT _ _ it, constrs).
 
 (* Compute ind type ATele *)
 Polymorphic Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) :=
-    indlist <- args_of_max nindx A : M (list dyn);
-      atele <- get_ATele it indlist : M (ATele it);
-      ret atele.
-
-(* Definition makecase_wrapper {i r} {it : ITele i} (a : ATele it) (rt : RTele r it) (branches : list goal) v  : M (selem_of (RTele_App rt a v)) := *)
-(*   branches <- mmap goal_to_dyn branches; *)
-(*   mc <- makecase *)
-(*      {| *)
-(*        case_val := v; *)
-(*        case_type := selem_of (RTele_App rt a v); *)
-(*        case_return := Dyn (RTele_Fun rt); *)
-(*        case_branches := branches *)
-(*      |}; *)
-(*     wt <- (coerce (elem mc)); *)
-(*     ret wt *)
-(* . *)
-
-Polymorphic Definition NotAGoal : Exception. exact exception. Qed.
-Polymorphic Definition goal_type g : M Type :=
-  match g with
-    | @TheGoal A _ => ret A
-    | _ => raise NotAGoal
-  end.
-Polymorphic Definition goal_to_dyn : goal -> M dyn := fun g =>
-  match g with
-  | TheGoal d => ret (Dyn d)
-  | _ => raise NotAGoal
-  end.
+  indlist <- args_of_max nindx (Dyn A) : M (list dyn);
+  atele <- get_ATele it indlist : M (ATele it);
+  ret atele.
 
 Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
   fun (g : goal) =>
@@ -392,6 +349,7 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
         print_term ("new_destruct isort, rsort", (isort, rsort));;
                    n' <- coerce n;
           rt <- abstract_goal atele sG n';
+print "failed before this point?";;
           let sg := reduce RedSimpl (map (
                         fun ct =>
                            (selem_of (get_type_of_branch rt ct))
