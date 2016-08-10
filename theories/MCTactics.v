@@ -6,7 +6,6 @@ Import MetaCoqNotations.
 Require Import Strings.String.
 
 Local Set Universe Polymorphism.
-Local Unset Universe Minimization ToSet.
 
 Definition metaCoqReduceGoal {A : Type} : M A :=
   let A' := one_step A in (* to remove spurious beta-redexes *)
@@ -358,15 +357,15 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
   ret l.
 
 (** Destructs the n-th hypotheses in the goal (counting from 0) *)
-(* Definition destructn (n : nat) : tactic := fun g=> *)
-(*   goals <- introsn (S n) g; *)
-(*   goal <- hd_exception goals; *)
-(*   open_and_apply (fun g=> *)
-(*     hyps <- hypotheses; *)
-(*     var <- hd_exception hyps; *)
-(*     let (_, var, _) := var in *)
-(*     destruct var g *)
-(*   ) goal. *)
+Definition destructn (n : nat) : tactic := fun g=>
+  goals <- introsn (S n) g;
+  goal <- hd_exception goals;
+  open_and_apply (fun g=>
+    hyps <- hypotheses;
+    var <- hd_exception hyps;
+    let (_, var, _) := var in
+    destruct var g
+  ) goal.
 
 Local Obligation Tactic := idtac.
 
@@ -428,7 +427,7 @@ Definition left : tactic := fun g=>
   A <- goal_type g;
   l <- constrs A;
   match snd l with
-  | cons x nil => apply (elem x) g
+  | [Dyn x; _] => apply x g
   | _ => raise Not2Constructor
   end.
 
@@ -436,11 +435,11 @@ Definition right : tactic := fun g=>
   A <- goal_type g;
   l <- constrs A;
   match snd l with
-  | cons _ (cons x nil) => apply (elem x) g
+  | [_; Dyn x] => apply x g
   | _ => raise Not2Constructor
   end.
 
-Inductive goal_pattern : Type :=
+Monomorphic Inductive goal_pattern : Type :=
 | gbase : forall {A}, A -> tactic -> goal_pattern
 | gtele : forall {C}, (C -> goal_pattern) -> goal_pattern.
 
@@ -455,7 +454,7 @@ Delimit Scope goal_match_scope with goal_match.
 
 Definition DoesNotMatchGoal : Exception. exact exception. Qed.
 
-Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
+(* Monomorphic*) Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
   match p, l with
   | gbase P t, _ =>
     gty <- goal_type g;
@@ -477,7 +476,7 @@ Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
   | _, _ => raise DoesNotMatchGoal
   end.
 
-Definition match_goal p : tactic := fun g=>
+(*Monomorphic*) Definition match_goal p : tactic := fun g=>
   r <- hypotheses; let r := simpl (rev r) in match_goal' p r g.
 Arguments match_goal p%goal_match _.
 

@@ -126,6 +126,11 @@ module CoqList = struct
 
   let to_coq ty f l =
     List.fold_right (fun e l -> makeCons ty (f e) l) l (makeNil ty)
+
+  let pto_coq ty f l sigma =
+    List.fold_right (fun e (sigma, l) ->
+      let sigma, c = f e sigma in
+      sigma, makeCons ty c l) l (sigma, makeNil ty)
 end
 
 module CoqEq = struct

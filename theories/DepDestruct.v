@@ -5,16 +5,6 @@ Import MCTacticsNotations.
 
 Require Import Strings.String.
 
-Unset Universe Minimization ToSet.
-Set Printing Universes.
-
-Section PolymorphicStdLib.
-
-Polymorphic Inductive sigT {A : Type} (P : A -> Type) : Type :=
-  existT : forall x : A, P x -> sigT P.
-
-End PolymorphicStdLib.
-
 (** This is the [abs] from [MetaCoq] but first reducing the variable
     [x] (in case it is [id x] or some convertible term to a variable)
     *)

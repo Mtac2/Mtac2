@@ -59,19 +59,21 @@ open MetaCoqNames
 
 module Goal = struct
 
-  let goal () = Lazy.force (mkConstr "goal")
+  let goal = mkUConstr "goal"
 
-  let mkTheGoal ty ev = mkApp (Lazy.force (mkConstr "TheGoal"), [|ty;ev|])
+  let mkTheGoal ty ev sigma env =
+    let sigma, tg = mkUConstr "TheGoal" sigma env in
+    sigma, mkApp (tg, [|ty;ev|])
 
-  let mkAHypOrDef ty name odef body =
+  let mkAHypOrDef ty name odef body sigma env =
     (* we are going to wrap the body in a function, so we need to lift
        the indices. we also replace the name with index 1 *)
     let body = replace_term (mkVar name) (mkRel 1) (Vars.lift 1 body) in
     let odef_coq = CoqOption.to_coq ty odef in
-    mkApp (Lazy.force (mkConstr "AHyp"),
-           [|ty; odef_coq; mkLambda(Name name,ty,body)|])
+    let sigma, ahyp = mkUConstr "AHyp" sigma env in
+    sigma, mkApp (ahyp, [|ty; odef_coq; mkLambda(Name name,ty,body)|])
 
-  let goal_of_evar env sigma ev =
+  let goal_of_evar (env:env) sigma ev =
     let evinfo = Evd.find_undefined sigma ev in
     let evenv = named_context_of_val (evar_hyps evinfo) in
     (* we remove the elements in the hypotheses that are shared with
@@ -84,11 +86,11 @@ module Goal = struct
             else
               l1
         | l1, _ -> l1 in
-      List.rev (remove (List.rev evenv, List.rev env)) in
+      List.rev (remove (List.rev evenv, List.rev (named_context env))) in
     let ids = Context.fold_named_context (fun (n,_,_) s -> mkVar n :: s) evenv ~init:[] in
     let evar = (ev, Array.of_list ids) in
-    let tg = mkTheGoal (Evd.existential_type sigma evar) (mkEvar evar) in
-    Context.fold_named_context_reverse (fun s (n,odef,ty) -> mkAHypOrDef ty n odef s) newenv ~init:tg
+    let sigma, tg = mkTheGoal (Evd.existential_type sigma evar) (mkEvar evar) sigma env in
+    Context.fold_named_context_reverse (fun (sigma,s) (n,odef,ty) -> mkAHypOrDef ty n odef s sigma env) newenv ~init:(sigma,tg)
 
 end
 
@@ -788,12 +790,20 @@ let check_dependencies env x t =
 
 (** Abstract *)
 type abs = AbsProd | AbsFun | AbsLet | AbsFix
+(*
+   let reduce_no_deltax env sigma t :=
+   let open Reductionops in let open Closure in let open Closure.RedFlags in
+   let evars ev = safe_evar_value sigma ev in
+   whd_val
+   (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
+   (inject c)
+*)
 
 (* abs case env a p x y n abstract variable x from term y according to the case.
    if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
 (* t for let-ins *)
 let abs case (env, sigma, metas) a p x y n t : data =
-  (*  let x = whdbetadeltaiota env sigma x in *) (* for let-ins is problemtaic *)
+  (* let x = whd_betadeltaiota env sigma x in *) (* for let-ins is problemtaic *)
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
@@ -1271,9 +1281,9 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
             let (c, sigma) = Pfedit.refine_by_tactic env sigma concl (Tacinterp.eval_tactic tac) in
             let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
             let new_undef = Evar.Set.elements new_undef in
-            let named_env = Environ.named_context env in
-            let goals = CoqList.to_coq (Goal.goal ()) (Goal.goal_of_evar named_env sigma) new_undef in
-            return sigma metas (CoqPair.mkPair concl (Goal.goal ()) c goals)
+            let sigma, goal = Goal.goal sigma env in
+            let sigma, goals = CoqList.pto_coq goal (fun e sigma->Goal.goal_of_evar env sigma e) new_undef sigma in
+            return sigma metas (CoqPair.mkPair concl goal c goals)
           with Errors.UserError(s,ppm) ->
             fail sigma metas (Exceptions.mkLtacError (s, ppm))
         end
