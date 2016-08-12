@@ -5,6 +5,38 @@ Require Export MetaCoq MCListUtils MCTactics ImportedTactics DepDestruct.
 Import MetaCoqNotations.
 Import MCTacticsNotations.
 
+Section Bugs.
+
+(** BUG: It fails with one constructor types, but not with two *)
+Inductive one_constr : Type :=
+| the_one_constr : one_constr
+.
+
+Goal one_constr -> True.
+MProof.
+intros t.
+Set Unicoq Debug.
+Fail new_destruct t.
+Abort.
+
+Inductive two_constrs : Type :=
+| first_constr : two_constrs
+| second_constr : two_constrs
+.
+
+Goal two_constrs -> True.
+MProof.
+intros t.
+new_destruct t.
+- trivial.
+- trivial.
+Qed.
+Unset Unicoq Debug.
+
+End Bugs.
+
+
+
 Section ExampleReflect.
 
   Inductive reflect (P :Prop) : bool -> Type :=
@@ -119,6 +151,7 @@ MProof.
   new_destruct n.
 Abort.
 
+
 (* MetaCoq version *)
 Goal forall P b, reflect P b -> P <-> b = true.
 MProof.
@@ -200,18 +233,3 @@ Example ATele_of_RTrue := Eval compute in ltac:(mrun (get_ATele (reflect_itele) 
 
 Example get_RTrue_CTele := Eval compute in ltac:(mrun (get_CTele reflect_itele 1 _ (RTrue True))).
 Example get_RFalse_CTele := Eval compute in ltac:(mrun (get_CTele reflect_itele 1 _ (RFalse True))).
-
-
-
-
-
-Example test P b (r : reflect P b) : P -> if b then nat else True -> nat.
-MProof.
-  new_destruct r.
-  ltac:(
-    mrun ((fun g =>
-             t <- new_destruct r g;
-               print "debuggery";;
-               print_term t;;
-                          ret [g]) : tactic)
-).
