@@ -32,5 +32,11 @@ Ltac lrewrite h := rewrite <- h.
 Definition lrewrite {A} (x:A) : tactic :=
   ltac (qualify "lrewrite") (cons (Dyn x) nil).
 
-Notation "'rewrite->'" := rrewrite (at level 40).
-Notation "'rewrite<-'" := lrewrite (at level 40).
+Notation "'rewrite' '->'" := rrewrite (at level 40).
+Notation "'rewrite' '<-'" := lrewrite (at level 40).
+
+Ltac elim h := elim h.
+Definition elim {A} (x:A) : tactic :=
+  ltac (qualify "elim") (cons (Dyn x) nil).
+
+Notation induction := elim.

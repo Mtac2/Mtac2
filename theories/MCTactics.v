@@ -7,19 +7,12 @@ Require Import Strings.String.
 Require Import Lists.List.
 Import ListNotations.
 
-Definition metaCoqReduceGoal {A : Type} : M A :=
-  let A' := one_step A in (* to remove spurious beta-redexes *)
-  evar A'.
-
-Definition coerce_rect {A : Type} (B : Type) (H : A = B) (x : A) : B :=
-  eq_rect A (fun T => T) x B H.
-
 Definition CantCoerce : Exception. exact exception. Qed.
 
 Definition coerce {A B : Type} (x : A) : M B :=
   oH <- munify A B UniCoq;
   match oH with
-  | Some H => retS (coerce_rect B H x)
+  | Some H => match H with eq_refl => ret x end
   | _ => raise CantCoerce
   end.
 
@@ -79,15 +72,16 @@ Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
 Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
 Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
 
-Definition head :=
-  mfix1 f (d : dyn) : M dyn :=
+Definition decompose {A} (x: A) :=
+  (mfix2 f (d : dyn) (args: list dyn) : M (dyn * list dyn)%type :=
     mmatch d with
-    | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1)
-    | _ => ret d
-    end.
+    | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :: args)
+    | _ => ret (d, args)
+    end) (Dyn x) [].
 
 Definition instantiate {A} (x t : A) : M unit :=
-  h <- head (Dyn x);
+  k <- decompose x;
+  let (h, _) := k in
   b <- is_evar h.(elem);
   let t := reduce (RedWhd [RedBeta]) t in
   if b then
@@ -154,7 +148,7 @@ Fixpoint is_open (g : goal) : M bool :=
 Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
 
 Definition let_close_goals {A} (x: A) (t: A) : list goal -> M (list goal) :=
-  let t := one_step x in (* to obtain x's definition *)
+  let t := rone_step x in (* to obtain x's definition *)
   mmap (fun g':goal=>
           r <- abs x g';
           ret (@AHyp A (Some t) r)
@@ -228,7 +222,7 @@ Definition bindb (t u:tactic) : tactic := fun g=>
   l <- t g;
   l <- filter_goals l;
   r <- mmap (open_and_apply u) l;
-  let r := hnf List.concat _ r in
+  let r := rhnf List.concat _ r in
   ret r.
 
 Class semicolon {A} {B} {C} (t:A) (u:B) := SemiColon { the_value : C }.
@@ -323,7 +317,7 @@ Definition abstract_up_to n : tactic := fun g=>
   l <- hypotheses;
   P <- goal_type g;
   pP <- productify_up_to (Dyn P) n l;
-  let l' := hnf (skipn n l) in
+  let l' := rhnf (skipn n l) in
   e <- Cevar pP l';
 *)
 
@@ -349,9 +343,9 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
            |} in
   d <- makecase c;
   d <- coerce (elem d);
-  let d := hnf d in
+  let d := rhnf d in
   unify_or_fail (@TheGoal Pn d) g;;
-  let l := hnf (List.map dyn_to_goal l) in
+  let l := rhnf (List.map dyn_to_goal l) in
   ret l.
 
 (** Destructs the n-th hypotheses in the goal (counting from 0) *)
@@ -475,7 +469,7 @@ Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
   end.
 
 Definition match_goal p : tactic := fun g=>
-  r <- hypotheses; let r := simpl (List.rev r) in match_goal' p r g.
+  r <- hypotheses; let r := rsimpl (List.rev r) in match_goal' p r g.
 Arguments match_goal p%goal_match _.
 
 
@@ -485,10 +479,10 @@ Definition assumption : tactic := fun g=>
 
 Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   d <- goal_to_dyn g;
-  let ty := simpl (type d) in
+  let (ty, el) := d in
   v <- @call_ltac ty t args;
   let (v, l) := v in
-  unify_or_fail v (elem d);;
+  unify_or_fail v el;;
   b <- is_evar v;
   if b then
     ret [TheGoal v] (* it wasn't solved *)
@@ -569,11 +563,11 @@ Definition simpl_in_all : tactic := fun g=>
   l <- hypotheses;
   l <- mfold_right (fun (hyp : Hyp) hyps =>
     let (A, x, ot) := hyp in
-    let A := simpl A in
+    let A := rsimpl A in
     ret (@ahyp A x ot :: hyps)
   ) [] l;
   T <- goal_type g;
-  let T := simpl T in
+  let T := rsimpl T in
   e <- Cevar T l; (* create the new goal in the new context *)
   (* we need normal unification since g might be a compound value *)
   oeq <- munify g (TheGoal e) UniCoq;
@@ -639,7 +633,7 @@ Definition n_etas (n : nat) {A} (f:A) : M A :=
     match n with
     | 0 =>
       (* we remove the wrapper of the element in [d] *)
-      let r := one_step (elem d) in ret r
+      let r := rone_step (elem d) in ret r
     | S n' =>
        mmatch d with
        | [? B (T:B->Type) f] @Dyn (forall x:B, T x) f =>
@@ -696,6 +690,83 @@ Definition repeat t : tactic := fun g=>
     | _ => print_term r;; failwith "The tactic generated more than a goal"
     end) g.
 
+Definition is_prop_or_type (d: dyn) : M bool :=
+  mmatch d with
+  | Dyn Prop => ret true
+  | Dyn Type => ret true
+  | _ => ret false
+  end.
+
+Require Import Bool.Bool.
+
+(** WIP
+Definition unfold_projection {A} (t : A) : M A :=
+  d <- decompose t;
+  let (hd, args) := d in
+  let (ty, el) := hd in
+  let unf_el := rone_step el in
+  let red_el := RedWhd [RedIota; RedBeta] unf_el in
+  repack red_el args.
+
+Definition map_term (f : forall d:dyn, M d.(type)) :=
+  mfix1 rec (d : dyn) : M d.(type) :=
+    let (ty, el) := d in
+    bvar <- is_var el;
+    bevar <- is_evar el;
+    btype <- is_prop_or_type d;
+    if bvar || bevar || btype then
+      f d
+    else
+      mmatch d as d return M d.(type) with
+      | [? B A (b: B) (a: B -> A)] Dyn (a b) =>
+        d1 <- rec (Dyn a);
+        d2 <- rec (Dyn b);
+        val <- coerce (d1 d2);
+        ret val
+      | [? B (A: B -> Type) (b: B) (a: forall x, A x)] Dyn (a b) =>
+        d1 <- rec (Dyn a);
+        d2 <- rec (Dyn b);
+        val <- coerce (d1 d2);
+        ret val
+      | [? B (A: B -> Type) (a: forall x, A x)] Dyn (fun x:B=>a x) =>
+        n <- get_binder_name el;
+        tnu n None (fun x:B=>
+          d1 <- rec (Dyn (a x));
+          abs x d1)
+      | [? d'] d' => f d'
+      end.
+
+Example map_term_id : Prop.
+MProof.
+  m <- map_term
+  (fun d=>
+   print_term d;;
+   b <- is_evar d.(elem);
+   if b then
+     mmatch d as d return M d.(type) with
+     | [? x] @Dyn nat x => ret 0
+     | [? d'] d' => ret d'.(elem)
+     end
+   else
+     ret d.(elem)
+  ) (Dyn (_ + _ + _ = 0));
+  _ <- print_term m; ret m.
+ret 1. ret 1. ret 1.
+Defined.
+*)
+
+Fixpoint intros_simpl (l: list string) : tactic :=
+  match l with
+  | [] => idtac
+  | (n :: l) => bindb (intro_simpl n) (intros_simpl l)
+  end.
+
+Fixpoint name_pattern (l: list (list string)) : list tactic :=
+  match l with
+  | [] => []
+  | (ns :: l) => intros_simpl ns :: name_pattern l
+  end.
+
 Module MCTacticsNotations.
 
 Notation "t || u" := (or t u).
@@ -717,9 +788,13 @@ Notation "a ;; b" := (@the_value _ _ _ a b _).
 
 (* Notation "r '<-' t1 ';' t2" := (@result _ _ _ t1 (fun r=> t2) _). *)
 
-Notation "'tsimpl'" := (treduce RedSimpl).
-Notation "'thnf'" := (treduce RedHNF).
+Notation "'simpl'" := (treduce RedSimpl).
+Notation "'hnf'" := (treduce RedHNF).
+Notation "'cbv'" := (treduce RedNF).
 
 Notation "'pose' ( x := t )" := (cpose t (fun x=>idtac)) (at level 40, x at next level).
 Notation "'assert' ( x : T )" := (cassert (fun x:T=>idtac)) (at level 40, x at next level).
+
+Notation "t 'asp' n" := (t ;; name_pattern n) (at level 40).
+
 End MCTacticsNotations.

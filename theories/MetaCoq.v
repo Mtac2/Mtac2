@@ -175,6 +175,8 @@ Inductive MetaCoq : Type -> Prop :=
 | munify_cumul {A B} (x: A) (y: B) : Unification -> MetaCoq bool
 .
 
+Arguments MetaCoq (_%type).
+
 Definition failwith {A} s : MetaCoq A := raise (Failure s).
 
 Definition array_length : forall {A}, array A -> length :=
@@ -222,12 +224,12 @@ Module MetaCoqNotations.
 
 Notation "'M'" := MetaCoq.
 
-Notation "'simpl'" := (reduce RedSimpl).
-Notation "'hnf'" := (reduce RedHNF).
-Notation "'one_step'" := (reduce RedOneStep).
+Notation "'rsimpl'" := (reduce RedSimpl).
+Notation "'rhnf'" := (reduce RedHNF).
+Notation "'rone_step'" := (reduce RedOneStep).
 
 Notation "'ret'" := (tret).
-Notation "'retS' e" := (let s := simpl e in ret s) (at level 20).
+Notation "'retS' e" := (let s := rsimpl e in ret s) (at level 20).
 
 Notation "r '<-' t1 ';' t2" := (@bind _ _ t1 (fun r=> t2))
   (at level 81, right associativity).
