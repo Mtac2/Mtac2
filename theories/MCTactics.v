@@ -55,11 +55,6 @@ Definition unify_or_fail {A} (x y : A) : M (x = y) :=
 Definition exact {A} (x:A) : tactic := fun g=>
   unify_or_fail (TheGoal x) g;; ret nil.
 
-Definition reflexivity : tactic := fun g=>
-  A <- evar Type;
-  x <- evar A;
-  unify_or_fail g (TheGoal (eq_refl x));; ret nil.
-
 Definition try (t:tactic) : tactic := fun g=>
   mtry t g with _ => ret [g] end.
 
@@ -200,6 +195,16 @@ Definition introsn : nat -> tactic :=
         with WrongTerm => raise NotAProduct end
       | (_, _) => failwith "Should never get here"
       end) g.
+
+Definition prim_reflexivity : tactic := fun g=>
+  A <- evar Type;
+  x <- evar A;
+  unify_or_fail g (TheGoal (eq_refl x));; ret nil.
+
+Definition reflexivity : tactic := fun g=>
+  l <- intros_all g;
+  g <- hd_exception l;
+  open_and_apply prim_reflexivity g.
 
 Definition NotSameSize (l : list tactic) (l' : list goal) : Exception. exact exception. Qed.
 Fixpoint gmap (funs : list tactic) (ass : list goal) : M (list (list goal)) :=
