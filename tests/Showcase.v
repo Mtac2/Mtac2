@@ -46,8 +46,8 @@ Theorem plus_rearrange : forall n m p q : nat,
 MProof.
   intros n m p q.
   assert (H : n + m = m + n).
-  - rewrite-> PeanoNat.Nat.add_comm;; reflexivity.
-  rewrite-> H;; reflexivity.
+  - (rewrite-> PeanoNat.Nat.add_comm);; reflexivity.
+  (rewrite-> H);; reflexivity.
 Qed.
 
 Theorem exists_example_2 : forall n,

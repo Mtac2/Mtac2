@@ -31,6 +31,8 @@ Definition NotUnifiable {A} (x y : A) : Exception. exact exception. Qed.
 
 Definition Failure (s : string) : Exception. exact exception. Qed.
 
+Definition NameExistsInContext (s : string) : Exception. exact exception. Qed.
+
 Record dyn := Dyn { type : Type; elem : type }.
 Arguments Dyn {_} _.
 
@@ -212,7 +214,7 @@ Hint Extern 20 (runner ?f) =>
 
 
 
-Definition print_term {A} (x : A) : MetaCoq unit :=
+Definition print_term {A} (x: A) : MetaCoq unit :=
   bind (pretty_print x) (fun s=> print s).
 
 End MetaCoq.
@@ -346,6 +348,42 @@ Notation "a ::= b" := (write a b) (at level 80).
 
 End MetaCoqNotations.
 
+Section GeneralUtilities.
+Import MetaCoqNotations.
+
+Definition fresh_binder_name {A} (t: A) : M string :=
+  env <- hypotheses;
+  let namef := reduce RedNF (
+    fold_left (fun (ns:M (list string)) (h:Hyp)=>
+      let (_, var, _) := h in
+      n <- get_binder_name var;
+      r <- ns; ret (n::r)) env (ret [])
+    ) in
+  names <- namef;
+  name <- mtry get_binder_name t with WrongTerm=> ret "x" end;
+  let find name : M bool :=
+    let f := reduce RedNF (
+      fold_left (fun (found: M bool) (n: string)=>
+        b <- found;
+        if b then
+          ret true
+        else
+         munify_cumul name n UniMatchNoRed
+        ) names (ret false))
+    in
+    f
+  in
+  b <- find name;
+  if b then
+    (mfix2 f (name: string) (i: string) : M string :=
+      let name := reduce RedNF (name ++ i) in
+      b <- find name;
+      if b then f name i
+      else ret name) name "_"
+  else
+    ret name.
+
+End GeneralUtilities.
 
 Module Array.
   Require Import Arith_base.

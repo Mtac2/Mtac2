@@ -137,7 +137,9 @@ Definition intro_simpl (var: string) : tactic := fun g=>
 Fixpoint is_open (g : goal) : M bool :=
   match g with
   | TheGoal e => is_evar e
-  | @AHyp C _ f => nu x:C, is_open (f x)
+  | @AHyp C _ f =>
+    x <- get_binder_name f;
+    tnu x None (fun x : C=>is_open (f x))
   end.
 
 Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
@@ -256,17 +258,19 @@ Definition SomethingNotRight {A} (t : A) : Exception. exact exception. Qed.
 Definition copy_ctx {A} (B : A -> Type) :=
   mfix1 rec (d : dyn) : M Type :=
     mmatch d with
-    | [? c : A] {| elem := c |} =>
+    | [? c : A] Dyn c =>
         let Bc := reduce (RedWhd [RedBeta]) (B c) in
         ret Bc
-    | [? C (D : C -> Type) (c : forall y:C, D y)] {| elem := c |} =>
-        nu y : C,
-        r <- rec (Dyn (c y));
-        abs_prod y r
-    | [? C D (c : C->D)] {| elem := c |} =>
-        nu y : C,
-        r <- rec (Dyn (c y));
-        abs_prod y r
+    | [? C (D : C -> Type) (c : forall y:C, D y)] Dyn c =>
+        n <- fresh_binder_name c;
+        tnu n None (fun y=>
+          r <- rec (Dyn (c y));
+          abs_prod y r)
+    | [? C D (c : C->D)] Dyn c =>
+        n <- fresh_binder_name c;
+        tnu n None (fun y=>
+          r <- rec (Dyn (c y));
+          abs_prod y r)
     | _ => print_term A;; raise (SomethingNotRight d)
     end.
 
@@ -381,11 +385,11 @@ Definition apply {T} (c : T) : tactic := fun g=>
           r <- app (Dyn (f e));
           ret (TheGoal e :: r)
       | _ =>
-          g <- goal_type g;
-          raise (CantApply c g)
+          gT <- goal_type g;
+          raise (CantApply c gT)
       end
     end
-    ) (Dyn c).
+  ) (Dyn c).
 
 Definition transitivity {B : Type} (y : B) : tactic :=
   apply (fun x => @eq_trans B x y).

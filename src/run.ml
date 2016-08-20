@@ -113,6 +113,8 @@ module Exceptions = struct
     let a = Lazy.force (MetaCoqNames.mkConstr e) in
     mkApp(c, [|mkProp; a|])
 
+  let mkNameExists s = mkApp (Lazy.force (mkInternalException "NameExistsInContext"), [|s|])
+
   let error_stuck t = "Cannot reduce term, perhaps an opaque definition? " ^ constr_to_string t
   let error_param = "Parameter appears in returned value"
   let error_abs x = "Cannot abstract non variable " ^ (constr_to_string x)
@@ -885,15 +887,7 @@ let cvar (env, sigma, metas) ty hyp =
     with Not_found ->
       Exceptions.block "Hypothesis not found"
 
-(* if [f] is a function, we use its variable to get the name, otherwise we
-   apply [f] to a fresh new variable. *)
-let get_func_name env sigma s f =
-  let s = CoqString.from_coq (env, sigma) s in
-  let s = Names.Id.of_string s in
-  let s = Namegen.next_ident_away_in_goal s (ids_of_context env) in
-  Names.Name s, Term.mkApp(Vars.lift 1 f, [|Term.mkRel 1|])
-
-let get_name (env, sigma) t =
+let rec get_name (env, sigma) (t: constr) : constr option =
   let t = whd_betadeltaiota_nolet env sigma t in
   let name =
     if isVar t then Some (Name (destVar t))
@@ -905,13 +899,15 @@ let get_name (env, sigma) t =
       let (n, _, _) = destProd t in Some n
     else if isLetIn t then
       let (n, _, _, _) = destLetIn t in Some n
-    else
-      None
+    else None
   in
   match name with
   | Some (Name i) -> Some (CoqString.to_coq (Names.Id.to_string i))
-  | Some _ -> Some (CoqString.to_coq "x")
+  | Some _ -> (* it is Anonymous. We generate a fresh name. *)
+      let n = Namegen.next_name_away (Name (Names.Id.of_string "x")) (ids_of_context env) in
+      Some (CoqString.to_coq (Names.Id.to_string n))
   | _ -> None
+
 
 let clean = List.iter ArrayRefs.invalidate
 
@@ -1050,18 +1046,22 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
 
     | 11 -> (* nu *)
         let a, s, ot, f = nth 0, nth 2, nth 3, nth 4 in
-        let x, fx = get_func_name env sigma s f in
-        let ot = CoqOption.from_coq (env, sigma) ot in
-        let ur = ref [] in
-        let env = push_rel (x, ot, a) env in
-        (* after extending the context we need to lift the variables
-           in the reified context, together with the definition and
-           type that we are going to append to it. *)
-        let renv = Vars.lift 1 renv in
-        let a = Vars.lift 1 a in
-        let ot = Option.map (Vars.lift 1) ot in
-        let (sigma, renv) = Hypotheses.cons_hyp a (mkRel 1) ot renv sigma env in
-        begin
+        let name = CoqString.from_coq (env, sigma) s in
+        let name = Names.Id.of_string name in
+        if Id.Set.mem name (vars_of_env env) then
+          fail sigma metas (Exceptions.mkNameExists s)
+        else begin
+          let x, fx = Names.Name name, Term.mkApp(Vars.lift 1 f, [|Term.mkRel 1|]) in
+          let ot = CoqOption.from_coq (env, sigma) ot in
+          let ur = ref [] in
+          let env = push_rel (x, ot, a) env in
+          (* after extending the context we need to lift the variables
+             in the reified context, together with the definition and
+             type that we are going to append to it. *)
+          let renv = Vars.lift 1 renv in
+          let a = Vars.lift 1 a in
+          let ot = Option.map (Vars.lift 1) ot in
+          let (sigma, renv) = Hypotheses.cons_hyp a (mkRel 1) ot renv sigma env in
           match run' (env, renv, sigma, (ur :: undo), metas) fx with
           | Val (sigma', metas, e) ->
               clean !ur;

@@ -39,3 +39,21 @@ MProof.
   | _ => raise exception
   end.
 Qed.
+
+Example fresh_name_works_with_same_name (x:nat) : True.
+MProof.
+  s <- fresh_binder_name (fun y:nat=>y);
+  match String.string_dec s "y" with
+  | Specif.left _ => ret I
+  | _ => raise exception
+  end.
+Qed.
+
+Example existing_name_works_with_diff_name (x:nat) : True.
+MProof.
+  s <- fresh_binder_name (fun x:nat=>x);
+  match String.string_dec s "x_" with
+  | Specif.left _ => ret I
+  | _ => raise exception
+  end.
+Qed.

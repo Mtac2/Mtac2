@@ -84,6 +84,13 @@ MProof.
   cintro H {- apply H -}.
 Qed.
 
+Goal {x:nat & x > 0}.
+MProof.
+  apply (existT _ 1 _).
+  hnf.
+  apply le_n.
+Qed.
+
 Require Import Coq.omega.Omega.
 Definition omega := ltac "Coq.omega.Omega.omega" nil.
 
@@ -282,7 +289,7 @@ MProof.
     + Fail destructn 0.
       bindb (destruct b2) reflexivity.
     + bindb (destruct b2) reflexivity.
-    + bindb (introsn 2) reflexivity. (* why is it now forcing me to use + instead of - as bullet? *)
+    + introsn 2;; reflexivity. (* why is it now forcing me to use + instead of - as bullet? *)
 Qed.
 
 (* generalize1 *)
@@ -367,7 +374,7 @@ MProof.
   pose (H := b && c).
   assert (Heq : H = b && c).
   - reflexivity.
-  rewrite<- Heq;; destruct H;; reflexivity.
+  (rewrite <- Heq);; destruct H;; reflexivity.
 Qed.
 
 Example fix_tac_ex: forall x:nat, 0 <= x.
