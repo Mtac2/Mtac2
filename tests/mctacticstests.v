@@ -340,9 +340,6 @@ MProof.
     destruct x;; destruct y;; intros ;;
       (reflexivity || (symmetry ;; assumption))
   ).
-  (* It's creating spurious evars because of the failure in applying
-     reflexivity (I think) *)
-  exact Set. exact bool. exact Set. exact bool.
 Qed.
 
 Goal True.

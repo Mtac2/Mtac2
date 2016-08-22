@@ -102,10 +102,6 @@ module Exceptions = struct
     let coqexp = CoqString.to_coq (s ^ ": " ^ expl) in
     mkApp(Lazy.force e, [|coqexp|])
 
-  let mkNotUnifiable a x y =
-    let e = mkInternalException "NotUnifiableException" in
-    mkApp(Lazy.force e, [|a;x;y|])
-
   (* HACK: we put Prop as the type of the raise. We can put an evar, but
      what's the point anyway? *)
   let mkRaise e =
@@ -114,6 +110,12 @@ module Exceptions = struct
     mkApp(c, [|mkProp; a|])
 
   let mkNameExists s = mkApp (Lazy.force (mkInternalException "NameExistsInContext"), [|s|])
+
+  let mkExceptionNotGround env term =
+    let e = mkInternalException "ExceptionNotGround" in
+    let s = string_of_ppcmds (Termops.print_constr_env env term) in
+    let coqexp = CoqString.to_coq ("The exception being raised is not ground: " ^ s) in
+    mkApp(Lazy.force e, [|coqexp|])
 
   let error_stuck t = "Cannot reduce term, perhaps an opaque definition? " ^ constr_to_string t
   let error_param = "Parameter appears in returned value"
@@ -505,7 +507,7 @@ type data =
   | Val of elem
   | Err of elem
 
-let rec (>>=) v g =
+let (>>=) v g =
   match v with
   | Val v' -> g v'
   | Err _ -> v
@@ -1005,13 +1007,21 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         begin
           match run' ctxt (nth 1) with
           | Val (sigma', metas, v) -> return sigma' metas v
-          | Err (sigma', metas, i) ->
+          | Err (_, _, i) ->
               let t' = mkApp(nth 2, [|i|]) in
-              run' (env, renv, sigma', undo, metas) t'
+              run' (env, renv, sigma, undo, metas) t'
         end
 
     | 4 -> (* raise *)
-        fail sigma metas (nth 1)
+        (* we make sure the exception is a closed term: it does not depend on evars or nus *)
+        let term = nf_evar sigma (nth 1) in
+        let rels = free_rels term in
+        let closed = Int.Set.is_empty rels || Int.Set.max_elt rels > List.length undo in
+        let closed = closed && Evar.Set.is_empty (Evarutil.undefined_evars_of_term sigma term) in
+        if closed then
+          fail sigma metas term
+        else
+          fail sigma metas (Exceptions.mkExceptionNotGround env term)
 
     | 5 -> (* fix1 *)
         let a, b, s, i, f, x = nth 0, nth 1, nth 2, nth 3, nth 4, nth 5 in
@@ -1071,10 +1081,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
                 return sigma' metas (pop e)
           | Err (sigma', metas, e) ->
               clean !ur;
-              if Int.Set.mem 1 (free_rels e) then
-                Exceptions.block Exceptions.error_param
-              else
-                fail sigma' metas (pop e)
+              fail sigma' metas (pop e)
         end
 
     | 12 -> (* abs *)

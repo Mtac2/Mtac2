@@ -103,11 +103,4 @@ Definition apply_one_of l : tactic :=
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 MProof.
   intros;; MCTactics.repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
-(* Spurious evars that shouldn't be here *)
-exact Prop.
-exact True.
-exact [].
-exact Prop.
-exact True.
-exact [].
 Qed.
