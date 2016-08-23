@@ -342,7 +342,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
     (* a constructor c has type (forall x, ... y, A) and we return
        (forall x, ... y, P (c x .. y)) *)
     t' <- copy_ctx P d;
-    e <- evar t';
+    e <- Cevar t' ctx;
     ret {| elem := e |}) l;
   let c := {| case_ind := A;
               case_val := n;
