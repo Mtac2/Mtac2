@@ -8,18 +8,17 @@ Import MCTacticsNotations.
 Section Bugs.
 
 (** BUG: It fails with one constructor types, but not with two *)
-Inductive one_constr : Type :=
+Inductive one_constr : Prop :=
 | the_one_constr : one_constr
 .
 
 Goal one_constr -> True.
 MProof.
 intros t.
-Set Unicoq Debug.
-Fail new_destruct t.
+new_destruct t.
 Abort.
 
-Inductive two_constrs : Type :=
+Inductive two_constrs : Prop :=
 | first_constr : two_constrs
 | second_constr : two_constrs
 .

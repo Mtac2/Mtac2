@@ -328,18 +328,19 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
       atele <- get_ind_atele it nindx A;
                  (* Compute CTeles *)
         cts <- mmap (fun c_dyn : dyn =>
-                     ty <- coerce c_dyn.(type);
-                     el <- coerce c_dyn.(elem);
+                       let (dtype, delem) := c_dyn in
+                       ty <- evar (stype_of isort);
+                       munify_cumul ty dtype UniCoq;;
+                       el <- evar (selem_of ty);
+                       munify_cumul el delem UniCoq;;
                      get_CTele it nindx ty el
                     ) constrs;
                      (* Compute return type RTele *)
         gt <- goal_type g;
         rsG <- sort_goal gt;
         let (rsort, sG) := rsG in
-        print_term ("new_destruct isort, rsort", (isort, rsort));;
-                   n' <- coerce n;
-          rt <- abstract_goal atele sG n';
-print "failed before this point?";;
+        n' <- coerce n;
+        rt <- abstract_goal atele sG n';
           let sg := reduce RedSimpl (map (
                         fun ct =>
                            (selem_of (get_type_of_branch rt ct))
@@ -347,12 +348,8 @@ print "failed before this point?";;
           goals <- mmap (fun ty=> r <- evar ty; ret (TheGoal r)) sg;
           branches <- mmap goal_to_dyn goals;
           let tsg := reduce RedHNF (type_of sg) in
-          print_term tsg;;
-          print_term sg;;
           let rrf := reduce RedSimpl (RTele_Fun rt) in
           let rrt := reduce RedSimpl (RTele_Type rt) in
-          print_term rrt;;
-          print_term rrf;;
           caseterm <- makecase {|
                        case_val := n';
                        case_type := selem_of (RTele_App rt atele n');
