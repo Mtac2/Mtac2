@@ -330,10 +330,13 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
         cts <- mmap (fun c_dyn : dyn =>
                        let (dtype, delem) := c_dyn in
                        ty <- evar (stype_of isort);
-                       munify_cumul ty dtype UniCoq;;
-                       el <- evar (selem_of ty);
-                       munify_cumul el delem UniCoq;;
-                     get_CTele it nindx ty el
+                       b <- munify_cumul ty dtype UniCoq;
+                       if b then
+                         el <- evar (selem_of ty);
+                         munify_cumul el delem UniCoq;;
+                         get_CTele it nindx ty el
+                       else
+                         failwith "Couldn't unify the type of the inductive with the type of the constructor"
                     ) constrs;
                      (* Compute return type RTele *)
         gt <- goal_type g;
