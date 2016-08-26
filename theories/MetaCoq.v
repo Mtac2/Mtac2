@@ -242,7 +242,7 @@ Notation "'mfix1' f ( x : A ) : 'M' T := b" := (tfix1 (fun x=>T%type) (fun f (x 
 Notation "'mfix2' f ( x : A ) ( y : B ) : 'M' T := b" :=
   (tfix2 (fun (x : A) (y : B)=>T%type) (fun f (x : A) (y : B)=>b%MC))
   (at level 85, f at level 0, x at next level, y at next level, format
-  "'[v  ' 'mfix2'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  ':'  'M'   T  ':=' '/  ' b ']'").
+  "'[v  ' 'mfix2'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  ':'  'M'  T  ':=' '/  ' b ']'").
 
 Notation "'mfix3' f ( x : A ) ( y : B ) ( z : C ) : 'M' T := b" :=
   (tfix3 (fun (x : A) (y : B) (z : C)=>T%type) (fun f (x : A) (y : B) (z : C)=>b%MC))
