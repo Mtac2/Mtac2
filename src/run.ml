@@ -319,186 +319,6 @@ module Pattern = struct
 
 end
 
-
-module GrowingArray = struct
-  type 'a t = 'a array ref * 'a * int ref
-
-  let make i t = (ref (Array.make i t), t, ref 0)
-  let length g = let (_, _, i) = g in !i
-
-  exception OutOfBounds
-
-  let get g i =
-    let (a, _, l) = g in
-    if i < !l then
-      Array.get !a i
-    else
-      raise OutOfBounds
-
-  let set g i =
-    let (a, _, l) = g in
-    if i < !l then
-      Array.set !a i
-    else
-      raise OutOfBounds
-
-  let add g t =
-    let (a, e, i) = g in
-    begin
-      if Array.length !a <= !i then
-        a := Array.append !a (Array.make (Array.length !a / 2) e)
-      else
-        ()
-    end;
-    Array.set !a !i t;
-    i := !i+1
-
-end
-
-(*
-   OUTDATED EXPLANATION: instead of storing one cell references we store arrays
-
-   The context of the references is never changed, except when a new
-   parameter is inserted using (nu x, t). Then, when exiting the context
-   of nu x, we need to make sure that no reference refers to x. For this
-   reason, we keep a list of references to lists enumerating the references
-   pointing to x. To make it clear, the argument 'undo' used by many of the
-   functions has the following shape:
-
-   [ r1 ; r2 ; ... ; rn ]
-
-   where r1 corresponds to the innermost nu executed, and rn to the outermost.
-   Each ri is a reference to a list [x1 ; ...; xim] of im references pointing
-   to values that refer to the binder noted by i.
-
-   When leaving the scope of x, the execution makes sure every reference listed
-   in the list referred on the top of the undo list is invalidated, that is,
-   pointing to "null".
-*)
-module ArrayRefFactory =
-struct
-  let mkArrRef= Constr.mkConstr (MetaCoqNames.metaCoq_module_name ^ ".carray")
-
-  let isArrRef =  Constr.isConstr mkArrRef
-
-  let to_coq a i n =
-    Term.mkApp (Lazy.force mkArrRef, [|a ; CoqN.to_coq i; n|])
-
-  let from_coq (env, evd as ctx) c =
-    let c = whd_betadeltaiota env evd c in
-    if isApp c && isArrRef (fst (destApp c)) then
-      CoqN.from_coq ctx (snd (destApp c)).(1)
-    else
-      Exceptions.block "Not a reference"
-
-end
-
-module ArrayRefs = struct
-
-  let init () = GrowingArray.make 4 ((None, 0), [||])
-
-  let bag = ref (init ())
-
-  let clean () =
-    bag := init ()
-
-  let get_parameters params t = Int.Set.filter (fun i -> i <= params) (free_rels t)
-
-  let check_context undo index i arr =
-    match arr.(i) with
-    | Some (c', _) ->
-        let level = List.length undo in
-        (* check if the db index points to the nu context *)
-        let params = get_parameters level c' in
-        Int.Set.iter (fun k ->
-          let rl = List.nth undo (k -1) in
-          rl := ((index, i) :: !rl) (* mark this location as 'dirty' *)
-        ) params
-    | _ -> ()
-
-
-  (* A, x : A |-
-     a <- make_array (Rel 2) 5 (Rel 1); // 5 copies of x
-     // a is equal to [| (0, Rel 2), (0, Rel 1), ..., (0, Rel 1) |]
-     // where 0 is the level
-     nu y : A,
-     // now the context is A, x : A, y : A
-     // therefore the level is now 1
-     let _ := array_get A a 0;
-     // A is Rel 3 now, so in order to compare the type with the type of the array
-     // we need to lift by 1 (level - l), where l is the level of the type
-     array_set A a 0 y
-  *)
-  let new_array evd sigma undo ty n c =
-    let level = List.length undo in
-    let size = CoqN.from_coq (evd, sigma) n in
-    let arr = Array.make size (Some (c, level)) in
-    let index = GrowingArray.length !bag in
-    let params = get_parameters level ty in
-    Int.Set.iter (fun k ->
-      let rl = List.nth undo (k -1) in
-      rl := ((index, -1) :: !rl) (* mark this location as 'dirty' *)
-    ) params;
-    GrowingArray.add !bag ((Some ty, level), arr);
-    Array.iteri (fun i t -> check_context undo index i arr) arr;
-    ArrayRefFactory.to_coq ty index n
-
-  exception NullPointerException
-  exception OutOfBoundsException
-  exception WrongTypeException
-  exception WrongIndexException
-
-  let get env evd undo i ty k =
-    let level = List.length undo in
-    let index = ArrayRefFactory.from_coq (env, evd) i in
-    let arri = CoqN.from_coq (env, evd) k in
-    try
-      let ((aty, al), v) = GrowingArray.get !bag index in
-      match aty, v.(arri) with
-      | None,  _ -> raise WrongIndexException
-      | _, None -> raise NullPointerException
-      | Some aty, Some (c, l) ->
-          try
-            let aty = Vars.lift (level - al) aty in
-            let evd = the_conv_x env aty ty evd in
-            (evd, Vars.lift (level - l) c)
-          with _ -> raise WrongTypeException
-    with Invalid_argument _ -> raise OutOfBoundsException
-       | GrowingArray.OutOfBounds -> raise WrongIndexException
-
-  (* HACK SLOW *)
-  let remove_all undo index k =
-    List.iter (fun rl ->
-      rl := List.filter (fun i -> i <> (index, k)) !rl) undo
-
-  let set env evd undo i k ty c =
-    let level = List.length undo in
-    let index = ArrayRefFactory.from_coq (env, evd) i in
-    let arri = CoqN.from_coq (env, evd) k in
-    remove_all undo index arri;
-    try
-      let ((aty, al), v) = GrowingArray.get !bag index in
-      match aty with
-      | Some aty ->
-          let aty = Vars.lift (level - al) aty in
-          let evd = the_conv_x env aty ty evd in
-          v.(arri) <- Some (c, level);
-          check_context undo index arri v;
-          evd
-      | None -> raise WrongTypeException
-    with Invalid_argument _ -> raise OutOfBoundsException
-       | GrowingArray.OutOfBounds -> raise WrongIndexException
-       | _ -> raise WrongTypeException
-
-  let invalidate (index, k) =
-    let ((ty, i), v) = GrowingArray.get !bag index in
-    if k < 0 then
-      GrowingArray.set !bag index ((None, i), v)
-    else
-      v.(k) <- None
-
-end
-
 module ExistentialSet = Evar.Set
 
 type elem = (evar_map * ExistentialSet.t * constr)
@@ -910,13 +730,9 @@ let rec get_name (env, sigma) (t: constr) : constr option =
       Some (CoqString.to_coq (Names.Id.to_string n))
   | _ -> None
 
-
-let clean = List.iter ArrayRefs.invalidate
-
 (* return the reflected hash of a term *)
-let hash (env, _, sigma, undo, _) c size =
+let hash (env, _, sigma, nus, _) c size =
   let size = CoqN.from_coq (env, sigma) size in
-  let nus = List.length undo in
   let rec upd depth t =
     match kind_of_term t with
     | Rel k ->
@@ -971,7 +787,7 @@ let env_without sigma env renv x =
     let env = push_named_context name_env env in
     env, build_hypotheses sigma env
 
-let rec run' (env, renv, sigma, undo, metas as ctxt) t =
+let rec run' (env, renv, sigma, nus, metas as ctxt) t =
   let (t,sk as appr) = Reductionops.whd_nored_state sigma (t, []) in
   let (h, args) = Reductionops.whd_betadeltaiota_nolet_state env sigma appr in
   let nth = Stack.nth args in
@@ -1001,7 +817,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
     | 2 -> (* bind *)
         run' ctxt (nth 2) >>= fun (sigma', metas, v) ->
         let t' = mkApp(nth 3, [|v|]) in
-        run' (env, renv, sigma', undo, metas) t'
+        run' (env, renv, sigma', nus, metas) t'
 
     | 3 -> (* try *)
         begin
@@ -1009,14 +825,14 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
           | Val (sigma', metas, v) -> return sigma' metas v
           | Err (_, _, i) ->
               let t' = mkApp(nth 2, [|i|]) in
-              run' (env, renv, sigma, undo, metas) t'
+              run' (env, renv, sigma, nus, metas) t'
         end
 
     | 4 -> (* raise *)
         (* we make sure the exception is a closed term: it does not depend on evars or nus *)
         let term = nf_evar sigma (nth 1) in
         let rels = free_rels term in
-        let closed = Int.Set.is_empty rels || Int.Set.max_elt rels > List.length undo in
+        let closed = Int.Set.is_empty rels || Int.Set.max_elt rels > nus in
         let closed = closed && Evar.Set.is_empty (Evarutil.undefined_evars_of_term sigma term) in
         if closed then
           fail sigma metas term
@@ -1072,15 +888,13 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
           let a = Vars.lift 1 a in
           let ot = Option.map (Vars.lift 1) ot in
           let (sigma, renv) = Hypotheses.cons_hyp a (mkRel 1) ot renv sigma env in
-          match run' (env, renv, sigma, (ur :: undo), metas) fx with
+          match run' (env, renv, sigma, (nus+1), metas) fx with
           | Val (sigma', metas, e) ->
-              clean !ur;
               if Int.Set.mem 1 (free_rels e) then
                 Exceptions.block Exceptions.error_param
               else
                 return sigma' metas (pop e)
           | Err (sigma', metas, e) ->
-              clean !ur;
               fail sigma' metas (pop e)
         end
 
@@ -1119,7 +933,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
             (* if it's a rel we need to update the indices in t, since there is one element less in the context *)
             let t = if isRel x then Vars.liftn (-1) (destRel x) t else t in
             let env, (sigma, renv) = env_without sigma env renv x in
-            run' (env, renv, sigma, undo, metas) t >>= fun (sigma, metas, v)->
+            run' (env, renv, sigma, nus, metas) t >>= fun (sigma, metas, v)->
             return sigma metas (if isRel x then Vars.liftn (+1) (destRel x) v else v)
           else
             Exceptions.block "Environment or term depends on variable"
@@ -1149,75 +963,37 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         let evd' = Typeclasses.resolve_typeclasses ~fail:false env sigma in
         return evd' metas (Lazy.force CoqUnit.mkTT)
 
-    | 23 -> (* new_array *)
-        let ty, n, c = nth 0, nth 1, nth 2 in
-        let a = ArrayRefs.new_array env sigma undo ty n c in
-        return sigma metas a
-
-    | 24 -> (* get *)
-        let ty, a, i = nth 0, nth 1, nth 2 in
-        begin
-          try
-            let (sigma, e) = ArrayRefs.get env sigma undo a ty i in
-            return sigma metas e
-          with ArrayRefs.NullPointerException ->
-            let e = Lazy.force Exceptions.mkNullPointer in
-            fail sigma metas e
-             | ArrayRefs.OutOfBoundsException ->
-                 let e = Lazy.force Exceptions.mkOutOfBounds in
-                 fail sigma metas e
-             | ArrayRefs.WrongTypeException ->
-                 Exceptions.block "Wrong type!"
-             | ArrayRefs.WrongIndexException ->
-                 Exceptions.block "Wrong array!"
-        end
-
-    | 25 -> (* set *)
-        let ty, a, i, c = nth 0, nth 1, nth 2, nth 3 in
-        begin
-          try
-            let sigma = ArrayRefs.set env sigma undo a i ty c in
-            return sigma metas (Lazy.force CoqUnit.mkTT)
-          with ArrayRefs.OutOfBoundsException ->
-            let e = Lazy.force Exceptions.mkOutOfBounds in
-            fail sigma metas e
-             | ArrayRefs.WrongTypeException ->
-                 Exceptions.block "Wrong type!"
-             | ArrayRefs.WrongIndexException ->
-                 Exceptions.block "Wrong array!"
-        end
-
-    | 26 -> (* print *)
+    | 23 -> (* print *)
         let s = nth 0 in
         print env sigma s;
         return sigma metas (Lazy.force CoqUnit.mkTT)
 
-    | 27 -> (* pretty_print *)
+    | 24 -> (* pretty_print *)
         let t = nth 1 in
         let t = nf_evar sigma t in
         let s = string_of_ppcmds (Termops.print_constr_env env t) in
         return sigma metas (CoqString.to_coq s)
 
-    | 28 -> (* hypotheses *)
+    | 25 -> (* hypotheses *)
         return sigma metas renv
 
-    | 29 -> (* dest case *)
+    | 26 -> (* dest case *)
         let t_type = nth 0 in
         let t = nth 1 in
         let (sigma', case) = dest_Case (env, sigma) t_type t in
         return sigma' metas case
 
-    | 30 -> (* get constrs *)
+    | 27 -> (* get constrs *)
         let t = nth 1 in
         let (sigma', constrs) = get_Constrs (env, sigma) t in
         return sigma' metas constrs
 
-    | 31 -> (* make case *)
+    | 28 -> (* make case *)
         let case = nth 0 in
         let (sigma', case) = make_Case (env, sigma) case in
         return sigma' metas case
 
-    | 32 -> (* munify *)
+    | 29 -> (* munify *)
         let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in
         let feqT = CoqEq.mkAppEq a x y in
         begin
@@ -1232,7 +1008,7 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
               return sigma metas none
         end
 
-    | 33 -> (* call_ltac *)
+    | 30 -> (* call_ltac *)
         let concl, name, args = nth 0, nth 1, nth 2 in
         let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq (env, sigma) args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
@@ -1268,16 +1044,16 @@ let rec run' (env, renv, sigma, undo, metas as ctxt) t =
         end
     (* Tac (sigma, metas, Tacinterp.eval_tactic tac, fun v -> Val v) *)
 
-    | 34 -> (* list_ltac *)
+    | 31 -> (* list_ltac *)
         let aux k _ = Pp.msg_info (Pp.str (Names.KerName.to_string k)) in
         KNmap.iter aux (Tacenv.ltac_entries ());
         return sigma metas (Lazy.force CoqUnit.mkTT)
 
-    | 35 -> (* match_and_run *)
+    | 32 -> (* match_and_run *)
         let a, b, t, p = nth 0, nth 1, nth 2, nth 3 in
         match_and_run ctxt a b t p
 
-    | 36 -> (* munify_cumul *)
+    | 33 -> (* munify_cumul *)
         let x, y, uni = nth 2, nth 3, nth 4 in
         begin
           let r = UnificationStrategy.unify None sigma env uni Reduction.CUMUL x y in
@@ -1297,7 +1073,7 @@ and run_fix (env, renv, sigma, _, _ as ctxt) h a b s i f x =
   let c = mkApp (f, Array.append [| fixf|] x) in
   run' ctxt c
 
-and match_and_run (env, renv, sigma0, undo, metas) a b t p =
+and match_and_run (env, renv, sigma0, nus, metas) a b t p =
   try
     let open Munify in
     let open Pattern in
@@ -1316,7 +1092,7 @@ and match_and_run (env, renv, sigma0, undo, metas) a b t p =
                 Evar.Set.fold (fun e sigma->Evd.remove sigma e) evars sigma
               else sigma in
             let eqrefl = CoqEq.mkAppEqRefl a t in
-            let r = run' (env, renv, sigma, undo, metas) (mkApp (func, [|eqrefl|])) in
+            let r = run' (env, renv, sigma, nus, metas) (mkApp (func, [|eqrefl|])) in
             match r with
             | Val (sigma, metas, r) ->
                 return sigma metas (CoqOption.mkSome bt r)
@@ -1371,9 +1147,8 @@ let clean_unused_metas sigma metas term =
   Evd.restore_future_goals sigma alive principal_goal
 
 let run (env, sigma) t  =
-  let _ = ArrayRefs.clean () in
   let (sigma, renv) = build_hypotheses sigma env in
-  match run' (env, renv, sigma, [], ExistentialSet.empty) (nf_evar sigma t) with
+  match run' (env, renv, sigma, 0, ExistentialSet.empty) (nf_evar sigma t) with
   | Err (sigma', metas, v) ->
       Err (sigma', metas, nf_evar sigma' v)
   | Val (sigma', metas, v) ->

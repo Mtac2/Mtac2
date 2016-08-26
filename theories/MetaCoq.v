@@ -13,11 +13,7 @@ Module MetaCoq.
 
 Inductive Exception : Type := exception : Exception.
 
-Definition NullPointer : Exception. exact exception. Qed.
-
 Definition TermNotGround : Exception. exact exception. Qed.
-
-Definition ArrayOutOfBounds : Exception. exact exception. Qed.
 
 Definition NoPatternMatches : Exception. exact exception. Qed.
 
@@ -37,12 +33,6 @@ Definition ExceptionNotGround (s : string) : Exception. exact exception. Qed.
 
 Record dyn := Dyn { type : Type; elem : type }.
 Arguments Dyn {_} _.
-
-Definition index := N.
-Definition length := N.
-
-Inductive array (A:Type) : Type :=
-| carray : index -> length -> array A.
 
 Inductive RedFlags : Set := RedBeta | RedDelta | RedIota | RedZeta.
 
@@ -151,10 +141,6 @@ Inductive MetaCoq : Type -> Prop :=
 | hash : forall {A}, A -> N -> MetaCoq N
 | solve_typeclasses : MetaCoq unit
 
-| array_make : forall {A}, N -> A -> MetaCoq (array A)
-| array_get : forall {A}, array A -> N -> MetaCoq A
-| array_set : forall {A}, array A -> N -> A -> MetaCoq unit
-
 | print : string -> MetaCoq unit
 | pretty_print : forall {A}, A -> MetaCoq string
 
@@ -183,26 +169,11 @@ Arguments MetaCoq (_%type).
 
 Definition failwith {A} s : MetaCoq A := raise (Failure s).
 
-Definition array_length : forall {A}, array A -> length :=
-  fun A m => match m with carray _ _ l => l end.
-
-
 Definition tfix1 {A} B := @tfix1' A B MetaCoq (fun _ x => x).
 Definition tfix2 {A1 A2} B := @tfix2' A1 A2 B MetaCoq (fun _ x => x).
 Definition tfix3 {A1 A2 A3} B := @tfix3' A1 A2 A3 B MetaCoq (fun _ x => x).
 Definition tfix4 {A1 A2 A3 A4} B := @tfix4' A1 A2 A3 A4 B MetaCoq (fun _ x => x).
 Definition tfix5 {A1 A2 A3 A4 A5} B := @tfix5' A1 A2 A3 A4 A5 B MetaCoq (fun _ x => x).
-
-Definition Ref := array.
-
-Definition ref : forall {A}, A -> MetaCoq (Ref A) :=
-  fun A x=> array_make 1%N x.
-
-Definition read : forall {A}, Ref A -> MetaCoq A :=
-  fun A r=> array_get r 0%N.
-
-Definition write : forall {A}, Ref A -> A -> MetaCoq unit :=
-  fun A r c=> array_set r 0%N c.
 
 (** Defines [eval f] to execute after elaboration the Mtactic [f].
     It allows e.g. [rewrite (eval f)]. *)
@@ -349,9 +320,6 @@ Notation "'mtry' a ls" :=
     (@tmatch _ (fun _=>_) e (app ls (cons ([? x] x=>raise x)%metaCoq_pattern nil)))))
     (at level 82, a at level 100, ls at level 91, only parsing).
 
-Notation "! a" := (read a) (at level 80).
-Notation "a ::= b" := (write a b) (at level 80).
-
 End MetaCoqNotations.
 
 Section GeneralUtilities.
@@ -390,70 +358,3 @@ Definition fresh_binder_name {A} (t: A) : M string :=
     ret name.
 
 End GeneralUtilities.
-
-Module Array.
-  Require Import Arith_base.
-
-  Import MetaCoqNotations.
-
-  Definition t A := array A.
-
-  Definition make {A} n (c : A)  :=
-    MetaCoq.array_make n c.
-
-  Definition length {A} (a : t A) :=
-    MetaCoq.array_length a.
-
-  Definition get {A} (a : t A) i :=
-    MetaCoq.array_get a i.
-
-  Definition set {A} (a : t A) i (c : A) :=
-    MetaCoq.array_set a i c.
-
-  Definition iter {A} (a : t A) (f : N -> A -> M unit) : M unit :=
-    let n := length a in
-    N.iter n (fun i : M N =>
-      i' <- i;
-      e <- get a i';
-      f i' e;;
-      retS (N.succ i'))
-      (ret 0%N);;
-    ret tt.
-
-  Definition No0LengthArray : Exception. exact exception. Qed.
-
-  Definition init {A:Type} n (f : N -> M A) : M (t A) :=
-    match n with
-    | N0 => raise No0LengthArray
-    | _ =>
-      c <- f 0%N;
-        a <- make n c;
-        N.iter (N.pred n) (fun i : M N =>
-            i' <- i;
-            e <- f i';
-            set a i' e;;
-            retS (N.succ i'))
-          (ret 1%N);;
-        ret a
-    end.
-
-  Definition to_list {A} (a : t A) :=
-    let n := length a in
-    r <- N.iter n (fun l : M (N * list A)%type =>
-      l' <- l;
-      let (i, s) := l' in
-      e <- get a i;
-      retS (N.succ i, e :: s))
-    (ret (0%N, nil));
-    retS (snd r).
-
-  Definition copy {A} (a b : t A) :=
-    let n := length a in
-    N.iter n (fun i : M N =>
-      i' <- i;
-      e <- get a i';
-      set b i' e;;
-      retS (N.succ i'))
-      (ret 0%N).
-
-End Array.

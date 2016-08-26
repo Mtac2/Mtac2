@@ -17,5 +17,5 @@ module MetaCoqNames : sig
 end
 
 val run' :
-  Environ.env * Constr.constr * Evd.evar_map * (int * int) list ref list * ExistentialSet.t ->
+  Environ.env * Constr.constr * Evd.evar_map * int * ExistentialSet.t ->
   Term.constr -> data
