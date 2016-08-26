@@ -226,61 +226,65 @@ Export MetaCoq.
 
 Module MetaCoqNotations.
 
-Notation "'M'" := MetaCoq.
+Bind Scope MetaCoq_scope with MetaCoq.
+Delimit Scope MetaCoq_scope with MC.
+Open Scope MetaCoq_scope.
+
+Notation "'M'" := MetaCoq : type_scope.
 
 Notation "'rsimpl'" := (reduce RedSimpl).
 Notation "'rhnf'" := (reduce RedHNF).
 Notation "'rone_step'" := (reduce RedOneStep).
 
-Notation "'ret'" := (tret).
-Notation "'retS' e" := (let s := rsimpl e in ret s) (at level 20).
+Notation "'ret'" := (fun a => (@tret _ a) % MC).
+Notation "'retS' e" := (let s := rsimpl e in ret s) (at level 20) : MetaCoq_scope.
 
-Notation "r '<-' t1 ';' t2" := (@bind _ _ t1 (fun r=> t2))
-  (at level 81, right associativity).
-Notation "t1 ';;' t2" := (@bind _ _ t1 (fun _=>t2))
-  (at level 81, right associativity).
-Notation "f @@ x" := (bind f (fun r=>ret (r x))) (at level 70).
-Notation "f >> x" := (bind f (fun r=>x r)) (at level 70).
+Notation "r '<-' t1 ';' t2" := (@bind _ _ t1 (fun r=> t2%MC))
+  (at level 81, right associativity) : MetaCoq_scope.
+Notation "t1 ';;' t2" := (@bind _ _ t1 (fun _=>t2%MC))
+  (at level 81, right associativity) : MetaCoq_scope.
+Notation "f @@ x" := (bind f (fun r=>(ret (r x))%MC)) (at level 70) : MetaCoq_scope.
+Notation "f >> x" := (bind f (fun r=>(x r) % MC)) (at level 70) : MetaCoq_scope.
 Open Scope string.
 
 (* We cannot make this notation recursive, so we loose
    notation in favor of naming. *)
 Notation "'nu' x , a" := (
   let f := fun x=>a in
-  n <- get_binder_name f;
-  tnu n None f) (at level 81, x at next level, right associativity).
+  n <- get_binder_name f M;
+  tnu n None f) (at level 81, x at next level, right associativity) : MetaCoq_scope.
 
 Notation "'nu' x : A , a" := (
   let f := fun x:A=>a in
   n <- get_binder_name f;
-  tnu n None f) (at level 81, x at next level, right associativity).
+  tnu n None f) (at level 81, x at next level, right associativity) : MetaCoq_scope.
 
 Notation "'nu' x := t , a" := (
   let f := fun x=>a in
   n <- get_binder_name f;
-  tnu n (Some t) f) (at level 81, x at next level, right associativity).
+  tnu n (Some t) f) (at level 81, x at next level, right associativity) : MetaCoq_scope.
 
-Notation "'mfix1' f ( x : A ) : 'M' T := b" := (tfix1 (fun x=>T) (fun f (x : A)=>b))
+Notation "'mfix1' f ( x : A ) : 'M' T := b" := (tfix1 (fun x=>T%type) (fun f (x : A)=>b%MC))
   (at level 85, f at level 0, x at next level, format
   "'[v  ' 'mfix1'  f  '(' x  ':'  A ')'  ':'  'M'  T  ':=' '/  ' b ']'").
 
 Notation "'mfix2' f ( x : A ) ( y : B ) : 'M' T := b" :=
-  (tfix2 (fun (x : A) (y : B)=>T) (fun f (x : A) (y : B)=>b))
+  (tfix2 (fun (x : A) (y : B)=>T%type) (fun f (x : A) (y : B)=>b%MC))
   (at level 85, f at level 0, x at next level, y at next level, format
   "'[v  ' 'mfix2'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  ':'  'M'   T  ':=' '/  ' b ']'").
 
 Notation "'mfix3' f ( x : A ) ( y : B ) ( z : C ) : 'M' T := b" :=
-  (tfix3 (fun (x : A) (y : B) (z : C)=>T) (fun f (x : A) (y : B) (z : C)=>b))
+  (tfix3 (fun (x : A) (y : B) (z : C)=>T%type) (fun f (x : A) (y : B) (z : C)=>b%MC))
   (at level 85, f at level 0, x at next level, y at next level, z at next level, format
   "'[v  ' 'mfix3'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  '(' z  ':'  C ')'  ':'  'M'  T  ':=' '/  ' b ']'").
 
 Notation "'mfix4' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) : 'M' T := b" :=
-  (tfix4 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4)=>T) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) =>b))
+  (tfix4 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4)=>T%type) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) =>b%MC))
   (at level 85, f at level 0, x1 at next level, x2 at next level, x3 at next level, x4 at next level, format
   "'[v  ' 'mfix4'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  ':'  'M'  T  ':=' '/  ' b ']'").
 
 Notation "'mfix5' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) ( x5 : A5 ) : 'M' T := b" :=
-  (tfix5 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) (x5 : A5)=>T) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) (x5 : A5) =>b))
+  (tfix5 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) (x5 : A5)=>T%type) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) (x5 : A5) =>b%MC))
   (at level 85, f at level 0, x1 at next level, x2 at next level, x3 at next level, x4 at next level, x5 at next level, format
   "'[v  ' 'mfix5'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  '(' x5  ':'  A5 ')'  ':'  'M'  T  ':=' '/  ' b ']'").
 
@@ -326,18 +330,18 @@ Notation "p '=n>' [ H ] b" := (pbase p%core (fun H=>b%core) UniMatchNoRed)
 Delimit Scope metaCoq_pattern_scope with metaCoq_pattern.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
-  ((cons p1%metaCoq_pattern (.. (cons pn%metaCoq_pattern nil) ..)))
+  ((@cons (pattern _ _ _) p1%metaCoq_pattern (.. (@cons (pattern _ _ _) pn%metaCoq_pattern nil) ..)))
     (at level 91, p1 at level 210, pn at level 210).
 Notation "'with' p1 | .. | pn 'end'" :=
-  ((cons p1%metaCoq_pattern (.. (cons pn%metaCoq_pattern nil) ..)))
+  ((@cons (pattern _ _ _) p1%metaCoq_pattern (.. (@cons (pattern _ _ _) pn%metaCoq_pattern nil) ..)))
     (at level 91, p1 at level 210, pn at level 210).
 
 Notation "'mmatch' x ls" := (@tmatch _ (fun _=>_) x ls)
-  (at level 90, ls at level 91).
+  (at level 90, ls at level 91) : MetaCoq_scope.
 Notation "'mmatch' x 'return' 'M' p ls" := (@tmatch _ (fun x=>p) x ls)
-  (at level 90, ls at level 91).
+  (at level 90, ls at level 91) : MetaCoq_scope.
 Notation "'mmatch' x 'as' y 'return' 'M' p ls" := (@tmatch _ (fun y=>p) x ls)
-  (at level 90, ls at level 91).
+  (at level 90, ls at level 91) : MetaCoq_scope.
 
 
 Notation "'mtry' a ls" :=
