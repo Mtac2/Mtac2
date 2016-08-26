@@ -222,7 +222,7 @@ Open Scope string.
    notation in favor of naming. *)
 Notation "'nu' x , a" := (
   let f := fun x=>a in
-  n <- get_binder_name f M;
+  n <- get_binder_name f;
   tnu n None f) (at level 81, x at next level, right associativity) : MetaCoq_scope.
 
 Notation "'nu' x : A , a" := (
