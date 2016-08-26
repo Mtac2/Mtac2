@@ -47,14 +47,14 @@ MProof.
   intros n m p q.
   assert (H : n + m = m + n).
   - (rewrite-> PeanoNat.Nat.add_comm);; reflexivity.
-  (rewrite-> H);; reflexivity.
+  - (rewrite-> H);; reflexivity.
 Qed.
 
 Theorem exists_example_2 : forall n,
   (exists m, n = 4 + m) ->
   (exists o, n = 2 + o).
 MProof.
-  cintros n {- destructn 0;; intros m Hm -}.
+  cintros n {- ((fun g=>r <-hypotheses; print_term r;; ret [g]):tactic);; destructn 0;; intros m Hm -}.
   mexists (2 + m).
   apply Hm.
 Qed.

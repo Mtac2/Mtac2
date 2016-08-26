@@ -86,6 +86,12 @@ module MetaCoqProofInfos = struct
       Proof.maximal_unfocus proof_focus proof
     in
     Proof_global.simple_with_current_proof aux
+
+  let unfocus_if_done () =
+    let pf = Proof_global.give_me_the_proof () in
+    if Proof.is_done pf then
+      maximal_unfocus ()
+
 end
 
 (**
@@ -114,7 +120,7 @@ let interp_instr = function
 
 let exec f =
   ignore (Pfedit.by (f ()));
-  MetaCoqProofInfos.maximal_unfocus ()
+  MetaCoqProofInfos.unfocus_if_done ()
 
 (** Interpreter of a constr :
     - Interpretes the constr

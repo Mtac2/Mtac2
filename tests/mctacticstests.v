@@ -289,7 +289,7 @@ MProof.
     + Fail destructn 0.
       bindb (destruct b2) reflexivity.
     + bindb (destruct b2) reflexivity.
-    + introsn 2;; reflexivity. (* why is it now forcing me to use + instead of - as bullet? *)
+  - introsn 2;; reflexivity.
 Qed.
 
 (* generalize1 *)
@@ -371,7 +371,7 @@ MProof.
   pose (H := b && c).
   assert (Heq : H = b && c).
   - reflexivity.
-  (rewrite <- Heq);; destruct H;; reflexivity.
+  - (rewrite <- Heq);; destruct H;; reflexivity.
 Qed.
 
 Example fix_tac_ex: forall x:nat, 0 <= x.
