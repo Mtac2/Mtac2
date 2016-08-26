@@ -211,9 +211,9 @@ Notation "'ret'" := (fun a => (@tret _ a) % MC).
 Notation "'retS' e" := (let s := rsimpl e in ret s) (at level 20) : MetaCoq_scope.
 
 Notation "r '<-' t1 ';' t2" := (@bind _ _ t1 (fun r=> t2%MC))
-  (at level 81, right associativity) : MetaCoq_scope.
+  (at level 81, right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : MetaCoq_scope.
 Notation "t1 ';;' t2" := (@bind _ _ t1 (fun _=>t2%MC))
-  (at level 81, right associativity) : MetaCoq_scope.
+  (at level 81, right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : MetaCoq_scope.
 Notation "f @@ x" := (bind f (fun r=>(ret (r x))%MC)) (at level 70) : MetaCoq_scope.
 Notation "f >> x" := (bind f (fun r=>(x r) % MC)) (at level 70) : MetaCoq_scope.
 Open Scope string.
