@@ -61,9 +61,15 @@ Definition trewrite (d: RewriteDirection) (args: list dyn) : tactic := fun g=>
   ltac name args g.
 
 
-Notation "'rewrite' '->' x , .. , z" := (trewrite RightRewrite (cons (Dyn x) .. (cons (Dyn z) nil) ..)) (at level 40).
-Notation "'rewrite' '<-' x , .. , z" := (trewrite LeftRewrite (cons (Dyn x) .. (cons (Dyn z) nil) ..)) (at level 40).
-Notation "'rewrite' x , .. , z" := (trewrite RightRewrite (cons (Dyn x) .. (cons (Dyn z) nil) ..)) (at level 40).
+Notation "'rewrite' '->' x , .. , z" :=
+  (trewrite RightRewrite (cons (Dyn x) .. (cons (Dyn z) nil) ..))
+    (at level 0, x at next level, z at next level).
+Notation "'rewrite' '<-' x , .. , z" :=
+  (trewrite LeftRewrite (cons (Dyn x) .. (cons (Dyn z) nil) ..))
+    (at level 0, x at next level, z at next level).
+Notation "'rewrite' x , .. , z" :=
+  (trewrite RightRewrite (cons (Dyn x) .. (cons (Dyn z) nil) ..))
+    (at level 0, x at next level, z at next level).
 
 Ltac elim h := elim h.
 Definition elim {A} (x:A) : tactic :=
