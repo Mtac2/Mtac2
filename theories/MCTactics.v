@@ -232,27 +232,44 @@ Definition bindb (t u:tactic) : tactic := fun g=>
   let r := rhnf List.concat _ r in
   ret r.
 
-Class semicolon {A} {B} {C} (t:A) (u:B) := SemiColon { the_value : C }.
-Arguments SemiColon {A} {B} {C} t u the_value.
+Structure semicolon (left_type compose_type : Type) := SemiColon {
+  right_type : Type;
+  the_value : left_type -> right_type -> compose_type
+}.
+Arguments SemiColon {_ _ _} _.
+Arguments the_value {_ _ _ _ _}.
 
-Instance i_bbind (t:tactic) (l:list tactic) : semicolon t l | 100 :=
-  SemiColon _ _ (bbind t l).
+Canonical Structure semicolon_tactic_tactics := SemiColon bbind.
 
-Instance i_bindb (t:tactic) (u:tactic) : semicolon t u | 100:=
-  SemiColon _ _ (bindb t u).
+Structure mtac_or_tactic := MtacOrTactic {
+  left_type : Type;
+  mtac_or_tactic_bind : left_type -> tactic -> tactic
+}.
+Canonical Structure semicolon_mtac_tactic A :=
+  MtacOrTactic (M A) (fun a t g=>a;; t g).
+Canonical Structure semicolon_tactic_tactic :=
+  MtacOrTactic tactic bindb.
 
-Instance i_mtac A B (t:M A) (u:M B) : semicolon t u | 100 :=
-  SemiColon _ _ (_ <- t; u).
+Canonical Structure semicolon_x_tactic (g : mtac_or_tactic) :=
+  SemiColon (mtac_or_tactic_bind g).
+
+Definition the_mtac_bind A B := (fun a b=>@bind A B a (fun _ => b)).
+Canonical Structure semicolon_mtac_mtac A B := SemiColon (the_mtac_bind A B).
 
 (** Overloaded binding *)
-Class binding {A} {B} {P} (t:P A) (u: A -> B) := Binding { result : B }.
-Arguments Binding {A} {B} {P} t u result.
+Structure binding  (left_type middle_type compose_type : Type) := Binding {
+  bright_type : Type;
+  the_bvalue : left_type -> (middle_type -> bright_type) -> compose_type }.
+Arguments Binding {_ _ _ _} _.
+Arguments the_bvalue {_ _ _ _ _ _}.
 
-Instance binding_mtac A B (t:M A) (u:A -> M B) : binding t u | 100 :=
-  Binding _ _ (bind t u).
+Canonical Structure binding_mtac A B := Binding (@bind A B).
 
-Instance binding_tactic A (t:M A) (u:A -> tactic) : binding t u | 100 :=
-  Binding _ _ (fun g:goal=>x <- t; u x g).
+Definition mtac_tactic {A} (t: M A) (u: A -> tactic) : tactic :=
+  fun g=> x <- t; u x g.
+
+Canonical Structure binding_tactic A :=
+  Binding (@mtac_tactic A).
 
 Definition SomethingNotRight {A} (t : A) : Exception. exact exception. Qed.
 Definition copy_ctx {A} (B : A -> Type) :=
@@ -510,7 +527,7 @@ Definition destruct_all (T : Type) : tactic := fun g=>
   (fix f (l : list Hyp) : tactic :=
     match l with
     | [] => idtac
-    | (ahyp x _ :: l) => @the_value _ _ _ (destruct x) (f l) _
+    | (ahyp x _ :: l) => the_value (destruct x) (f l)
     end) l g.
 
 
@@ -793,9 +810,9 @@ Notation "'cintros' x .. y '{-' t '-}'" :=
   (intro_cont (fun x=>.. (intro_cont (fun y=>t)) ..))
     (at level 0, x binder, y binder, t at next level, right associativity).
 
-Notation "a ;; b" := (@the_value _ _ _ a b _).
+Notation "a ;; b" := (the_value a b).
 
-(* Notation "r '<-' t1 ';' t2" := (@result _ _ _ t1 (fun r=> t2) _). *)
+Notation "r '<-' t1 ';' t2" := (the_bvalue t1 (fun r=>t2)).
 
 Notation "'simpl'" := (treduce RedSimpl).
 Notation "'hnf'" := (treduce RedHNF).

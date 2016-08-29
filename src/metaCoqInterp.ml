@@ -81,17 +81,14 @@ module MetaCoqProofInfos = struct
 
   (** unfocus *)
   let maximal_unfocus () =
-    let aux _ proof =
-      let proof = Proof.unshelve proof in
-      Proof.maximal_unfocus proof_focus proof
-    in
-    Proof_global.simple_with_current_proof aux
+    (* we should make sure the evars are cleaned *)
+    Proof_global.simple_with_current_proof (fun _ p  ->
+      Proof.unshelve (Proof.V82.grab_evars p))
 
   let unfocus_if_done () =
     let pf = Proof_global.give_me_the_proof () in
     if Proof.is_done pf then
       maximal_unfocus ()
-
 end
 
 (**
@@ -109,7 +106,6 @@ let interp_mproof_command () =
     Errors.error "Nothing left to prove here."
   else
     begin
-      MetaCoqProofInfos.focus ();
       Proof_global.set_proof_mode "MProof";
       Vernacentries.print_subgoals ();
     end

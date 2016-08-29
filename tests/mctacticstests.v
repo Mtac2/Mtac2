@@ -149,10 +149,8 @@ Lemma test6 : forall (x y z : Prop), x = y -> y = z -> x = z.
 MProof.
   intros x y z H G.
   ltac transitivity [Dyn y].
-  Grab Existential Variables.
   ltac "Coq.Init.Notations.revgoals" nil.
   exact H.
-  Grab Existential Variables.
   exact G.
 Qed.
 
@@ -311,7 +309,6 @@ Goal forall (x y z : nat) (H: x = y), y = x.
 MProof.
   intros.
   ltac "mctacticstests.rewrite" [Dyn H].
-  Grab Existential Variables.
   reflexivity.
 Qed.
 
@@ -389,5 +386,5 @@ Example intros_def': let x := 0 in forall y, x <= y.
 MProof.
   intros.
   Ltac ind x :=induction x.
-  ltac "mctacticstests.ind" [Dyn y];;(fun g=>print_term g;; apply le_0_n g).
+  ltac "mctacticstests.ind" [Dyn y];;((fun g=>print_term g;; apply le_0_n g):tactic).
 Qed.

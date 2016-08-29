@@ -54,7 +54,7 @@ Theorem exists_example_2 : forall n,
   (exists m, n = 4 + m) ->
   (exists o, n = 2 + o).
 MProof.
-  cintros n {- ((fun g=>r <-hypotheses; print_term r;; ret [g]):tactic);; destructn 0;; intros m Hm -}.
+  cintros n {- r <- hypotheses; print_term r;; destructn 0;; intros m Hm -}.
   mexists (2 + m).
   apply Hm.
 Qed.
@@ -65,12 +65,14 @@ MProof.
   intros. select (_ -> _) apply;; assumption.
 Qed.
 
-Notation "r '<--' t1 ';' t2" := ((fun g=>r <- t1; t2 g):tactic)
-  (at level 81, right associativity).
+Goal forall P Q, (P -> Q) -> P -> Q.
+MProof.
+  cintros _ _ _ _ {- select (_ -> _) apply;; assumption -}.
+Qed.
 
 Definition apply_fun : tactic :=
-  A <-- evar Type;
-  B <-- evar Type;
+  A <- evar Type;
+  B <- evar Type;
   select (A -> B) apply.
 
 Goal forall P Q, (P -> Q) -> P -> Q.

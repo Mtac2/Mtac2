@@ -46,10 +46,8 @@ Definition fubarType_mmatch :=
   Eval compute in
   ltac:(mrun (mtry fubar_mmatch Type (True <-> True) with _ => ret True end)).
 
-Notation "r '<-' t1 ';' t2" := (@result _ _ _ t1 (fun r=> t2) _).
-
-(** the bind overloaded notation is reducing terms. destcase expects a match, but it finds false *)
-Fail Definition destcase_fail := ltac:(mrun (r <- ret (match 3 with 0 => true | _ => false end); _ <- destcase r; ret I)).
+(** the bind overloaded notation was reducing terms using typeclasses. destcase expects a match, but it finds false *)
+Definition destcase_fail := ltac:(mrun (r <- ret (match 3 with 0 => true | _ => false end); _ <- destcase r; ret I)).
 
 (** with the bind construct it works. this proves that the <- ; notation is reducing *)
 Definition destcase_work := ltac:(mrun (bind (destcase (match 3 with 0 => true | _ => false end)) (fun _=> ret I))).
