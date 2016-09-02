@@ -24,9 +24,9 @@ module MetaCoqRun = struct
   let run env sigma concl c =
     let (sigma, t) = pretypeT env sigma concl c in
     let rec aux = function
-      | Run.Val (sigma, _, v) ->
+      | Run.Val (sigma, v) ->
           Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))
-      | Run.Err (_, _, e) ->
+      | Run.Err (_, e) ->
           Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
     in
     aux (Run.run (env, sigma) t)
@@ -59,7 +59,7 @@ module MetaCoqRun = struct
       let sigma = Proofview.Goal.sigma gl in
       let reduceGoal = Lazy.force MCTactics.mkReduceGoal in
       match Run.run (env, sigma) (Term.mkApp (reduceGoal, [|concl|])) with
-      | Run.Val (sigma, _, v) ->
+      | Run.Val (sigma, v) ->
           Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))
       | Run.Err _ ->
           assert false

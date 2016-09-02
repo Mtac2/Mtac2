@@ -4,7 +4,7 @@ open Environ
 
 module ExistentialSet : Set.S with type elt = existential_key
 
-type elem = (evar_map * ExistentialSet.t * constr)
+type elem = (evar_map * constr)
 
 type data =
   | Val of elem
@@ -17,5 +17,5 @@ module MetaCoqNames : sig
 end
 
 val run' :
-  Environ.env * Constr.constr * Evd.evar_map * int * ExistentialSet.t ->
+  Environ.env * Constr.constr * Evd.evar_map * int ->
   Term.constr -> data
