@@ -7,6 +7,7 @@ Require Import Lists.List.
 Import ListNotations.
 Import MetaCoqNotations.
 Import MCTacticsNotations.
+Import TacticOverload.
 
 (** This file contains several examples showing the different
     tactics in MetaCoq. Many are taken from SF. *)
@@ -34,7 +35,7 @@ Qed.
 Theorem tl_length_pred : forall l: list nat,
   pred (length l) = length (tl l).
 MProof.
-  destructn 0 ;; [idtac ; intros n l'].
+  destructn 0 asp [ [] ; ["n"; "l'"] ].
   - (* l = nil *)
     reflexivity.
   - (* l = cons n l' *)
@@ -46,15 +47,15 @@ Theorem plus_rearrange : forall n m p q : nat,
 MProof.
   intros n m p q.
   assert (H : n + m = m + n).
-  - rewrite-> PeanoNat.Nat.add_comm;; reflexivity.
-  rewrite-> H;; reflexivity.
+  - rewrite -> PeanoNat.Nat.add_comm;; reflexivity.
+  - rewrite -> H;; reflexivity.
 Qed.
 
 Theorem exists_example_2 : forall n,
   (exists m, n = 4 + m) ->
   (exists o, n = 2 + o).
 MProof.
-  cintros n {- destructn 0;; intros m Hm -}.
+  cintros n {- r <- hypotheses; print_term r;; destructn 0;; intros m Hm -}.
   mexists (2 + m).
   apply Hm.
 Qed.
@@ -65,12 +66,14 @@ MProof.
   intros. select (_ -> _) apply;; assumption.
 Qed.
 
-Notation "r '<--' t1 ';' t2" := ((fun g=>r <- t1; t2 g):tactic)
-  (at level 81, right associativity).
+Goal forall P Q, (P -> Q) -> P -> Q.
+MProof.
+  cintros _ _ _ _ {- select (_ -> _) apply;; assumption -}.
+Qed.
 
 Definition apply_fun : tactic :=
-  A <-- evar Type;
-  B <-- evar Type;
+  A <- evar Type;
+  B <- evar Type;
   select (A -> B) apply.
 
 Goal forall P Q, (P -> Q) -> P -> Q.
@@ -103,11 +106,4 @@ Definition apply_one_of l : tactic :=
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 MProof.
   intros;; MCTactics.repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
-(* Spurious evars that shouldn't be here *)
-exact Prop.
-exact True.
-exact [].
-exact Prop.
-exact True.
-exact [].
 Qed.

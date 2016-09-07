@@ -7,6 +7,7 @@ Require Import Lists.List.
 Import ListNotations.
 Import MetaCoqNotations.
 Import MCTacticsNotations.
+Import TacticOverload.
 
 (** A bug with destruct *)
 Goal forall n:nat, 0 <= n.
@@ -15,7 +16,15 @@ MProof.
   (* destruct n. *) (* the type of the match seems to be wrong *)
 Abort.
 
-(** A bug with the call to UniCoq *)
+(** It was throwing an exception, but now it works *)
+Theorem exists_example_2 : forall n,
+  (exists m, n = 4 + m) ->
+  (exists o, n = 2 + o).
+MProof.
+  intros n;; destructn 0.
+Abort.
+
+(** A bug with the call to UniCoq (solved) *)
 Example fubar (T : Type) (A : T) : M Prop:=
   oeq <- munify Prop T UniCoq;
   match oeq with
@@ -38,7 +47,7 @@ Definition fubarType_mmatch :=
   Eval compute in
   ltac:(mrun (mtry fubar_mmatch Type (True <-> True) with _ => ret True end)).
 
-(** the bind overloaded notation is reducing terms. destcase expects a match, but it finds false *)
+(** the bind overloaded notation was reducing terms using typeclasses. destcase expects a match, but it finds false *)
 Definition destcase_fail := ltac:(mrun (r <- ret (match 3 with 0 => true | _ => false end); _ <- destcase r; ret I)).
 
 (** with the bind construct it works. this proves that the <- ; notation is reducing *)

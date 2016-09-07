@@ -217,7 +217,7 @@ Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
         P <- evar (T -> Type);
         f <- evar (forall x:T, P x);
         t <- evar T;
-        let el := hnf (d.(elem)) in
+        let el := rhnf (d.(elem)) in
         b <- munify_cumul el (f t) UniCoq;
         if b then
           r <- args_of_max max (Dyn f); ret (app r (Dyn t :: nil))
@@ -250,10 +250,11 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
       match oH with
       | Some H =>
         let f := match_eq H selem_of a in
-        nu b : B,
+        n <- fresh_name "b";
+        tnu n None (fun b : B =>
           r <- rec (F b) (App f b);
           f' <- abs b r;
-          ret (cProd f')
+          ret (cProd f'))
       | None =>
         H <- unify_or_fail B (stype_of isort);
         let idB := match_eq H (fun T=>B->T) (fun x=>x) in
@@ -286,12 +287,13 @@ Polymorphic Definition get_ITele : forall {T : Type} (ind : T), MetaCoq (nat * (
     mmatch T with
     | [? (A : Type) (F : A -> Type)] forall a, F a => [H]
       let indFun := match_eq H (fun x=>x) ind in
-      nu a : A,
+      name <- fresh_binder_name T;
+      tnu name None (fun a : A =>
         r <- f (F a) (indFun a);
         let (n, sit) := r in
         let (sort, it) := sit in
         f <- abs a it;
-        ret (S n, existT _ sort (iTele f))
+        ret (S n, existT _ sort (iTele f)))
     | Prop => [H]
       let indProp := match_eq H (fun x=>x) ind in
       ret (0, existT _ SProp (iBase (sort := SProp) indProp))

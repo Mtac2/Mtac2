@@ -5,6 +5,7 @@ Require Import Lists.List.
 Import ListNotations.
 Import MetaCoqNotations.
 Import MCTacticsNotations.
+Import TacticOverload.
 
 Goal True.
 MProof.
@@ -84,6 +85,13 @@ MProof.
   cintro H {- apply H -}.
 Qed.
 
+Goal {x:nat & x > 0}.
+MProof.
+  apply (existT _ 1 _).
+  hnf.
+  apply le_n.
+Qed.
+
 Require Import Coq.omega.Omega.
 Definition omega := ltac "Coq.omega.Omega.omega" nil.
 
@@ -142,10 +150,8 @@ Lemma test6 : forall (x y z : Prop), x = y -> y = z -> x = z.
 MProof.
   intros x y z H G.
   ltac transitivity [Dyn y].
-  Grab Existential Variables.
   ltac "Coq.Init.Notations.revgoals" nil.
   exact H.
-  Grab Existential Variables.
   exact G.
 Qed.
 
@@ -282,7 +288,7 @@ MProof.
     + Fail destructn 0.
       bindb (destruct b2) reflexivity.
     + bindb (destruct b2) reflexivity.
-    + bindb (introsn 2) reflexivity. (* why is it now forcing me to use + instead of - as bullet? *)
+  - introsn 2;; reflexivity.
 Qed.
 
 (* generalize1 *)
@@ -304,7 +310,6 @@ Goal forall (x y z : nat) (H: x = y), y = x.
 MProof.
   intros.
   ltac "mctacticstests.rewrite" [Dyn H].
-  Grab Existential Variables.
   reflexivity.
 Qed.
 
@@ -333,9 +338,6 @@ MProof.
     destruct x;; destruct y;; intros ;;
       (reflexivity || (symmetry ;; assumption))
   ).
-  (* It's creating spurious evars because of the failure in applying
-     reflexivity (I think) *)
-  exact Set. exact bool. exact Set. exact bool.
 Qed.
 
 Goal True.
@@ -367,7 +369,7 @@ MProof.
   pose (H := b && c).
   assert (Heq : H = b && c).
   - reflexivity.
-  rewrite<- Heq;; destruct H;; reflexivity.
+  - (rewrite <- Heq);; destruct H;; reflexivity.
 Qed.
 
 Example fix_tac_ex: forall x:nat, 0 <= x.
@@ -385,5 +387,5 @@ Example intros_def': let x := 0 in forall y, x <= y.
 MProof.
   intros.
   Ltac ind x :=induction x.
-  ltac "mctacticstests.ind" [Dyn y];;(fun g=>print_term g;; apply le_0_n g).
+  ltac "mctacticstests.ind" [Dyn y];;((fun g=>print_term g;; apply le_0_n g):tactic).
 Qed.

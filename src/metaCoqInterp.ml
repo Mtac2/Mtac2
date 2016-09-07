@@ -24,9 +24,9 @@ module MetaCoqRun = struct
   let run env sigma concl c =
     let (sigma, t) = pretypeT env sigma concl c in
     let rec aux = function
-      | Run.Val (sigma, _, v) ->
+      | Run.Val (sigma, v) ->
           Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))
-      | Run.Err (_, _, e) ->
+      | Run.Err (_, e) ->
           Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
     in
     aux (Run.run (env, sigma) t)
@@ -59,7 +59,7 @@ module MetaCoqRun = struct
       let sigma = Proofview.Goal.sigma gl in
       let reduceGoal = Lazy.force MCTactics.mkReduceGoal in
       match Run.run (env, sigma) (Term.mkApp (reduceGoal, [|concl|])) with
-      | Run.Val (sigma, _, v) ->
+      | Run.Val (sigma, v) ->
           Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))
       | Run.Err _ ->
           assert false
@@ -81,11 +81,14 @@ module MetaCoqProofInfos = struct
 
   (** unfocus *)
   let maximal_unfocus () =
-    let aux _ proof =
-      let proof = Proof.unshelve proof in
-      Proof.maximal_unfocus proof_focus proof
-    in
-    Proof_global.simple_with_current_proof aux
+    (* we should make sure the evars are cleaned *)
+    Proof_global.simple_with_current_proof (fun _ p  ->
+      Proof.unshelve (Proof.V82.grab_evars p))
+
+  let unfocus_if_done () =
+    let pf = Proof_global.give_me_the_proof () in
+    if Proof.is_done pf then
+      maximal_unfocus ()
 end
 
 (**
@@ -103,7 +106,6 @@ let interp_mproof_command () =
     Errors.error "Nothing left to prove here."
   else
     begin
-      MetaCoqProofInfos.focus ();
       Proof_global.set_proof_mode "MProof";
       Vernacentries.print_subgoals ();
     end
@@ -114,7 +116,7 @@ let interp_instr = function
 
 let exec f =
   ignore (Pfedit.by (f ()));
-  MetaCoqProofInfos.maximal_unfocus ()
+  MetaCoqProofInfos.unfocus_if_done ()
 
 (** Interpreter of a constr :
     - Interpretes the constr

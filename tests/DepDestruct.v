@@ -128,9 +128,10 @@ Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
     mmatch A as A' return M A' with
     | [? B (fty : B -> Type)] forall x, fty x => [H]
       let t' := reduce RedSimpl match H in _ = P return P with eq_refl => t end in (* we need to reduce this *)
-      nu x,
+      name <- fresh_name "A";
+      tnu name None (fun x=>
         r <- unfold_funs (t' x) n';
-      abs x r
+      abs x r)
     | [? A'] A' => [H]
       match H in _ = P return M P with eq_refl => ret t end
     end
@@ -150,17 +151,18 @@ MProof.
   new_destruct n.
 Abort.
 
+Import TacticOverload.
 
 (* MetaCoq version *)
 Goal forall P b, reflect P b -> P <-> b = true.
 MProof.
   intros P b r.
   mpose (rG := abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r).
-  tsimpl.
+  simpl.
   assert (T : get_type_of_branch rG (reflect_RTrue P)).
-  { cintros x {- MCTactics.split;; [cintros P {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
+  { cintros x {- MCTactics.split;; [cintros xP {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
   assert (F : get_type_of_branch rG (reflect_RFalse P)).
-  { tsimpl. intros. MCTactics.split. intros. exact (match a x with end). intros;; discriminate. }
+  { simpl. intros. MCTactics.split. intros. exact (match a x with end). intros;; discriminate. }
   mpose (return_type := unfold_funs (RTele_Fun rG) 5).
   pose (mc :=
           makecase {|
@@ -223,12 +225,3 @@ Example reflect_itele : ITele reflect_sort :=
   match snd get_reflect_ITele as pair return let (sort, _) := pair in ITele sort with
   | existT _ s it => it
   end.
-
-Example args_of_RTrue P := Eval compute in ltac:(mrun (args_of _ (reflect P true))).
-Example args_of_max_RTrue P := Eval compute in ltac:(mrun (args_of_max 2 (reflect P true))).
-
-
-Example ATele_of_RTrue := Eval compute in ltac:(mrun (get_ATele (reflect_itele) (tail (args_of_RTrue True)))).
-
-Example get_RTrue_CTele := Eval compute in ltac:(mrun (get_CTele reflect_itele 1 _ (RTrue True))).
-Example get_RFalse_CTele := Eval compute in ltac:(mrun (get_CTele reflect_itele 1 _ (RFalse True))).

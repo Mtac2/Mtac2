@@ -659,7 +659,7 @@ MProof.
 Qed.
 
 Ltac auto_with_bool := auto with bool.
-Definition auto_with_bool : tactic := ltac "Top.auto_with_bool" nil.
+Definition auto_with_bool : tactic := ltac "Bool.auto_with_bool" nil.
 
 Lemma Is_true_eq_left : forall x:bool, x = true -> Is_true x.
 MProof.
@@ -682,7 +682,7 @@ Qed.
 
 Lemma eqb_eq : forall x y:bool, Is_true (eqb x y) -> x = y.
 MProof.
-  destr_bool;; (OR contradiction auto).
+  destr_bool;; (or contradiction auto).
 Qed.
 
 (** [Is_true] and connectives *)
@@ -766,8 +766,8 @@ Lemma negb_if : forall (A:Type)(a a':A)(b:bool),
  (if negb b then a else a') =
  (if b then a' else a).
 MProof.
-  Fail intros A a a';; typed_intros bool;; destruct_all bool;; reflexivity.  (* CHECK! *)
-Admitted.
+  intros A a a';; typed_intros bool;; destruct_all bool;; reflexivity.
+Qed.
 
 (*****************************************)
 (** * Alternative versions of [andb] and [orb]

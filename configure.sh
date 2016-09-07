@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
 # Makefile generation
-coq_makefile -f Make -o Makefile
+coq_makefile -f _CoqProject -o Makefile
 
 # git pre-commit hooks installation
 (cd .git/hooks; ln -sf ../../scripts/hooks/pre-commit)

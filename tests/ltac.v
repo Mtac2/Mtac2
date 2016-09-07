@@ -7,6 +7,7 @@ Require Import Lists.List.
 Import ListNotations.
 Import MetaCoqNotations.
 Import MCTacticsNotations.
+Import TacticOverload.
 
 Ltac induction n := induction n.
 
