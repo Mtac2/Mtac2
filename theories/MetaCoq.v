@@ -76,11 +76,6 @@ Record Case :=
 (* Reduction primitive *)
 Definition reduce (r : Reduction) {A} (x : A) := x.
 
-(** Pattern matching without pain *)
-Inductive pattern (M : Type->Prop) A (B : A -> Type) (t : A) : Prop :=
-| pbase : forall (x:A), (t = x -> M (B x)) -> Unification -> pattern M A B t
-| ptele : forall {C}, (forall (x : C), pattern M A B t) -> pattern M A B t.
-
 (** goal type *)
 Polymorphic Inductive goal :=
 | TheGoal : forall {A}, A -> goal
@@ -169,8 +164,6 @@ Inductive MetaCoq
 
 | call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (prod A (list goal))
 | list_ltac : MetaCoq unit
-
-| match_and_run : forall {A : Type} {B : A -> Type} {t}, pattern MetaCoq A B t -> MetaCoq (option (B t))
 
 (** [munify_cumul x y r] uses reduction strategy [r] to equate [x] and [y].
     Note that they might have different types.
@@ -450,25 +443,44 @@ Notation "'mfix5' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) ( x5 : A5 ) 
 Definition type_inside {A} (x : M A) := A.
 
 
+Definition DoesNotMatch : Exception. exact exception. Qed.
 Definition NoPatternMatches : Exception. exact exception. Qed.
 Definition Anomaly : Exception. exact exception. Qed.
 Definition Continue : Exception. exact exception. Qed.
 
-Notation pattern := (pattern MetaCoq).
+(** Pattern matching without pain *)
+Polymorphic Inductive pattern A (B : A -> Type) (t : A) : Prop :=
+| pbase : forall (x:A), (t = x -> MetaCoq (B x)) -> Unification -> pattern A B t
+| ptele : forall {C}, (forall (x : C), pattern A B t) -> pattern A B t.
 
-Fixpoint tmatch {A P} t (ps : list (pattern A P t)) : M (P t) :=
+Polymorphic Fixpoint open_pattern {A P t} (p : pattern A P t) : M (P t) :=
+  match p with
+  | pbase _ _ _ x f u =>
+    oeq <- munify x t u;
+    match oeq return M (P t) with
+    | Some eq =>
+      match eq with eq_refl =>
+        let h := reduce (RedStrong [RedBeta]) (f (eq_sym eq)) in h
+      end
+    | None => raise DoesNotMatch
+    end
+  | @ptele _ _ _ C f =>
+    e <- evar C;
+    open_pattern (f e)
+  end.
+
+Polymorphic Fixpoint tmatch {A P} t (ps : list (pattern A P t)) : M (P t) :=
   match ps with
   | [] => raise NoPatternMatches
   | (p :: ps') =>
-    v <- match_and_run p;
-    match v with
-    | None => tmatch t ps'
-    | Some v => ret v
-    end
+    ttry (open_pattern p) (fun e=>
+      oeq <- munify e DoesNotMatch UniMatchNoRed;
+      if oeq then tmatch t ps' else raise e
+    )
   end.
 
-Arguments ptele {_ A B t C} _.
-Arguments pbase {_ A B t} _ _ _.
+Arguments ptele {A B t C} _.
+Arguments pbase {A B t} _ _ _.
 
 
 Notation "[? x .. y ] ps" := (ptele (fun x=> .. (ptele (fun y=>ps)).. ))

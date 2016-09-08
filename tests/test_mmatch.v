@@ -21,7 +21,7 @@ Qed.
 Goal True.
 MProof.
   (* uninstantiated i *)
-  Fail mmatch (fun x=>x) I with
+  mmatch (fun x=>x) I with
   [? i] I => ret i : M True
   end.
   (* do not reduce pattern *)

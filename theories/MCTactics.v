@@ -350,6 +350,11 @@ Definition abstract_up_to n : tactic := fun g=>
   e <- Cevar pP l';
 *)
 
+Definition cprint {A} (s: string) (c: A) :=
+  x <- pretty_print c;
+  let s := reduce RedNF (s++x)%string in
+  print s.
+
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
   b <- is_var n;
   ctx <- if b then hyps_except n else hypotheses;

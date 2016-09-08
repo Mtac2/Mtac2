@@ -123,7 +123,7 @@ module Exceptions = struct
   let mkExceptionNotGround env term =
     let e = mkInternalException "ExceptionNotGround" in
     let s = string_of_ppcmds (Termops.print_constr_env env term) in
-    let coqexp = CoqString.to_coq ("The exception being raised is not ground: " ^ s) in
+    let coqexp = CoqString.to_coq s in
     mkApp(Lazy.force e, [|coqexp|])
 
   let error_stuck t = "Cannot reduce term, perhaps an opaque definition? " ^ constr_to_string t
@@ -282,49 +282,6 @@ module UnificationStrategy = struct
       | _ -> Evar.Map.domain (Evd.undefined_map sigma) in
     (funs.(pos) evars ts env sigma conv_pb t1 t2,
      pos > unicoq_pos && pos < evarconv_pos)
-
-end
-
-module Pattern = struct
-  open ConstrBuilder
-
-  let baseB = mkBuilder "pbase"
-  let teleB = mkBuilder "ptele"
-
-  exception NotAPattern
-
-  type pattern = {
-    sigma : evar_map;
-    evars : Evar.Set.t;
-    patt : constr;
-    body : constr;
-    strategy : constr (* unification strategy *)
-  }
-
-  let open_pattern env sigma p =
-    let rec op sigma p evars =
-      let (c, args) = whd_betadeltaiota_stack env sigma p in
-      if equal baseB c then
-        {sigma=sigma; evars=evars; patt=List.nth args 4;
-         body=List.nth args 5; strategy=List.nth args 6}
-      else if equal teleB c then
-        begin
-          let ty = List.nth args 4 in
-          let func = List.nth args 5 in
-          let (sigma, evar) =
-            if Term.isSort ty && ty <> mkProp then
-              let (sigma, (evar, _)) = Evarutil.new_type_evar env sigma Evd.UnivRigid in
-              (sigma, evar)
-            else
-              Evarutil.new_evar env sigma ty
-          in
-          let evars = Evar.Set.add (fst (destEvar evar)) evars in
-          op sigma (mkApp (func, [|evar|])) evars
-        end
-      else
-        raise NotAPattern
-    in
-    op sigma p (Evar.Set.empty)
 
 end
 
@@ -683,53 +640,57 @@ let abs case (env, sigma) a p x y n t : data =
     Exceptions.block (Exceptions.error_abs x)
 
 exception MissingDep
+
+(** checks if (option) definition od and type ty has named
+    vars included in vars *)
+let check_vars od ty vars =
+  Idset.subset (Termops.collect_vars ty) vars &&
+  if Option.has_some od then
+    Idset.subset (Termops.collect_vars (Option.get od)) vars
+  else true
+
 let cvar (env, sigma) ty hyp =
   let hyp = Hypotheses.from_coq_list (env, sigma) hyp in
-  let check_vars e t vars =
-    Idset.subset (Termops.collect_vars t) vars &&
-    if Option.has_some e then
-      Idset.subset (Termops.collect_vars (Option.get e)) vars
-    else true
-  in
-  let b, (_, _, subs, env') =
+  let ores =
     try
-      true, List.fold_right (fun (i, e, t) (avoid, avoids, subs, env') ->
+      Some (List.fold_right (fun (i, e, t) (idlist, idset, subs, env') ->
         let t = Reductionops.nf_evar sigma t in
         let e = Option.map (Reductionops.nf_evar sigma) e in
         if isRel i then
           let n = destRel i in
           let na, _, _ = List.nth (rel_context env) (n-1) in
-          let id = Namegen.next_name_away na avoid in
+          let id = Namegen.next_name_away na idlist in
           let e = try Option.map (multi_subst subs) e with Not_found -> Exceptions.block "Not well-formed hypotheses 1" in
           let t = try multi_subst subs t with Not_found -> Exceptions.block "Not well-formed hypotheses 2" in
-          let b = check_vars e t avoids in
+          let b = check_vars e t idset in
           let d = (id, e, t) in
           if b then
-            (id::avoid, Idset.add id avoids, (n, mkVar id) :: subs, push_named d env')
+            (id::idlist, Idset.add id idset, (n, mkVar id) :: subs, push_named d env')
           else
             raise MissingDep
         else
           let id = destVar i in
-          if check_vars e t avoids then
-            (id::avoid, Idset.add id avoids, subs, push_named (id, e, t) env')
+          if check_vars e t idset then
+            (id::idlist, Idset.add id idset, subs, push_named (id, e, t) env')
           else
             raise MissingDep
-      ) hyp ([], Idset.empty, [], empty_env)
-    with MissingDep -> false, ([], Idset.empty, [], empty_env)
+      ) hyp ([], Idset.empty, [], empty_env))
+    with MissingDep -> None
   in
-  if not b then
-    fail sigma (Lazy.force Exceptions.mkMissingDependency)
-  else
-    let vars = List.map (fun (v, _, _)->v) hyp in
-    try
-      if List.distinct vars then
-        let evi = Evd.make_evar (Environ.named_context_val env') (multi_subst subs ty) in
-        let (sigma, e) = Evarutil.new_pure_evar_full sigma evi in
-        return sigma (mkEvar (e, Array.of_list vars))
-      else
-        Exceptions.block "Duplicated variable in hypotheses"
-    with Not_found ->
-      Exceptions.block "Hypothesis not found"
+  match ores with
+  | None -> fail sigma (Lazy.force Exceptions.mkMissingDependency)
+  | Some (_, _, subs, env') ->
+      let ty = Reductionops.nf_evar sigma ty in
+      let vars = List.map (fun (v, _, _)->v) hyp in
+      try
+        if List.distinct vars then
+          let evi = Evd.make_evar (Environ.named_context_val env') (multi_subst subs ty) in
+          let (sigma, e) = Evarutil.new_pure_evar_full sigma evi in
+          return sigma (mkEvar (e, Array.of_list vars))
+        else
+          Exceptions.block "Duplicated variable in hypotheses"
+      with Not_found ->
+        Exceptions.block "Hypothesis not found"
 
 let rec get_name (env, sigma) (t: constr) : constr option =
   (* If t is a defined variable it is reducing it *)
@@ -1076,11 +1037,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         KNmap.iter aux (Tacenv.ltac_entries ());
         return sigma (Lazy.force CoqUnit.mkTT)
 
-    | 32 -> (* match_and_run *)
-        let a, b, t, p = nth 0, nth 1, nth 2, nth 3 in
-        match_and_run ctxt a b t p
-
-    | 33 -> (* munify_cumul *)
+    | 32 -> (* munify_cumul *)
         let x, y, uni = nth 2, nth 3, nth 4 in
         begin
           let r = UnificationStrategy.unify None sigma env uni Reduction.CUMUL x y in
@@ -1099,38 +1056,6 @@ and run_fix (env, renv, sigma, _ as ctxt) h a b s i f x =
   let fixf = mkApp(h, Array.append a [|b;s;i;f|]) in
   let c = mkApp (f, Array.append [| fixf|] x) in
   run' ctxt c
-
-and match_and_run (env, renv, sigma0, nus) a b t p =
-  try
-    let open Munify in
-    let open Pattern in
-    let open Evarsolve in
-    let {sigma=sigma; evars=evars; patt=x; body=func;strategy=strategy} =
-      open_pattern env sigma0 p in
-    (* func has Coq type x = t -> M (B x) *)
-    let bt = mkApp(b, [|t|]) in
-    match UnificationStrategy.unify (Some evars) sigma env strategy Reduction.CONV x t with
-    | Success sigma, b ->
-        if Evar.Set.for_all (Evd.is_defined sigma) evars then
-          begin
-            let func = Evarutil.nf_evar sigma func in
-            let sigma =
-              if b then
-                Evar.Set.fold (fun e sigma->Evd.remove sigma e) evars sigma
-              else sigma in
-            let eqrefl = CoqEq.mkAppEqRefl a t in
-            let r = run' (env, renv, sigma, nus) (mkApp (func, [|eqrefl|])) in
-            match r with
-            | Val (sigma, r) ->
-                return sigma (CoqOption.mkSome bt r)
-            | _ -> r
-          end
-        else
-          Exceptions.(block (error_stuck p))
-    | _, _ ->
-        return sigma0 (CoqOption.mkNone bt)
-  with Pattern.NotAPattern ->
-    Exceptions.(block (error_stuck p))
 
 (* Takes a [sigma], a set of evars [metas], and a [term],
    and garbage collects all the [metas] in [sigma] that do not appear in

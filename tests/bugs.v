@@ -21,7 +21,7 @@ Theorem exists_example_2 : forall n,
   (exists m, n = 4 + m) ->
   (exists o, n = 2 + o).
 MProof.
-  intros n;; destructn 0.
+intros n. cintros m {- destruct m -}.
 Abort.
 
 (** A bug with the call to UniCoq (solved) *)
