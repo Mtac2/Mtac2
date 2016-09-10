@@ -107,3 +107,12 @@ Goal forall x y z : nat, In x (z :: y :: x :: nil).
 MProof.
   intros;; MCTactics.repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
 Qed.
+
+Example trans_eq_example' : forall (a b c d e f : nat),
+     [a;b] = [c;d] ->
+     [c;d] = [e;f] ->
+     [a;b] = [e;f].
+MProof.
+  intros.
+  apply (trans_eq where "y":=[c;d]);; assumption.
+Qed.

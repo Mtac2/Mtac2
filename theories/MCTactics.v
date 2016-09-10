@@ -795,7 +795,6 @@ Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
         match oeq' with
         | Some eq' =>
           let v' := reduce (RedWhd [RedIota]) match eq' as x in _ = x with eq_refl=> v end in
-  print_term (f v');;
           ret (Dyn (f v'))
         | _ => raise (WrongType T1)
         end
