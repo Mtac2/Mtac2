@@ -469,15 +469,6 @@ Monomorphic Inductive goal_pattern : Type :=
 | gbase : forall {A}, A -> tactic -> goal_pattern
 | gtele : forall {C}, (C -> goal_pattern) -> goal_pattern.
 
-Notation "[[ |- ps ] ] => t" :=
-  (gbase ps t)
-  (at level 202, ps at next level) : goal_match_scope.
-
-Notation "[[ x .. y |- ps ] ] => t" :=
-  (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
-  (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
-Delimit Scope goal_match_scope with goal_match.
-
 Definition DoesNotMatchGoal : Exception. exact exception. Qed.
 
 (* Monomorphic*) Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
@@ -504,12 +495,6 @@ Definition DoesNotMatchGoal : Exception. exact exception. Qed.
 
 Definition match_goal p : tactic := fun g=>
   r <- hypotheses; let r := rsimpl (List.rev r) in match_goal' p r g.
-Arguments match_goal p%goal_match _.
-
-
-Definition assumption : tactic := fun g=>
-  P <- goal_type g;
-  match_goal ([[ x:P |- P ]] => exact x) g.
 
 Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   d <- goal_to_dyn g;
@@ -651,12 +636,6 @@ Definition print_goal : tactic := fun g=>
   print sep;;
   print sg;;
   idtac g.
-
-(** Given a type [T] it searches for a hypothesis with that type and
-    executes the [cont]inuation on it.  *)
-Definition select T (cont: T -> tactic) : tactic := fun g=>
-  G <- goal_type g;
-  match_goal ([[(x : T) |- G ]] => cont x) g.
 
 (** [n_etas n f] takes a function f with type [forall x1, ..., xn, T]
     and returns its eta-expansion: [fun x1, ..., xn=>f x1 .. xn].
@@ -801,6 +780,33 @@ Monomorphic Fixpoint name_pattern (l: list (list string)) : list tactic :=
   | (ns :: l) => intros_simpl ns :: name_pattern l
   end.
 
+Definition NameNotFound (n: string) : Exception. exact exception. Qed.
+Definition WrongType (T: Type) : Exception. exact exception. Qed.
+
+Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
+  (mfix1 app (d : dyn) : M _ :=
+    let (ty, el) := d in
+    mmatch d with
+    | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
+      binder <- get_binder_name ty;
+      oeq <- munify binder n UniMatchNoRed;
+      if oeq then
+        oeq' <- munify B T1 UniCoq;
+        match oeq' with
+        | Some eq' =>
+          let v' := reduce (RedWhd [RedIota]) match eq' as x in _ = x with eq_refl=> v end in
+  print_term (f v');;
+          ret (Dyn (f v'))
+        | _ => raise (WrongType T1)
+        end
+      else
+        e <- evar T1;
+        app (Dyn (f e))
+    | _ =>
+        raise (NameNotFound n)
+    end
+  ) (Dyn c).
+
 Module MCTacticsNotations.
 
 Notation "t || u" := (or t u).
@@ -827,6 +833,18 @@ Notation "'assert' ( x : T )" := (cassert (fun x:T=>idtac)) (at level 40, x at n
 
 Notation "t 'asp' n" := (bbind t (name_pattern n)) (at level 40).
 
+Notation "[[ |- ps ] ] => t" :=
+  (gbase ps t)
+  (at level 202, ps at next level) : goal_match_scope.
+
+Notation "[[ x .. y |- ps ] ] => t" :=
+  (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
+  (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
+Delimit Scope goal_match_scope with goal_match.
+
+Arguments match_goal _%goal_match _.
+
+Notation "t 'where' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
 End MCTacticsNotations.
 
 Module TacticOverload.
@@ -834,3 +852,15 @@ Notation "a ;; b" := (the_value a b).
 
 Notation "r '<-' t1 ';' t2" := (the_bvalue t1 (fun r=>t2)).
 End TacticOverload.
+
+Import MCTacticsNotations.
+
+Definition assumption : tactic := fun g=>
+  P <- goal_type g;
+  match_goal ([[ x:P |- P ]] => exact x) g.
+
+(** Given a type [T] it searches for a hypothesis with that type and
+    executes the [cont]inuation on it.  *)
+Definition select T (cont: T -> tactic) : tactic := fun g=>
+  G <- goal_type g;
+  match_goal ([[(x : T) |- G ]] => cont x) g.
