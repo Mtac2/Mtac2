@@ -1,8 +1,4 @@
-From MetaCoq
-Require Export MetaCoq MCTactics.
-
-Export MetaCoqNotations.
-Export MCTacticsNotations.
+Require Import MCImports.
 
 Theorem andb3_exchange :
   forall b c d, andb (andb b c) d = andb (andb b d) c.

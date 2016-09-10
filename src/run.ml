@@ -100,6 +100,10 @@ module Exceptions = struct
 
   let mkInternalException = mkConstr
 
+  let mkFailWith s =
+    let msg = CoqString.to_coq s in
+    mkApp (Lazy.force (mkConstr "Failure"), [|msg|])
+
   let mkNullPointer = mkInternalException "NullPointer"
   let mkTermNotGround = mkInternalException "TermNotGround"
   let mkOutOfBounds = mkInternalException "ArrayOutOfBounds"
@@ -139,6 +143,8 @@ module Exceptions = struct
 
   let block = Errors.error
 end
+
+module E = Exceptions
 
 module ReductionStrategy = struct
   open MetaCoqNames
@@ -789,12 +795,11 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         let ((m, ix), _) = Term.destConstruct c in
         if Names.eq_ind m (fst (Term.destInd (Lazy.force mkT_lazy))) then
           ix
-        else
-          Exceptions.block (Exceptions.error_stuck c)
-      else
-        Exceptions.block (Exceptions.error_stuck c)
+        else -1
+      else -1
     in
     match constr h with
+    | -1 -> fail sigma (E.mkFailWith (E.error_stuck h))
     | 1 -> (* ret *)
         return sigma (nth 1)
 
