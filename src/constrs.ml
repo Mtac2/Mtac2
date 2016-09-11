@@ -113,13 +113,16 @@ module CoqList = struct
   let isNil  = Constr.isConstr mkNil
   let isCons = Constr.isConstr mkCons
 
+  exception Skip
+
   let rec from_coq_conv (env, sigma as ctx) (fconv : Term.constr -> 'a) cterm =
     let (constr, args) = whd_betadeltaiota_stack env sigma cterm in
     if isNil constr then [] else
     if not (isCons constr) then invalid_arg "not a list" else
       let elt = List.nth args 1 in
       let ctail = List.nth args 2 in
-      fconv elt :: from_coq_conv ctx fconv ctail
+      let tail = from_coq_conv ctx fconv ctail in
+      try fconv elt :: tail with Skip -> tail
 
   let from_coq (env, sigma) =
     from_coq_conv (env, sigma) (fun x->x)

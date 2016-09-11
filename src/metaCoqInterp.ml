@@ -13,8 +13,10 @@ module MetaCoqRun = struct
     let ty = Retyping.get_type_of env sigma c in
     let (h, args) = Reductionops.whd_betadeltaiota_stack env sigma ty in
     if Term.eq_constr_nounivs metaCoqType h && List.length args = 1 then
-      let sigma = Evarconv.the_conv_x_leq env t (List.hd args) sigma in
-      (sigma, c)
+      try
+        let sigma = Evarconv.the_conv_x_leq env t (List.hd args) sigma in
+        (sigma, c)
+      with Evarconv.UnableToUnify(_,_) -> Errors.error "Different types"
     else if Term.eq_constr_nounivs tacticType ty && List.length args = 0 then
       let sigma, runTac = MCTactics.mkRunTac sigma env in
       (sigma, Term.mkApp(runTac, [|t; c|]))
