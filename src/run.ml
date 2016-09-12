@@ -132,9 +132,8 @@ module Exceptions = struct
   let error_stuck t = "Cannot reduce term, perhaps an opaque definition? " ^ constr_to_string t
   let error_param env n t = "Parameter " ^ n ^ " appears in value " ^ constr_to_string_env env t
   let error_abs env x = "Cannot abstract non variable " ^ (constr_to_string_env env x)
-  let error_abs_env = "Cannot abstract variable in a context depending on it"
+  let error_abs_env env x t ty = "Cannot abstract "  ^ (constr_to_string_env env x) ^ " from " ^ (constr_to_string_env env t) ^ " of type " ^ (constr_to_string_env env ty)
   let error_abs_type = "Variable is appearing in the returning type"
-  let error_abs_ref = "Variable is appearing in type of reference"
   let error_abs_let = "Trying to let-abstract a variable without definition"
   let error_abs_let_noconv = "Not the right definition in abs_let"
   let error_array_zero = "Array must have non-zero length"
@@ -331,8 +330,6 @@ let fail s t = Err (s, t)
 
 let print env sigma s = Printf.printf "[DEBUG] %s\n"
                           (CoqString.from_coq (env, sigma) s)
-
-exception AbstractingArrayType
 
 let mysubstn t n c =
   let rec substrec in_arr depth c = match kind_of_term c with
@@ -610,7 +607,6 @@ type abs = AbsProd | AbsFun | AbsLet | AbsFix
 (* abs case env a p x y n abstract variable x from term y according to the case.
    if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
 let abs case (env, sigma) a p x y n t : data =
-  (*  let x = whdbetadeltaiota env sigma x in *) (* for let-ins is problemtaic *)
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
@@ -618,25 +614,22 @@ let abs case (env, sigma) a p x y n t : data =
     if check_abs_deps env x y p then
       if isRel x then
         let rel = destRel x in
-        try
-          let (name, ot, ty) = lookup_rel rel env in
-          let y' = mysubstn (mkRel 1) rel y in
-          let t =
-            match case, ot with
-            | AbsProd, _ -> Term.mkProd (name, a, y')
-            | AbsFun, _ -> Term.mkLambda (name, a, y')
-            | AbsLet, Some t' ->
-                if is_trans_conv (get_ts env) env sigma t t' then
-                  Term.mkLetIn (name, t, ty, y')
-                else
-                  Exceptions.block Exceptions.error_abs_let_noconv
-            | AbsLet, None -> Exceptions.block Exceptions.error_abs_let
-            | AbsFix, _ -> (* TODO: check enough products *)
-                Term.mkFix (([|n|], 0), ([|name|], [|ty|], [|y'|]))
-          in
-          return sigma t
-        with AbstractingArrayType ->
-          Exceptions.block Exceptions.error_abs_ref
+        let (name, ot, ty) = lookup_rel rel env in
+        let y' = mysubstn (mkRel 1) rel y in
+        let t =
+          match case, ot with
+          | AbsProd, _ -> Term.mkProd (name, a, y')
+          | AbsFun, _ -> Term.mkLambda (name, a, y')
+          | AbsLet, Some t' ->
+              if is_trans_conv (get_ts env) env sigma t t' then
+                Term.mkLetIn (name, t, ty, y')
+              else
+                Exceptions.block Exceptions.error_abs_let_noconv
+          | AbsLet, None -> Exceptions.block Exceptions.error_abs_let
+          | AbsFix, _ -> (* TODO: check enough products *)
+              Term.mkFix (([|n|], 0), ([|name|], [|ty|], [|y'|]))
+        in
+        return sigma t
       else
         let name = destVar x in
         let y' = Vars.subst_vars [name] y in
@@ -662,7 +655,7 @@ let abs case (env, sigma) a p x y n t : data =
         in
         return sigma t
     else
-      Exceptions.block Exceptions.error_abs_env
+      fail sigma (E.mkFailure (Exceptions.error_abs_env env x t p))
   else
     fail sigma (E.mkFailure (Exceptions.error_abs env x))
 
