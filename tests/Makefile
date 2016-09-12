@@ -8,7 +8,7 @@ RESULTS=$(TESTS:.v=.vo)
 
 all: check
 
-check: $(RESULTS)
+check: MCImports.vo $(RESULTS)
 
 %.vo: %.v
 	@ ($(COQC) -I ../src -Q ../theories MetaCoq $< && echo "[OK] " $<) || echo "\033[0;31m[KO]\033[0m " $<
