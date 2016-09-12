@@ -95,12 +95,13 @@ module Goal = struct
 end
 
 let constr_to_string t = string_of_ppcmds (Termops.print_constr t)
+let constr_to_string_env env t = string_of_ppcmds (Termops.print_constr_env env t)
 
 module Exceptions = struct
 
   let mkInternalException = mkConstr
 
-  let mkFailWith s =
+  let mkFailure s =
     let msg = CoqString.to_coq s in
     mkApp (Lazy.force (mkConstr "Failure"), [|msg|])
 
@@ -131,7 +132,7 @@ module Exceptions = struct
     mkApp(Lazy.force e, [|coqexp|])
 
   let error_stuck t = "Cannot reduce term, perhaps an opaque definition? " ^ constr_to_string t
-  let error_param = "Parameter appears in returned value"
+  let error_param env n t = "Parameter " ^ n ^ " appears in value " ^ constr_to_string_env env t
   let error_abs x = "Cannot abstract non variable " ^ (constr_to_string x)
   let error_abs_env = "Cannot abstract variable in a context depending on it"
   let error_abs_type = "Variable is appearing in the returning type"
@@ -821,7 +822,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
       else -1
     in
     match constr h with
-    | -1 -> fail sigma (E.mkFailWith (E.error_stuck h))
+    | -1 -> fail sigma (E.mkFailure (E.error_stuck h))
     | 1 -> (* ret *)
         return sigma (nth 1)
 
@@ -901,7 +902,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
           match run' (env, renv, sigma, (nus+1)) fx with
           | Val (sigma, e) ->
               if Int.Set.mem 1 (free_rels e) then
-                Exceptions.block Exceptions.error_param
+                fail sigma (E.mkFailure (E.error_param env (Names.Id.to_string name) e))
               else
                 return sigma (pop e)
           | Err (sigma, e) ->

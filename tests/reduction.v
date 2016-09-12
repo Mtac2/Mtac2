@@ -108,3 +108,6 @@ e <- evar unit;
 let x := reduce (RedStrong (RedBeta::RedIota::RedDeltaX::nil)) (elem (Dyn (fst (p, e)))) in
 assert (elem (Dyn (fst (0, e)))) x e.
 Qed.
+
+
+End ASection.
