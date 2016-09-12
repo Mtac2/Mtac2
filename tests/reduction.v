@@ -80,11 +80,11 @@ let x := reduce (RedWhd (RedBeta::RedDelta::RedIota::nil)) (elem (Dyn (fst (p, e
 assert 0 x e.
 Qed.
 
- Example reduce_OneStepDyn : nat.
+Example reduce_OneStepDyn : nat.
 MProof.
 let x := rone_step (elem (Dyn p)) in
 let x := reduce (RedWhd (RedBeta::RedIota::nil)) x in ret x.
-Defined.
+Qed.
 
 Example reduce_deltac : unit.
 MProof.
@@ -92,4 +92,19 @@ e <- evar unit;
   let x := reduce (RedWhd (RedBeta::RedIota::RedDeltaC::nil)) (elem (Dyn (fst (p, e)))) in
   print_term x;;
 assert x 0 e.
+Qed.
+
+Definition test_opaque : nat. exact 0. Qed.
+Example reduce_deltac_opaque : unit.
+MProof.
+e <- evar unit;
+let x := reduce (RedWhd (RedBeta::RedIota::RedDeltaC::nil)) (elem (Dyn (fst (test_opaque, e)))) in
+assert x test_opaque e.
+Qed.
+
+Example reduce_deltax : unit.
+MProof.
+e <- evar unit;
+let x := reduce (RedStrong (RedBeta::RedIota::RedDeltaX::nil)) (elem (Dyn (fst (p, e)))) in
+assert (elem (Dyn (fst (0, e)))) x e.
 Qed.

@@ -220,19 +220,29 @@ module ReductionStrategy = struct
   let get_flags ctx flags =
     (* HACK for unfolding only constants we need to add it afterwards*)
     let deltac = ref false in
+    let deltax = ref false in
     (* we assume flags have the right type and are in nf *)
     let flags = CoqList.from_coq_conv ctx (fun f->
       let ci = get_constructor_pos f in
       if ci < Array.length redflags then
         redflags.(ci)
       else begin
-        deltac := true;
+        if ci = Array.length redflags then
+          deltac := true
+        else
+          deltax := true;
         raise CoqList.Skip
       end
     ) flags in
     let reds = mkflags flags in
-    if !deltac then
-      red_add_transparent reds Names.cst_full_transparent_state
+    let reds =
+      if !deltac then
+        red_add_transparent reds Names.cst_full_transparent_state
+      else
+        reds
+    in
+    if !deltax then
+      red_add_transparent reds Names.var_full_transparent_state
     else
       reds
 

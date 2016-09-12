@@ -38,7 +38,7 @@ Definition ExceptionNotGround (s : string) : Exception. exact exception. Qed.
 Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
 
-Inductive RedFlags : Set := RedBeta | RedDelta | RedIota | RedZeta | RedDeltaC.
+Inductive RedFlags : Set := RedBeta | RedDelta | RedIota | RedZeta | RedDeltaC | RedDeltaX.
 
 Inductive Reduction : Set :=
 | RedNone
