@@ -105,9 +105,7 @@ module Exceptions = struct
     let msg = CoqString.to_coq s in
     mkApp (Lazy.force (mkConstr "Failure"), [|msg|])
 
-  let mkNullPointer = mkInternalException "NullPointer"
   let mkTermNotGround = mkInternalException "TermNotGround"
-  let mkOutOfBounds = mkInternalException "ArrayOutOfBounds"
   let mkWrongTerm = mkInternalException "WrongTerm"
   let mkMissingDependency = mkInternalException "MissingDependency"
   let mkLtacError (s, ppm) =
@@ -133,7 +131,7 @@ module Exceptions = struct
 
   let error_stuck t = "Cannot reduce term, perhaps an opaque definition? " ^ constr_to_string t
   let error_param env n t = "Parameter " ^ n ^ " appears in value " ^ constr_to_string_env env t
-  let error_abs x = "Cannot abstract non variable " ^ (constr_to_string x)
+  let error_abs env x = "Cannot abstract non variable " ^ (constr_to_string_env env x)
   let error_abs_env = "Cannot abstract variable in a context depending on it"
   let error_abs_type = "Variable is appearing in the returning type"
   let error_abs_ref = "Variable is appearing in type of reference"
@@ -666,7 +664,7 @@ let abs case (env, sigma) a p x y n t : data =
     else
       Exceptions.block Exceptions.error_abs_env
   else
-    Exceptions.block (Exceptions.error_abs x)
+    fail sigma (E.mkFailure (Exceptions.error_abs env x))
 
 exception MissingDep
 
@@ -876,7 +874,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         run_fix ctxt h [|a1; a2; a3; a4; a5|] b s i f [|x1; x2; x3; x4; x5|]
 
     | 10 -> (* is_var *)
-        let e = whd_betadeltaiota env sigma (nth 1) in
+        let e = nth 1 in
         if isRel e || isVar e then
           return sigma CoqBool.mkTrue
         else
@@ -898,13 +896,13 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
           let renv = Vars.lift 1 renv in
           let a = Vars.lift 1 a in
           let ot = Option.map (Vars.lift 1) ot in
-          let (sigma, renv) = Hypotheses.cons_hyp a (mkRel 1) ot renv sigma env in
-          match run' (env, renv, sigma, (nus+1)) fx with
-          | Val (sigma, e) ->
+          let (sigma', renv) = Hypotheses.cons_hyp a (mkRel 1) ot renv sigma env in
+          match run' (env, renv, sigma', (nus+1)) fx with
+          | Val (sigma', e) ->
               if Int.Set.mem 1 (free_rels e) then
                 fail sigma (E.mkFailure (E.error_param env (Names.Id.to_string name) e))
               else
-                return sigma (pop e)
+                return sigma' (pop e)
           | Err (sigma, e) ->
               fail sigma (pop e)
         end

@@ -385,6 +385,7 @@ Notation "'M'" := MetaCoq : type_scope.
 
 Notation "'rsimpl'" := (reduce RedSimpl).
 Notation "'rhnf'" := (reduce RedHNF).
+Notation "'rcbv'" := (reduce RedNF).
 Notation "'rone_step'" := (reduce RedOneStep).
 
 Notation "'ret'" := (fun a => (@tret _ a) % MC).

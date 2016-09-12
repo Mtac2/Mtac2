@@ -355,8 +355,10 @@ Definition cprint {A} (s: string) (c: A) :=
   let s := reduce RedNF (s++x)%string in
   print s.
 
+Notation reduce_novars := (reduce (RedStrong [RedBeta;RedIota;RedDeltaC;RedZeta])).
+
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
-  b <- is_var n;
+  b <- let n := rcbv n in is_var n;
   ctx <- if b then hyps_except n else hypotheses;
   P <- Cevar (A->Type) ctx;
   let Pn := P n in

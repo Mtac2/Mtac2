@@ -176,6 +176,7 @@ Polymorphic Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (args : AT
   selem_of (ITele_App args) -> M (RTele rsort it) :=
   match args with
   | @aBase _ T => fun t =>
+    let t := reduce_novars t in
     b <- is_var t;
     if b then
       let Gty := reduce RedNF (type_of G) in
@@ -187,6 +188,7 @@ Polymorphic Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (args : AT
       failwith "Argument t should be a variable"
   | @aTele _ _ f v args => fun t=>
       r <- abstract_goal args G t;
+      let v := reduce_novars v in
       b <- is_var v;
       if b then
         let Gty := reduce RedNF (fun v'=>RTele rsort (f v')) in
