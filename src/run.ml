@@ -135,7 +135,7 @@ module Exceptions = struct
   let error_abs_env env x t ty = "Cannot abstract "  ^ (constr_to_string_env env x) ^ " from " ^ (constr_to_string_env env t) ^ " of type " ^ (constr_to_string_env env ty)
   let error_abs_let = "Trying to let-abstract a variable without definition"
   let error_abs_let_noconv env t t' = "Definition " ^ (constr_to_string_env env t) ^ " must be convertible to " ^ (constr_to_string_env env t')
-  let error_array_zero = "Array must have non-zero length"
+  let error_abs_fix env ty n = "The type of the fixpoint " ^ (constr_to_string_env env ty) ^ " must have " ^ (string_of_int n) ^ " products"
   let unknown_reduction_strategy = "Unknown reduction strategy"
 
   let block = Errors.error
@@ -603,6 +603,16 @@ type abs = AbsProd | AbsFun | AbsLet | AbsFix
    (inject c)
 *)
 
+let rec n_prods env sigma ty = function
+  | 0 -> true
+  | n ->
+      let ty = whd_betadeltaiota env sigma ty in
+      if isProd ty then
+        let _, _, b = destProd ty in
+        n_prods env sigma b (n-1)
+      else
+        false
+
 (* abs case env a p x y n abstract variable x from term y according to the case.
    if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
 let abs case (env, sigma) a p x y n t : data =
@@ -625,8 +635,11 @@ let abs case (env, sigma) a p x y n t : data =
               else
                 E.mkFailure (E.error_abs_let_noconv env t t')
           | AbsLet, None -> Exceptions.block Exceptions.error_abs_let
-          | AbsFix, _ -> (* TODO: check enough products *)
-              Term.mkFix (([|n|], 0), ([|name|], [|ty|], [|y'|]))
+          | AbsFix, _ ->
+              if n_prods env sigma ty n then
+                Term.mkFix (([|n|], 0), ([|name|], [|ty|], [|y'|]))
+              else
+                E.mkFailure (E.error_abs_fix env ty n)
         in
         return sigma t
       else
