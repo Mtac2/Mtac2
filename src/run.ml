@@ -136,6 +136,8 @@ module Exceptions = struct
   let error_abs_let = "Trying to let-abstract a variable without definition"
   let error_abs_let_noconv env t t' = "Definition " ^ (constr_to_string_env env t) ^ " must be convertible to " ^ (constr_to_string_env env t')
   let error_abs_fix env ty n = "The type of the fixpoint " ^ (constr_to_string_env env ty) ^ " must have " ^ (string_of_int n) ^ " products"
+  let remove_dep env x = "Cannot remove variable " ^ constr_to_string_env env x ^ " since the term or the environment depends on it"
+  let remove_var env x = "Term must be a variable " ^ constr_to_string_env env x
   let unknown_reduction_strategy = "Unknown reduction strategy"
 
   let block = Errors.error
@@ -941,18 +943,20 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
 
     | 17 -> (* remove *)
         let x, t = nth 2, nth 3 in
-        let x = whd_betadeltaiota env sigma x in
         if isVar x || isRel x then
           if check_dependencies env x t then
             (* if it's a rel we need to update the indices in t, since there is one element less in the context *)
             let t = if isRel x then Vars.liftn (-1) (destRel x) t else t in
             let env, (sigma, renv) = env_without sigma env renv x in
+            (* Note that if the recursive call raises an exception,
+               the exception can't contain nus, so there is no need
+               to lift the indices *)
             run' (env, renv, sigma, nus) t >>= fun (sigma, v)->
             return sigma (if isRel x then Vars.liftn (+1) (destRel x) v else v)
           else
-            Exceptions.block "Environment or term depends on variable"
+            fail sigma (E.mkFailure (E.remove_dep env x))
         else
-          Exceptions.block "Not a variable"
+          fail sigma (E.mkFailure (E.remove_var env x))
 
     | 18 -> (* evar *)
         let ty = nth 0 in

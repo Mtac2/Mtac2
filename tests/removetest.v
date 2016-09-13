@@ -4,6 +4,7 @@ Import MetaCoqNotations.
 Example test_remove1 (x y z : nat) : x > y -> x > y.
 MProof.
   Fail remove x (ret id). (* the meta-variable depends on it *)
+  Fail remove (id z) (ret id). (* must be a variable *)
   remove z (ret id). (* z is not required for the proof *)
 Qed.
 
