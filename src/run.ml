@@ -133,9 +133,8 @@ module Exceptions = struct
   let error_param env n t = "Parameter " ^ n ^ " appears in value " ^ constr_to_string_env env t
   let error_abs env x = "Cannot abstract non variable " ^ (constr_to_string_env env x)
   let error_abs_env env x t ty = "Cannot abstract "  ^ (constr_to_string_env env x) ^ " from " ^ (constr_to_string_env env t) ^ " of type " ^ (constr_to_string_env env ty)
-  let error_abs_type = "Variable is appearing in the returning type"
   let error_abs_let = "Trying to let-abstract a variable without definition"
-  let error_abs_let_noconv = "Not the right definition in abs_let"
+  let error_abs_let_noconv env t t' = "Definition " ^ (constr_to_string_env env t) ^ " must be convertible to " ^ (constr_to_string_env env t')
   let error_array_zero = "Array must have non-zero length"
   let unknown_reduction_strategy = "Unknown reduction strategy"
 
@@ -624,7 +623,7 @@ let abs case (env, sigma) a p x y n t : data =
               if is_trans_conv (get_ts env) env sigma t t' then
                 Term.mkLetIn (name, t, ty, y')
               else
-                Exceptions.block Exceptions.error_abs_let_noconv
+                E.mkFailure (E.error_abs_let_noconv env t t')
           | AbsLet, None -> Exceptions.block Exceptions.error_abs_let
           | AbsFix, _ -> (* TODO: check enough products *)
               Term.mkFix (([|n|], 0), ([|name|], [|ty|], [|y'|]))
@@ -645,7 +644,7 @@ let abs case (env, sigma) a p x y n t : data =
                     if is_trans_conv (get_ts env) env sigma t t' then
                       Term.mkLetIn (Name name, t, ty, y')
                     else
-                      Exceptions.block Exceptions.error_abs_let_noconv
+                      E.mkFailure (E.error_abs_let_noconv env t t')
                 | None -> Exceptions.block Exceptions.error_abs_let
               end
           | AbsFix ->
