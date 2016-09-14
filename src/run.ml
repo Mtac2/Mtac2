@@ -99,17 +99,19 @@ let constr_to_string_env env t = string_of_ppcmds (Termops.print_constr_env env 
 
 module Exceptions = struct
 
-  let mkInternalException = mkConstr
-
   let mkFailure s =
     let msg = CoqString.to_coq s in
     mkApp (Lazy.force (mkConstr "Failure"), [|msg|])
 
-  let mkTermNotGround = mkInternalException "TermNotGround"
-  let mkWrongTerm = mkInternalException "WrongTerm"
-  let mkMissingDependency = mkInternalException "MissingDependency"
+  let mkCannotRemoveVar env x =
+    let varname = CoqString.to_coq (constr_to_string_env env x) in
+    mkApp(Lazy.force (mkConstr "CannotRemoveVar"), [|varname|])
+
+  let mkTermNotGround = mkConstr "TermNotGround"
+  let mkWrongTerm = mkConstr "WrongTerm"
+  let mkMissingDependency = mkConstr "MissingDependency"
   let mkLtacError (s, ppm) =
-    let e = mkInternalException "LtacError" in
+    let e = mkConstr "LtacError" in
     let expl = string_of_ppcmds ppm in
     let coqexp = CoqString.to_coq (s ^ ": " ^ expl) in
     mkApp(Lazy.force e, [|coqexp|])
@@ -121,10 +123,10 @@ module Exceptions = struct
     let a = Lazy.force (mkConstr e) in
     mkApp(c, [|mkProp; a|])
 
-  let mkNameExists s = mkApp (Lazy.force (mkInternalException "NameExistsInContext"), [|s|])
+  let mkNameExists s = mkApp (Lazy.force (mkConstr "NameExistsInContext"), [|s|])
 
   let mkExceptionNotGround env term =
-    let e = mkInternalException "ExceptionNotGround" in
+    let e = mkConstr "ExceptionNotGround" in
     let s = string_of_ppcmds (Termops.print_constr_env env term) in
     let coqexp = CoqString.to_coq s in
     mkApp(Lazy.force e, [|coqexp|])
@@ -136,7 +138,6 @@ module Exceptions = struct
   let error_abs_let = "Trying to let-abstract a variable without definition"
   let error_abs_let_noconv env t t' = "Definition " ^ (constr_to_string_env env t) ^ " must be convertible to " ^ (constr_to_string_env env t')
   let error_abs_fix env ty n = "The type of the fixpoint " ^ (constr_to_string_env env ty) ^ " must have " ^ (string_of_int n) ^ " products"
-  let remove_dep env x = "Cannot remove variable " ^ constr_to_string_env env x ^ " since the term or the environment depends on it"
   let remove_var env x = "Term must be a variable " ^ constr_to_string_env env x
   let unknown_reduction_strategy = "Unknown reduction strategy"
 
@@ -954,7 +955,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
             run' (env, renv, sigma, nus) t >>= fun (sigma, v)->
             return sigma (if isRel x then Vars.liftn (+1) (destRel x) v else v)
           else
-            fail sigma (E.mkFailure (E.remove_dep env x))
+            fail sigma (E.mkCannotRemoveVar env x)
         else
           fail sigma (E.mkFailure (E.remove_var env x))
 

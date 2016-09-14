@@ -34,6 +34,8 @@ Definition NameExistsInContext (s : string) : Exception. exact exception. Qed.
 
 Definition ExceptionNotGround (s : string) : Exception. exact exception. Qed.
 
+Definition CannotRemoveVar (x : string) : Exception. exact exception. Qed.
+
 
 Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
@@ -58,11 +60,6 @@ Inductive Unification : Type :=
 
 Inductive Hyp : Type :=
 | ahyp : forall {A}, A -> option A -> Hyp.
-
-Inductive Hyps : Type :=
-| hlocal : Hyps
-| hminus : Hyps -> Hyps -> Hyps
-| hhyps : list Hyp -> Hyps.
 
 Record Case :=
     mkCase {
@@ -136,6 +133,10 @@ Inductive MetaCoq
 (*    - [t = let x := d in b]. *)
 (* *)
 | get_binder_name : forall {A : Type}, A -> MetaCoq string
+
+(** [remove x t] executes [t] in a context without variable [x].
+    Raises a failure if [x] is not a variable, and raises
+    [CannotRemoveVar "x"] if [t] or the environment depends on [x]. *)
 | remove : forall {A : Type} {B : Type}, A -> MetaCoq B -> MetaCoq B
 
 | evar : forall (A : Type), MetaCoq A
