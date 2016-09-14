@@ -674,8 +674,6 @@ let abs case (env, sigma) a p x y n t : data =
   else
     fail sigma (E.mkFailure (Exceptions.error_abs env x))
 
-exception MissingDep
-
 (** checks if (option) definition od and type ty has named
     vars included in vars *)
 let check_vars od ty vars =
@@ -684,48 +682,78 @@ let check_vars od ty vars =
     Idset.subset (Termops.collect_vars (Option.get od)) vars
   else true
 
-let cvar (env, sigma) ty hyp =
-  let hyp = Hypotheses.from_coq_list (env, sigma) hyp in
-  let ores =
-    try
-      Some (List.fold_right (fun (i, e, t) (idlist, idset, subs, env') ->
-        let t = Reductionops.nf_evar sigma t in
-        let e = Option.map (Reductionops.nf_evar sigma) e in
-        if isRel i then
-          let n = destRel i in
-          let na, _, _ = List.nth (rel_context env) (n-1) in
-          let id = Namegen.next_name_away na idlist in
-          let e = try Option.map (multi_subst subs) e with Not_found -> Exceptions.block "Not well-formed hypotheses 1" in
-          let t = try multi_subst subs t with Not_found -> Exceptions.block "Not well-formed hypotheses 2" in
-          let b = check_vars e t idset in
-          let d = (id, e, t) in
-          if b then
-            (id::idlist, Idset.add id idset, (n, mkVar id) :: subs, push_named d env')
-          else
-            raise MissingDep
-        else
-          let id = destVar i in
-          if check_vars e t idset then
-            (id::idlist, Idset.add id idset, subs, push_named (id, e, t) env')
-          else
-            raise MissingDep
-      ) hyp ([], Idset.empty, [], empty_env))
-    with MissingDep -> None
-  in
-  match ores with
-  | None -> fail sigma (Lazy.force Exceptions.mkMissingDependency)
-  | Some (_, _, subs, env') ->
+exception MissingDep
+
+(* returns a substitution and an environment such that applying
+   the substitution to a term makes the term well typed in the environment *)
+let new_env (env, sigma) hyps =
+  let _, _, subs, env =
+    List.fold_right (fun (var, odef, ty) (idlist, idset, subs, env') ->
+      (* remove false dependencies from type and definition *)
       let ty = Reductionops.nf_evar sigma ty in
-      let vars = List.map (fun (v, _, _)->v) hyp in
-      try
-        if List.distinct vars then
-          let evi = Evd.make_evar (Environ.named_context_val env') (multi_subst subs ty) in
-          let (sigma, e) = Evarutil.new_pure_evar_full sigma evi in
-          return sigma (mkEvar (e, Array.of_list vars))
+      let odef = Option.map (Reductionops.nf_evar sigma) odef in
+      (* the definition might refer to previously defined indices
+         so we perform the substitution *)
+      let odef =
+        try Option.map (multi_subst subs) odef
+        with Not_found -> Exceptions.block "Not well-formed hypotheses 1"
+      in
+      if isRel var then
+        let n = destRel var in
+        let name, _, _ = List.nth (rel_context env) (n-1) in
+        (* since the name can be Anonymous, we need to generate a name *)
+        let id = Namegen.next_name_away name idlist in
+        (* if the variable is an index, its type might
+           refer to other indices, so we need to substitute *)
+        let ty =
+          try multi_subst subs ty
+          with Not_found -> Exceptions.block "Not well-formed hypotheses 2"
+        in
+        let b = check_vars odef ty idset in
+        if b then
+          (id::idlist, Idset.add id idset, (n, mkVar id) :: subs, push_named (id, odef, ty) env')
         else
-          Exceptions.block "Duplicated variable in hypotheses"
-      with Not_found ->
-        Exceptions.block "Hypothesis not found"
+          raise MissingDep
+      else
+        (* if the variable is named, its type can only refer to named variables.
+           note that typing ensures the var has type ty, so its type must
+           be defined in the named context *)
+        let id = destVar var in
+        if check_vars odef ty idset then
+          (id::idlist, Idset.add id idset, subs, push_named (id, odef, ty) env')
+        else
+          raise MissingDep
+    ) hyps ([], Idset.empty, [], empty_env)
+  in subs, env
+
+let make_evar sigma env ty =
+  if Term.isSort ty && ty <> mkProp then
+    let (sigma, (evar, _)) = Evarutil.new_type_evar env sigma Evd.UnivRigid in
+    sigma, evar
+  else
+    Evarutil.new_evar env sigma ty
+
+let cvar (env, sigma as ctx) ty ohyps =
+  let ohyps = CoqOption.from_coq (env, sigma) ohyps in
+  if Option.has_some ohyps then
+    let hyps = Hypotheses.from_coq_list (env, sigma) (Option.get ohyps) in
+    let vars = List.map (fun (v, _, _)->v) hyps in
+    if List.distinct vars then
+      try
+        let subs, env = new_env ctx hyps in
+        let ty = multi_subst subs ty in
+        let sigma, evar = make_evar sigma env ty in
+        let (e, _) = destEvar evar in
+        (* the evar created by make_evar has id in the substitution
+           but we need to remap it to the actual variables in hyps *)
+        return sigma (mkEvar (e, Array.of_list vars))
+      with MissingDep -> fail sigma (Lazy.force Exceptions.mkMissingDependency)
+    else
+      Exceptions.block "Duplicated variable in hypotheses"
+  else
+    let sigma, evar = make_evar sigma env ty in
+    return sigma evar
+
 
 let rec get_name (env, sigma) (t: constr) : constr option =
   (* If t is a defined variable it is reducing it *)
@@ -960,64 +988,54 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
           fail sigma (E.mkFailure (E.remove_var env x))
 
     | 18 -> (* evar *)
-        let ty = nth 0 in
-        let (sigma', ev) = if Term.isSort ty && ty <> mkProp then
-            let (sigma, (evar, _)) = Evarutil.new_type_evar env sigma Evd.UnivRigid in
-            (sigma, evar)
-          else
-            Evarutil.new_evar env sigma ty
-        in
-        return sigma' ev
-
-    | 19 -> (* Cevar *)
         let ty, hyp = nth 0, nth 1 in
         cvar (env, sigma) ty hyp
 
-    | 20 -> (* is_evar *)
+    | 19 -> (* is_evar *)
         let e = whd_betadeltaiota env sigma (nth 1) in
         if isEvar e then
           return sigma CoqBool.mkTrue
         else
           return sigma CoqBool.mkFalse
 
-    | 21 -> (* hash *)
+    | 20 -> (* hash *)
         return sigma (hash ctxt (nth 1) (nth 2))
 
-    | 22 -> (* solve_typeclasses *)
+    | 21 -> (* solve_typeclasses *)
         let evd' = Typeclasses.resolve_typeclasses ~fail:false env sigma in
         return evd' (Lazy.force CoqUnit.mkTT)
 
-    | 23 -> (* print *)
+    | 22 -> (* print *)
         let s = nth 0 in
         print env sigma s;
         return sigma (Lazy.force CoqUnit.mkTT)
 
-    | 24 -> (* pretty_print *)
+    | 23 -> (* pretty_print *)
         let t = nth 1 in
         let t = nf_evar sigma t in
         let s = string_of_ppcmds (Termops.print_constr_env env t) in
         return sigma (CoqString.to_coq s)
 
-    | 25 -> (* hypotheses *)
+    | 24 -> (* hypotheses *)
         return sigma renv
 
-    | 26 -> (* dest case *)
+    | 25 -> (* dest case *)
         let t_type = nth 0 in
         let t = nth 1 in
         let (sigma', case) = dest_Case (env, sigma) t_type t in
         return sigma' case
 
-    | 27 -> (* get constrs *)
+    | 26 -> (* get constrs *)
         let t = nth 1 in
         let (sigma', constrs) = get_Constrs (env, sigma) t in
         return sigma' constrs
 
-    | 28 -> (* make case *)
+    | 27 -> (* make case *)
         let case = nth 0 in
         let (sigma', case) = make_Case (env, sigma) case in
         return sigma' case
 
-    | 29 -> (* munify *)
+    | 28 -> (* munify *)
         let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in
         let feqT = CoqEq.mkAppEq a x y in
         begin
@@ -1032,7 +1050,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
               return sigma none
         end
 
-    | 30 -> (* call_ltac *)
+    | 29 -> (* call_ltac *)
         let concl, name, args = nth 0, nth 1, nth 2 in
         let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq (env, sigma) args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
@@ -1068,12 +1086,12 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         end
     (* Tac (sigma, Tacinterp.eval_tactic tac, fun v -> Val v) *)
 
-    | 31 -> (* list_ltac *)
+    | 30 -> (* list_ltac *)
         let aux k _ = Pp.msg_info (Pp.str (Names.KerName.to_string k)) in
         KNmap.iter aux (Tacenv.ltac_entries ());
         return sigma (Lazy.force CoqUnit.mkTT)
 
-    | 32 -> (* munify_cumul *)
+    | 31 -> (* munify_cumul *)
         let x, y, uni = nth 2, nth 3, nth 4 in
         begin
           let r = UnificationStrategy.unify None sigma env uni Reduction.CUMUL x y in

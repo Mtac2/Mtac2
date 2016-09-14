@@ -139,8 +139,7 @@ Inductive MetaCoq
     [CannotRemoveVar "x"] if [t] or the environment depends on [x]. *)
 | remove : forall {A : Type} {B : Type}, A -> MetaCoq B -> MetaCoq B
 
-| evar : forall (A : Type), MetaCoq A
-| Cevar : forall (A : Type), list Hyp -> MetaCoq A
+| evar : forall (A : Type), option (list Hyp) -> MetaCoq A
 | is_evar : forall {A : Type}, A -> MetaCoq bool
 
 | hash : forall {A : Type}, A -> N -> MetaCoq N
@@ -467,7 +466,7 @@ Polymorphic Fixpoint open_pattern {A P t} (p : pattern A P t) : M (P t) :=
     | None => raise DoesNotMatch
     end
   | @ptele _ _ _ C f =>
-    e <- evar C;
+    e <- evar C None;
     open_pattern (f e)
   end.
 
@@ -520,6 +519,9 @@ Notation "'mtry' a ls" :=
   (ttry a (fun e=>
     (@tmatch _ (fun _=>_) e (app ls (cons ([? x] x=>raise x)%metaCoq_pattern nil)))))
     (at level 82, a at level 100, ls at level 91, only parsing).
+
+Definition Cevar A ctx := evar A (Some ctx).
+Definition evar A := evar A None.
 
 End MetaCoqNotations.
 
