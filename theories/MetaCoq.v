@@ -130,16 +130,18 @@ Inductive MetaCoq : Type -> Prop :=
     variable also depending on [x]. *)
 | abs : forall {A : Type} {P : A -> Type} (x : A), P x -> MetaCoq (forall x, P x)
 
-(** [abs_let x d e] creates a let-binding for variable [x]
-    with definition [d] from [e]. It raises [Failure] if
+(** [abs_let x d e] returns [let x := d in e]. It raises [Failure] if
     [x] is not a variable, or if [e] or its type [P] depends on a
     variable also depending on [x]. *)
 | abs_let : forall {A : Type} {P : A -> Type} (x: A) (t: A), P x -> MetaCoq (let x := t in P x)
+
+(** [abs_prod x e] returns [forall x, e]. It raises [Failure] if
+    [x] is not a variable, or if [e] or its type [P] depends on a
+    variable also depending on [x]. *)
 | abs_prod : forall {A : Type} {P : A -> Type} (x : A), P x -> MetaCoq Type
-(** [abs_fix f t n] creates a fixpoint with variable [f] as name, *)
-(*     with body t, *)
-(*     and reducing the n-th product of [f]. This means that [f]'s type *)
-(*     is expected to be of the form [forall x1, ..., xn, T] *)
+
+(** [abs_fix f t n] returns [fix f {struct n} := t].
+    [f]'s type must have n products, that is, be [forall x1, ..., xn, T] *)
 | abs_fix : forall {A : Type}, A -> A -> N -> MetaCoq A
 
 (** [get_binder_name t] returns the name of variable [x] if:
@@ -172,14 +174,24 @@ Inductive MetaCoq : Type -> Prop :=
     occurrences of a variable, it raises a [Failure].
 *)
 | evar : forall (A : Type), option (list Hyp) -> MetaCoq A
+
+(** [is_evar e] returns if [e] is a meta-variable. *)
 | is_evar : forall {A : Type}, A -> MetaCoq bool
 
+(** [hash e n] returns a number smaller than [n] representing
+    a hash of term [e] *)
 | hash : forall {A : Type}, A -> N -> MetaCoq N
+
+(** [solve_typeclasses] calls type classes resolution. *)
 | solve_typeclasses : MetaCoq unit
 
+(** [print s] prints string [s] to stdout. *)
 | print : string -> MetaCoq unit
+
+(** [pretty_print e] converts term [e] to string. *)
 | pretty_print : forall {A : Type}, A -> MetaCoq string
 
+(** [hypotheses] returns the list of hypotheses. *)
 | hypotheses : MetaCoq (list Hyp)
 
 | destcase : forall {A : Type} (a : A), MetaCoq (Case)
@@ -191,16 +203,19 @@ Inductive MetaCoq : Type -> Prop :=
 | makecase : forall (C : Case), MetaCoq dyn
 
 (** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
-    It uses convertibility of universes. *)
+    It uses convertibility of universes, meaning that it fails if [x]
+    is [Prop] and [y] is [Type]. If they are both types, it will
+    try to equate its leveles. *)
 | munify {A} (x y : A) : Unification -> MetaCoq (option (x = y))
+
+(** [munify_cumul x y r] uses reduction strategy [r] to equate [x] and
+    [y].  Note that they might have different types.  It uses
+    cumulativity of universes, e.g., it succeeds if [x] is [Prop] and
+    [y] is [Type]. *)
+| munify_cumul {A B} (x: A) (y: B) : Unification -> MetaCoq bool
 
 | call_ltac : forall {A : Type}, string -> list dyn -> MetaCoq (prod A (list goal))
 | list_ltac : MetaCoq unit
-
-(** [munify_cumul x y r] uses reduction strategy [r] to equate [x] and [y].
-    Note that they might have different types.
-    It uses cumulativity of universes, e.g., it succeeds if [x] is [Prop] and [y] is [Type]. *)
-| munify_cumul {A B} (x: A) (y: B) : Unification -> MetaCoq bool
 .
 
 Arguments MetaCoq (_%type).

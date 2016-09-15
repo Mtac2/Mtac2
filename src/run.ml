@@ -1032,7 +1032,18 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
               return sigma none
         end
 
-    | 29 -> (* call_ltac *)
+    | 29 -> (* munify_cumul *)
+        let x, y, uni = nth 2, nth 3, nth 4 in
+        begin
+          let r = UnificationStrategy.unify None sigma env uni Reduction.CUMUL x y in
+          match r with
+          | Evarsolve.Success sigma, _ ->
+              return sigma CoqBool.mkTrue
+          | _, _ ->
+              return sigma CoqBool.mkFalse
+        end
+
+    | 30 -> (* call_ltac *)
         let concl, name, args = nth 0, nth 1, nth 2 in
         let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq (env, sigma) args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
@@ -1068,21 +1079,10 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         end
     (* Tac (sigma, Tacinterp.eval_tactic tac, fun v -> Val v) *)
 
-    | 30 -> (* list_ltac *)
+    | 31 -> (* list_ltac *)
         let aux k _ = Pp.msg_info (Pp.str (Names.KerName.to_string k)) in
         KNmap.iter aux (Tacenv.ltac_entries ());
         return sigma (Lazy.force CoqUnit.mkTT)
-
-    | 31 -> (* munify_cumul *)
-        let x, y, uni = nth 2, nth 3, nth 4 in
-        begin
-          let r = UnificationStrategy.unify None sigma env uni Reduction.CUMUL x y in
-          match r with
-          | Evarsolve.Success sigma, _ ->
-              return sigma CoqBool.mkTrue
-          | _, _ ->
-              return sigma CoqBool.mkFalse
-        end
 
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"
