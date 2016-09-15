@@ -598,14 +598,6 @@ let check_dependencies env x t =
 
 (** Abstract *)
 type abs = AbsProd | AbsFun | AbsLet | AbsFix
-(*
-   let reduce_no_deltax env sigma t :=
-   let open Reductionops in let open Closure in let open Closure.RedFlags in
-   let evars ev = safe_evar_value sigma ev in
-   whd_val
-   (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
-   (inject c)
-*)
 
 let rec n_prods env sigma ty = function
   | 0 -> true
@@ -627,23 +619,18 @@ let abs case (env, sigma) a p x y n t : data =
     if check_abs_deps env x y p then
       if isRel x then
         let rel = destRel x in
-        let (name, ot, ty) = lookup_rel rel env in
+        let (name, _, _) = lookup_rel rel env in
         let y' = mysubstn (mkRel 1) rel y in
         let t =
-          match case, ot with
-          | AbsProd, _ -> Term.mkProd (name, a, y')
-          | AbsFun, _ -> Term.mkLambda (name, a, y')
-          | AbsLet, Some t' ->
-              if is_trans_conv (get_ts env) env sigma t t' then
-                Term.mkLetIn (name, t, ty, y')
+          match case with
+          | AbsProd -> Term.mkProd (name, a, y')
+          | AbsFun -> Term.mkLambda (name, a, y')
+          | AbsLet -> Term.mkLetIn (name, t, a, y')
+          | AbsFix ->
+              if n_prods env sigma a n then
+                Term.mkFix (([|n|], 0), ([|name|], [|a|], [|y'|]))
               else
-                E.mkFailure (E.error_abs_let_noconv env t t')
-          | AbsLet, None -> Exceptions.block Exceptions.error_abs_let
-          | AbsFix, _ ->
-              if n_prods env sigma ty n then
-                Term.mkFix (([|n|], 0), ([|name|], [|ty|], [|y'|]))
-              else
-                E.mkFailure (E.error_abs_fix env ty n)
+                E.mkFailure (E.error_abs_fix env a n)
         in
         return sigma t
       else
@@ -653,21 +640,8 @@ let abs case (env, sigma) a p x y n t : data =
           match case with
           | AbsProd -> Term.mkProd (Name name, a, y')
           | AbsFun -> Term.mkLambda (Name name, a, y')
-          | AbsLet ->
-              let (_, ot, ty) = lookup_named name env in
-              begin
-                match ot with
-                | Some t' ->
-                    if is_trans_conv (get_ts env) env sigma t t' then
-                      Term.mkLetIn (Name name, t, ty, y')
-                    else
-                      E.mkFailure (E.error_abs_let_noconv env t t')
-                | None -> Exceptions.block Exceptions.error_abs_let
-              end
-          | AbsFix ->
-              (* TODO: check enough products *)
-              let (_, _, ty) = lookup_named name env in
-              Term.mkFix (([|n|], 0), ([|Name name|], [|ty|], [|y'|]))
+          | AbsLet -> Term.mkLetIn (Name name, t, a, y')
+          | AbsFix -> Term.mkFix (([|n|], 0), ([|Name name|], [|a|], [|y'|]))
         in
         return sigma t
     else
@@ -1000,7 +974,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         cvar (env, sigma) ty hyp
 
     | 19 -> (* is_evar *)
-        let e = whd_betadeltaiota env sigma (nth 1) in
+        let e = whd_evar sigma (nth 1) in
         if isEvar e then
           return sigma CoqBool.mkTrue
         else

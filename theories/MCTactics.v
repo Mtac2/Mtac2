@@ -77,7 +77,8 @@ Definition decompose {A} (x: A) :=
 Definition instantiate {A} (x t : A) : M unit :=
   k <- decompose x;
   let (h, _) := k in
-  b <- is_evar h.(elem);
+  let h := rcbv h.(elem) in
+  b <- is_evar h;
   let t := reduce (RedWhd [RedBeta]) t in
   if b then
     r <- munify x t UniEvarconv;
@@ -86,7 +87,7 @@ Definition instantiate {A} (x t : A) : M unit :=
     | _ => raise (CantInstantiate x t)
     end
   else
-    raise (NotAnEvar x).
+    raise (NotAnEvar h).
 
 Definition NotAProduct : Exception. exact exception. Qed.
 
