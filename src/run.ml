@@ -473,16 +473,16 @@ module Hypotheses = struct
 
   let mkHypType = mkConstr "Hyp"
 
-
   let cons_hyp ty n t renv sigma env =
     let hyptype = Lazy.force mkHypType in
     let hyp = mkAHyp ty n t in
     (sigma, CoqList.makeCons hyptype hyp renv)
 
+  exception NotAVariable
   let from_coq (env, sigma as ctx) c =
     let fvar = fun c ->
       if Term.isVar c || isRel c then c
-      else Exceptions.block "Not a variable in hypothesis"
+      else raise NotAVariable
     in
     let fdecl = fun d -> CoqOption.from_coq ctx d in
     let args = ConstrBuilder.from_coq ahyp_constr ctx c in
@@ -737,24 +737,27 @@ let make_evar sigma env ty =
 let cvar (env, sigma as ctx) ty ohyps =
   let ohyps = CoqOption.from_coq (env, sigma) ohyps in
   if Option.has_some ohyps then
-    let hyps = Hypotheses.from_coq_list (env, sigma) (Option.get ohyps) in
-    let vars = List.map (fun (v, _, _)->v) hyps in
-    if List.distinct vars then
-      try
-        let subs, env = new_env ctx hyps in
-        let ty = multi_subst subs ty in
-        let sigma, evar = make_evar sigma env ty in
-        let (e, _) = destEvar evar in
-        (* the evar created by make_evar has id in the substitution
-           but we need to remap it to the actual variables in hyps *)
-        return sigma (mkEvar (e, Array.of_list vars))
-      with
-      | MissingDep ->
-          fail sigma (Lazy.force Exceptions.mkHypMissesDependency)
-      | Not_found ->
-          fail sigma (Lazy.force Exceptions.mkTypeMissesDependency)
-    else
-      fail sigma (E.mkFailure "Duplicated variable in hypotheses")
+    try
+      let hyps = Hypotheses.from_coq_list (env, sigma) (Option.get ohyps) in
+      let vars = List.map (fun (v, _, _)->v) hyps in
+      if List.distinct vars then
+        try
+          let subs, env = new_env ctx hyps in
+          let ty = multi_subst subs ty in
+          let sigma, evar = make_evar sigma env ty in
+          let (e, _) = destEvar evar in
+          (* the evar created by make_evar has id in the substitution
+             but we need to remap it to the actual variables in hyps *)
+          return sigma (mkEvar (e, Array.of_list vars))
+        with
+        | MissingDep ->
+            fail sigma (Lazy.force E.mkHypMissesDependency)
+        | Not_found ->
+            fail sigma (Lazy.force E.mkTypeMissesDependency)
+      else
+        fail sigma (E.mkFailure "Duplicated variable in hypotheses")
+    with Hypotheses.NotAVariable ->
+      fail sigma (E.mkFailure "All hypothesis should be variables")
   else
     let sigma, evar = make_evar sigma env ty in
     return sigma evar

@@ -42,5 +42,7 @@ MProof.
     e <- Cevar _ [ahyp H None; ahyp y (Some x); ahyp x None];
     exact e
   -}.
+  (* not a variable *)
+  Fail Cevar _ [ahyp (x > y) None; ahyp y (Some x); ahyp x None].
   exact I.
 Qed.
