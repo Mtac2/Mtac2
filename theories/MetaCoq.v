@@ -22,7 +22,8 @@ Definition NoPatternMatches : Exception. exact exception. Qed.
 
 Definition WrongTerm : Exception. exact exception. Qed.
 
-Definition MissingDependency : Exception. exact exception. Qed.
+Definition HypMissesDependency : Exception. exact exception. Qed.
+Definition TypeMissesDependency : Exception. exact exception. Qed.
 
 Definition LtacError (s:string) : Exception. exact exception. Qed.
 

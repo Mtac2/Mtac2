@@ -1,4 +1,4 @@
-Require Import MCImports.
+Require Import MetaCoq.MCImports.
 
 Theorem andb3_exchange :
   forall b c d, andb (andb b c) d = andb (andb b d) c.

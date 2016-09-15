@@ -109,7 +109,8 @@ module Exceptions = struct
 
   let mkTermNotGround = mkConstr "TermNotGround"
   let mkWrongTerm = mkConstr "WrongTerm"
-  let mkMissingDependency = mkConstr "MissingDependency"
+  let mkHypMissesDependency = mkConstr "HypMissesDependency"
+  let mkTypeMissesDependency = mkConstr "TypeMissesDependency"
   let mkLtacError (s, ppm) =
     let e = mkConstr "LtacError" in
     let expl = string_of_ppcmds ppm in
@@ -696,7 +697,7 @@ let new_env (env, sigma) hyps =
          so we perform the substitution *)
       let odef =
         try Option.map (multi_subst subs) odef
-        with Not_found -> Exceptions.block "Not well-formed hypotheses 1"
+        with Not_found -> raise MissingDep
       in
       if isRel var then
         let n = destRel var in
@@ -707,7 +708,7 @@ let new_env (env, sigma) hyps =
            refer to other indices, so we need to substitute *)
         let ty =
           try multi_subst subs ty
-          with Not_found -> Exceptions.block "Not well-formed hypotheses 2"
+          with Not_found -> raise MissingDep
         in
         let b = check_vars odef ty idset in
         if b then
@@ -747,9 +748,13 @@ let cvar (env, sigma as ctx) ty ohyps =
         (* the evar created by make_evar has id in the substitution
            but we need to remap it to the actual variables in hyps *)
         return sigma (mkEvar (e, Array.of_list vars))
-      with MissingDep -> fail sigma (Lazy.force Exceptions.mkMissingDependency)
+      with
+      | MissingDep ->
+          fail sigma (Lazy.force Exceptions.mkHypMissesDependency)
+      | Not_found ->
+          fail sigma (Lazy.force Exceptions.mkTypeMissesDependency)
     else
-      Exceptions.block "Duplicated variable in hypotheses"
+      fail sigma (E.mkFailure "Duplicated variable in hypotheses")
   else
     let sigma, evar = make_evar sigma env ty in
     return sigma evar
