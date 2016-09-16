@@ -1,11 +1,15 @@
-Require Import MetaCoq.MCTactics.
-Import MetaCoqNotations.
+From MetaCoq
+  Require Import Mtac Tactics.
+
+Import MtacNotations.
+Require Import Lists.List.
+Import ListNotations.
 
 (** assert x y e asserts that y is syntactically equal to x. Since we
 need to make sure the convertibility check is not triggered, we assume
 the terms x and/or y contains an evar e that is instantiated with
 tt. *)
-Definition assert {A} (x y: A) (e: unit) :=
+Definition assert_eq {A} (x y: A) (e: unit) :=
   o1 <- munify x y UniMatchNoRed;
   o2 <- munify y x UniMatchNoRed;
   match o1, o2 with
@@ -17,28 +21,28 @@ Example reduce_no_reduction : unit.
 MProof.
 e <- evar unit;
 let x := reduce RedNone ((fun x=>x) e) in
-assert ((fun x=>x) e) x e.
+assert_eq ((fun x=>x) e) x e.
 Qed.
 
 Example reduce_simpl : unit.
 MProof.
 e <- evar unit;
 let x := reduce RedSimpl ((fun x=>x) e) in
-assert e x e.
+assert_eq e x e.
 Qed.
 
 Example reduce_one_step : unit.
 MProof.
 e <- evar unit;
 let x := reduce RedOneStep ((fun x y=>x) e e) in
-assert ((fun y=>e) e) x e.
+assert_eq ((fun y=>e) e) x e.
 Qed.
 
 Example reduce_whd : unit.
 MProof.
 e <- evar unit;
 let x := reduce RedHNF (id ((fun x=>x) tt)) in
-assert e x e.
+assert_eq e x e.
 Qed.
 
 Example is_not_breaking_letins : True.
@@ -52,21 +56,21 @@ Example reduce_beta : unit.
 MProof.
 e <- evar unit;
 let x := reduce (RedWhd (RedBeta::nil)) (id ((fun x=>x) e)) in
-assert (id ((fun x=>x) e)) x e.
+assert_eq (id ((fun x=>x) e)) x e.
 Qed.
 
 Example reduce_beta2 : unit.
 MProof.
 e <- evar unit;
 let x := reduce (RedWhd (RedBeta::nil)) ((fun x=>x) (fun x=>x) e) in
-assert e x e.
+assert_eq e x e.
 Qed.
 
 Example reduce_BetaDeltaIota : unit.
 MProof.
 e <- evar unit;
 let x := reduce (RedWhd (RedBeta::RedDelta::RedIota::nil)) (elem (Dyn (let t := e in t))) in
-assert (let t := e in t) x e.
+assert_eq (let t := e in t) x e.
 Qed.
 
 Section ASection.
@@ -77,7 +81,7 @@ MProof.
 e <- evar unit;
 let x := reduce (RedWhd (RedBeta::RedDelta::RedIota::nil)) (elem (Dyn (fst (p, e)))) in
   print_term x;;
-assert 0 x e.
+assert_eq 0 x e.
 Qed.
 
 Example reduce_OneStepDyn : nat.
@@ -91,7 +95,7 @@ MProof.
 e <- evar unit;
   let x := reduce (RedWhd (RedBeta::RedIota::RedDeltaC::nil)) (elem (Dyn (fst (p, e)))) in
   print_term x;;
-assert x 0 e.
+assert_eq x 0 e.
 Qed.
 
 Definition test_opaque : nat. exact 0. Qed.
@@ -99,14 +103,14 @@ Example reduce_deltac_opaque : unit.
 MProof.
 e <- evar unit;
 let x := reduce (RedWhd (RedBeta::RedIota::RedDeltaC::nil)) (elem (Dyn (fst (test_opaque, e)))) in
-assert x test_opaque e.
+assert_eq x test_opaque e.
 Qed.
 
 Example reduce_deltax : unit.
 MProof.
 e <- evar unit;
 let x := reduce (RedStrong (RedBeta::RedIota::RedDeltaX::nil)) (elem (Dyn (fst (p, e)))) in
-assert (elem (Dyn (fst (0, e)))) x e.
+assert_eq (elem (Dyn (fst (0, e)))) x e.
 Qed.
 
 

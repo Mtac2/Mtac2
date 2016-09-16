@@ -1,13 +1,7 @@
 From MetaCoq
-Require Import MCTactics ImportedTactics.
+Require Import MetaCoq.
 
 Require Import Bool.Bool.
-Require Import Lists.List.
-
-Import ListNotations.
-Import MetaCoqNotations.
-Import MCTacticsNotations.
-Import TacticOverload.
 
 Ltac induction n := induction n.
 

@@ -1,11 +1,5 @@
-Require Import MetaCoq.MCTactics.
 Require Import Bool.Bool.
-Require Import Lists.List.
-
-Import ListNotations.
-Import MetaCoqNotations.
-Import MCTacticsNotations.
-Import TacticOverload.
+Require Import MetaCoq.MetaCoq.
 
 Goal True.
 MProof.
@@ -222,7 +216,7 @@ Qed.
 Goal forall P Q : Prop, Q -> P -> Q -> P /\ Q.
 MProof.
   intros P Q xQ xP xP'.
-  MCTactics.split.
+  Tactics.split.
   - assumption.
   - assumption.
 Qed.
@@ -303,13 +297,11 @@ MProof.
   ltac "Coq.Init.Notations.auto" nil.
 Qed.
 
-Ltac rewrite h := rewrite h.
-
 (** intros_all test *)
 Goal forall (x y z : nat) (H: x = y), y = x.
 MProof.
   intros.
-  ltac "mctacticstests.rewrite" [Dyn H].
+  rewrite H.
   reflexivity.
 Qed.
 
@@ -333,10 +325,10 @@ Abort.
 Goal forall x y : bool, x = y -> y = x.
 MProof.
   intros.
-  destruct x || idtac. (* should execute idtac because x0 depends on x *)
+  destruct x or idtac. (* should execute idtac because x0 depends on x *)
   generalize1 (
     destruct x;; destruct y;; intros ;;
-      (reflexivity || (symmetry ;; assumption))
+      (reflexivity or (symmetry ;; assumption))
   ).
 Qed.
 

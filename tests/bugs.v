@@ -1,13 +1,6 @@
-Require Import MetaCoq.MCTactics.
-Require Import MetaCoq.ImportedTactics.
+Require Import MetaCoq.MetaCoq.
 
 Require Import Bool.Bool.
-Require Import Lists.List.
-
-Import ListNotations.
-Import MetaCoqNotations.
-Import MCTacticsNotations.
-Import TacticOverload.
 
 (** A bug with destruct *)
 Goal forall n:nat, 0 <= n.

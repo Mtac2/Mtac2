@@ -11,12 +11,7 @@
 *)
 
 From MetaCoq
-Require Export MetaCoq MCTactics ImportedTactics.
-Require Export Lists.List.
-Export MetaCoqNotations.
-Export MCTacticsNotations.
-Export ListNotations.
-Export TacticOverload.
+  Require Export MetaCoq.
 
 (* [Admitted] is Coq's "escape hatch" that says accept this definition
    without proof.  We use it to mark the 'holes' in the development

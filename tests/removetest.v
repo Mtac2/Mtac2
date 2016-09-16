@@ -1,5 +1,4 @@
-Require Import MetaCoq.MCTactics.
-Import MetaCoqNotations.
+Require Import MetaCoq.MetaCoq.
 
 Example test_remove1 (x y z : nat) : x > y -> x > y.
 MProof.

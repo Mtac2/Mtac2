@@ -1,9 +1,5 @@
-From Coq Require Import List.
-Import ListNotations.
 From MetaCoq
-Require Export MetaCoq MCListUtils MCTactics ImportedTactics DepDestruct.
-Import MetaCoqNotations.
-Import MCTacticsNotations.
+Require Export MetaCoq DepDestruct.
 
 Section Bugs.
 
@@ -160,9 +156,9 @@ MProof.
   mpose (rG := abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r).
   simpl.
   assert (T : get_type_of_branch rG (reflect_RTrue P)).
-  { cintros x {- MCTactics.split;; [cintros xP {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
+  { cintros x {- Tactics.split;; [cintros xP {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
   assert (F : get_type_of_branch rG (reflect_RFalse P)).
-  { simpl. intros. MCTactics.split. intros. exact (match a x with end). intros;; discriminate. }
+  { simpl. intros. Tactics.split. intros. exact (match a x with end). intros;; discriminate. }
   mpose (return_type := unfold_funs (RTele_Fun rG) 5).
   pose (mc :=
           makecase {|

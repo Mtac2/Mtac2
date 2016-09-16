@@ -1,4 +1,4 @@
-Require Import MetaCoq.MCImports.
+Require Import MetaCoq.MetaCoq.
 
 Example ex1 (x y: nat) (H: x>y) (z: nat) : True.
 MProof.

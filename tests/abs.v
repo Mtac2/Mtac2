@@ -1,6 +1,5 @@
 From MetaCoq
-Require Export MetaCoq MCListUtils MCTactics.
-Import MetaCoqNotations.
+Require Export MetaCoq.
 
 Require Import Strings.String.
 

@@ -1,9 +1,11 @@
 From MetaCoq
-     Require Export MetaCoq MCListUtils MCTactics ImportedTactics.
-Import MetaCoqNotations.
-Import MCTacticsNotations.
+     Require Export Mtac ListUtils Tactics ImportedTactics.
+Import MtacNotations.
+Import TacticsNotations.
 
 Require Import Strings.String.
+Require Import Lists.List.
+Import ListNotations.
 
 (** This is the [abs] from [MetaCoq] but first reducing the variable
     [x] (in case it is [id x] or some convertible term to a variable)
@@ -284,7 +286,7 @@ Polymorphic Definition sort_goal {T : Type} (A : T) : M (sigT stype_of) :=
                 ret (existT _ SType A_Type)
   end.
 
-Polymorphic Definition get_ITele : forall {T : Type} (ind : T), MetaCoq (nat * (sigT ITele)) :=
+Polymorphic Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele)) :=
   mfix2 f (T : _) (ind : _) : M (nat * sigT ITele)%type :=
     mmatch T with
     | [? (A : Type) (F : A -> Type)] forall a, F a => [H]

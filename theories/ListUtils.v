@@ -1,5 +1,7 @@
-From MetaCoq Require Export MetaCoq.
-Import MetaCoqNotations.
+From MetaCoq Require Export Mtac.
+Import MtacNotations.
+Require Import Lists.List.
+Import ListNotations.
 
 Definition mmap {A B : Type} (f : A -> M B) :=
   mfix1 rec (l : list A) : M (list B) :=

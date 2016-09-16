@@ -1,10 +1,5 @@
-Require Import MetaCoq.MCTactics.
+Require Import MetaCoq.MetaCoq.
 Require Import Bool.Bool.
-Require Import Lists.List.
-
-Import ListNotations.
-Import MetaCoqNotations.
-Import MCTacticsNotations.
 
 Example hyp_well_formed : True.
 MProof.

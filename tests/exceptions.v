@@ -1,4 +1,4 @@
-Require Import MetaCoq.MCImports.
+Require Import MetaCoq.MetaCoq.
 
 
 Axiom block : M nat.

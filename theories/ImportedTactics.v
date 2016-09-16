@@ -1,6 +1,6 @@
-From MetaCoq Require Import MetaCoq MCTactics.
-Import MetaCoqNotations.
-Import MCTacticsNotations.
+From MetaCoq Require Import Mtac Tactics.
+Import MtacNotations.
+Import TacticsNotations.
 
 Require Import Strings.String.
 Require Import Lists.List.

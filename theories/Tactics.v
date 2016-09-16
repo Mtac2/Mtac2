@@ -1,7 +1,9 @@
 Require Import Strings.String.
-From MetaCoq Require Export MetaCoq.
-Require Import MetaCoq.MCListUtils.
-Import MetaCoqNotations.
+From MetaCoq Require Export Mtac.
+Require Import MetaCoq.ListUtils.
+Require Import Lists.List.
+Import MtacNotations.
+Import ListNotations.
 
 Require Import Strings.String.
 
@@ -333,7 +335,7 @@ Definition generalize1 (cont: tactic) : tactic := fun g=>
     in
     oeq <- munify g (@TheGoal (Q x) (e' x)) UniCoq;
     match oeq with
-    | Some _ => MetaCoq.remove x (cont (TheGoal e))
+    | Some _ => Mtac.remove x (cont (TheGoal e))
     | _ => raise exception
     end
   | _ => raise exception
@@ -366,7 +368,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
   gT <- goal_type g;
   unify_or_fail Pn gT;;
   l <- constrs A;
-  l <- MCListUtils.mmap (fun d : dyn =>
+  l <- mmap (fun d : dyn =>
     (* a constructor c has type (forall x, ... y, A) and we return
        (forall x, ... y, P (c x .. y)) *)
     t' <- copy_ctx P d;
@@ -624,7 +626,7 @@ Definition print_hypothesis (a:Hyp) :=
 Definition print_hypotheses :=
   l <- hypotheses;
   let l := rev l in
-  MCListUtils.miterate print_hypothesis l.
+  miterate print_hypothesis l.
 
 Definition print_goal : tactic := fun g=>
   let repeat c := (fix repeat s n :=
@@ -809,9 +811,9 @@ Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
     end
   ) (Dyn c).
 
-Module MCTacticsNotations.
+Module TacticsNotations.
 
-Notation "t || u" := (or t u).
+Notation "t 'or' u" := (or t u) (at level 50).
 
 (* We need a fresh evar to be able to use intro with ;; *)
 Notation "'intro' x" :=
@@ -847,7 +849,7 @@ Delimit Scope goal_match_scope with goal_match.
 Arguments match_goal _%goal_match _.
 
 Notation "t 'where' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
-End MCTacticsNotations.
+End TacticsNotations.
 
 Module TacticOverload.
 Notation "a ;; b" := (the_value a b).
@@ -855,7 +857,7 @@ Notation "a ;; b" := (the_value a b).
 Notation "r '<-' t1 ';' t2" := (the_bvalue t1 (fun r=>t2)).
 End TacticOverload.
 
-Import MCTacticsNotations.
+Import TacticsNotations.
 
 Definition assumption : tactic := fun g=>
   P <- goal_type g;

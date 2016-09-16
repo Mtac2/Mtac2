@@ -1,4 +1,4 @@
-Require Import MetaCoq.MCImports.
+Require Import MetaCoq.MetaCoq.
 
 Example nu_new_name_works : forall x:nat, 0 <= x.
 MProof.

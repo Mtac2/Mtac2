@@ -31,10 +31,10 @@ let get_ts env = Conv_oracle.get_transp_state (Environ.oracle env)
 let get_constructor_pos c = let (_, pos), _ = destConstruct c in pos-1
 
 module MetaCoqNames = struct
-  let metaCoq_module_name = "MetaCoq.MetaCoq.MetaCoq"
+  let metaCoq_module_name = "MetaCoq.Mtac"
   let mkConstr e = Constr.mkConstr (metaCoq_module_name ^ "." ^ e)
   let mkBuilder e = ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
-  let mkT_lazy = mkConstr "MetaCoq"
+  let mkT_lazy = mkConstr "Mtac"
   let mkUConstr e = (Constr.mkUConstr (metaCoq_module_name ^ "." ^ e))
 
   let isConstr e =

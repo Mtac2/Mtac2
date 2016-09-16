@@ -1,6 +1,4 @@
 Require Import MetaCoq.MetaCoq.
-Require Import MetaCoq.MCTactics.
-Import MetaCoqNotations.
 
 Definition test {A} (o : M (option A)) :=
   o <- o;
