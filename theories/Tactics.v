@@ -421,11 +421,27 @@ Definition apply {T} (c : T) : tactic := fun g=>
     end
   ) (Dyn c).
 
+Definition apply_in {P Q} (c: P -> Q) (H: P) : tactic := fun g=>
+  gT <- goal_type g;
+  n <- get_binder_name H;
+  f <- Mtac.remove H (
+    tnu n None (fun H': Q =>
+      e <- evar gT;
+      a <- abs H' e;
+      b <- abs H' (TheGoal e);
+      ret (a, b)));
+  let (f, g') := f in
+  unify_or_fail (TheGoal (f (c H))) g;;
+  ret [AHyp None g'].
+
 Definition transitivity {B : Type} (y : B) : tactic :=
   apply (fun x => @eq_trans B x y).
 
 Definition symmetry : tactic :=
   apply eq_sym.
+
+Definition exfalso : tactic :=
+  apply False_ind.
 
 Definition CantFindConstructor : Exception. exact exception. Qed.
 Definition ConstructorsStartsFrom1 : Exception. exact exception. Qed.
@@ -717,61 +733,39 @@ Definition is_prop_or_type (d: dyn) : M bool :=
 
 Require Import Bool.Bool.
 
-(** WIP
-Definition unfold_projection {A} (t : A) : M A :=
-  d <- decompose t;
-  let (hd, args) := d in
-  let (ty, el) := hd in
-  let unf_el := rone_step el in
-  let red_el := RedWhd [RedIota; RedBeta] unf_el in
-  repack red_el args.
-
 Definition map_term (f : forall d:dyn, M d.(type)) :=
   mfix1 rec (d : dyn) : M d.(type) :=
     let (ty, el) := d in
-    bvar <- is_var el;
-    bevar <- is_evar el;
-    btype <- is_prop_or_type d;
-    if bvar || bevar || btype then
-      f d
-    else
-      mmatch d as d return M d.(type) with
-      | [? B A (b: B) (a: B -> A)] Dyn (a b) =>
-        d1 <- rec (Dyn a);
-        d2 <- rec (Dyn b);
-        val <- coerce (d1 d2);
-        ret val
-      | [? B (A: B -> Type) (b: B) (a: forall x, A x)] Dyn (a b) =>
-        d1 <- rec (Dyn a);
-        d2 <- rec (Dyn b);
-        val <- coerce (d1 d2);
-        ret val
-      | [? B (A: B -> Type) (a: forall x, A x)] Dyn (fun x:B=>a x) =>
-        n <- get_binder_name el;
-        tnu n None (fun x:B=>
-          d1 <- rec (Dyn (a x));
-          abs x d1)
-      | [? d'] d' => f d'
-      end.
+    mmatch d as d return M d.(type) with
+    | [? B A (b: B) (a: B -> A)] Dyn (a b) =n>
+      d1 <- rec (Dyn a);
+      d2 <- rec (Dyn b);
+      ret (d1 d2)
+    | [? B (A: B -> Type) (a: forall x, A x)] Dyn (fun x:B=>a x) =n>
+      n <- get_binder_name el;
+      tnu n None (fun x:B=>
+        d1 <- rec (Dyn (a x));
+        abs x d1)
+    | [? B (A: B -> Type) a] Dyn (forall x:B, a x) =n>
+      n <- get_binder_name el;
+      tnu n None (fun x:B=>
+        d1 <- rec (Dyn (a x));
+        abs_prod x d1)
+    | [? d'] d' =n> f d'
+    end.
 
-Example map_term_id : Prop.
-MProof.
-  m <- map_term
-  (fun d=>
-   print_term d;;
-   b <- is_evar d.(elem);
-   if b then
-     mmatch d as d return M d.(type) with
-     | [? x] @Dyn nat x => ret 0
-     | [? d'] d' => ret d'.(elem)
-     end
-   else
-     ret d.(elem)
-  ) (Dyn (_ + _ + _ = 0));
-  _ <- print_term m; ret m.
-ret 1. ret 1. ret 1.
-Defined.
-*)
+Definition unfold {A} (x: A) : tactic := fun g=>
+  let def := rone_step x in
+  gT <- goal_type g;
+  gT' <- map_term (fun d=>
+   let (ty, el) := d in
+   mmatch d as d return M d.(type) with
+   | Dyn x =n> ret def
+   | [? A (d': A)] Dyn d' =n> ret d'
+   end) (Dyn gT);
+  e <- evar gT';
+  exact e g;;
+  ret [TheGoal e].
 
 Monomorphic Fixpoint intros_simpl (l: list string) : tactic :=
   match l with

@@ -41,7 +41,7 @@ Compute (fst (pair 3 5)).
     of [pair x y].  We can tell Coq to allow this with a [Notation]
     declaration. *)
 
-Notation "( x , y )" := (pair x y).
+Local Notation "( x , y )" := (pair x y).
 
 (** The new notation can be used both in expressions and in
     pattern matches (indeed, we've seen it already in the previous
@@ -132,10 +132,10 @@ Definition mylist := cons 1 (cons 2 (cons 3 nil)).
     allow us to use [::] as an infix [cons] operator and square
     brackets as an "outfix" notation for constructing lists. *)
 
-Notation "x :: l" := (cons x l)
+Local Notation "x :: l" := (cons x l)
                      (at level 60, right associativity).
-Notation "[ ]" := nil.
-Notation "[ x ; .. ; y ]" := (cons x .. (cons y nil) ..).
+Local Notation "[ ]" := nil.
+Local Notation "[ x ; .. ; y ]" := (cons x .. (cons y nil) ..).
 
 (** It is not necessary to understand the details of these
     declarations, but in case you are interested, here is roughly
@@ -211,7 +211,7 @@ Fixpoint app (l1 l2 : natlist) : natlist :=
 (** Actually, [app] will be used a lot in some parts of what
     follows, so it is convenient to have an infix operator for it. *)
 
-Notation "x ++ y" := (app x y)
+Local Notation "x ++ y" := (app x y)
                      (right associativity, at level 60).
 
 Example test_app1:             [1;2;3] ++ [4;5] = [1;2;3;4;5].

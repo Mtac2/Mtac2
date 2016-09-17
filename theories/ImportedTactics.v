@@ -76,3 +76,10 @@ Definition elim {A} (x:A) : tactic :=
   ltac (qualify "elim") (cons (Dyn x) nil).
 
 Notation induction := elim.
+
+Definition injection {A} (x: A) : tactic :=
+  ltac ("Coq.Init.Notations.injection") [Dyn x].
+
+Ltac inversion H := inversion H.
+Definition inversion {A} (x: A) : tactic :=
+  ltac (qualify "inversion") [Dyn x].
