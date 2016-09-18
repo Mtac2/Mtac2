@@ -421,7 +421,7 @@ Definition apply {T} (c : T) : tactic := fun g=>
     end
   ) (Dyn c).
 
-Definition apply_in {P Q} (c: P -> Q) (H: P) : tactic := fun g=>
+Definition change_hyp {P Q} (H: P) (newH: Q) : tactic := fun g=>
   gT <- goal_type g;
   n <- get_binder_name H;
   f <- Mtac.remove H (
@@ -431,8 +431,11 @@ Definition apply_in {P Q} (c: P -> Q) (H: P) : tactic := fun g=>
       b <- abs H' (TheGoal e);
       ret (a, b)));
   let (f, g') := f in
-  unify_or_fail (TheGoal (f (c H))) g;;
+  unify_or_fail (TheGoal (f newH)) g;;
   ret [AHyp None g'].
+
+Definition apply_in {P Q} (c: P -> Q) (H: P) : tactic :=
+  change_hyp H (c H).
 
 Definition transitivity {B : Type} (y : B) : tactic :=
   apply (fun x => @eq_trans B x y).
@@ -614,6 +617,10 @@ Definition simpl_in_all : tactic := fun g=>
   | Some (eq_refl _) => ret [TheGoal e]
   | _ => raise exception (* should never happen *)
   end.
+
+Definition simpl_in {P} (H: P) : tactic :=
+  let P' := rsimpl P in
+  @change_hyp P P' H H.
 
 (** exists tactic *)
 Definition mexists {A} (x: A) : tactic := fun g=>
