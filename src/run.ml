@@ -975,7 +975,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
 
     | 19 -> (* is_evar *)
         let e = whd_evar sigma (nth 1) in
-        if isEvar e then
+        if isEvar e || (isApp e && isEvar (fst (destApp e))) then
           return sigma CoqBool.mkTrue
         else
           return sigma CoqBool.mkFalse
