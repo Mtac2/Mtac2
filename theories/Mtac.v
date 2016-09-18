@@ -362,6 +362,11 @@ Notation "p '=n>' b" := (pbase p%core (fun _=>b%core) UniMatchNoRed)
 Notation "p '=n>' [ H ] b" := (pbase p%core (fun H=>b%core) UniMatchNoRed)
   (no associativity, at level 201, H at next level) : metaCoq_pattern_scope.
 
+Notation "p '=u>' b" := (pbase p%core (fun _=>b%core) UniCoq)
+  (no associativity, at level 201) : metaCoq_pattern_scope.
+Notation "p '=u>' [ H ] b" := (pbase p%core (fun H=>b%core) UniCoq)
+  (no associativity, at level 201, H at next level) : metaCoq_pattern_scope.
+
 Delimit Scope metaCoq_pattern_scope with metaCoq_pattern.
 
 Notation "'with' | p1 | .. | pn 'end'" :=

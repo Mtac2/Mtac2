@@ -11,6 +11,9 @@ Local Set Universe Polymorphism.
 
 Definition CantCoerce : Exception. exact exception. Qed.
 
+(** [coerce x] coreces element [x] of type [A] into
+    an element of type [B], assuming [A] and [B] are
+    unifiable. It raises [CantCoerce] if it fails. *)
 Definition coerce {A B : Type} (x : A) : M B :=
   oH <- munify A B UniCoq;
   match oH with
@@ -18,20 +21,27 @@ Definition coerce {A B : Type} (x : A) : M B :=
   | _ => raise CantCoerce
   end.
 
-Definition tactic := (goal -> M (list goal)).
+(** The type for tactics *)
+Definition tactic := goal -> M (list goal).
 
+(** Executing a tactic in Mtac. It is called by
+    the MProof environment. *)
 Definition run_tac {P} (t : tactic) : M P :=
   e <- evar P;
   t (TheGoal e);;
   ret e.
 
+
 Definition NotAGoal : Exception. exact exception. Qed.
+(** [goal_type g] extracts the type of the goal or raises [NotAGoal]
+    if [g] is not [TheGoal]. *)
 Definition goal_type g : M Type :=
   match g with
     | @TheGoal A _ => ret A
     | _ => raise NotAGoal
   end.
 
+(** Convertion functions from [dyn] to [goal]. *)
 Definition dyn_to_goal d :=
   match d with
   | Dyn x => TheGoal x
@@ -43,10 +53,14 @@ Definition goal_to_dyn : goal -> M dyn := fun g =>
   | _ => raise NotAGoal
   end.
 
+(** no-op tactic *)
 Definition idtac : tactic := fun g => ret [g].
 
+(** fail tactic *)
 Definition fail (e : Exception) : tactic := fun g=>raise e.
 
+(** Unifies [x] with [y] and raises [NotUnifiable] if it they
+    are not unifiable. *)
 Definition unify_or_fail {A} (x y : A) : M (x = y) :=
   oeq <- munify x y UniCoq;
   match oeq with
@@ -63,19 +77,38 @@ Definition try (t:tactic) : tactic := fun g=>
 Definition or (t u : tactic) : tactic := fun g=>
   mtry t g with _ => u g end.
 
+(** [close_goals x l] takes the list of goals [l] and appends
+    hypothesis [x] to each of them. *)
 Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
   mmap (fun g'=>r <- abs x g'; ret (@AHyp A None r)).
+
+(** [let_close_goals x l] takes the list of goals [l] and appends
+    hypothesis [x] with its definition to each of them (it assumes it is defined). *)
+Definition let_close_goals {A} (x: A) : list goal -> M (list goal) :=
+  let t := rone_step x in (* to obtain x's definition *)
+  mmap (fun g':goal=>
+          r <- abs x g';
+          ret (@AHyp A (Some t) r)
+       ).
 
 Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
 Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
 
+(** [decompose x] decomposes value [x] into a head and a spine of
+    arguments. For instance, [decompose (3 + 3)] returns
+    [(Dyn add, [Dyn 3; Dyn 3])] *)
 Definition decompose {A} (x: A) :=
   (mfix2 f (d : dyn) (args: list dyn) : M (dyn * list dyn)%type :=
     mmatch d with
+    | [? A B (t1: A -> B) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :: args)
     | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :: args)
     | _ => ret (d, args)
     end) (Dyn x) [].
 
+(** [instantiate x t] tries to instantiate meta-variable [x] with [t].
+    It fails with [NotAnEvar] if [x] is not a meta-variable (applied to a spine), or
+    [CantInstantiate] if it fails to find a suitable instantiation. [t] is beta-reduced
+    to avoid false dependencies. *)
 Definition instantiate {A} (x t : A) : M unit :=
   k <- decompose x;
   let (h, _) := k in
@@ -93,49 +126,37 @@ Definition instantiate {A} (x t : A) : M unit :=
 
 Definition NotAProduct : Exception. exact exception. Qed.
 
-Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
+(** [intro_base n t] introduces variable or definition named [n]
+    in the context and executes [t n].
+    Raises [NotAProduct] if the goal is not a product or a let-binding. *)
+Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
   mmatch g return M list goal with
-  | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
-    (* We can't put A as the type of the product domain, since it
-    might be an evar, and it won't be instantiated (patterns do not
-    instantiate foreign evars). Therefore, we unify it here. *)
-    eq <- unify_or_fail B A;
-    n <- get_binder_name t;
-    tnu n None (fun x=>
+  | [? (def: A) P e] @TheGoal (let x := def in P x) e =u>
+    tnu var (Some def) (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- evar Px;
-      g <- abs (P:=P) x e';
+      g <- abs_let (P:=P) x def e';
       instantiate e g;;
-      let x := reduce (RedWhd [RedIota]) (match eq in _ = x with
-                 | eq_refl => x
-               end) in
-      t x (TheGoal e') >> close_goals x)
-  | _ => raise NotAProduct
-  end.
+      t x (TheGoal e') >> let_close_goals x)
 
-(** Given a name of a variable, it introduces it in the context *)
-Definition intro_simpl (var: string) : tactic := fun g=>
-  mmatch g with
-  | [? B t (P:B -> Type) e] @TheGoal (let x := t in P x) e =>
-    tnu var (Some t) (fun x=>
-      let Px := reduce (RedWhd [RedBeta]) (P x) in
-      e' <- evar Px;
-      g <- abs_let (P:=P) x t e';
-      instantiate e g;;
-      g' <- abs x (TheGoal e');
-      ret [AHyp (Some t) g'])
-
-  | [? B (P:B -> Type) e] @TheGoal (forall x:B, P x) e =>
+  | [? P e] @TheGoal (forall x:A, P x) e =u>
     tnu var None (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- evar Px;
       g <- abs (P:=P) x e';
       instantiate e g;;
-      g' <- abs x (TheGoal e');
-      ret [AHyp None g'])
-
+      t x (TheGoal e') >> close_goals x)
   | _ => raise NotAProduct
   end.
+
+Definition intro_cont {A} (t: A->tactic) : tactic := fun g=>
+  n <- get_binder_name t;
+  intro_base n t g.
+
+(** Given a name of a variable, it introduces it in the context *)
+Definition intro_simpl (var: string) : tactic := fun g=>
+  A <- evar Type;
+  intro_base var (fun _:A=>idtac) g.
 
 Fixpoint is_open (g : goal) : M bool :=
   match g with
@@ -147,13 +168,6 @@ Fixpoint is_open (g : goal) : M bool :=
 
 Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
 
-Definition let_close_goals {A} (x: A) (t: A) : list goal -> M (list goal) :=
-  let t := rone_step x in (* to obtain x's definition *)
-  mmap (fun g':goal=>
-          r <- abs x g';
-          ret (@AHyp A (Some t) r)
-       ).
-
 Definition open_and_apply (t : tactic) : tactic := fix open g :=
     match g return M _ with
     | TheGoal _ => t g
@@ -164,7 +178,7 @@ Definition open_and_apply (t : tactic) : tactic := fix open g :=
     | @AHyp C (Some t) f =>
       x <- get_binder_name f;
       tnu x (Some t) (fun x : C=>
-        open (f x) >> let_close_goals x t)
+        open (f x) >> let_close_goals x)
     end.
 
 Definition intros_all : tactic :=
@@ -581,7 +595,7 @@ Definition cpose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
       r <- evar T;
       value <- abs_let x t r;
       instantiate e value;;
-      cont x (TheGoal r) >> let_close_goals x t
+      cont x (TheGoal r) >> let_close_goals x
     | _ => raise NotAGoal
     end).
 
