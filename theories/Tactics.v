@@ -158,17 +158,25 @@ Definition intro_simpl (var: string) : tactic := fun g=>
   A <- evar Type;
   intro_base var (fun _:A=>idtac) g.
 
+(** Returns if a goal is open, i.e., a meta-variable. *)
 Fixpoint is_open (g : goal) : M bool :=
   match g with
   | TheGoal e => is_evar e
   | @AHyp C _ f =>
     x <- get_binder_name f;
+    (* we get the name in order to avoid inserting existing names
+      (nu will raise an exception otherwise) *)
     tnu x None (fun x : C=>is_open (f x))
   end.
 
+(** removes the goals that were solved *)
 Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
 
-Definition open_and_apply (t : tactic) : tactic := fix open g :=
+(** [open_and_apply t] is a tactic that "opens" the current goal
+    (pushes all the hypotheses in the context) and applies tactic [t]
+    to the so-opened goal. The result is "closed" back. *)
+Definition open_and_apply (t : tactic) : tactic :=
+  fix open g :=
     match g return M _ with
     | TheGoal _ => t g
     | @AHyp C None f =>
@@ -181,6 +189,7 @@ Definition open_and_apply (t : tactic) : tactic := fix open g :=
         open (f x) >> let_close_goals x)
     end.
 
+(** Introduces all hypotheses. Does not fail if there are 0. *)
 Definition intros_all : tactic :=
   mfix1 f (g : goal) : M (list goal) :=
     open_and_apply (fun g =>
@@ -215,11 +224,13 @@ Definition introsn : nat -> tactic :=
       | (_, _) => failwith "Should never get here"
       end) g.
 
+(** Applies reflexivity *)
 Definition prim_reflexivity : tactic := fun g=>
   A <- evar Type;
   x <- evar A;
   unify_or_fail g (TheGoal (eq_refl x));; ret nil.
 
+(** Fist introduces the hypotheses and then applies reflexivity *)
 Definition reflexivity : tactic := fun g=>
   l <- intros_all g;
   g <- hd_exception l;
