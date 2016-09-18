@@ -894,3 +894,10 @@ Definition assumption : tactic := fun g=>
 Definition select T (cont: T -> tactic) : tactic := fun g=>
   G <- goal_type g;
   match_goal ([[(x : T) |- G ]] => cont x) g.
+
+Definition cut U : tactic := fun g=>
+  T <- goal_type g;
+  ut <- evar (U -> T);
+  u <- evar U;
+  exact (ut u) g;;
+  ret [TheGoal ut; TheGoal u].

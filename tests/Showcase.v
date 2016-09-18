@@ -80,6 +80,13 @@ MProof.
   destructn 1;; intros;; reflexivity.
 Qed.
 
+Example cut_ex P Q R: (P \/ Q -> R) -> P -> R.
+MProof.
+  intros.
+  cut (P \/ Q).
+  - assumption.
+  - left;; assumption.
+Qed.
 
 (** Ltac allows certain FP patterns. *)
 Require Import Lists.ListTactics.
