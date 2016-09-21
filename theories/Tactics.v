@@ -68,8 +68,19 @@ Definition unify_or_fail {A} (x y : A) : M (x = y) :=
   | Some eq=> ret eq
   end.
 
+(** Unifies [x] with [y] using cumulativity and raises
+    [NotCumul] if it they
+    are not unifiable. *)
+Definition NotCumul {A B} (x: A) (y: B) : Exception. exact exception. Qed.
+Definition cumul_or_fail {A B} (x: A) (y: B) : M unit :=
+  b <- munify_cumul x y UniCoq;
+  if b then ret tt else raise (NotCumul x y).
+
 Definition exact {A} (x:A) : tactic := fun g=>
-  unify_or_fail (TheGoal x) g;; ret nil.
+  match g with
+  | TheGoal g => cumul_or_fail x g;; ret nil
+  | _ => raise NotAGoal
+  end.
 
 Definition try (t:tactic) : tactic := fun g=>
   mtry t g with _ => ret ( g :: nil) end.
