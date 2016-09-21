@@ -40,15 +40,17 @@ Theorem plus_rearrange : forall n m p q : nat,
 MProof.
   intros n m p q.
   assert (H : n + m = m + n).
-  - rewrite -> PeanoNat.Nat.add_comm;; reflexivity.
-  - rewrite -> H;; reflexivity.
+  - rewrite -> PeanoNat.Nat.add_comm &> reflexivity.
+  - rewrite -> H &> reflexivity.
 Qed.
 
 Theorem exists_example_2 : forall n,
   (exists m, n = 4 + m) ->
   (exists o, n = 2 + o).
 MProof.
-  cintros n {- r <- hypotheses; print_term r;; destructn 0;; intros m Hm -}.
+  cintros n {-
+    r <- hypotheses; print_term r;; destructn 0 &> intros m Hm
+  -}.
   mexists (2 + m).
   apply Hm.
 Qed.
@@ -56,12 +58,12 @@ Qed.
 
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
-  intros. select (_ -> _) apply;; assumption.
+  intros. select (_ -> _) apply &> assumption.
 Qed.
 
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
-  cintros _ _ _ _ {- select (_ -> _) apply;; assumption -}.
+  cintros _ _ _ _ {- select (_ -> _) apply &> assumption -}.
 Qed.
 
 Definition apply_fun : tactic :=
@@ -71,13 +73,13 @@ Definition apply_fun : tactic :=
 
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
-  intros;; apply_fun;; assumption.
+  intros &> apply_fun &> assumption.
 Qed.
 
 Theorem tl_length_pred' : forall A (l: list A),
   pred (length l) = length (tl l).
 MProof.
-  destructn 1;; intros;; reflexivity.
+  destructn 1 &> intros &> reflexivity.
 Qed.
 
 Example cut_ex P Q R: (P \/ Q -> R) -> P -> R.
@@ -85,7 +87,7 @@ MProof.
   intros.
   cut (P \/ Q).
   - assumption.
-  - left;; assumption.
+  - left &> assumption.
 Qed.
 
 (** Ltac allows certain FP patterns. *)
@@ -105,7 +107,7 @@ Definition apply_one_of l : tactic :=
 
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 MProof.
-  intros;; Tactics.repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
+  intros &> Tactics.repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
 Qed.
 
 Example trans_eq_example' : forall (a b c d e f : nat),
@@ -114,5 +116,5 @@ Example trans_eq_example' : forall (a b c d e f : nat),
      [a;b] = [e;f].
 MProof.
   intros.
-  apply (trans_eq where "y":=[c;d]);; assumption.
+  apply (trans_eq where "y":=[c;d]) &> assumption.
 Qed.

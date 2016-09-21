@@ -12,7 +12,7 @@ Definition induction {A} (n:A) : tactic := ltac (qualify "induction") [Dyn n].
 Goal forall n:nat, 0 <= n.
 MProof.
   intros.
-  induction n;; [apply le_n; apply le_S;; assumption].
+  induction n&> [apply le_n; apply le_S&> assumption].
 Qed.
 
 
@@ -24,7 +24,7 @@ MProof.
    match r with
    | (TheGoal _ :: _) => ret r
    | _ => raise exception
-   end) ;; [apply le_n; apply le_S;; assumption].
+   end) &> [apply le_n; apply le_S&> assumption].
 Qed.
 
 Ltac myapply H := apply H.
@@ -52,6 +52,6 @@ MProof.
   intros P Q.
   (* with indices it should work too *)
   Fail cintros f x {-
-    ltac apply' [Dyn f];; ltac apply' [Dyn x]
+    ltac apply' [Dyn f]&> ltac apply' [Dyn x]
   -}.
 Abort.

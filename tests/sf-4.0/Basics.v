@@ -1003,7 +1003,7 @@ MProof.
 Theorem andb_commutative'' :
   forall b c, andb b c = andb c b.
 MProof.
-  destructn 0;; destructn 0. (* FIX: Intro patterns? *)
+  destructn 0&> destructn 0. (* FIX: Intro patterns? *)
   - reflexivity.
   - reflexivity.
   - reflexivity.

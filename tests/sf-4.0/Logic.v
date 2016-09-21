@@ -477,7 +477,7 @@ MProof.
 Theorem not_true_is_false : forall b : bool,
   b <> true -> b = false.
 MProof.
-  destructn 0;; intro H.
+  destructn 0&> intro H.
   - (* b = true *)
     (* unfold not in H. *) (* FIX unfold *)
     apply ex_falso_quodlibet.
@@ -492,7 +492,7 @@ Qed.
 Theorem not_true_is_false' : forall b : bool,
   b <> true -> b = false.
 MProof.
-  destructn 0;; intro H.
+  destructn 0&> intro H.
   - (* b = false *)
     (* unfold not in H. *) (* FIX unfold *)
     exfalso.                (* <=== *)
@@ -599,11 +599,11 @@ Lemma or_assoc :
   forall P Q R : Prop, P \/ (Q \/ R) <-> (P \/ Q) \/ R.
 MProof.
   intros P Q R. split.
-  - destructn 0 asp [ ["H"]; [] ];; [idtac; destructn 0 asp [ ["H"]; ["H"]]].
+  - destructn 0 asp [ ["H"]; [] ]&> [idtac; destructn 0 asp [ ["H"]; ["H"]]].
     + left. left. apply H.
     + left. right. apply H.
     + right. apply H.
-  - destructn 0 asp [ []; ["H"] ];; [destructn 0 asp [ ["H"]; ["H"]]; idtac].
+  - destructn 0 asp [ []; ["H"] ]&> [destructn 0 asp [ ["H"]; ["H"]]; idtac].
     + right. right. apply H.
     + left. apply H.
     + right. left. apply H.
@@ -618,7 +618,7 @@ Lemma mult_0_3 :
 MProof.
   intros n m p.
   rewrite mult_0. rewrite mult_0. rewrite or_assoc.
-  split;; trivial.
+  split&> trivial.
 Qed.
 
 (** The [apply] tactic can also be used with [<->]. When given an
@@ -661,7 +661,7 @@ Theorem exists_example_2 : forall n,
   (exists m, n = 4 + m) ->
   (exists o, n = 2 + o).
 MProof.
-  intros n;; destructn 0 asp [ ["m"; "Hm"]].
+  intros n&> destructn 0 asp [ ["m"; "Hm"]].
   mexists (2 + m).
   apply Hm.  Qed.
 
@@ -724,10 +724,10 @@ Example In_example_2 :
   exists n', n = 2 * n'.
 MProof.
   simpl.
-  intros n;; destructn 0 asp [ ["H"]; [] ].
+  intros n&> destructn 0 asp [ ["H"]; [] ].
   (*FIX the order is wrong, why? *)
-  - destructn 0 asp [ ["H"]; []];; [idtac; destructn 0].
-    mexists 2. rewrite <- H;; Tactics.reflexivity.
+  - destructn 0 asp [ ["H"]; []]&> [idtac; destructn 0].
+    mexists 2. rewrite <- H&> Tactics.reflexivity.
   - mexists 1. rewrite <- H. Tactics.reflexivity.
 Qed.
 
@@ -748,7 +748,7 @@ MProof.
   (* FIX order of subgoals *)
   - (* l = x' :: l' *)
     simpl. destructn 0 asp [ ["H"]; ["H"] ].
-    + rewrite H;; left;; Tactics.reflexivity.
+    + rewrite H&> left&> Tactics.reflexivity.
     + right. apply IHl'. apply H.
   (*FIX bullet *)
   * (* l = nil, contradiction *)
@@ -902,7 +902,7 @@ MProof.
 
   rewrite plus_comm.
   assert (H : m + p = p + m).
-  { rewrite plus_comm;; Tactics.reflexivity. }
+  { rewrite plus_comm&> Tactics.reflexivity. }
   rewrite H.
   Tactics.reflexivity.
 Qed.
@@ -1305,8 +1305,8 @@ Definition excluded_middle := forall P : Prop,
 Theorem restricted_excluded_middle : forall P b,
   (P <-> b = true) -> P \/ ~ P.
 MProof.
-  intros P. destructn 0;; intro H.
-  - left. rewrite H;; Tactics.reflexivity.
+  intros P. destructn 0&> intro H.
+  - left. rewrite H&> Tactics.reflexivity.
   - right. rewrite H. intros contra. inversion contra.
 Qed.
 

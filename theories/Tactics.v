@@ -131,7 +131,7 @@ Definition NotAProduct : Exception. exact exception. Qed.
     Raises [NotAProduct] if the goal is not a product or a let-binding. *)
 Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
   mmatch g return M list goal with
-  | [? (def: A) P e] @TheGoal (let x := def in P x) e =u>
+  | [? (def: A) P e] @TheGoal (let x := def in P x) e =n>
     tnu var (Some def) (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- evar Px;
@@ -139,7 +139,7 @@ Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
       instantiate e g;;
       t x (TheGoal e') >> let_close_goals x)
 
-  | [? P e] @TheGoal (forall x:A, P x) e =u>
+  | [? P e] @TheGoal (forall x:A, P x) e =n>
     tnu var None (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- evar Px;
@@ -247,13 +247,13 @@ Fixpoint gmap (funs : list tactic) (ass : list goal) : M (list (list goal)) :=
   | l, l' => raise (NotSameSize l l')
   end.
 
-Definition bbind (t:tactic) (l:list tactic) : tactic := fun g=>
+Definition tactic_tactics (t:tactic) (l:list tactic) : tactic := fun g=>
   l' <- t g;
   l' <- filter_goals l';
   ls <- gmap l l';
   ret (concat ls).
 
-Definition bindb (t u:tactic) : tactic := fun g=>
+Definition tactic_tactic (t u:tactic) : tactic := fun g=>
   l <- t g;
   l <- filter_goals l;
   r <- mmap (open_and_apply u) l;
@@ -268,8 +268,11 @@ Monomorphic Structure semicolon (left_type compose_type : Type) := SemiColon {
 Arguments SemiColon {_ _ _} _.
 Arguments the_value {_ _ _ _ _}.
 
-Monomorphic Canonical Structure semicolon_tactic_tactics := SemiColon bbind.
+Monomorphic Canonical Structure semicolon_tactic_tactics := SemiColon tactic_tactics.
 
+Monomorphic Canonical Structure semicolon_tactic_tactic := SemiColon tactic_tactic.
+
+(*
 (* Polymorphic CS are broken *)
 Monomorphic Structure mtac_or_tactic := MtacOrTactic {
   left_type : Type;
@@ -278,13 +281,14 @@ Monomorphic Structure mtac_or_tactic := MtacOrTactic {
 Monomorphic Canonical Structure semicolon_mtac_tactic A :=
   MtacOrTactic (M A) (fun a t g=>a;; t g).
 Monomorphic Canonical Structure semicolon_tactic_tactic :=
-  MtacOrTactic tactic bindb.
+  MtacOrTactic tactic tactic_tactic.
 
 Monomorphic Canonical Structure semicolon_x_tactic (g : mtac_or_tactic) :=
   SemiColon (mtac_or_tactic_bind g).
 
 Monomorphic Definition the_mtac_bind A B := (fun a b=>@bind A B a (fun _ => b)).
 Monomorphic Canonical Structure semicolon_mtac_mtac A B := SemiColon (the_mtac_bind A B).
+*)
 
 (** Overloaded binding *)
 (* Polymorphic CS are broken *)
@@ -569,7 +573,7 @@ Definition destruct_all (T : Type) : tactic := fun g=>
   (fix f (l : list Hyp) : tactic :=
     match l with
     | [] => idtac
-    | (ahyp x _ :: l) => bindb (destruct x) (f l)
+    | (ahyp x _ :: l) => tactic_tactic (destruct x) (f l)
     end) l g.
 
 Definition treduce (r : Reduction) : tactic := fun g=>
@@ -593,7 +597,7 @@ Definition typed_intro (T : Type) : tactic := fun g=>
 Definition typed_intros (T : Type) : tactic := fun g=>
   (mfix1 f (g : goal) : M _ :=
     mtry
-      (bindb (typed_intro T) f) g
+      (tactic_tactic (typed_intro T) f) g
     with NotThatType =>
       idtac g
     end) g.
@@ -802,7 +806,7 @@ Definition unfold {A} (x: A) : tactic := fun g=>
 Monomorphic Fixpoint intros_simpl (l: list string) : tactic :=
   match l with
   | [] => idtac
-  | (n :: l) => bindb (intro_simpl n) (intros_simpl l)
+  | (n :: l) => tactic_tactic (intro_simpl n) (intros_simpl l)
   end.
 
 Monomorphic Fixpoint name_pattern (l: list (list string)) : list tactic :=
@@ -861,7 +865,7 @@ Notation "'cbv'" := (treduce RedNF).
 Notation "'pose' ( x := t )" := (cpose t (fun x=>idtac)) (at level 40, x at next level).
 Notation "'assert' ( x : T )" := (cassert (fun x:T=>idtac)) (at level 40, x at next level).
 
-Notation "t 'asp' n" := (bbind t (name_pattern n)) (at level 40).
+Notation "t 'asp' n" := (tactic_tactics t (name_pattern n)) (at level 40).
 
 Notation "[[ |- ps ] ] => t" :=
   (gbase ps t)
@@ -875,12 +879,13 @@ Delimit Scope goal_match_scope with goal_match.
 Arguments match_goal _%goal_match _.
 
 Notation "t 'where' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
+
+Notation "t1 '&>' t2" := (the_value t1 t2) (at level 50, left associativity).
 End TacticsNotations.
 
 Module TacticOverload.
-Notation "a ;; b" := (the_value a b).
-
 Notation "r '<-' t1 ';' t2" := (the_bvalue t1 (fun r=>t2)).
+Notation "t1 ';;' t2" := (the_bvalue t1 (fun _=>t2)).
 End TacticOverload.
 
 Import TacticsNotations.
@@ -895,9 +900,33 @@ Definition select T (cont: T -> tactic) : tactic := fun g=>
   G <- goal_type g;
   match_goal ([[(x : T) |- G ]] => cont x) g.
 
+(** [cut U] creates two goals with types [U -> T] and [U], where
+    [T] is the type of the current goal. *)
 Definition cut U : tactic := fun g=>
   T <- goal_type g;
   ut <- evar (U -> T);
   u <- evar U;
   exact (ut u) g;;
   ret [TheGoal ut; TheGoal u].
+
+(** Type for goal manipulation primitives *)
+Definition selector := list goal -> M (list goal).
+
+Definition slast : selector := fun l=>
+  match l with
+  | [] => ret []
+  | g::_ => ret [last l g]
+  end.
+
+Definition sfirst : selector := fun l=>
+  match l with
+  | [] => ret []
+  | g::_ => ret [g]
+  end.
+
+Definition srev : selector := fun l=>ret (rev l).
+
+Definition tactic_selector (t: tactic) (s: selector) : tactic :=
+  fun g=> l <- t g; s l.
+
+Monomorphic Canonical Structure semicolon_tactic_selector := SemiColon tactic_selector.

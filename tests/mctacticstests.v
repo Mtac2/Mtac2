@@ -27,44 +27,44 @@ Qed.
 Goal forall b : bool, b = b.
 MProof.
   intro b.
-  - bbind (destruct b) [reflexivity; reflexivity].
+  - tactic_tactics (destruct b) [reflexivity; reflexivity].
 Qed.
 
 Goal forall b1 : bool, b1 = b1.
 MProof.
-  bbind (intro b1) [reflexivity].
+  tactic_tactics (intro b1) [reflexivity].
 Qed.
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
-  bindb (intro b1) (bindb (intro b2) (intro b3)).
-  bindb (destruct b1) (bindb (destruct b2) ((bindb (destruct b3) reflexivity))).
+  tactic_tactic (intro b1) (tactic_tactic (intro b2) (intro b3)).
+  tactic_tactic (destruct b1) (tactic_tactic (destruct b2) ((tactic_tactic (destruct b3) reflexivity))).
 Qed.
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
-  intro b1 ;; intro b2 ;; intro b3.
-  destruct b1 ;; destruct b2 ;; destruct b3 ;; reflexivity.
+  intro b1 &> intro b2 &> intro b3.
+  destruct b1 &> destruct b2 &> destruct b3 &> reflexivity.
 Qed.
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
-  intros b1 ;; intros b2 b3.
-  destruct b1 ;; destruct b2 ;; destruct b3 ;; reflexivity.
+  intros b1 &> intros b2 b3.
+  destruct b1 &> destruct b2 &> destruct b3 &> reflexivity.
 Qed.
 
 Goal forall b1 b2 : bool, b1 && b2 = b2 && b1.
 MProof.
   cintros b1 b2 {-
-    destruct b1 ;; destruct b2 ;; reflexivity
+    destruct b1 &> destruct b2 &> reflexivity
   -}.
 Qed.
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
 MProof.
   cintros b1 b2 {-
-    destruct b1 ;; destruct b2 ;;
-    cintro b3 {- destruct b3 ;; reflexivity -}
+    destruct b1 &> destruct b2 &>
+    cintro b3 {- destruct b3 &> reflexivity -}
   -}.
 Qed.
 
@@ -91,7 +91,7 @@ Definition omega := ltac "Coq.omega.Omega.omega" nil.
 
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.
-  cintro H {- apply H;; left;; omega -}.
+  cintro H {- apply H&> left&> omega -}.
 Qed.
 
 Lemma test1 : forall P, P -> P.
@@ -161,9 +161,9 @@ Qed.
 Lemma destruct1 : forall (p : Prop), p \/ ~p -> ~p \/ p.
 MProof.
   intros p H.
-  destruct H;; intro H0.
-  - right;; assumption.
-  - left;; assumption.
+  destruct H&> intro H0.
+  - right&> assumption.
+  - left&> assumption.
 Qed.
 
 Goal forall b, andb b b = b.
@@ -182,7 +182,7 @@ MProof.
   intros b.
   match_goal testmg.
   - omega.
-  - intros n';; omega.
+  - intros n'&> omega.
 Qed.
 
 Goal forall a b : nat, S b > 0.
@@ -190,7 +190,7 @@ MProof.
   intros a b.
   match_goal testmg.
   - omega.
-  - intros n';; omega.
+  - intros n'&> omega.
 Qed.
 
 Goal forall a b c : nat, S b > 0.
@@ -198,7 +198,7 @@ MProof.
   intros a b c.
   match_goal testmg.
   - omega.
-  - intros n';; omega.
+  - intros n'&> omega.
 Qed.
 
 Goal forall P Q : Prop, P -> P.
@@ -280,9 +280,9 @@ MProof.
   destructn 0.
   - destructn 1.
     + Fail destructn 0.
-      bindb (destruct b2) reflexivity.
-    + bindb (destruct b2) reflexivity.
-  - introsn 2;; reflexivity.
+      destruct b2&> reflexivity.
+    + destruct b2&> reflexivity.
+  - introsn 2&> reflexivity.
 Qed.
 
 (* generalize1 *)
@@ -309,7 +309,7 @@ Qed.
 Goal forall x y : bool, x && y = y && x.
 MProof.
   intros.
-  destruct_all bool ;; reflexivity.
+  destruct_all bool &> reflexivity.
 Qed.
 
 Goal forall x : bool, true = x.
@@ -319,7 +319,7 @@ MProof.
      the variable introduced. If we remove the arguments from the
      exception, then the message will be cryptic, but at the same
      time this message is completely cryptic! *)
-  Fail tryt (intros;; reflexivity).
+  Fail tryt (intros&> reflexivity).
 Abort.
 
 Goal forall x y : bool, x = y -> y = x.
@@ -327,8 +327,8 @@ MProof.
   intros.
   destruct x or idtac. (* should execute idtac because x0 depends on x *)
   generalize1 (
-    destruct x;; destruct y;; intros ;;
-      (reflexivity or (symmetry ;; assumption))
+    destruct x&> destruct y&> intros &>
+      (reflexivity or (symmetry &> assumption))
   ).
 Qed.
 
@@ -351,7 +351,7 @@ Qed.
 Goal forall x:nat, False -> x = 0.
 MProof.
   (** trivial is just testing that if it does not solve the goal, the goal is still there *)
-  trivial;; intros;; contradiction.
+  trivial&> intros&> contradiction.
 Qed.
 
 Require Import MetaCoq.ImportedTactics.
@@ -361,12 +361,12 @@ MProof.
   pose (H := b && c).
   assert (Heq : H = b && c).
   - reflexivity.
-  - (rewrite <- Heq);; destruct H;; reflexivity.
+  - (rewrite <- Heq)&> destruct H&> reflexivity.
 Qed.
 
 Example fix_tac_ex: forall x:nat, 0 <= x.
 MProof.
-  fix_tac "f" 0%N;; apply le_0_n.
+  fix_tac "f" 0%N&> apply le_0_n.
 Qed.
 
 Example intros_def: let x := 0 in forall y, x <= y.
@@ -379,5 +379,15 @@ Example intros_def': let x := 0 in forall y, x <= y.
 MProof.
   intros.
   Ltac ind x :=induction x.
-  ltac "mctacticstests.ind" [Dyn y];;((fun g=>print_term g;; apply le_0_n g):tactic).
+  ltac "mctacticstests.ind" [Dyn y]&>((fun g=>print_term g;; apply le_0_n g):tactic).
 Qed.
+
+Example test_selector1 : forall n, n >= 0.
+MProof.
+  destructn 0&> sfirst &> apply le_0_n.
+Abort.
+
+Example test_selector2 : forall n, n >= 0.
+MProof.
+  destructn 0&> srev &> slast &> apply le_0_n.
+Abort.
