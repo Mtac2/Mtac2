@@ -41,7 +41,10 @@ module MetaCoqNames = struct
     let c = Lazy.force (mkConstr e) in
     eq_constr c
 
-  let mkCase = mkConstr "mkCase"
+  let mkCase ind v ret branch sigma env =
+    let sigma, c = mkUConstr "mkCase" sigma env in
+    sigma, mkApp(c, [|ind;v;ret;branch|])
+
 
   let mkelem d sigma env =
     let sigma, c = mkUConstr "elem" sigma env in
@@ -365,8 +368,7 @@ let name_occurn_env env n =
   Id.Set.mem n ids (* to finally check if n is in it *)
 
 
-let dest_Case (env, sigma) t_type t =
-  let mkCase = Lazy.force mkCase in
+let dest_Case (env, sigma) t =
   let sigma, dyn = mkdyn sigma env in
   try
     let t = whd_betadelta env sigma t in
@@ -380,13 +382,7 @@ let dest_Case (env, sigma) t_type t =
     let ind_type = Retyping.get_type_of env sigma discriminant in
     let return_type_type = Retyping.get_type_of env sigma return_type in
     let sigma, ret_dyn = mkDyn return_type_type return_type sigma env in
-    (sigma, (Term.applist(mkCase,
-                          [ind_type; discriminant; t_type;
-                           ret_dyn;
-                           branch_dyns
-                          ])
-            )
-    )
+    mkCase ind_type discriminant ret_dyn branch_dyns sigma env
   with
   | Not_found ->
       Exceptions.block "Something specific went wrong. TODO: find out what!"
@@ -398,10 +394,10 @@ let dest_Case (env, sigma) t_type t =
 let make_Case (env, sigma) case =
   let open Lazy in
   let open Term in
-  let case_ind = force (mkConstr "case_ind") in
-  let case_val = force (mkConstr "case_val") in
-  let case_return = force (mkConstr "case_return") in
-  let case_branches = force (mkConstr "case_branches") in
+  let sigma, case_ind = mkUConstr "case_ind" sigma env in
+  let sigma, case_val = mkUConstr "case_val" sigma env in
+  let sigma, case_return = mkUConstr "case_return" sigma env in
+  let sigma, case_branches = mkUConstr "case_branches" sigma env in
   let repr_ind = mkApp(case_ind, [|case|]) in
   let repr_val = mkApp(case_val, [|case|]) in
   let repr_val_red = whd_betadeltaiota env sigma repr_val in
@@ -1002,9 +998,8 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         return sigma renv
 
     | 25 -> (* dest case *)
-        let t_type = nth 0 in
         let t = nth 1 in
-        let (sigma', case) = dest_Case (env, sigma) t_type t in
+        let (sigma', case) = dest_Case (env, sigma) t in
         return sigma' case
 
     | 26 -> (* get constrs *)

@@ -104,7 +104,6 @@ Section ExampleReflect.
     pose (mc :=
             makecase {|
                 case_val := r;
-                case_type := RTele_App rG (reflect_args P b) r;
                 case_return := Dyn (RTele_Fun rG);
                 case_branches := (Dyn T) :: (Dyn F) :: nil
               |}).
@@ -163,7 +162,6 @@ MProof.
   pose (mc :=
           makecase {|
               case_val := r;
-              case_type := RTele_App rG (reflect_args P b) r;
               case_return := Dyn (return_type);
               case_branches := (Dyn T) :: (Dyn F) :: nil
             |}).
@@ -194,7 +192,6 @@ Proof.
   pose (mc :=
           makecase {|
               case_val := v;
-              case_type := RTele_App rt a v;
               case_return := Dyn (RTele_Fun rt);
               case_branches := Dyn N :: Dyn C :: List.nil
             |}

@@ -419,7 +419,6 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
     ret {| elem := e |}) (snd l);
   let c := {| case_ind := A;
               case_val := n;
-              case_type := Pn;
               case_return := {| elem := P |};
               case_branches := l
            |} in

@@ -7,33 +7,6 @@ Require Import Vector.
 
 Import Fin.
 
-Fixpoint to_fin (m : my_enum_type) : t 3 :=
-  match m with
-  | one => F1
-  | two => FS F1
-  | three => FS (FS F1)
-  end.
-
-Program Fixpoint to_fin' (m : my_enum_type) : t 3 :=
-  match m with
-  | one => of_nat_lt (p:=0) _
-  | two => of_nat_lt (p:=1) _
-  | three => of_nat_lt (p:=2) _
-  end.
-Eval compute in to_fin'.
-
-Fixpoint mmapi' n {A B} (f : nat -> A -> M B) (l: list A) : M (list B) :=
-  match l with
-  | [] => ret []
-  | x :: xs =>
-    el <- f n x;
-    xs' <- mmapi' (S n) f xs;
-    ret (el :: xs')
-  end.
-
-Definition mmapi := @mmapi' 0.
-Arguments mmapi {_ _} _ _.
-
 Require Import Omega.
 
 Lemma lt_0_S n : 0 < S n. Proof. omega. Qed.
@@ -59,4 +32,11 @@ Goal my_enum_type -> Fin.t 3.
 MProof.
   intro H.
   destruct H &> to_fin_MP.
+Qed.
+
+Goal my_enum_type.
+MProof.
+  pose (H := FS (FS F1) : Fin.t 3).
+  let p := proj1_sig (to_nat H) in
+  constructor (S p).
 Qed.

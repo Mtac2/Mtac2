@@ -14,6 +14,18 @@ Definition mmap {A B : Type} (f : A -> M B) :=
         ret (x :: xs)
     end.
 
+Fixpoint mmapi' n {A B} (f : nat -> A -> M B) (l: list A) : M (list B) :=
+  match l with
+  | [] => ret []
+  | x :: xs =>
+    el <- f n x;
+    xs' <- mmapi' (S n) f xs;
+    ret (el :: xs')
+  end.
+
+Definition mmapi := @mmapi' 0.
+Arguments mmapi {_ _} _ _.
+
 Definition mfilter {A} (b : A -> M bool) : list A -> M (list A) :=
   fix f l :=
     match l with

@@ -59,11 +59,10 @@ Inductive Unification : Type :=
 Inductive Hyp : Type :=
 | ahyp : forall {A}, A -> option A -> Hyp.
 
-Record Case :=
+Polymorphic Record Case :=
     mkCase {
         case_ind : Type;
         case_val : case_ind;
-        case_type : Type;
         case_return : dyn;
         case_branches : list dyn
         }.

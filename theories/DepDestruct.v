@@ -361,7 +361,6 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
           let rrt := reduce RedSimpl (RTele_Type rt) in
           caseterm <- makecase {|
                        case_val := n';
-                       case_type := selem_of (RTele_App rt atele n');
                        case_return := Dyn rrf;
                        case_branches := branches
                      |};
