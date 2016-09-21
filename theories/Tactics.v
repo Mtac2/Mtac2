@@ -131,15 +131,18 @@ Definition NotAProduct : Exception. exact exception. Qed.
     Raises [NotAProduct] if the goal is not a product or a let-binding. *)
 Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
   mmatch g return M list goal with
-  | [? (def: A) P e] @TheGoal (let x := def in P x) e =n>
+  | [? B (def: B) P e] @TheGoal (let x := def in P x) e =n>
+    (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
+    eqBA <- unify_or_fail B A;
     tnu var (Some def) (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- evar Px;
       g <- abs_let (P:=P) x def e';
       instantiate e g;;
+      let x := reduce (RedWhd [RedIota]) (match eqBA with eq_refl => x end) in
       t x (TheGoal e') >> let_close_goals x)
 
-  | [? P e] @TheGoal (forall x:A, P x) e =n>
+  | [? P e] @TheGoal (forall x:A, P x) e =u>
     tnu var None (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- evar Px;
