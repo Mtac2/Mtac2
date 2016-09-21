@@ -37,9 +37,9 @@ Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
   intros P Q f x.
   apply f.
-  (* WHAT? it is not closing the goal with x, although it should *)
-  (fun g=>r <- ltac remove [Dyn f] g; print_term r;; ret r):tactic.
-Abort.
+  ltac remove [Dyn f].
+  exact x.
+Qed.
 
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
@@ -50,8 +50,17 @@ Abort.
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
   intros P Q.
-  (* with indices it should work too *)
+  (* it is raising a NameExistsInContext "f" *)
   Fail cintros f x {-
-    ltac apply' [Dyn f]&> ltac apply' [Dyn x]
+    ltac apply' [Dyn f] &> ltac apply' [Dyn x]
   -}.
 Abort.
+
+Ltac injection := injection.
+
+Goal forall n m,  S n = S m -> n = m.
+MProof.
+  intros n m H.
+  ltac (qualify "injection") [Dyn H].
+  trivial.
+Qed.
