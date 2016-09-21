@@ -169,4 +169,7 @@ VERNAC COMMAND EXTEND MProofCommand
   [ "MProof" ]
   => [ Vernacexpr.VtProofMode proof_mode_identifier, Vernacexpr.VtNow  ]
   -> [ MetaCoqInterp.interp_mproof_command () ]
+| [ "MQed" ]
+  => [ Vernacexpr.VtProofMode proof_mode_identifier, Vernacexpr.VtNow  ]
+  -> [ MetaCoqInterp.end_proof () ]
 END

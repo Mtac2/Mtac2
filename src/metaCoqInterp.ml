@@ -125,3 +125,38 @@ let exec f =
     - Unfocus on the current proof *)
 let interp_proof_constr instr =
   exec (fun () -> interp_instr instr)
+
+
+(** [end_proof] is "Qed" customized for MetaCoq.
+
+    The standard "Qed" does not accept dangling evars even if they do
+    not appear in the final ground proof term. This should probably
+    be changed mainstream.
+
+    In MetaCoq, we first check that the final proof term is ground
+    and if it is, we explicitly remove the dangling evars from the
+    environment so that the standard "Qed" does not complain.
+*)
+let end_proof () =
+  let proof_is_closed_wrt_to_evars () =
+    Proof_global.with_current_proof (fun _ proof ->
+      proof, Proof.in_proof proof (fun evarmap ->
+        let proofs = Proof.partial_proof proof in
+        List.for_all (Evarutil.is_ground_term evarmap) proofs
+      ))
+  in
+  let remove_dangling_evars () =
+    ignore (Pfedit.by Proofview.(Unsafe.(Monad.(
+      tclSETGOALS [] >>
+      (tclEVARMAP >>= (fun evarmap ->
+         let evarmap =
+           Evd.fold_undefined (fun evar _ evarmap ->
+             Evd.remove evarmap evar) evarmap evarmap
+         in
+         tclEVARS evarmap))))
+    ));
+  in
+  if proof_is_closed_wrt_to_evars () then
+    remove_dangling_evars ();
+  (* The following invokes the usual Qed. *)
+  Vernacentries.vernac_end_proof Vernacexpr.(Proved (Opaque None,None))
