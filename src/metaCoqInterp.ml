@@ -66,18 +66,6 @@ module MetaCoqRun = struct
       run env sigma concl t
     end
 
-  let normalizer () =
-    Proofview.Goal.nf_enter begin fun gl ->
-      let env = Proofview.Goal.env gl in
-      let concl = Proofview.Goal.concl gl in
-      let sigma = Proofview.Goal.sigma gl in
-      let reduceGoal = Lazy.force MCTactics.mkReduceGoal in
-      match Run.run (env, sigma) (Term.mkApp (reduceGoal, [|concl|])) with
-      | Run.Val (sigma, v) ->
-          Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))
-      | Run.Err _ ->
-          assert false
-    end
 end
 
 module MetaCoqProofInfos = struct
