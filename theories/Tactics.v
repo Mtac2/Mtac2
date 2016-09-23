@@ -447,10 +447,9 @@ Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 Definition apply {T} (c : T) : tactic := fun g=>
   (mfix1 app (d : dyn) : M (list goal) :=
     let (_, el) := d in
-    oeq <- munify (TheGoal el) g UniCoq;
-    match oeq with
-    | Some _ => ret []
-    | None =>
+    mtry
+      exact el g
+    with _ =>
       mmatch d return M (list goal) with
       | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- evar T1;
