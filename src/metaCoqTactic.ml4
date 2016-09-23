@@ -5,5 +5,5 @@ open MetaCoqInterp
 DECLARE PLUGIN "MetaCoqPlugin"
 
 TACTIC EXTEND mrun
-  | [ "mrun" constr(c) ] -> [ MetaCoqRun.run_tac_constr c ]
+  | [ "mrun" uconstr(c) ] -> [ MetaCoqRun.run_tac_constr c ]
 END

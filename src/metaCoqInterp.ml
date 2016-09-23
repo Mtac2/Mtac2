@@ -46,11 +46,23 @@ module MetaCoqRun = struct
       run env sigma concl c
     end
 
+
+  let understand env sigma {Glob_term.closure=closure;term=term} =
+    let open Pretyping in
+    let flags = all_no_fail_flags in
+    let lvar = { empty_lvar with
+                 ltac_constrs = closure.Glob_term.typed;
+                 ltac_uconstrs = closure.Glob_term.untyped;
+                 ltac_idents = closure.Glob_term.idents;
+               } in
+    understand_ltac flags env sigma lvar WithoutTypeConstraint term
+
   let run_tac_constr t =
     Proofview.Goal.nf_enter begin fun gl ->
       let env = Proofview.Goal.env gl in
       let concl = Proofview.Goal.concl gl in
       let sigma = Proofview.Goal.sigma gl in
+      let sigma, t = understand env sigma t in
       run env sigma concl t
     end
 

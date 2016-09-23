@@ -118,3 +118,7 @@ MProof.
   intros.
   apply (trans_eq where "y":=[c;d]) &> assumption.
 Qed.
+
+Notation "x ?" := (ltac:(mrun (apply x))) (at level 0).
+
+Definition test (x y z: nat) : In x [x] := in_eq?.

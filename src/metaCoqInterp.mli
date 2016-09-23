@@ -1,5 +1,5 @@
 module MetaCoqRun : sig
-  val run_tac_constr : Constr.t -> unit Proofview.tactic
+  val run_tac_constr : Glob_term.closed_glob_constr -> unit Proofview.tactic
 end
 
 val interp_proof_constr : MetaCoqInstr.mproof_instr -> unit
