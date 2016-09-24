@@ -285,11 +285,26 @@ MProof.
   - introsn 2&> reflexivity.
 Qed.
 
-(* generalize1 *)
+(* clear *)
 Goal forall (x : nat) (z : bool) (y : nat), x > y.
 MProof.
   intros x z y.
-  generalize1 (generalize1 (generalize1 idtac)).
+  clear z idtac.
+  Fail clear y idtac.
+Abort.
+
+(* generalize *)
+Goal forall (x : nat) (z : bool) (y : nat), x > y.
+MProof.
+  intros x z y.
+  generalize x &> generalize y &> generalize z.
+Abort.
+
+(* move_back *)
+Goal forall (x : nat) (z : bool) (y : nat), x > y.
+MProof.
+  intros x z y.
+  move_back x (move_back y (clear z idtac)).
 Abort.
 
 Goal forall x : Prop, x = x.
@@ -324,9 +339,9 @@ Abort.
 
 Goal forall x y : bool, x = y -> y = x.
 MProof.
-  intros.
+  intros x y H.
   destruct x or idtac. (* should execute idtac because x0 depends on x *)
-  generalize1 (
+  move_back H (
     destruct x&> destruct y&> intros &>
       (reflexivity or (symmetry &> assumption))
   ).

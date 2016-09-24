@@ -363,13 +363,12 @@ Fixpoint but_last {A} (l : list A) :=
   | (a :: ls) => a :: but_last ls
   end.
 
-Definition generalize1 (cont: tactic) : tactic := fun g=>
+(** Generalizes a goal given a certain hypothesis [x]. It does not
+    remove [x] from the goal. *)
+Definition generalize {A} (x:A) : tactic := fun g=>
   P <- goal_type g;
-  l <- hypotheses;
-  ft <- hd_exception l;
-  let (A, x, _) := ft in
   aP <- abs_prod x P; (* aP = (forall x:A, P) *)
-  e <- Cevar aP (tl l);
+  e <- evar aP;
   mmatch aP with
   | [? Q : A -> Type] (forall z:A, Q z) =n> [H]
     let e' := rcbv match H in _ = Q return Q with
@@ -377,21 +376,17 @@ Definition generalize1 (cont: tactic) : tactic := fun g=>
       end
     in
     exact (e' x) g;;
-    Mtac.remove x (cont (TheGoal e))
-  | _ => raise exception
+    ret [TheGoal e]
+  | _ => failwith "generalize: should never happen"
   end.
 
-(* if I have a goal (P; ?e) and a number n, I want to
-   create a new goal (forall x_1, ..., x_n=>P; ?e')
-   so ?e should be instantiated with ?e' x_1 ... x_n *)
-(*
-Definition abstract_up_to n : tactic := fun g=>
-  l <- hypotheses;
-  P <- goal_type g;
-  pP <- productify_up_to (Dyn P) n l;
-  let l' := rhnf (skipn n l) in
-  e <- Cevar pP l';
-*)
+(** Clear hypothesis [x] and continues the execution on [cont] *)
+Definition clear {A} (x:A) (cont: tactic) : tactic := fun g=>
+  gT <- goal_type g;
+  l <- hyps_except x;
+  e <- Cevar gT l;
+  exact e g;;
+  Mtac.remove x (cont (TheGoal e)).
 
 Definition cprint {A} (s: string) (c: A) :=
   x <- pretty_print c;
@@ -939,3 +934,7 @@ Definition tactic_selector (t: tactic) (s: selector) : tactic :=
   fun g=> l <- t g; s l.
 
 Monomorphic Canonical Structure semicolon_tactic_selector := SemiColon tactic_selector.
+
+(** generalize with clear *)
+Definition move_back {A} (x:A) (cont: tactic) : tactic :=
+  generalize x &> clear x cont.
