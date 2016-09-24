@@ -371,16 +371,13 @@ Definition generalize1 (cont: tactic) : tactic := fun g=>
   aP <- abs_prod x P; (* aP = (forall x:A, P) *)
   e <- Cevar aP (tl l);
   mmatch aP with
-  | [? Q : A -> Type] (forall z:A, Q z) => [H]
-    let e' := match H in _ = Q return Q with
+  | [? Q : A -> Type] (forall z:A, Q z) =n> [H]
+    let e' := rcbv match H in _ = Q return Q with
       | eq_refl _ => e
       end
     in
-    oeq <- munify g (@TheGoal (Q x) (e' x)) UniCoq;
-    match oeq with
-    | Some _ => Mtac.remove x (cont (TheGoal e))
-    | _ => raise exception
-    end
+    exact (e' x) g;;
+    Mtac.remove x (cont (TheGoal e))
   | _ => raise exception
   end.
 
