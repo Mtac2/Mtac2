@@ -323,9 +323,14 @@ Polymorphic Fixpoint open_pattern {A P t} (p : pattern A P t) : M (P t) :=
     oeq <- munify x t u;
     match oeq return M (P t) with
     | Some eq =>
-      match eq with eq_refl =>
-        let h := reduce (RedStrong [RedBeta]) (f (eq_sym eq)) in h
-      end
+        (* eq has type x = t, but for the pattern we need t = x.
+           we still want to provide eq_refl though, so we reduce it *)
+        let h := reduce (RedStrong [RedBeta;RedDelta;RedIota]) (eq_sym eq) in
+        match eq in _ = x return M (P x) with
+        | eq_refl =>
+          (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
+          let b := reduce (RedStrong [RedBeta]) (f h) in b
+        end
     | None => raise DoesNotMatch
     end
   | @ptele _ _ _ C f =>
