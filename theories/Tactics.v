@@ -609,29 +609,22 @@ Definition typed_intros (T : Type) : tactic := fun g=>
 Definition cpose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
   n <- get_binder_name cont;
   tnu n (Some t) (fun x=>
-    match g with
-    | @TheGoal T e =>
-      r <- evar T;
-      value <- abs_let x t r;
-      instantiate e value;;
-      cont x (TheGoal r) >> let_close_goals x
-    | _ => raise NotAGoal
-    end).
+    gT <- goal_type g;
+    r <- evar gT;
+    value <- abs_let x t r;
+    exact value g;;
+    cont x (TheGoal r) >> let_close_goals x).
 
-(* It isn't quite right, it's making a transparent binding instead of an opaque one *)
 Definition cassert {A} (cont: A -> tactic) : tactic := fun g=>
   a <- evar A; (* [a] will be the goal to solve [A] *)
   n <- get_binder_name cont;
   tnu n None (fun x=>
-    match g with
-    | @TheGoal T e =>
-      r <- evar T; (* The new goal now referring to n *)
-      value <- abs x r;
-      instantiate e (value a);; (* instantiate the old goal with the new one *)
-      v <- cont x (TheGoal r) >> close_goals x;
-      ret (TheGoal a :: v) (* append the goal for a to the top of the goals *)
-    | _ => raise NotAGoal
-    end).
+    gT <- goal_type g;
+    r <- evar gT; (* The new goal now referring to n *)
+    value <- abs x r;
+    exact (value a) g;; (* instantiate the old goal with the new one *)
+    v <- cont x (TheGoal r) >> close_goals x;
+    ret (TheGoal a :: v)). (* append the goal for a to the top of the goals *)
 
 (* performs simpl in each hypothesis and in the goal *)
 Definition simpl_in_all : tactic := fun g=>
@@ -728,12 +721,11 @@ Require Import NArith.BinNatDef.
     the current goal as type. The goal is expected to have at least
     [n] products. *)
 Definition fix_tac f n : tactic := fun g=>
-  G <- goal_to_dyn g;
-  let (G, e) := G in
-  r <- tnu f None (fun f:G=>
+  gT <- goal_type g;
+  r <- tnu f None (fun f:gT=>
     (* We introduce the recursive definition f and create the new
        goal having it. *)
-    new_goal <- evar G;
+    new_goal <- evar gT;
     (* We need to enclose the body with n-abstractions as
      required by the fix operator. *)
     fixp <- n_etas (S (N.to_nat n)) new_goal;
@@ -744,7 +736,7 @@ Definition fix_tac f n : tactic := fun g=>
     ret (fixp, AHyp None new_goal)
   );
   let (f, new_goal) := r in
-  instantiate e f;;
+  exact f g;;
   ret [new_goal].
 
 (** [repeat t] applies tactic [t] to the goal several times
