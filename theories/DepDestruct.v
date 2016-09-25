@@ -255,7 +255,7 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
       | Some H =>
         let f := match_eq H selem_of a in
         n <- fresh_name "b";
-        tnu n None (fun b : B =>
+        nu n None (fun b : B =>
           r <- rec (F b) (App f b);
           f' <- abs b r;
           ret (cProd f'))
@@ -292,7 +292,7 @@ Polymorphic Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT I
     | [? (A : Type) (F : A -> Type)] forall a, F a => [H]
       let indFun := match_eq H (fun x=>x) ind in
       name <- fresh_binder_name T;
-      tnu name None (fun a : A =>
+      nu name None (fun a : A =>
         r <- f (F a) (indFun a);
         let (n, sit) := r in
         let (sort, it) := sit in

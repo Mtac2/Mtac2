@@ -145,7 +145,7 @@ Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
   | [? B (def: B) P e] @TheGoal (let x := def in P x) e =n>
     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
     eqBA <- unify_or_fail B A;
-    tnu var (Some def) (fun x=>
+    nu var (Some def) (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- evar Px;
       nG <- abs_let (P:=P) x def e';
@@ -154,7 +154,7 @@ Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
       t x (TheGoal e') >> let_close_goals x)
 
   | [? P e] @TheGoal (forall x:A, P x) e =u>
-    tnu var None (fun x=>
+    nu var None (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- evar Px;
       nG <- abs_fun (P:=P) x e';
@@ -180,7 +180,7 @@ Fixpoint is_open (g : goal) : M bool :=
     x <- get_binder_name f;
     (* we get the name in order to avoid inserting existing names
       (nu will raise an exception otherwise) *)
-    tnu x None (fun x : C=>is_open (f x))
+    nu x None (fun x : C=>is_open (f x))
   end.
 
 (** removes the goals that were solved *)
@@ -195,11 +195,11 @@ Definition open_and_apply (t : tactic) : tactic :=
     | TheGoal _ => t g
     | @AHyp C None f =>
       x <- get_binder_name f;
-      tnu x None (fun x : C=>
+      nu x None (fun x : C=>
         open (f x) >> close_goals x)
     | @AHyp C (Some t) f =>
       x <- get_binder_name f;
-      tnu x (Some t) (fun x : C=>
+      nu x (Some t) (fun x : C=>
         open (f x) >> let_close_goals x)
     end.
 
@@ -329,12 +329,12 @@ Definition copy_ctx {A} (B : A -> Type) :=
         ret Bc
     | [? C (D : C -> Type) (c : forall y:C, D y)] Dyn c =>
         n <- fresh_binder_name c;
-        tnu n None (fun y=>
+        nu n None (fun y=>
           r <- rec (Dyn (c y));
           abs_prod y r)
     | [? C D (c : C->D)] Dyn c =>
         n <- fresh_binder_name c;
-        tnu n None (fun y=>
+        nu n None (fun y=>
           r <- rec (Dyn (c y));
           abs_prod y r)
     | _ => print_term A;; raise (SomethingNotRight d)
@@ -458,7 +458,7 @@ Definition change_hyp {P Q} (H: P) (newH: Q) : tactic := fun g=>
   gT <- goal_type g;
   n <- get_binder_name H;
   f <- Mtac.remove H (
-    tnu n None (fun H': Q =>
+    nu n None (fun H': Q =>
       e <- evar gT;
       a <- abs_fun H' e;
       b <- abs_fun H' (TheGoal e);
@@ -608,7 +608,7 @@ Definition typed_intros (T : Type) : tactic := fun g=>
 
 Definition cpose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
   n <- get_binder_name cont;
-  tnu n (Some t) (fun x=>
+  nu n (Some t) (fun x=>
     gT <- goal_type g;
     r <- evar gT;
     value <- abs_let x t r;
@@ -618,7 +618,7 @@ Definition cpose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
 Definition cassert {A} (cont: A -> tactic) : tactic := fun g=>
   a <- evar A; (* [a] will be the goal to solve [A] *)
   n <- get_binder_name cont;
-  tnu n None (fun x=>
+  nu n None (fun x=>
     gT <- goal_type g;
     r <- evar gT; (* The new goal now referring to n *)
     value <- abs_fun x r;
@@ -705,7 +705,7 @@ Definition n_etas (n : nat) {A} (f:A) : M A :=
        | [? B (T:B->Type) f] @Dyn (forall x:B, T x) f =>
          ty <- unfold_projection (type d);
          name <- get_binder_name ty;
-         tnu name None (fun x:B =>
+         nu name None (fun x:B =>
            loop n' (Dyn (f x)) >> abs_fun x
          )
        | _ => raise NotAProduct
@@ -722,7 +722,7 @@ Require Import NArith.BinNatDef.
     [n] products. *)
 Definition fix_tac f n : tactic := fun g=>
   gT <- goal_type g;
-  r <- tnu f None (fun f:gT=>
+  r <- nu f None (fun f:gT=>
     (* We introduce the recursive definition f and create the new
        goal having it. *)
     new_goal <- evar gT;
@@ -775,12 +775,12 @@ Definition map_term (f : forall d:dyn, M d.(type)) :=
       ret (d1 d2)
     | [? B (A: B -> Type) (a: forall x, A x)] Dyn (fun x:B=>a x) =n>
       n <- get_binder_name el;
-      tnu n None (fun x:B=>
+      nu n None (fun x:B=>
         d1 <- rec (Dyn (a x));
         abs_fun x d1)
     | [? B (A: B -> Type) a] Dyn (forall x:B, a x) =n>
       n <- get_binder_name el;
-      tnu n None (fun x:B=>
+      nu n None (fun x:B=>
         d1 <- rec (Dyn (a x));
         abs_prod x d1)
     | [? d'] d' =n> f d'

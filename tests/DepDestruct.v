@@ -124,7 +124,7 @@ Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
     | [? B (fty : B -> Type)] forall x, fty x => [H]
       let t' := reduce RedSimpl match H in _ = P return P with eq_refl => t end in (* we need to reduce this *)
       name <- fresh_name "A";
-      tnu name None (fun x=>
+      nu name None (fun x=>
         r <- unfold_funs (t' x) n';
       abs x r)
     | [? A'] A' => [H]

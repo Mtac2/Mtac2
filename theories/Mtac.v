@@ -113,13 +113,13 @@ Inductive Mtac : Type -> Prop :=
 (** [is_var e] returns if [e] is a variable. *)
 | is_var : forall {A : Type}, A -> Mtac bool
 
-(* [tnu x od f] executes [f x] where variable [x] is added to
+(* [nu x od f] executes [f x] where variable [x] is added to
    the local context, optionally with definition [d] with
    [od = Some d].
    It raises [NameExistsInContext] if the name "x" is in the context,
    or [Failure] if executing [f x] results in a term containing
    variable [x]. *)
-| tnu : forall {A : Type} {B : Type}, string -> option A -> (A -> Mtac B) -> Mtac B
+| nu : forall {A : Type} {B : Type}, string -> option A -> (A -> Mtac B) -> Mtac B
 
 (** [abs_fun x e] abstracts variable [x] from [e]. It raises [Failure] if
     [x] is not a variable, or if [e] or its type [P] depends on a
@@ -264,20 +264,20 @@ Open Scope string.
 
 (* We cannot make this notation recursive, so we loose
    notation in favor of naming. *)
-Notation "'nu' x , a" := (
+Notation "'\nu' x , a" := (
   let f := fun x=>a in
   n <- get_binder_name f;
-  tnu n None f) (at level 81, x at next level, right associativity) : Mtac_scope.
+  nu n None f) (at level 81, x at next level, right associativity) : Mtac_scope.
 
-Notation "'nu' x : A , a" := (
+Notation "'\nu' x : A , a" := (
   let f := fun x:A=>a in
   n <- get_binder_name f;
-  tnu n None f) (at level 81, x at next level, right associativity) : Mtac_scope.
+  nu n None f) (at level 81, x at next level, right associativity) : Mtac_scope.
 
-Notation "'nu' x := t , a" := (
+Notation "'\nu' x := t , a" := (
   let f := fun x=>a in
   n <- get_binder_name f;
-  tnu n (Some t) f) (at level 81, x at next level, right associativity) : Mtac_scope.
+  nu n (Some t) f) (at level 81, x at next level, right associativity) : Mtac_scope.
 
 Notation "'mfix1' f ( x : A ) : 'M' T := b" := (tfix1 (fun x=>T%type) (fun f (x : A)=>b%MC))
   (at level 85, f at level 0, x at next level, format

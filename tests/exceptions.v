@@ -19,7 +19,7 @@ Example not_closed_but_closed (m : nat) :=
   ltac:(mrun (mtry raise (AnException m) with [? n] AnException n => ret n end)).
 
 Example nu_not_closed_raise_not_closed  :=
-  ltac:(mrun (mtry nu x:nat, raise (AnException x) with [? s] ExceptionNotGround s => ret s end)).
+  ltac:(mrun (mtry \nu x:nat, raise (AnException x) with [? s] ExceptionNotGround s => ret s end)).
 
 Example evar_not_closed_raise_not_closed  :=
   ltac:(mrun (mtry e <- evar nat; raise (AnException e) with [? s] ExceptionNotGround s => ret s end)).
