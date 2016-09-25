@@ -17,9 +17,9 @@ MProof.
   (* z is not required for the proof *)
   nu x, nu y, nu z : nat,
    r1 <- remove z (ret id);
-   r2 <- abs z r1;
-   r3 <- abs (P:=fun y=>forall z, x > y -> x > y)  y r2;
-   abs (P:=fun x=>forall y, nat -> x > y -> x > y) x r3.
+   r2 <- abs_fun z r1;
+   r3 <- abs_fun (P:=fun y=>forall z, x > y -> x > y)  y r2;
+   abs_fun (P:=fun x=>forall y, nat -> x > y -> x > y) x r3.
 Qed.
 
 Example test_remove4 : forall z x y : nat, x > y -> x > y.
@@ -27,7 +27,7 @@ MProof.
   (* z is not required for the proof *)
   nu z, nu x, nu y : nat,
    r1 <- remove z (ret id);
-   r2 <- abs y r1;
-   r3 <- abs (P:= fun x =>forall y : nat, x > y -> x > y) x r2;
-   abs z r3.
+   r2 <- abs_fun y r1;
+   r3 <- abs_fun (P:= fun x =>forall y : nat, x > y -> x > y) x r2;
+   abs_fun z r3.
 Qed.

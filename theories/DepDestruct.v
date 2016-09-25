@@ -11,7 +11,7 @@ Import ListNotations.
     [x] (in case it is [id x] or some convertible term to a variable)
     *)
 Definition abs {A} {P} (x:A) (t:P x) :=
-  let y := reduce RedHNF x in abs y t.
+  let y := reduce RedHNF x in abs_fun y t.
 
 Notation RedMatch := (RedWhd [RedIota]).
 

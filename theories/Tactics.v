@@ -91,14 +91,14 @@ Definition or (t u : tactic) : tactic := fun g=>
 (** [close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] to each of them. *)
 Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
-  mmap (fun g'=>r <- abs x g'; ret (@AHyp A None r)).
+  mmap (fun g'=>r <- abs_fun x g'; ret (@AHyp A None r)).
 
 (** [let_close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] with its definition to each of them (it assumes it is defined). *)
 Definition let_close_goals {A} (x: A) : list goal -> M (list goal) :=
   let t := rone_step x in (* to obtain x's definition *)
   mmap (fun g':goal=>
-          r <- abs x g';
+          r <- abs_fun x g';
           ret (@AHyp A (Some t) r)
        ).
 
@@ -157,7 +157,7 @@ Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
     tnu var None (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- evar Px;
-      nG <- abs (P:=P) x e';
+      nG <- abs_fun (P:=P) x e';
       exact nG g;;
       t x (TheGoal e') >> close_goals x)
   | _ => raise NotAProduct
@@ -460,8 +460,8 @@ Definition change_hyp {P Q} (H: P) (newH: Q) : tactic := fun g=>
   f <- Mtac.remove H (
     tnu n None (fun H': Q =>
       e <- evar gT;
-      a <- abs H' e;
-      b <- abs H' (TheGoal e);
+      a <- abs_fun H' e;
+      b <- abs_fun H' (TheGoal e);
       ret (a, b)));
   let (f, g') := f in
   unify_or_fail (TheGoal (f newH)) g;;
@@ -621,7 +621,7 @@ Definition cassert {A} (cont: A -> tactic) : tactic := fun g=>
   tnu n None (fun x=>
     gT <- goal_type g;
     r <- evar gT; (* The new goal now referring to n *)
-    value <- abs x r;
+    value <- abs_fun x r;
     exact (value a) g;; (* instantiate the old goal with the new one *)
     v <- cont x (TheGoal r) >> close_goals x;
     ret (TheGoal a :: v)). (* append the goal for a to the top of the goals *)
@@ -706,7 +706,7 @@ Definition n_etas (n : nat) {A} (f:A) : M A :=
          ty <- unfold_projection (type d);
          name <- get_binder_name ty;
          tnu name None (fun x:B =>
-           loop n' (Dyn (f x)) >> abs x
+           loop n' (Dyn (f x)) >> abs_fun x
          )
        | _ => raise NotAProduct
        end
@@ -732,7 +732,7 @@ Definition fix_tac f n : tactic := fun g=>
     fixp <- abs_fix f fixp n;
     (* fixp is now the fixpoint with the evar as body *)
     (* The new goal is enclosed with the definition of f *)
-    new_goal <- abs f (TheGoal new_goal);
+    new_goal <- abs_fun f (TheGoal new_goal);
     ret (fixp, AHyp None new_goal)
   );
   let (f, new_goal) := r in
@@ -777,7 +777,7 @@ Definition map_term (f : forall d:dyn, M d.(type)) :=
       n <- get_binder_name el;
       tnu n None (fun x:B=>
         d1 <- rec (Dyn (a x));
-        abs x d1)
+        abs_fun x d1)
     | [? B (A: B -> Type) a] Dyn (forall x:B, a x) =n>
       n <- get_binder_name el;
       tnu n None (fun x:B=>

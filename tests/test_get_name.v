@@ -31,7 +31,7 @@ Qed.
 
 Goal True.
 MProof.
-  r <- tnu "name" None (fun x:nat=>abs x x);
+  r <- tnu "name" None (fun x:nat=>abs_fun x x);
   s <- get_binder_name r;
   match String.string_dec s "name" with
   | Specif.left _ => ret I

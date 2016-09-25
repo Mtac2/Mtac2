@@ -121,10 +121,10 @@ Inductive Mtac : Type -> Prop :=
    variable [x]. *)
 | tnu : forall {A : Type} {B : Type}, string -> option A -> (A -> Mtac B) -> Mtac B
 
-(** [abs x e] abstracts variable [x] from [e]. It raises [Failure] if
+(** [abs_fun x e] abstracts variable [x] from [e]. It raises [Failure] if
     [x] is not a variable, or if [e] or its type [P] depends on a
     variable also depending on [x]. *)
-| abs : forall {A : Type} {P : A -> Type} (x : A), P x -> Mtac (forall x, P x)
+| abs_fun : forall {A : Type} {P : A -> Type} (x : A), P x -> Mtac (forall x, P x)
 
 (** [abs_let x d e] returns [let x := d in e]. It raises [Failure] if
     [x] is not a variable, or if [e] or its type [P] depends on a
