@@ -148,8 +148,8 @@ Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
     tnu var (Some def) (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- evar Px;
-      g <- abs_let (P:=P) x def e';
-      instantiate e g;;
+      nG <- abs_let (P:=P) x def e';
+      exact nG g;;
       let x := reduce (RedWhd [RedIota]) (match eqBA with eq_refl => x end) in
       t x (TheGoal e') >> let_close_goals x)
 
@@ -157,8 +157,8 @@ Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
     tnu var None (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- evar Px;
-      g <- abs (P:=P) x e';
-      instantiate e g;;
+      nG <- abs (P:=P) x e';
+      exact nG g;;
       t x (TheGoal e') >> close_goals x)
   | _ => raise NotAProduct
   end.
