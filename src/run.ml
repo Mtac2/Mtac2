@@ -930,8 +930,9 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         abs AbsLet (env, sigma) a p x y 0 t
 
     | 14 -> (* abs_prod *)
-        let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-        abs AbsProd (env, sigma) a p x y 0 mkProp
+        let a, x, y = nth 0, nth 1, nth 2 in
+        (* HACK: put mkProp as returning type *)
+        abs AbsProd (env, sigma) a mkProp x y 0 mkProp
 
     | 15 -> (* abs_fix *)
         let a, f, t, n = nth 0, nth 1, nth 2, nth 3 in

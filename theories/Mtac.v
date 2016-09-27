@@ -134,7 +134,7 @@ Inductive Mtac : Type -> Prop :=
 (** [abs_prod x e] returns [forall x, e]. It raises [Failure] if
     [x] is not a variable, or if [e] or its type [P] depends on a
     variable also depending on [x]. *)
-| abs_prod : forall {A : Type} {P : A -> Type} (x : A), P x -> Mtac Type
+| abs_prod : forall {A : Type} (x : A), Type -> Mtac Type
 
 (** [abs_fix f t n] returns [fix f {struct n} := t].
     [f]'s type must have n products, that is, be [forall x1, ..., xn, T] *)
