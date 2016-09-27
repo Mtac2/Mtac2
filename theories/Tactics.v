@@ -207,8 +207,8 @@ Definition open_and_apply (t : tactic) : tactic :=
 Definition intros_all : tactic :=
   mfix1 f (g : goal) : M (list goal) :=
     open_and_apply (fun g =>
-      mmatch g return M list goal with
-      | [? T e] @TheGoal T e =>
+      match g return M (list goal) with
+      | @TheGoal T e =>
         mtry
           xn <- get_binder_name T;
           r <- intro_simpl xn g;
@@ -219,6 +219,7 @@ Definition intros_all : tactic :=
         | NotAProduct =>
           ret [g]
         end
+      | _ => raise NotAGoal
       end) g.
 
 (** Introduces up to n binders. Throws [NotAProduct] if there
@@ -261,6 +262,11 @@ Fixpoint gmap (funs : list tactic) (ass : list goal) : M (list (list goal)) :=
   | l, l' => raise (NotSameSize l l')
   end.
 
+Definition is_empty {A} (l: list A) :=
+  match l with [] => true | _ => false end.
+
+Definition NoGoalsLeft : Exception. exact exception. Qed.
+
 Definition tactic_tactics (t:tactic) (l:list tactic) : tactic := fun g=>
   l' <- t g;
   l' <- filter_goals l';
@@ -270,9 +276,11 @@ Definition tactic_tactics (t:tactic) (l:list tactic) : tactic := fun g=>
 Definition tactic_tactic (t u:tactic) : tactic := fun g=>
   l <- t g;
   l <- filter_goals l;
-  r <- mmap (open_and_apply u) l;
-  let r := rhnf List.concat _ r in
-  ret r.
+  if is_empty l then
+    raise NoGoalsLeft
+  else
+    r <- mmap (open_and_apply u) l;
+    ret (concat r).
 
 (* Polymorphic CS are broken *)
 Monomorphic Structure semicolon (left_type compose_type : Type) := SemiColon {
@@ -883,6 +891,11 @@ Module TacticOverload.
 Notation "r '<-' t1 ';' t2" := (the_bvalue t1 (fun r=>t2)).
 Notation "t1 ';;' t2" := (the_bvalue t1 (fun _=>t2)).
 End TacticOverload.
+
+Module TacticUnoverload.
+Notation "r '<-' t1 ';' t2" := (bind t1 (fun r=>t2)).
+Notation "t1 ';;' t2" := (bind t1 (fun _=>t2)).
+End TacticUnoverload.
 
 Import TacticsNotations.
 
