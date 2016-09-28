@@ -298,6 +298,7 @@ Goal forall (x : nat) (z : bool) (y : nat), x > y.
 MProof.
   intros x z y.
   generalize x &> generalize y &> generalize z.
+  Show Proof.
 Abort.
 
 (* move_back *)
@@ -396,13 +397,3 @@ MProof.
   Ltac ind x :=induction x.
   ltac "mctacticstests.ind" [Dyn y]&>((fun g=>print_term g;; apply le_0_n g):tactic).
 Qed.
-
-Example test_selector1 : forall n, n >= 0.
-MProof.
-  destructn 0&> sfirst &> apply le_0_n.
-Abort.
-
-Example test_selector2 : forall n, n >= 0.
-MProof.
-  destructn 0&> srev &> slast &> apply le_0_n.
-Abort.

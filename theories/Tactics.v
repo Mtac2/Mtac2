@@ -845,6 +845,27 @@ Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
     end
   ) (Dyn c).
 
+(** Type for goal manipulation primitives *)
+Definition selector := list goal -> M (list goal).
+
+Definition snth n : selector := fun l=>
+  match nth_error l n with
+  | None => raise NoGoalsLeft
+  | Some g => ret [g]
+  end.
+
+Definition slast : selector := fun l=>snth (pred (List.length l)) l.
+
+Definition sfirst : selector := snth 0.
+
+Definition srev : selector := fun l=>ret (rev l).
+
+Definition tactic_selector (t: tactic) (s: selector) : tactic :=
+  fun g=> l <- t g; s l.
+
+Monomorphic Canonical Structure semicolon_tactic_selector :=
+  SemiColon tactic_selector.
+
 Module TacticsNotations.
 
 Notation "t 'or' u" := (or t u) (at level 50).
@@ -885,6 +906,15 @@ Arguments match_goal _%goal_match _.
 Notation "t 'where' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
 
 Notation "t1 '&>' t2" := (the_value t1 t2) (at level 50, left associativity).
+Notation "t1 '&1>' t2" := (t1 &> snth 0 &> t2) (at level 50, left associativity).
+Notation "t1 '&2>' t2" := (t1 &> snth 1 &> t2) (at level 50, left associativity).
+Notation "t1 '&3>' t2" := (t1 &> snth 2 &> t2) (at level 50, left associativity).
+Notation "t1 '&4>' t2" := (t1 &> snth 3 &> t2) (at level 50, left associativity).
+Notation "t1 '&5>' t2" := (t1 &> snth 4 &> t2) (at level 50, left associativity).
+Notation "t1 '&6>' t2" := (t1 &> snth 5 &> t2) (at level 50, left associativity).
+
+Notation "t1 '&n>' t2" := (t1 &> slast &> t2) (at level 50, left associativity).
+
 End TacticsNotations.
 
 Module TacticOverload.
@@ -918,27 +948,6 @@ Definition cut U : tactic := fun g=>
   exact (ut u) g;;
   ret [TheGoal ut; TheGoal u].
 
-(** Type for goal manipulation primitives *)
-Definition selector := list goal -> M (list goal).
-
-Definition slast : selector := fun l=>
-  match l with
-  | [] => ret []
-  | g::_ => ret [last l g]
-  end.
-
-Definition sfirst : selector := fun l=>
-  match l with
-  | [] => ret []
-  | g::_ => ret [g]
-  end.
-
-Definition srev : selector := fun l=>ret (rev l).
-
-Definition tactic_selector (t: tactic) (s: selector) : tactic :=
-  fun g=> l <- t g; s l.
-
-Monomorphic Canonical Structure semicolon_tactic_selector := SemiColon tactic_selector.
 
 (** generalize with clear *)
 Definition move_back {A} (x:A) (cont: tactic) : tactic :=
