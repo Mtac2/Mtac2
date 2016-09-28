@@ -422,12 +422,10 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
               case_return := {| elem := P |};
               case_branches := l
            |} in
-  d <- makecase c;
-  d <- coerce (elem d);
-  let d := rhnf d in
-  unify_or_fail (@TheGoal Pn d) g;;
-  let l := rhnf (List.map dyn_to_goal l) in
-  ret l.
+  case <- makecase c;
+  case <- unfold_projection (elem case);
+  exact case g;;
+  ret (List.map dyn_to_goal l).
 
 (** Destructs the n-th hypotheses in the goal (counting from 0) *)
 Definition destructn (n : nat) : tactic := fun g=>
