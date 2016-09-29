@@ -289,8 +289,8 @@ Qed.
 Goal forall (x : nat) (z : bool) (y : nat), x > y.
 MProof.
   intros x z y.
-  clear z idtac.
-  Fail clear y idtac.
+  clear z.
+  Fail clear y.
 Abort.
 
 (* generalize *)
@@ -305,7 +305,7 @@ Abort.
 Goal forall (x : nat) (z : bool) (y : nat), x > y.
 MProof.
   intros x z y.
-  move_back x (move_back y (clear z idtac)).
+  move_back x (move_back y (clear z)).
 Abort.
 
 Goal forall x : Prop, x = x.
@@ -341,7 +341,7 @@ Abort.
 Goal forall x y : bool, x = y -> y = x.
 MProof.
   intros x y H.
-  destruct x or idtac. (* should execute idtac because x0 depends on x *)
+  destruct x or idtac. (* should execute idtac because H depends on x *)
   move_back H (
     destruct x&> destruct y&> intros &>
       (reflexivity or (symmetry &> assumption))

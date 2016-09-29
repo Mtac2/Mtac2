@@ -290,37 +290,23 @@ Monomorphic Structure semicolon (left_type compose_type : Type) := SemiColon {
 Arguments SemiColon {_ _ _} _.
 Arguments the_value {_ _ _ _ _}.
 
-Monomorphic Canonical Structure semicolon_tactic_tactics := SemiColon tactic_tactics.
+Monomorphic Canonical Structure semicolon_tactic_tactics :=
+  SemiColon tactic_tactics.
 
-Monomorphic Canonical Structure semicolon_tactic_tactic := SemiColon tactic_tactic.
-
-(*
-(* Polymorphic CS are broken *)
-Monomorphic Structure mtac_or_tactic := MtacOrTactic {
-  left_type : Type;
-  mtac_or_tactic_bind : left_type -> tactic -> tactic
-}.
-Monomorphic Canonical Structure semicolon_mtac_tactic A :=
-  MtacOrTactic (M A) (fun a t g=>a;; t g).
 Monomorphic Canonical Structure semicolon_tactic_tactic :=
-  MtacOrTactic tactic tactic_tactic.
-
-Monomorphic Canonical Structure semicolon_x_tactic (g : mtac_or_tactic) :=
-  SemiColon (mtac_or_tactic_bind g).
-
-Monomorphic Definition the_mtac_bind A B := (fun a b=>@bind A B a (fun _ => b)).
-Monomorphic Canonical Structure semicolon_mtac_mtac A B := SemiColon (the_mtac_bind A B).
-*)
+  SemiColon tactic_tactic.
 
 (** Overloaded binding *)
 (* Polymorphic CS are broken *)
-Monomorphic Structure binding  (left_type middle_type compose_type : Type) := Binding {
-  bright_type : Type;
-  the_bvalue : left_type -> (middle_type -> bright_type) -> compose_type }.
+Monomorphic Structure binding  (left_type middle_type compose_type : Type) :=
+  Binding {
+      bright_type : Type;
+      the_bvalue : left_type -> (middle_type -> bright_type) -> compose_type }.
 Arguments Binding {_ _ _ _} _.
 Arguments the_bvalue {_ _ _ _ _ _}.
 
-Monomorphic Canonical Structure binding_mtac A B := Binding (@bind A B).
+Monomorphic Canonical Structure binding_mtac A B :=
+  Binding (@bind A B).
 
 Monomorphic Definition mtac_tactic {A} (t: M A) (u: A -> tactic) : tactic :=
   fun g=> x <- t; u x g.
@@ -389,12 +375,14 @@ Definition generalize {A} (x:A) : tactic := fun g=>
   end.
 
 (** Clear hypothesis [x] and continues the execution on [cont] *)
-Definition clear {A} (x:A) (cont: tactic) : tactic := fun g=>
+Definition cclear {A} (x:A) (cont: tactic) : tactic := fun g=>
   gT <- goal_type g;
   l <- hyps_except x;
   e <- Cevar gT l;
   exact e g;;
   Mtac.remove x (cont (TheGoal e)).
+
+Definition clear {A} (x:A) := cclear x idtac.
 
 Definition cprint {A} (s: string) (c: A) :=
   x <- pretty_print c;
@@ -903,15 +891,15 @@ Arguments match_goal _%goal_match _.
 
 Notation "t 'where' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
 
-Notation "t1 '&>' t2" := (the_value t1 t2) (at level 50, left associativity).
-Notation "t1 '&1>' t2" := (t1 &> snth 0 &> t2) (at level 50, left associativity).
-Notation "t1 '&2>' t2" := (t1 &> snth 1 &> t2) (at level 50, left associativity).
-Notation "t1 '&3>' t2" := (t1 &> snth 2 &> t2) (at level 50, left associativity).
-Notation "t1 '&4>' t2" := (t1 &> snth 3 &> t2) (at level 50, left associativity).
-Notation "t1 '&5>' t2" := (t1 &> snth 4 &> t2) (at level 50, left associativity).
-Notation "t1 '&6>' t2" := (t1 &> snth 5 &> t2) (at level 50, left associativity).
+Notation "t1 '&>' t2" := (the_value t1 t2) (at level 31, left associativity).
+Notation "t1 '|1>' t2" := (t1 &> snth 0 &> t2) (at level 31, left associativity).
+Notation "t1 '|2>' t2" := (t1 &> snth 1 &> t2) (at level 31, left associativity).
+Notation "t1 '|3>' t2" := (t1 &> snth 2 &> t2) (at level 31, left associativity).
+Notation "t1 '|4>' t2" := (t1 &> snth 3 &> t2) (at level 31, left associativity).
+Notation "t1 '|5>' t2" := (t1 &> snth 4 &> t2) (at level 31, left associativity).
+Notation "t1 '|6>' t2" := (t1 &> snth 5 &> t2) (at level 31, left associativity).
 
-Notation "t1 '&n>' t2" := (t1 &> slast &> t2) (at level 50, left associativity).
+Notation "t1 'l>' t2" := (t1 &> slast &> t2) (at level 31, left associativity).
 
 End TacticsNotations.
 
@@ -949,4 +937,4 @@ Definition cut U : tactic := fun g=>
 
 (** generalize with clear *)
 Definition move_back {A} (x:A) (cont: tactic) : tactic :=
-  generalize x &> clear x cont.
+  generalize x &> cclear x cont.
