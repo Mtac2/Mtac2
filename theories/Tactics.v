@@ -891,15 +891,15 @@ Arguments match_goal _%goal_match _.
 
 Notation "t 'where' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
 
-Notation "t1 '&>' t2" := (the_value t1 t2) (at level 31, left associativity).
-Notation "t1 '|1>' t2" := (t1 &> snth 0 &> t2) (at level 31, left associativity).
-Notation "t1 '|2>' t2" := (t1 &> snth 1 &> t2) (at level 31, left associativity).
-Notation "t1 '|3>' t2" := (t1 &> snth 2 &> t2) (at level 31, left associativity).
-Notation "t1 '|4>' t2" := (t1 &> snth 3 &> t2) (at level 31, left associativity).
-Notation "t1 '|5>' t2" := (t1 &> snth 4 &> t2) (at level 31, left associativity).
-Notation "t1 '|6>' t2" := (t1 &> snth 5 &> t2) (at level 31, left associativity).
+Notation "t1 '&>' t2" := (the_value t1 t2) (at level 41, left associativity).
+Notation "t1 '|1>' t2" := (t1 &> snth 0 &> t2) (at level 41, left associativity).
+Notation "t1 '|2>' t2" := (t1 &> snth 1 &> t2) (at level 41, left associativity).
+Notation "t1 '|3>' t2" := (t1 &> snth 2 &> t2) (at level 41, left associativity).
+Notation "t1 '|4>' t2" := (t1 &> snth 3 &> t2) (at level 41, left associativity).
+Notation "t1 '|5>' t2" := (t1 &> snth 4 &> t2) (at level 41, left associativity).
+Notation "t1 '|6>' t2" := (t1 &> snth 5 &> t2) (at level 41, left associativity).
 
-Notation "t1 'l>' t2" := (t1 &> slast &> t2) (at level 31, left associativity).
+Notation "t1 'l>' t2" := (t1 &> slast &> t2) (at level 41, left associativity).
 
 End TacticsNotations.
 
