@@ -107,7 +107,7 @@ Definition apply_one_of l : tactic :=
 
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 MProof.
-  intros &> Tactics.repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
+  Time intros &> Tactics.repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
 Qed.
 
 Example trans_eq_example' : forall (a b c d e f : nat),

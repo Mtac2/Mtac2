@@ -65,7 +65,7 @@ module Goal = struct
   let goal = mkUConstr "goal"
 
   let mkTheGoal ty ev sigma env =
-    let sigma, tg = mkUConstr "TheGoal" sigma env in
+    let sigma, tg = mkUConstr "Goal" sigma env in
     sigma, mkApp (tg, [|ty;ev|])
 
   let mkAHypOrDef ty name odef body sigma env =

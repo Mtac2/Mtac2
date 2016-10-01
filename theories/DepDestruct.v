@@ -354,7 +354,7 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
                         fun ct =>
                            (selem_of (get_type_of_branch rt ct))
                                        ) cts) in
-          goals <- mmap (fun ty=> r <- evar ty; ret (TheGoal r)) sg;
+          goals <- mmap (fun ty=> r <- evar ty; ret (Goal r)) sg;
           branches <- mmap goal_to_dyn goals;
           let tsg := reduce RedHNF (type_of sg) in
           let rrf := reduce RedSimpl (RTele_Fun rt) in

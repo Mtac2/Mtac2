@@ -72,7 +72,7 @@ Definition reduce (r : Reduction) {A} (x : A) := x.
 
 (** goal type *)
 Polymorphic Inductive goal :=
-| TheGoal : forall {A}, A -> goal
+| Goal : forall {A}, A -> goal
 | AHyp : forall {A}, option A -> (A -> goal) -> goal.
 
 (** THE definition of MetaCoq *)

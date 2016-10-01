@@ -28,28 +28,28 @@ Definition tactic := goal -> M (list goal).
     the MProof environment. *)
 Definition run_tac {P} (t : tactic) : M P :=
   e <- evar P;
-  t (TheGoal e);;
+  t (Goal e);;
   ret e.
 
 
 Definition NotAGoal : Exception. exact exception. Qed.
 (** [goal_type g] extracts the type of the goal or raises [NotAGoal]
-    if [g] is not [TheGoal]. *)
+    if [g] is not [Goal]. *)
 Definition goal_type g : M Type :=
   match g with
-    | @TheGoal A _ => ret A
+    | @Goal A _ => ret A
     | _ => raise NotAGoal
   end.
 
 (** Convertion functions from [dyn] to [goal]. *)
 Definition dyn_to_goal d :=
   match d with
-  | Dyn x => TheGoal x
+  | Dyn x => Goal x
   end.
 
 Definition goal_to_dyn : goal -> M dyn := fun g =>
   match g with
-  | TheGoal d => ret (Dyn d)
+  | Goal d => ret (Dyn d)
   | _ => raise NotAGoal
   end.
 
@@ -78,7 +78,7 @@ Definition cumul_or_fail {A B} (x: A) (y: B) : M unit :=
 
 Definition exact {A} (x:A) : tactic := fun g=>
   match g with
-  | TheGoal g => cumul_or_fail x g;; ret nil
+  | Goal g => cumul_or_fail x g;; ret nil
   | _ => raise NotAGoal
   end.
 
@@ -142,7 +142,7 @@ Definition NotAProduct : Exception. exact exception. Qed.
     Raises [NotAProduct] if the goal is not a product or a let-binding. *)
 Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
   mmatch g return M list goal with
-  | [? B (def: B) P e] @TheGoal (let x := def in P x) e =n>
+  | [? B (def: B) P e] @Goal (let x := def in P x) e =n>
     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
     eqBA <- unify_or_fail B A;
     nu var (Some def) (fun x=>
@@ -151,15 +151,15 @@ Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
       nG <- abs_let (P:=P) x def e';
       exact nG g;;
       let x := reduce (RedWhd [RedIota]) (match eqBA with eq_refl => x end) in
-      t x (TheGoal e') >> let_close_goals x)
+      t x (Goal e') >> let_close_goals x)
 
-  | [? P e] @TheGoal (forall x:A, P x) e =u>
+  | [? P e] @Goal (forall x:A, P x) e =u>
     nu var None (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- evar Px;
       nG <- abs_fun (P:=P) x e';
       exact nG g;;
-      t x (TheGoal e') >> close_goals x)
+      t x (Goal e') >> close_goals x)
   | _ => raise NotAProduct
   end.
 
@@ -175,7 +175,7 @@ Definition intro_simpl (var: string) : tactic := fun g=>
 (** Returns if a goal is open, i.e., a meta-variable. *)
 Fixpoint is_open (g : goal) : M bool :=
   match g with
-  | TheGoal e => is_evar e
+  | Goal e => is_evar e
   | @AHyp C _ f =>
     x <- get_binder_name f;
     (* we get the name in order to avoid inserting existing names
@@ -192,7 +192,7 @@ Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
 Definition open_and_apply (t : tactic) : tactic :=
   fix open g :=
     match g return M _ with
-    | TheGoal _ => t g
+    | Goal _ => t g
     | @AHyp C None f =>
       x <- get_binder_name f;
       nu x None (fun x : C=>
@@ -208,7 +208,7 @@ Definition intros_all : tactic :=
   mfix1 f (g : goal) : M (list goal) :=
     open_and_apply (fun g =>
       match g return M (list goal) with
-      | @TheGoal T e =>
+      | @Goal T e =>
         mtry
           xn <- get_binder_name T;
           r <- intro_simpl xn g;
@@ -229,7 +229,7 @@ Definition introsn : nat -> tactic :=
     open_and_apply (fun g =>
       match (n, g) with
       | (0, g) => ret [g]
-      | (S n', @TheGoal T e) =>
+      | (S n', @Goal T e) =>
         mtry
           xn <- get_binder_name T;
           r <- intro_simpl xn g;
@@ -243,7 +243,7 @@ Definition introsn : nat -> tactic :=
 Definition prim_reflexivity : tactic := fun g=>
   A <- evar Type;
   x <- evar A;
-  unify_or_fail g (TheGoal (eq_refl x));; ret nil.
+  unify_or_fail g (Goal (eq_refl x));; ret nil.
 
 (** Fist introduces the hypotheses and then applies reflexivity *)
 Definition reflexivity : tactic := fun g=>
@@ -370,7 +370,7 @@ Definition generalize {A} (x:A) : tactic := fun g=>
       end
     in
     exact (e' x) g;;
-    ret [TheGoal e]
+    ret [Goal e]
   | _ => failwith "generalize: should never happen"
   end.
 
@@ -380,7 +380,7 @@ Definition cclear {A} (x:A) (cont: tactic) : tactic := fun g=>
   l <- hyps_except x;
   e <- Cevar gT l;
   exact e g;;
-  Mtac.remove x (cont (TheGoal e)).
+  Mtac.remove x (cont (Goal e)).
 
 Definition clear {A} (x:A) := cclear x idtac.
 
@@ -440,7 +440,7 @@ Definition apply {T} (c : T) : tactic := fun g=>
       | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- evar T1;
           r <- app (Dyn (f e));
-          ret (TheGoal e :: r)
+          ret (Goal e :: r)
       | _ =>
           gT <- goal_type g;
           raise (CantApply c gT)
@@ -455,10 +455,10 @@ Definition change_hyp {P Q} (H: P) (newH: Q) : tactic := fun g=>
     nu n None (fun H': Q =>
       e <- evar gT;
       a <- abs_fun H' e;
-      b <- abs_fun H' (TheGoal e);
+      b <- abs_fun H' (Goal e);
       ret (a, b)));
   let (f, g') := f in
-  unify_or_fail (TheGoal (f newH)) g;;
+  unify_or_fail (Goal (f newH)) g;;
   ret [AHyp None g'].
 
 Definition apply_in {P Q} (c: P -> Q) (H: P) : tactic :=
@@ -555,7 +555,7 @@ Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   unify_or_fail v el;;
   b <- is_evar v;
   if b then
-    ret [TheGoal v] (* it wasn't solved *)
+    ret [Goal v] (* it wasn't solved *)
   else
     ret l.
 
@@ -578,7 +578,7 @@ Definition treduce (r : Reduction) : tactic := fun g=>
   T <- goal_type g;
   let T := reduce r T in
   e <- evar T;
-  let e := TheGoal e in
+  let e := Goal e in
   munify g e UniMatch;;
   ret [e].
 
@@ -607,7 +607,7 @@ Definition cpose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
     r <- evar gT;
     value <- abs_let x t r;
     exact value g;;
-    cont x (TheGoal r) >> let_close_goals x).
+    cont x (Goal r) >> let_close_goals x).
 
 Definition cassert {A} (cont: A -> tactic) : tactic := fun g=>
   a <- evar A; (* [a] will be the goal to solve [A] *)
@@ -617,8 +617,8 @@ Definition cassert {A} (cont: A -> tactic) : tactic := fun g=>
     r <- evar gT; (* The new goal now referring to n *)
     value <- abs_fun x r;
     exact (value a) g;; (* instantiate the old goal with the new one *)
-    v <- cont x (TheGoal r) >> close_goals x;
-    ret (TheGoal a :: v)). (* append the goal for a to the top of the goals *)
+    v <- cont x (Goal r) >> close_goals x;
+    ret (Goal a :: v)). (* append the goal for a to the top of the goals *)
 
 (* performs simpl in each hypothesis and in the goal *)
 Definition simpl_in_all : tactic := fun g=>
@@ -632,9 +632,9 @@ Definition simpl_in_all : tactic := fun g=>
   let T := rsimpl T in
   e <- Cevar T l; (* create the new goal in the new context *)
   (* we need normal unification since g might be a compound value *)
-  oeq <- munify g (TheGoal e) UniCoq;
+  oeq <- munify g (Goal e) UniCoq;
   match oeq with
-  | Some (eq_refl _) => ret [TheGoal e]
+  | Some (eq_refl _) => ret [Goal e]
   | _ => raise exception (* should never happen *)
   end.
 
@@ -646,10 +646,10 @@ Definition simpl_in {P} (H: P) : tactic :=
 Definition mexists {A} (x: A) : tactic := fun g=>
   P <- evar _;
   e <- evar _;
-  oeq <- munify g (TheGoal (@ex_intro _ P x e)) UniCoq;
+  oeq <- munify g (Goal (@ex_intro _ P x e)) UniCoq;
   match oeq with
-  | Some (eq_refl _) => ret [TheGoal e]
-  | _ => raise (NotUnifiable g (TheGoal (@ex_intro _ P x e)))
+  | Some (eq_refl _) => ret [Goal e]
+  | _ => raise (NotUnifiable g (Goal (@ex_intro _ P x e)))
   end.
 
 (** Printing of a goal *)
@@ -726,7 +726,7 @@ Definition fix_tac f n : tactic := fun g=>
     fixp <- abs_fix f fixp n;
     (* fixp is now the fixpoint with the evar as body *)
     (* The new goal is enclosed with the definition of f *)
-    new_goal <- abs_fun f (TheGoal new_goal);
+    new_goal <- abs_fun f (Goal new_goal);
     ret (fixp, AHyp None new_goal)
   );
   let (f, new_goal) := r in
@@ -791,7 +791,7 @@ Definition unfold {A} (x: A) : tactic := fun g=>
    end) (Dyn gT);
   e <- evar gT';
   exact e g;;
-  ret [TheGoal e].
+  ret [Goal e].
 
 Monomorphic Fixpoint intros_simpl (l: list string) : tactic :=
   match l with
@@ -932,7 +932,7 @@ Definition cut U : tactic := fun g=>
   ut <- evar (U -> T);
   u <- evar U;
   exact (ut u) g;;
-  ret [TheGoal ut; TheGoal u].
+  ret [Goal ut; Goal u].
 
 
 (** generalize with clear *)

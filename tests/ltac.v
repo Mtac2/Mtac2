@@ -22,7 +22,7 @@ MProof.
   (* m shouldn't be in the list of hypotheses, as it is shared *)
   (fun g=>r <- induction n g;
    match r with
-   | (TheGoal _ :: _) => ret r
+   | (Goal _ :: _) => ret r
    | _ => raise exception
    end) &> [apply le_n; apply le_S&> assumption].
 Qed.
