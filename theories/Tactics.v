@@ -269,13 +269,11 @@ Definition NoGoalsLeft : Exception. exact exception. Qed.
 
 Definition tactic_tactics (t:tactic) (l:list tactic) : tactic := fun g=>
   l' <- t g;
-  l' <- filter_goals l';
   ls <- gmap l l';
   ret (concat ls).
 
 Definition tactic_tactic (t u:tactic) : tactic := fun g=>
   l <- t g;
-  l <- filter_goals l;
   if is_empty l then
     raise NoGoalsLeft
   else
@@ -440,7 +438,9 @@ Definition apply {T} (c : T) : tactic := fun g=>
       | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- evar T1;
           r <- app (Dyn (f e));
-          ret (Goal e :: r)
+          mif is_evar e then
+            ret (Goal e :: r)
+          else ret r
       | _ =>
           gT <- goal_type g;
           raise (CantApply c gT)
@@ -739,7 +739,6 @@ Definition fix_tac f n : tactic := fun g=>
 Definition repeat t : tactic := fun g=>
   (mfix1 f (g : goal) : M (list goal) :=
     r <- try t g; (* if it fails, the execution will stop below *)
-    r <- filter_goals r;
     match r with
     | [] => ret []
     | [g'] =>

@@ -396,6 +396,9 @@ Notation "'mtry' a ls" :=
 Definition Cevar A ctx := evar A (Some ctx).
 Definition evar A := evar A None.
 
+Notation "'mif' b 'then' t 'else' u" :=
+  (cond <- b; if cond then t else u) (at level 200).
+
 End MtacNotations.
 
 Section GeneralUtilities.
