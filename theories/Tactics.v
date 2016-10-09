@@ -722,7 +722,7 @@ Definition fix_tac f n : tactic := fun g=>
     new_goal <- evar gT;
     (* We need to enclose the body with n-abstractions as
      required by the fix operator. *)
-    fixp <- n_etas (S (N.to_nat n)) new_goal;
+    fixp <- n_etas (N.to_nat n) new_goal;
     fixp <- abs_fix f fixp n;
     (* fixp is now the fixpoint with the evar as body *)
     (* The new goal is enclosed with the definition of f *)

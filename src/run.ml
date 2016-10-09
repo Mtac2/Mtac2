@@ -624,7 +624,7 @@ let abs case (env, sigma) a p x y n t : data =
           | AbsLet -> Term.mkLetIn (name, t, a, y')
           | AbsFix ->
               if n_prods env sigma a n then
-                Term.mkFix (([|n|], 0), ([|name|], [|a|], [|y'|]))
+                Term.mkFix (([|n-1|], 0), ([|name|], [|a|], [|y'|]))
               else
                 E.mkFailure (E.error_abs_fix env a n)
         in
@@ -637,7 +637,7 @@ let abs case (env, sigma) a p x y n t : data =
           | AbsProd -> Term.mkProd (Name name, a, y')
           | AbsFun -> Term.mkLambda (Name name, a, y')
           | AbsLet -> Term.mkLetIn (Name name, t, a, y')
-          | AbsFix -> Term.mkFix (([|n|], 0), ([|Name name|], [|a|], [|y'|]))
+          | AbsFix -> Term.mkFix (([|n-1|], 0), ([|Name name|], [|a|], [|y'|]))
         in
         return sigma t
     else

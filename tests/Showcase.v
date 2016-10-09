@@ -12,7 +12,6 @@ Require Import Bool.Bool.
  - reflexivity.
  - apply.
  - fix. TODO
- - induction. TODO
  - generalize.
  - assert.
  - pose.
@@ -89,6 +88,16 @@ MProof.
   - assumption.
   - left &> assumption.
 Qed.
+
+Theorem plus_n_O : forall n:nat, n = n + 0.
+MProof.
+  fix_tac "IH" 1.
+  destructn 0.
+  - reflexivity.
+  - intro n'. simpl. rewrite <- IH.
+    reflexivity.
+Qed.
+
 
 (** Ltac allows certain FP patterns. *)
 Require Import Lists.ListTactics.
