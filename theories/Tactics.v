@@ -375,10 +375,13 @@ Definition generalize {A} (x:A) : tactic := fun g=>
 (** Clear hypothesis [x] and continues the execution on [cont] *)
 Definition cclear {A} (x:A) (cont: tactic) : tactic := fun g=>
   gT <- goal_type g;
-  l <- hyps_except x;
-  e <- Cevar gT l;
+  r <- Mtac.remove x (
+    e <- evar gT;
+    l <- cont (Goal e);
+    ret (e, l) );
+  let (e, l) := r in
   exact e g;;
-  Mtac.remove x (cont (Goal e)).
+  ret l.
 
 Definition clear {A} (x:A) := cclear x idtac.
 
