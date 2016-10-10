@@ -528,16 +528,16 @@ Definition DoesNotMatchGoal : Exception. exact exception. Qed.
 (* Monomorphic*) Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
   match p, l with
   | gbase P t, _ =>
-    gty <- goal_type g;
-    beq <- munify_cumul P gty UniCoq;
+    gT <- goal_type g;
+    beq <- munify_cumul P gT UniCoq;
     if beq then t g
-    else fail DoesNotMatchGoal g
+    else raise DoesNotMatchGoal
   | @gtele C f, (@ahyp A a _ :: l) =>
-    teq <- munify C A UniCoq;
-    match teq with
-    | Some eq =>
+    oeqCA <- munify C A UniCoq;
+    match oeqCA with
+    | Some eqCA =>
       e <- evar C;
-      let e' := match eq with eq_refl => e end in
+      let e' := match eqCA with eq_refl => e end in
       munify e' a UniCoq;;
       mtry match_goal' (f e) l g
       with DoesNotMatchGoal =>
@@ -581,9 +581,8 @@ Definition treduce (r : Reduction) : tactic := fun g=>
   T <- goal_type g;
   let T := reduce r T in
   e <- evar T;
-  let e := Goal e in
-  munify g e UniMatch;;
-  ret [e].
+  exact e g;;
+  ret [Goal e].
 
 Definition NotThatType : Exception. exact exception. Qed.
 Definition typed_intro (T : Type) : tactic := fun g=>
