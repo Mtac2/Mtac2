@@ -529,16 +529,14 @@ Definition DoesNotMatchGoal : Exception. exact exception. Qed.
   match p, l with
   | gbase P t, _ =>
     gT <- goal_type g;
-    beq <- munify_cumul P gT UniCoq;
-    if beq then t g
+    mif munify_cumul P gT UniCoq then t g
     else raise DoesNotMatchGoal
   | @gtele C f, (@ahyp A a _ :: l) =>
     oeqCA <- munify C A UniCoq;
     match oeqCA with
     | Some eqCA =>
       e <- evar C;
-      let e' := match eqCA with eq_refl => e end in
-      munify e' a UniCoq;;
+      munify_cumul e a UniCoq;;
       mtry match_goal' (f e) l g
       with DoesNotMatchGoal =>
         match_goal' p l g
@@ -548,7 +546,7 @@ Definition DoesNotMatchGoal : Exception. exact exception. Qed.
   end.
 
 Definition match_goal p : tactic := fun g=>
-  r <- hypotheses; let r := rsimpl (List.rev r) in match_goal' p r g.
+  r <- hypotheses; match_goal' p (List.rev r) g.
 
 Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   d <- goal_to_dyn g;
