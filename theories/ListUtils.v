@@ -1,4 +1,4 @@
-From MetaCoq Require Export Mtac.
+From MetaCoq Require Export Mtac2.
 Import MtacNotations.
 Require Import Lists.List.
 Import ListNotations.

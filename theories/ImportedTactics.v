@@ -1,4 +1,4 @@
-From MetaCoq Require Import Mtac Tactics.
+From MetaCoq Require Import Mtac2 Tactics.
 Import MtacNotations.
 Import TacticsNotations.
 

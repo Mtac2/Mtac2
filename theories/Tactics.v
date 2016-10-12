@@ -1,5 +1,5 @@
 Require Import Strings.String.
-From MetaCoq Require Export Mtac.
+From MetaCoq Require Export Mtac2.
 Require Import MetaCoq.ListUtils.
 Require Import Lists.List.
 Import MtacNotations.
@@ -375,7 +375,7 @@ Definition generalize {A} (x:A) : tactic := fun g=>
 (** Clear hypothesis [x] and continues the execution on [cont] *)
 Definition cclear {A} (x:A) (cont: tactic) : tactic := fun g=>
   gT <- goal_type g;
-  r <- Mtac.remove x (
+  r <- Mtac2.remove x (
     e <- evar gT;
     l <- cont (Goal e);
     ret (e, l) );
@@ -454,7 +454,7 @@ Definition apply {T} (c : T) : tactic := fun g=>
 Definition change_hyp {P Q} (H: P) (newH: Q) : tactic := fun g=>
   gT <- goal_type g;
   n <- get_binder_name H;
-  f <- Mtac.remove H (
+  f <- Mtac2.remove H (
     nu n None (fun H': Q =>
       e <- evar gT;
       a <- abs_fun H' e;
