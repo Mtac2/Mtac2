@@ -1,6 +1,6 @@
 # MetaCoq
 
-An typed tactic language for Coq.
+A typed tactic language for Coq.
 
 Copyright (c) 2015 Beta Ziliani <bziliani@famaf.unc.edu.ar>,
 	           Yann Régis-Gianas <yrg@irif.fr>,
@@ -9,7 +9,10 @@ Copyright (c) 2015 Beta Ziliani <bziliani@famaf.unc.edu.ar>,
 Distributed under the terms of the MIT License,
 see LICENSE for details.
 
-This archive is a plugin for Coq containing a new tactic language.
+This archive is a plugin for Coq containing the new tactic language
+described in
+[The Next 700 Safe Tactic Languages](http://www.mpi-sws.org/~beta/#publications).
+
 
 The archive has 3 subdirectories:
 * `src` contains the code of the plugin.
