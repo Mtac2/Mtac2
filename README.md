@@ -9,7 +9,7 @@ Copyright (c) 2015 Beta Ziliani <bziliani@famaf.unc.edu.ar>,
 Distributed under the terms of the MIT License,
 see LICENSE for details.
 
-This archive is a plugin for Coq containing a new tactic lanugage.
+This archive is a plugin for Coq containing a new tactic language.
 
 The archive has 3 subdirectories:
 * `src` contains the code of the plugin.
@@ -46,4 +46,5 @@ Add ML Path "path_to_unicoq/src".
 # Usage
 
 Once installed, you can `Require Import MetaCoq.MetaCoq` to load the
-plugin. The plugin defines a tactic `mrun t` to execute code `t`.
+plugin. The plugin defines a tactic `mrun t` to execute code `t` and a proof
+mode `MProof` where MetaCoq's tactic can be executed directly.
