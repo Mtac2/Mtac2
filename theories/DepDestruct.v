@@ -1,5 +1,5 @@
 From MetaCoq
-     Require Export Mtac ListUtils Tactics ImportedTactics.
+     Require Export Mtac2 ListUtils Tactics ImportedTactics.
 Import MtacNotations.
 Import TacticsNotations.
 
