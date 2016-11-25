@@ -6,32 +6,32 @@ module MetaCoqRun = struct
 
   open Proofview.Notations
 
-  (**  *)
-  let pretypeT env sigma t c =
+  (** Given a type concl and a term c, it checks that c has type:
+      - [M concl]: then it returns [c]
+      - [tactic]: then it returns [run_tac concl c] *)
+  let pretypeT env sigma concl c =
     let metaCoqType = Lazy.force Run.MetaCoqNames.mkT_lazy in
     let sigma, tacticType = MCTactics.mkTactic sigma env in
     let ty = Retyping.get_type_of env sigma c in
     let (h, args) = Reductionops.whd_betadeltaiota_stack env sigma ty in
     if Term.eq_constr_nounivs metaCoqType h && List.length args = 1 then
       try
-        let sigma = Evarconv.the_conv_x_leq env t (List.hd args) sigma in
+        let sigma = Evarconv.the_conv_x_leq env concl (List.hd args) sigma in
         (sigma, c)
       with Evarconv.UnableToUnify(_,_) -> Errors.error "Different types"
     else if Term.eq_constr_nounivs tacticType ty && List.length args = 0 then
       let sigma, runTac = MCTactics.mkRunTac sigma env in
-      (sigma, Term.mkApp(runTac, [|t; c|]))
+      (sigma, Term.mkApp(runTac, [|concl; c|]))
     else
       Errors.error "Not a Mtactic"
 
   let run env sigma concl c =
     let (sigma, t) = pretypeT env sigma concl c in
-    let rec aux = function
-      | Run.Val (sigma, v) ->
-          Proofview.Refine.refine ~unsafe:false (fun _ -> (sigma, v))
-      | Run.Err (_, e) ->
-          Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
-    in
-    aux (Run.run (env, sigma) t)
+    match Run.run (env, sigma) t with
+    | Run.Val (sigma, v) ->
+        Proofview.Refine.refine ~unsafe:false (fun _ ->(sigma, v))
+    | Run.Err (_, e) ->
+        Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
 
   (** Get back the context given a goal, interp the constr_expr to obtain a constr
       Then run the interpretation fo the constr, and returns the tactic value,
