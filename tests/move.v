@@ -104,5 +104,45 @@ Definition build_tac :=
   List.map (fun ip=>
               match ip with
               | ipsimpl => simpl
-              | ipsimpldone simpl &> done
-              | ipdone =>
+              | ipsimpldone => simpl &> done
+              | ipdone => done
+              | ipvar x => intro_simpl x
+              | ipfold x =>
+                n <- get_reference x;
+                let (_, e) := n : dyn in
+                unfold e
+              | _ => fun _ => failwith "unsupported"
+              end).
+
+Definition tac1_tac1 t u : tactic := fun g=>
+  l <- t g;
+  let u_is_idtac :=
+      mtry unify_or_fail u idtac
+      with _ => failwith "All goals solved" end in
+  match l with
+  | [] => u_is_idtac;; ret []
+  | [g'] => mif is_open g' then
+              print_hypotheses;;
+              print_term g';;
+              open_and_apply u g'
+            else u_is_idtac;; ret []
+  | _ => failwith "More than one goal!"
+  end.
+
+Definition move s :=
+  let oips := rcbv (to_ip s) in
+  match oips with
+  | Some ips =>
+    List.fold_right tac1_tac1 idtac (build_tac ips)
+  | None => fun _ => failwith "unsupported"
+  end.
+
+Goal forall P:Prop, id P -> P.
+MProof.
+  move "P". move "xP //".
+Qed.
+
+Goal forall P:Prop, id P -> P.
+MProof.
+  Fail move "P /id". (* it says name P is already defined, because ltac does not considers indices *)
+Abort.
