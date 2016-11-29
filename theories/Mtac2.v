@@ -37,6 +37,8 @@ Definition ExceptionNotGround (s : string) : Exception. exact exception. Qed.
 
 Definition CannotRemoveVar (x : string) : Exception. exact exception. Qed.
 
+Definition RefNotFound (x : string) : Exception. exact exception. Qed.
+
 
 Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
@@ -209,6 +211,9 @@ Inductive Mtac : Type -> Prop :=
     cumulativity of universes, e.g., it succeeds if [x] is [Prop] and
     [y] is [Type]. *)
 | munify_cumul {A B} (x: A) (y: B) : Unification -> Mtac bool
+
+(** [get_reference s] returns the element that is reference by s. *)
+| get_reference : string -> Mtac dyn
 
 | call_ltac : forall {A : Type}, string -> list dyn -> Mtac (prod A (list goal))
 | list_ltac : Mtac unit

@@ -99,9 +99,10 @@ End Parser.
 Ltac done := intros; tauto || trivial || assumption || reflexivity.
 
 Definition done := ltac "Top.done" [].
-(*
-Definition build_tac ip :=
-  List.map
-  match ip with
-  |
-*)
+
+Definition build_tac :=
+  List.map (fun ip=>
+              match ip with
+              | ipsimpl => simpl
+              | ipsimpldone simpl &> done
+              | ipdone =>

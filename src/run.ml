@@ -110,6 +110,10 @@ module Exceptions = struct
     let varname = CoqString.to_coq (constr_to_string_env env x) in
     mkApp(Lazy.force (mkConstr "CannotRemoveVar"), [|varname|])
 
+  let mkRefNotFound s =
+    let msg = CoqString.to_coq s in
+    mkApp (Lazy.force (mkConstr "RefNotFound"), [|msg|])
+
   let mkTermNotGround = mkConstr "TermNotGround"
   let mkWrongTerm = mkConstr "WrongTerm"
   let mkHypMissesDependency = mkConstr "HypMissesDependency"
@@ -1039,7 +1043,19 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
               return sigma CoqBool.mkFalse
         end
 
-    | 30 -> (* call_ltac *)
+    | 30 -> (* get_reference *)
+        let s = CoqString.from_coq (env, sigma) (nth 0) in
+        let open Nametab in let open Libnames in
+        begin
+          try
+            let sigma, v = Evd.fresh_global env sigma (locate (qualid_of_string s)) in
+            let ty = Retyping.get_type_of env sigma v in
+            let sigma, dyn = mkDyn ty v sigma env in
+            return sigma dyn
+          with _ -> fail sigma (Exceptions.mkRefNotFound s)
+        end
+
+    | 31 -> (* call_ltac *)
         let concl, name, args = nth 0, nth 1, nth 2 in
         let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq (env, sigma) args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
@@ -1075,7 +1091,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         end
     (* Tac (sigma, Tacinterp.eval_tactic tac, fun v -> Val v) *)
 
-    | 31 -> (* list_ltac *)
+    | 32 -> (* list_ltac *)
         let aux k _ = Pp.msg_info (Pp.str (Names.KerName.to_string k)) in
         KNmap.iter aux (Tacenv.ltac_entries ());
         return sigma (Lazy.force CoqUnit.mkTT)
