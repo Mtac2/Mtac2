@@ -28,6 +28,8 @@ Definition contradiction : tactic := ltac (qualify "contradiction") nil.
 
 Definition tauto : tactic := ltac ("Coq.Init.Notations.tauto") nil.
 
+Ltac unfold x := unfold x.
+Definition unfold {A} (x: A) := ltac (qualify "unfold") [Dyn x].
 
 Ltac rrewrite1 a := rewrite a.
 Ltac rrewrite2 a b := rewrite a, b.

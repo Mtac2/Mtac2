@@ -397,3 +397,9 @@ MProof.
   Ltac ind x :=induction x.
   ltac "mctacticstests.ind" [Dyn y]&>((fun g=>print_term g;; apply le_0_n g):tactic).
 Qed.
+
+Example test_unfold : id 0 = 0.
+MProof.
+  unfold (@id).
+  reflexivity.
+Qed.
