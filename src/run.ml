@@ -762,21 +762,7 @@ let rec get_name (env, sigma) (t: constr) : constr option =
 (* return the reflected hash of a term *)
 let hash (env, _, sigma, nus) c size =
   let size = CoqN.from_coq (env, sigma) size in
-  let rec upd depth t =
-    match kind_of_term t with
-    | Rel k ->
-        if depth < k then
-          begin
-            if k > depth + nus then
-              mkRel (k - nus)
-            else
-              mkRel (k + nus - (2 * (k -1)))
-          end
-        else
-          t
-    | _ -> map_constr_with_binders succ upd depth t
-  in
-  let h = Term.hash_constr (upd 0 c) in
+  let h = Term.hash_constr c in
   CoqN.to_coq (Pervasives.abs (h mod size))
 
 (* reflects the hypotheses in [env] in a list of [ahyp] *)
@@ -859,9 +845,10 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
     | 4 -> (* raise *)
         (* we make sure the exception is a closed term: it does not depend on evars or nus *)
         let term = nf_evar sigma (nth 1) in
-        let rels = free_rels term in
-        let closed = Int.Set.is_empty rels || Int.Set.max_elt rels > nus in
-        let closed = closed && Evar.Set.is_empty (Evarutil.undefined_evars_of_term sigma term) in
+        let vars = collect_vars term in
+        let nuvars = List.map (fun (a, _, _) -> a) (CList.firstn nus (named_context env)) in
+        let intersect = Id.Set.inter vars (Id.Set.of_list nuvars) in
+        let closed = Id.Set.is_empty intersect && Evar.Set.is_empty (Evarutil.undefined_evars_of_term sigma term) in
         if closed then
           fail sigma term
         else
@@ -900,29 +887,23 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
 
     | 11 -> (* nu *)
         let a, s, ot, f = nth 0, nth 2, nth 3, nth 4 in
-        let name = CoqString.from_coq (env, sigma) s in
-        let name = Names.Id.of_string name in
+        let namestr = CoqString.from_coq (env, sigma) s in
+        let name = Names.Id.of_string namestr in
         if Id.Set.mem name (vars_of_env env) then
           fail sigma (Exceptions.mkNameExists s)
         else begin
-          let x, fx = Names.Name name, Term.mkApp(Vars.lift 1 f, [|Term.mkRel 1|]) in
+          let fx = Term.mkApp(f, [|Term.mkVar name|]) in
           let ot = CoqOption.from_coq (env, sigma) ot in
-          let env = push_rel (x, ot, a) env in
-          (* after extending the context we need to lift the variables
-             in the reified context, together with the definition and
-             type that we are going to append to it. *)
-          let renv = Vars.lift 1 renv in
-          let a = Vars.lift 1 a in
-          let ot = Option.map (Vars.lift 1) ot in
-          let (sigma', renv) = Hypotheses.cons_hyp a (mkRel 1) ot renv sigma env in
+          let env = push_named (name, ot, a) env in
+          let (sigma', renv) = Hypotheses.cons_hyp a (Term.mkVar name) ot renv sigma env in
           match run' (env, renv, sigma', (nus+1)) fx with
           | Val (sigma', e) ->
-              if Int.Set.mem 1 (free_rels e) then
-                fail sigma (E.mkFailure (E.error_param env (Names.Id.to_string name) e))
+              if occur_var env name e then
+                fail sigma (E.mkFailure (E.error_param env namestr e))
               else
-                return sigma' (pop e)
+                return sigma' e
           | Err (sigma, e) ->
-              fail sigma (pop e)
+              fail sigma e
         end
 
     | 12 -> (* abs *)

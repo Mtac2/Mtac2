@@ -1,4 +1,4 @@
-Require Import MetaCoq.
+From MetaCoq Require Import MetaCoq.
 
 Goal forall x, 0 <= x.
 MProof.
