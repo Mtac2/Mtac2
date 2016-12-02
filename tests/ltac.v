@@ -50,13 +50,12 @@ Abort.
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
   intros P Q.
-  (* it is raising a NameExistsInContext "f" *)
-  Fail cintros f x {-
+  cintros f x {-
     ltac apply' [Dyn f] &> ltac apply' [Dyn x]
   -}.
-Abort.
+Qed.
 
-Ltac injection := injection.
+Ltac injection x := injection x.
 
 Goal forall n m,  S n = S m -> n = m.
 MProof.

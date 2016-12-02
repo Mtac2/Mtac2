@@ -1127,10 +1127,44 @@ let clean_unused_metas sigma metas term =
   in
   Evd.restore_future_goals sigma alive principal_goal
 
-let run (env, sigma) t  =
-  let (sigma, renv) = build_hypotheses sigma env in
-  match run' (env, renv, sigma, 0) (nf_evar sigma t) with
+(* returns the enviornment and substitution without db rels *)
+let db_to_named env =
+  let env' = push_named_context (named_context env) (reset_context env) in
+  let vars = Id.Set.elements (Context.vars_of_named_context (named_context env)) in
+  let _, subs, env = CList.fold_right_i (fun n (name, odef, ty) (vars, subs, env') ->
+    (* the definition might refer to previously defined indices
+       so we perform the substitution *)
+    let odef = Option.map (multi_subst subs) odef in
+    let ty = multi_subst subs ty in
+    (* since the name can be Anonymous, we need to generate a name *)
+    let id =
+      match name with
+      | Anonymous ->
+          Id.of_string ("_MC" ^ string_of_int n)
+      | Name n ->
+          Namegen.next_name_away name vars in
+    id::vars, (n, mkVar id) :: subs, push_named (id, odef, ty) env'
+  ) 1 (rel_context env) (vars, [], env') in
+  subs, env
+
+(* It replaces each ci by ii in l = [(i1,c1) ... (in, cn)] in c. *)
+let multi_subst_inv l c =
+  let l = List.map (fun (a, b) -> (b, a)) l in
+  let rec substrec depth c = match kind_of_term c with
+    | Var n ->
+        begin
+          try mkRel (List.assoc (mkVar n) l + depth)
+          with Not_found -> mkVar n
+        end
+    | _ -> map_constr_with_binders succ substrec depth c in
+  substrec 0 c
+
+let run (env, sigma) t =
+  let subs, env' = db_to_named env in
+  let t = multi_subst subs (nf_evar sigma t) in
+  let (sigma, renv) = build_hypotheses sigma env' in
+  match run' (env', renv, sigma, 0) t with
   | Err (sigma', v) ->
-      Err (sigma', nf_evar sigma' v)
+      Err (sigma', multi_subst_inv subs (nf_evar sigma' v))
   | Val (sigma', v) ->
-      Val (sigma', nf_evar sigma' v)
+      Val (sigma', multi_subst_inv subs (nf_evar sigma' v))

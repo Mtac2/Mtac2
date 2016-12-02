@@ -98,7 +98,7 @@ End Parser.
 
 Ltac done := intros; tauto || trivial || assumption || reflexivity.
 
-Definition done := ltac "Top.done" [].
+Definition done := ltac "move.done" [].
 
 Definition build_tac :=
   List.map (fun ip=>
