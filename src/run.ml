@@ -56,6 +56,9 @@ module MetaCoqNames = struct
     let sigma, c = mkUConstr "Dyn" sigma env in
     sigma, mkApp(c, [|ty;el|])
 
+  (* dyn is expected to be Dyn ty el *)
+  let get_elem dyn = (snd (destApp dyn)).(1)
+
 end
 
 open MetaCoqNames
@@ -224,35 +227,49 @@ module ReductionStrategy = struct
     in applist r
 
   let redflags = [|fBETA;fDELTA;fIOTA;fZETA|]
+  let posDeltaC = Array.length redflags
+  let posDeltaX = posDeltaC + 1
+  let posDeltaOnly = posDeltaX + 1
+  let posDeltaBut = posDeltaOnly + 1
 
-  let get_flags ctx flags =
-    (* HACK for unfolding only constants we need to add it afterwards*)
-    let deltac = ref false in
-    let deltax = ref false in
+  let get_flags (env, _ as ctx) flags =
     (* we assume flags have the right type and are in nf *)
-    let flags = CoqList.from_coq_conv ctx (fun f->
-      let ci = get_constructor_pos f in
-      if ci < Array.length redflags then
-        redflags.(ci)
-      else begin
-        if ci = Array.length redflags then
-          deltac := true
+    let flags = CoqList.from_coq ctx flags in
+    List.fold_right (fun f reds->
+      if isConstruct f then
+        let ci = get_constructor_pos f in
+        if ci < Array.length redflags then
+          red_add reds redflags.(ci)
+        else if ci = posDeltaC then
+          red_add_transparent reds Names.cst_full_transparent_state
+        else if ci = posDeltaX then
+          red_add_transparent reds Names.var_full_transparent_state
         else
-          deltax := true;
-        raise CoqList.Skip
-      end
-    ) flags in
-    let reds = mkflags flags in
-    let reds =
-      if !deltac then
-        red_add_transparent reds Names.cst_full_transparent_state
+          failwith "Unknown flag"
+      else if isApp f then
+        let c, args = destApp f in
+        if isConstruct c && Array.length args = 1 then
+          let reds, func =
+            if get_constructor_pos c = posDeltaOnly then
+              red_add_transparent (red_add reds fDELTA) all_opaque,
+              red_add
+            else (* must be posDeltaBut *)
+              red_add_transparent reds
+                (Conv_oracle.get_transp_state (Environ.oracle env)),
+              red_sub in
+          let ids = CoqList.from_coq_conv ctx get_elem args.(0) in
+          List.fold_right (fun e reds->
+            if isVar e then
+              func reds (fVAR (destVar e))
+            else if isConst e then
+              func reds (fCONST (fst (destConst e)))
+            else
+              failwith "Unknown reference") ids reds
+        else
+          failwith "Unknown flag"
       else
-        reds
-    in
-    if !deltax then
-      red_add_transparent reds Names.var_full_transparent_state
-    else
-      reds
+        failwith "Unknown flag"
+    ) flags no_red
 
   let redfuns = [|
     (fun _ _ _ c -> c);

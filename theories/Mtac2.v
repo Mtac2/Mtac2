@@ -43,9 +43,13 @@ Definition RefNotFound (x : string) : Exception. exact exception. Qed.
 Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
 
-Inductive RedFlags : Set := RedBeta | RedDelta | RedIota | RedZeta | RedDeltaC | RedDeltaX.
+Inductive RedFlags :=
+| RedBeta | RedDelta | RedIota | RedZeta
+| RedDeltaC | RedDeltaX
+| RedDeltaOnly : list dyn -> RedFlags
+| RedDeltaBut : list dyn -> RedFlags.
 
-Inductive Reduction : Set :=
+Inductive Reduction :=
 | RedNone
 | RedSimpl
 | RedOneStep

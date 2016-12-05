@@ -1,5 +1,5 @@
 From MetaCoq
-  Require Import Mtac Tactics.
+  Require Import Mtac2 Tactics.
 
 Import MtacNotations.
 Require Import Lists.List.
@@ -19,6 +19,7 @@ Definition assert_eq {A} (x y: A) (e: unit) :=
 
 Example reduce_no_reduction : unit.
 MProof.
+Set Printing All.
 e <- evar unit;
 let x := reduce RedNone ((fun x=>x) e) in
 assert_eq ((fun x=>x) e) x e.
@@ -115,3 +116,37 @@ Qed.
 
 
 End ASection.
+
+Goal unit.
+MProof.
+Unset Printing All.
+  e <- evar unit;
+  n <- evar nat;
+  let x := reduce (RedStrong [RedDeltaOnly [Dyn (@id)]])
+    (id ((fun x:nat=>x) n)) in
+  assert_eq x ((fun A (x:A)=>x) nat ((fun x:nat=>x) n)) e.
+MQed.
+
+Goal unit.
+MProof.
+  Fail
+    e <- evar unit;
+    n <- evar nat;
+    let x := reduce (RedStrong [RedBeta; RedDeltaOnly [Dyn (@id)]])
+      (id ((fun x=>x)) (n+0)) in
+    assert_eq x ((fun A (x:A)=>x) nat ((fun x=>x) (n + 0))) e.
+  e <- evar unit;
+  n <- evar nat;
+  let x := reduce (RedStrong [RedBeta; RedDeltaOnly [Dyn (@id)]])
+    (id ((fun x=>x)) (n+0)) in
+  assert_eq x (n + 0) e.
+MQed.
+
+Goal unit.
+MProof.
+  e <- evar unit;
+  n <- evar nat;
+  let x := reduce (RedStrong [RedBeta;RedIota;RedDeltaBut [Dyn (@id)]])
+    (id (fun x=>x) ((fun x=>x) (0 + n))) in
+  assert_eq x (id (fun x=>x) n) e.
+MQed.
