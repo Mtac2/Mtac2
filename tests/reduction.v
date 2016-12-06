@@ -117,9 +117,10 @@ Qed.
 
 End ASection.
 
-Goal unit.
-MProof.
 Unset Printing All.
+
+Example reduction_only : unit.
+MProof.
   e <- evar unit;
   n <- evar nat;
   let x := reduce (RedStrong [RedDeltaOnly [Dyn (@id)]])
@@ -127,7 +128,7 @@ Unset Printing All.
   assert_eq x ((fun A (x:A)=>x) nat ((fun x:nat=>x) n)) e.
 MQed.
 
-Goal unit.
+Example reduction_only2 : unit.
 MProof.
   Fail
     e <- evar unit;
@@ -142,7 +143,7 @@ MProof.
   assert_eq x (n + 0) e.
 MQed.
 
-Goal unit.
+Example reduction_but : unit.
 MProof.
   e <- evar unit;
   n <- evar nat;
@@ -150,3 +151,7 @@ MProof.
     (id (fun x=>x) ((fun x=>x) (0 + n))) in
   assert_eq x (id (fun x=>x) n) e.
 MQed.
+
+Abort.
+Abort.
+Abort. (* MQed is leaving definitions open somehow *)
