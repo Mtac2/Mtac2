@@ -779,7 +779,7 @@ Definition map_term (f : forall d:dyn, M d.(type)) :=
     | [? d'] d' =n> f d'
     end.
 
-Definition unfold {A} (x: A) : tactic := fun g=>
+Definition unfold_slow {A} (x: A) : tactic := fun g=>
   let def := rone_step x in
   gT <- goal_type g;
   gT' <- map_term (fun d=>
@@ -791,6 +791,13 @@ Definition unfold {A} (x: A) : tactic := fun g=>
   e <- evar gT';
   exact e g;;
   ret [Goal e].
+
+Definition unfold {A} (x: A) : tactic := fun g=>
+  gT <- goal_type g;
+  let gT' := reduce (RedStrong [RedBeta;RedIota;RedDeltaOnly [Dyn x]]) gT in
+  ng <- evar gT';
+  exact ng g;;
+  ret [Goal ng].
 
 Monomorphic Fixpoint intros_simpl (l: list string) : tactic :=
   match l with

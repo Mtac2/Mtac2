@@ -110,7 +110,7 @@ Definition build_tac :=
               | ipfold x =>
                 n <- get_reference x;
                 let (_, e) := n : dyn in
-                unfold e
+                Tactics.unfold e
               | _ => fun _ => failwith "unsupported"
               end).
 
@@ -122,8 +122,6 @@ Definition tac1_tac1 t u : tactic := fun g=>
   match l with
   | [] => u_is_idtac;; ret []
   | [g'] => mif is_open g' then
-              print_hypotheses;;
-              print_term g';;
               open_and_apply u g'
             else u_is_idtac;; ret []
   | _ => failwith "More than one goal!"
@@ -144,5 +142,15 @@ Qed.
 
 Goal forall P:Prop, id P -> P.
 MProof.
-  Fail move "P /id". (* it says name P is already defined, because ltac does not considers indices *)
-Abort.
+  move "P /id //".
+Qed.
+
+Goal forall P Q:Prop, fst (P, Q) -> P.
+MProof.
+  move "P Q /id /fst xP //".
+Qed.
+
+Goal forall P Q:Prop, fst (P, Q) -> P.
+MProof.
+  move "P Q xP //=".
+Qed.
