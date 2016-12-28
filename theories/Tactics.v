@@ -840,15 +840,19 @@ Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
 (** Type for goal manipulation primitives *)
 Definition selector := list goal -> M (list goal).
 
-Definition snth n : selector := fun l=>
+Definition snth n t : selector := fun l=>
+  let l1 := firstn (pred n) l in
+  let l2 := skipn n l in
   match nth_error l n with
   | None => raise NoGoalsLeft
-  | Some g => ret [g]
+  | Some g =>
+    goals <- open_and_apply t g;
+    ret (l1 ++ goals ++ l2)%list
   end.
 
-Definition slast : selector := fun l=>snth (pred (List.length l)) l.
+Definition slast t : selector := fun l=>snth (pred (List.length l)) t l.
 
-Definition sfirst : selector := snth 0.
+Definition sfirst t : selector := snth 0 t.
 
 Definition srev : selector := fun l=>ret (rev l).
 
@@ -898,14 +902,14 @@ Arguments match_goal _%goal_match _.
 Notation "t 'where' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
 
 Notation "t1 '&>' t2" := (the_value t1 t2) (at level 41, left associativity).
-Notation "t1 '|1>' t2" := (t1 &> snth 0 &> t2) (at level 41, left associativity).
-Notation "t1 '|2>' t2" := (t1 &> snth 1 &> t2) (at level 41, left associativity).
-Notation "t1 '|3>' t2" := (t1 &> snth 2 &> t2) (at level 41, left associativity).
-Notation "t1 '|4>' t2" := (t1 &> snth 3 &> t2) (at level 41, left associativity).
-Notation "t1 '|5>' t2" := (t1 &> snth 4 &> t2) (at level 41, left associativity).
-Notation "t1 '|6>' t2" := (t1 &> snth 5 &> t2) (at level 41, left associativity).
+Notation "t1 '|1>' t2" := (t1 &> snth 0 t2) (at level 41, left associativity, t2 at level 100).
+Notation "t1 '|2>' t2" := (t1 &> snth 1 t2) (at level 41, left associativity, t2 at level 100).
+Notation "t1 '|3>' t2" := (t1 &> snth 2 t2) (at level 41, left associativity, t2 at level 100).
+Notation "t1 '|4>' t2" := (t1 &> snth 3 t2) (at level 41, left associativity, t2 at level 100).
+Notation "t1 '|5>' t2" := (t1 &> snth 4 t2) (at level 41, left associativity, t2 at level 100).
+Notation "t1 '|6>' t2" := (t1 &> snth 5 t2) (at level 41, left associativity, t2 at level 100).
 
-Notation "t1 'l>' t2" := (t1 &> slast &> t2) (at level 41, left associativity).
+Notation "t1 'l>' t2" := (t1 &> slast t2) (at level 41, left associativity, t2 at level 100).
 
 End TacticsNotations.
 
