@@ -1085,6 +1085,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
 
     | 32 -> (* call_ltac *)
         let concl, name, args = nth 0, nth 1, nth 2 in
+        let args = nf_evar sigma args in
         let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq (env, sigma) args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
         (* let tac = Tacenv.interp_ml_tactic name in *)
