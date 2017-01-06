@@ -218,6 +218,11 @@ Definition intros_all : tactic :=
           ret [g]
         | NotAProduct =>
           ret [g]
+        | [? s] NameExistsInContext s =>
+          xn <- fresh_binder_name T;
+          r <- intro_simpl xn g;
+          g <- hd_exception r;
+          f g
         end
       | _ => raise NotAGoal
       end) g.
@@ -235,7 +240,13 @@ Definition introsn : nat -> tactic :=
           r <- intro_simpl xn g;
           g <- hd_exception r;
           f n' g
-        with WrongTerm => raise NotAProduct end
+        with WrongTerm => raise NotAProduct
+        | [? s] NameExistsInContext s =>
+          xn <- get_binder_name T;
+          r <- intro_simpl xn g;
+          g <- hd_exception r;
+          f n' g
+        end
       | (_, _) => failwith "Should never get here"
       end) g.
 
@@ -862,6 +873,12 @@ Definition tactic_selector (t: tactic) (s: selector) : tactic :=
 Monomorphic Canonical Structure semicolon_tactic_selector :=
   SemiColon tactic_selector.
 
+Definition mtac_selector {A} (t: M A) (u: A -> selector) : selector :=
+  fun g=>x <- t; u x g.
+
+Monomorphic Canonical Structure binding_selector A :=
+  Binding (@mtac_selector A).
+
 Module TacticsNotations.
 
 Notation "t 'or' u" := (or t u) (at level 50).
@@ -899,7 +916,7 @@ Delimit Scope goal_match_scope with goal_match.
 
 Arguments match_goal _%goal_match _.
 
-Notation "t 'where' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
+Notation "t 'mwhere' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
 
 Notation "t1 '&>' t2" := (the_value t1 t2) (at level 41, left associativity).
 Notation "t1 '|1>' t2" := (t1 &> snth 0 t2) (at level 41, left associativity, t2 at level 100).

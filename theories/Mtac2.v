@@ -216,8 +216,11 @@ Inductive Mtac : Type -> Prop :=
     [y] is [Type]. *)
 | munify_cumul {A B} (x: A) (y: B) : Unification -> Mtac bool
 
-(** [get_reference s] returns the element that is reference by s. *)
+(** [get_reference s] returns the constant that is reference by s. *)
 | get_reference : string -> Mtac dyn
+
+(** [get_var s] returns the var named after s. *)
+| get_var : string -> Mtac dyn
 
 | call_ltac : forall {A : Type}, string -> list dyn -> Mtac (prod A (list goal))
 | list_ltac : Mtac unit
