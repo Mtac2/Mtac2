@@ -12,7 +12,7 @@ Definition induction {A} (n:A) : tactic := ltac (qualify "induction") [Dyn n].
 Goal forall n:nat, 0 <= n.
 MProof.
   intros.
-  induction n&> [apply le_n; apply le_S&> assumption].
+  induction n &> [apply le_n; apply le_S&> assumption].
 Qed.
 
 
@@ -44,19 +44,18 @@ Qed.
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
   intros P Q f x.
-  Fail select (_->_) (fun g=>ltac apply' [Dyn g]). (* WHAT?? It says  "Unknown existential variable" *)
-Abort.
+  select (_->_) (fun g=>ltac apply' [Dyn g]) &> assumption.
+Qed.
 
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
   intros P Q.
-  (* it is raising a NameExistsInContext "f" *)
-  Fail cintros f x {-
+  cintros f x {-
     ltac apply' [Dyn f] &> ltac apply' [Dyn x]
   -}.
-Abort.
+Qed.
 
-Ltac injection := injection.
+Ltac injection x := injection x.
 
 Goal forall n m,  S n = S m -> n = m.
 MProof.

@@ -1,4 +1,5 @@
-Require Import MetaCoq.MetaCoq.
+From MetaCoq Require Import MetaCoq.
+
 Require Import Strings.String.
 Require Import MetaCoq.DepDestruct.
 
@@ -116,7 +117,7 @@ End Parser.
 
 Ltac done := intros; tauto || trivial || assumption || reflexivity.
 
-Definition done := ltac "Top.done" [].
+Definition done := ltac "move.done" [].
 
 Definition build_tac :=
   List.map (fun ip=>

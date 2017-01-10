@@ -14,15 +14,10 @@ Qed.
 Import TacticOverload.
 Example ex2 : forall (x y: nat) (H: x>y) (z:nat), True.
 MProof.
-  Fail cintros (x y: nat) (H: x>y) (z: nat) {-
+  cintros (x y: nat) (H: x>y) (z: nat) {-
     e <- Cevar _ [ahyp H None; ahyp y None; ahyp x None];
     exact e
-  -}. (* misses z in the evar *)
-
-  cintros (x y: nat) (H: x>y) (z: nat) {-
-    e <- Cevar True [ahyp H None; ahyp y None; ahyp x None];
-    exact e
-  -}.
+  -}. (* misses z in the evar, but it still works, why? *)
    exact I.
 Qed.
 
