@@ -48,7 +48,7 @@ Definition rrewrite {A} (x: A) := trewrite RightRewrite [Dyn x].
 
 Goal forall n, n + 0 = n.
 MProof.
-  intro n. elim n &> case 0 do reflexivity.
+  elim0 &> case 0 do reflexivity.
   intros. simpl. select (_ = _) rrewrite.
   reflexivity.
 Qed.
