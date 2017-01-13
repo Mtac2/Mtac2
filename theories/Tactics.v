@@ -443,24 +443,25 @@ Local Obligation Tactic := idtac.
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 
 Definition apply {T} (c : T) : tactic := fun g=>
-  (mfix1 app (d : dyn) : M (list goal) :=
-    let (_, el) := d in
-    mtry
-      exact el g
-    with _ =>
-      mmatch d return M (list goal) with
-      | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
+  match g with Goal eg =>
+    (mfix1 app (d : dyn) : M (list goal) :=
+      let (_, el) := d in
+      mif munify_cumul el eg UniCoq then
+        ret []
+      else
+        mmatch d return M (list goal) with
+        | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- evar T1;
           r <- app (Dyn (f e));
           mif is_evar e then
             ret (Goal e :: r)
           else ret r
-      | _ =>
+        | _ =>
           gT <- goal_type g;
-          raise (CantApply c gT)
-      end
-    end
-  ) (Dyn c).
+          raise (CantApply T gT)
+        end) (Dyn c)
+  | _ => raise NotAGoal
+  end.
 
 Definition change_hyp {P Q} (H: P) (newH: Q) : tactic := fun g=>
   gT <- goal_type g;
