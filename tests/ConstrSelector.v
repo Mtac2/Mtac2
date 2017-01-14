@@ -49,6 +49,29 @@ Definition rrewrite {A} (x: A) := trewrite RightRewrite [Dyn x].
 Goal forall n, n + 0 = n.
 MProof.
   elim0 &> case 0 do reflexivity.
-  intros. simpl. select (_ = _) rrewrite.
-  reflexivity.
+  intros &> simpl. select (_ = _) rrewrite &> reflexivity.
 Qed.
+
+
+
+Definition snth_indices (l:list dyn) (t:tactic) : selector := fun goals=>
+  res <- mfold_left (fun (accu : nat*list goal) (d : dyn)=>
+    let (_, c) := d in
+    let (shift, goals0) := accu in
+    i <- index c;
+    goals <- snth (shift+i) t goals0;
+    ret (length goals - length goals0, goals)) l (0, goals);
+  let (_, goals) := res : (nat * list goal) in
+  ret goals.
+
+Notation "'case' c , .. , d 'do' t" :=
+  (snth_indices (Dyn c :: .. (Dyn d :: nil) ..) t) (at level 40).
+
+Goal forall n, n + 0 = n.
+MProof.
+  elim0 &> simpl &> case 0, S do intros &> try reflexivity.
+  select (_ = _) rrewrite &> reflexivity.
+Qed.
+
+
+Notation "'case' c 'do' t" := (snth_index c t) (at level 40).
