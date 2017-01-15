@@ -194,11 +194,11 @@ Definition open_and_apply (t : tactic) : tactic :=
     match g return M _ with
     | Goal _ => t g
     | @AHyp C None f =>
-      x <- get_binder_name f;
+      x <- fresh_binder_name f;
       nu x None (fun x : C=>
         open (f x) >> close_goals x)
     | @AHyp C (Some t) f =>
-      x <- get_binder_name f;
+      x <- fresh_binder_name f;
       nu x (Some t) (fun x : C=>
         open (f x) >> let_close_goals x)
     end.
@@ -612,25 +612,31 @@ Definition typed_intros (T : Type) : tactic := fun g=>
       idtac g
     end) g.
 
-Definition cpose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
-  n <- get_binder_name cont;
-  nu n (Some t) (fun x=>
+Definition cpose_base {A} name (t: A) (cont: A -> tactic) : tactic := fun g=>
+  nu name (Some t) (fun x=>
     gT <- goal_type g;
     r <- evar gT;
     value <- abs_let x t r;
     exact value g;;
     cont x (Goal r) >> let_close_goals x).
 
-Definition cassert {A} (cont: A -> tactic) : tactic := fun g=>
-  a <- evar A; (* [a] will be the goal to solve [A] *)
+Definition cpose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
   n <- get_binder_name cont;
-  nu n None (fun x=>
+  cpose_base n t cont g.
+
+Definition cassert_base {A} name (cont: A -> tactic) : tactic := fun g=>
+  a <- evar A; (* [a] will be the goal to solve [A] *)
+  nu name None (fun x=>
     gT <- goal_type g;
     r <- evar gT; (* The new goal now referring to n *)
     value <- abs_fun x r;
     exact (value a) g;; (* instantiate the old goal with the new one *)
     v <- cont x (Goal r) >> close_goals x;
     ret (Goal a :: v)). (* append the goal for a to the top of the goals *)
+
+Definition cassert {A} (cont: A -> tactic) : tactic := fun g=>
+  n <- get_binder_name cont;
+  cassert_base n cont g.
 
 (* performs simpl in each hypothesis and in the goal *)
 Definition simpl_in_all : tactic := fun g=>
