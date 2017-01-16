@@ -291,14 +291,34 @@ module ReductionStrategy = struct
     let strategy, args = decompose_appvect strategy in
     redfuns.(get_constructor_pos strategy) args env sigma c
 
-  let whd_betadeltaiota_nolet sigma env c =
-    (*let reds = red_add (red_add (red_add  fIOTA) fBETA) fDELTA in *)
+  let whd_betadeltaiota_nolet env sigma c =
     let evars ev = safe_evar_value sigma ev in
     whd_val
       (create_clos_infos ~evars betadeltaiotanolet env)
       (inject c)
 
+  let whd_betadeltazeta env sigma c =
+    let betadeltazeta = red_add (red_add beta fDELTA) fZETA in
+    let evars ev = safe_evar_value sigma ev in
+    whd_val
+      (create_clos_infos ~evars betadeltazeta env)
+      (inject c)
+
+  let whd_betadeltaiota env sigma c =
+    let evars ev = safe_evar_value sigma ev in
+    whd_val
+      (create_clos_infos ~evars betadeltaiota env)
+      (inject c)
+
+  let whd_betadelta env sigma c =
+    let evars ev = safe_evar_value sigma ev in
+    whd_val
+      (create_clos_infos ~evars (red_add beta fDELTA) env)
+      (inject c)
+
 end
+
+module RE = ReductionStrategy
 
 module UnificationStrategy = struct
   open Evarsolve
@@ -399,7 +419,7 @@ let name_occurn_env env n =
 let dest_Case (env, sigma) t =
   let sigma, dyn = mkdyn sigma env in
   try
-    let t = whd_betadelta env sigma t in
+    let t = RE.whd_betadelta env sigma t in
     let (info, return_type, discriminant, branches) = Term.destCase t in
     let sigma, branch_dyns = Array.fold_right (
       fun t (sigma,l) ->
@@ -428,10 +448,10 @@ let make_Case (env, sigma) case =
   let sigma, case_branches = mkUConstr "case_branches" sigma env in
   let repr_ind = mkApp(case_ind, [|case|]) in
   let repr_val = mkApp(case_val, [|case|]) in
-  let repr_val_red = whd_betadeltaiota env sigma repr_val in
+  let repr_val_red = RE.whd_betadeltaiota env sigma repr_val in
   let repr_return = mkApp(case_return, [|case|]) in
   let sigma, repr_return_unpack = mkelem repr_return sigma env in
-  let repr_return_red = whd_betadeltaiota env sigma repr_return_unpack in
+  let repr_return_red = RE.whd_betadeltaiota env sigma repr_return_unpack in
   let repr_branches = mkApp(case_branches, [|case|]) in
   let repr_branches_list = CoqList.from_coq (env, sigma) repr_branches in
   let rsigma = ref sigma in
@@ -442,8 +462,8 @@ let make_Case (env, sigma) case =
       c) repr_branches_list in
   let sigma = !rsigma in
   let repr_branches_red =
-    List.map (fun t -> whd_betadeltaiota env sigma t) repr_branches_dyns in
-  let t_type, l = decompose_app (whd_betadeltaiota env sigma repr_ind) in
+    List.map (fun t -> RE.whd_betadeltaiota env sigma t) repr_branches_dyns in
+  let t_type, l = decompose_app (RE.whd_betadeltaiota env sigma repr_ind) in
   if isInd t_type then
     match kind_of_term t_type with
     | Ind ((mind, ind_i), _) ->
@@ -458,7 +478,7 @@ let make_Case (env, sigma) case =
 
 
 let get_Constrs (env, sigma) t =
-  let t_type, args = Term.decompose_app (whd_betadeltaiota env sigma t) in
+  let t_type, args = Term.decompose_app (RE.whd_betadeltaiota env sigma t) in
   if Term.isInd t_type then
     let (mind, ind_i), _ = destInd t_type in
     let mbody = Environ.lookup_mind mind env in
@@ -626,7 +646,7 @@ type abs = AbsProd | AbsFun | AbsLet | AbsFix
 let rec n_prods env sigma ty = function
   | 0 -> true
   | n ->
-      let ty = whd_betadeltaiota env sigma ty in
+      let ty = RE.whd_betadeltaiota env sigma ty in
       if isProd ty then
         let _, _, b = destProd ty in
         n_prods env sigma b (n-1)
@@ -827,7 +847,7 @@ let env_without sigma env renv x =
     env, build_hypotheses sigma env
 
 let rec run' (env, renv, sigma, nus as ctxt) t =
-  let (h, args) = Term.decompose_appvect (ReductionStrategy.whd_betadeltaiota_nolet sigma env t) in
+  let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
   let nth = Array.get args in
   if Term.isLetIn h then
     let (_, b, _, t) = Term.destLetIn h in
