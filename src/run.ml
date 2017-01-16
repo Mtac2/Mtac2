@@ -291,6 +291,13 @@ module ReductionStrategy = struct
     let strategy, args = decompose_appvect strategy in
     redfuns.(get_constructor_pos strategy) args env sigma c
 
+  let whd_betadeltaiota_nolet sigma env c =
+    (*let reds = red_add (red_add (red_add  fIOTA) fBETA) fDELTA in *)
+    let evars ev = safe_evar_value sigma ev in
+    whd_val
+      (create_clos_infos ~evars betadeltaiotanolet env)
+      (inject c)
+
 end
 
 module UnificationStrategy = struct
@@ -820,17 +827,16 @@ let env_without sigma env renv x =
     env, build_hypotheses sigma env
 
 let rec run' (env, renv, sigma, nus as ctxt) t =
-  let (t,sk as appr) = Reductionops.whd_nored_state sigma (t, []) in
-  let (h, args) = Reductionops.whd_betadeltaiota_nolet_state env sigma appr in
-  let nth = Stack.nth args in
+  let (h, args) = Term.decompose_appvect (ReductionStrategy.whd_betadeltaiota_nolet sigma env t) in
+  let nth = Array.get args in
   if Term.isLetIn h then
     let (_, b, _, t) = Term.destLetIn h in
     let (h, args') = Term.decompose_appvect b in
     if ReductionStrategy.isReduce h && Array.length args' = 3 then
       let b = ReductionStrategy.reduce sigma env (Array.get args' 0) (Array.get args' 2) in
-      run' ctxt (Stack.zip (Vars.subst1 b t, args))
+      run' ctxt (Term.mkApp (Vars.subst1 b t, args))
     else
-      run' ctxt (Stack.zip (Vars.subst1 b t, args))
+      run' ctxt (Term.mkApp (Vars.subst1 b t, args))
   else
     let constr c =
       if Term.isConstruct c then
