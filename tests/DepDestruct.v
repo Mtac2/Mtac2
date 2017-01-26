@@ -88,7 +88,8 @@ Section ExampleReflect.
        print_term r;;
                   cpose r (fun r=>idtac) g) : tactic.
     (fun g=>
-       case <- makecase r;
+       let c := reduce RedHNF r in
+       case <- makecase c;
        cpose case (fun y=>idtac) g) : tactic.
   Abort.
 
@@ -165,7 +166,7 @@ MProof.
               case_return := Dyn (return_type);
               case_branches := (Dyn T) :: (Dyn F) :: nil
             |}).
-  mpose (c := mc).
+  let mc := reduce RedNF mc in r <- mc; pose (c := r).
   exact (elem c).
 Qed.
 

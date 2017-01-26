@@ -19,7 +19,7 @@ module ConstrBuilder : sig
   val from_string : string -> t
 
   val from_coq : t -> (Environ.env * Evd.evar_map)
-    -> constr -> constr array
+    -> constr -> (constr array) option
 
   val build_app : t -> constr array -> constr
 
@@ -55,6 +55,9 @@ module CoqList : sig
 
   (** Allows skipping an element in the conversion *)
   exception Skip
+
+  exception NotAList of constr
+
   val from_coq_conv : (Environ.env * Evd.evar_map) -> (constr -> 'a)
     -> constr -> 'a list
 
@@ -63,6 +66,7 @@ module CoqList : sig
 end
 
 module CoqOption : sig
+  exception NotAnOptionType
 
   val mkNone : types -> constr
 

@@ -40,15 +40,12 @@ module ConstrBuilder = struct
 
   let equal s = Constr.isConstr (Constr.mkConstr s)
 
-  exception WrongConstr of t * constr
-
-  let from_coq s (env, sigma) cterm =
-    let (head, args) = whd_betadeltaiota_stack env sigma cterm in
-    let args = Array.of_list args in
+  let from_coq s _ cterm =
+    let (head, args) = decompose_appvect cterm in
     if equal s head then
-      args
+      Some args
     else
-      raise (WrongConstr (s, head))
+      None
 end
 
 module UConstrBuilder = struct
@@ -63,33 +60,35 @@ module UConstrBuilder = struct
 
   let equal = Constr.isUConstr
 
-  exception WrongConstr of t * constr
-
   let from_coq s (env, sigma) cterm =
-    let (head, args) = whd_betadeltaiota_stack env sigma cterm in
-    let args = Array.of_list args in
+    let (head, args) = decompose_appvect cterm in
     if equal s sigma env head then
-      args
+      Some args
     else
-      raise (WrongConstr (s, head))
+      None
 end
 
 module CoqOption = struct
-  let noneBuilder = ConstrBuilder.from_string "Coq.Init.Datatypes.None"
+  open ConstrBuilder
 
-  let mkNone ty = ConstrBuilder.build_app noneBuilder [|ty|]
+  let noneBuilder = from_string "Coq.Init.Datatypes.None"
 
-  let someBuilder = ConstrBuilder.from_string "Coq.Init.Datatypes.Some"
+  let mkNone ty = build_app noneBuilder [|ty|]
 
-  let mkSome ty t = ConstrBuilder.build_app someBuilder [|ty; t|]
+  let someBuilder = from_string "Coq.Init.Datatypes.Some"
 
+  let mkSome ty t = build_app someBuilder [|ty; t|]
+
+  exception NotAnOptionType
   let from_coq (env, sigma as ctx) cterm =
-    try
-      let _ = ConstrBuilder.from_coq noneBuilder ctx cterm in
-      None
-    with ConstrBuilder.WrongConstr _ ->
-      let arr = ConstrBuilder.from_coq someBuilder ctx cterm in
-      Some arr.(1)
+    match from_coq noneBuilder ctx cterm with
+    | None ->
+        begin
+          match from_coq someBuilder ctx cterm with
+          | None -> raise NotAnOptionType
+          | Some arr -> Some arr.(1)
+        end
+    | Some _ -> None
 
   let to_coq ty oterm =
     match oterm with
@@ -114,15 +113,21 @@ module CoqList = struct
   let isCons = Constr.isConstr mkCons
 
   exception Skip
-
-  let rec from_coq_conv (env, sigma as ctx) (fconv : Term.constr -> 'a) cterm =
-    let (constr, args) = whd_betadeltaiota_stack env sigma cterm in
-    if isNil constr then [] else
-    if not (isCons constr) then invalid_arg "not a list" else
-      let elt = List.nth args 1 in
-      let ctail = List.nth args 2 in
-      let tail = from_coq_conv ctx fconv ctail in
-      try fconv elt :: tail with Skip -> tail
+  exception NotAList of constr
+  (** given a list of terms and a convertion function fconv
+      it creates a list of elements using the converstion function.
+      if fconv raises Skip, that element is not included.
+      if the list is ill-formed, an exception NotAList is raised. *)
+  let from_coq_conv (env, sigma) (fconv : Term.constr -> 'a) cterm =
+    let rec fcc cterm =
+      let (constr, args) = decompose_appvect cterm in
+      if isNil constr then [] else
+      if not (isCons constr) then raise (NotAList cterm)
+      else
+        let tail = fcc args.(2) in
+        try fconv args.(1) :: tail with Skip -> tail
+    in
+    fcc cterm
 
   let from_coq (env, sigma) =
     from_coq_conv (env, sigma) (fun x->x)
@@ -276,15 +281,13 @@ module CoqAscii = struct
 
   let asciiBuilder = ConstrBuilder.from_string "Coq.Strings.Ascii.Ascii"
 
-  let from_coq (env, sigma) c =
-    let (h, args) = whd_betadeltaiota_stack env sigma c in
-    let rec from_bits n bits =
-      match bits with
-      | [] -> 0
-      | (b :: bs) -> (if CoqBool.isTrue b then 1 else 0) lsl n + from_bits (n+1) bs
+  let from_coq _ c =
+    let (h, args) = decompose_appvect c in
+    let rec from_bits n =
+      if n >= Array.length args then 0
+      else (if CoqBool.isTrue args.(n) then 1 else 0) lsl n + from_bits (n+1)
     in
-    let n = from_bits 0 args in
-    (* Char.escaped (Char.chr n) *) (* Why was it excaped in the first place ? *)
+    let n = from_bits 0 in
     String.make 1 (Char.chr n)
 
   let to_coq c =
@@ -303,15 +306,16 @@ module CoqString = struct
   let isEmpty = ConstrBuilder.equal emptyB
   let isString = ConstrBuilder.equal stringB
 
-  let rec from_coq (env, sigma) s =
-    let (h, args) = whd_betadeltaiota_stack env sigma s in
-    if isEmpty h then
-      ""
-    else if isString h then
-      let c, s' = List.nth args 0, List.nth args 1 in
-      CoqAscii.from_coq (env, sigma) c ^ from_coq (env, sigma) s'
-    else
-      Errors.error "Not a string"
+  let from_coq (env, sigma as ctx) s =
+    let rec fc s =
+      let (h, args) = decompose_appvect s in
+      if isEmpty h then ""
+      else if isString h then
+        CoqAscii.from_coq ctx args.(0) ^ fc args.(1)
+      else
+        Errors.error "Not a string"
+    in
+    fc (reduce_value env sigma s)
 
   let rec to_coq s =
     if String.length s = 0 then

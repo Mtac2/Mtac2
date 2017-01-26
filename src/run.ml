@@ -280,11 +280,8 @@ module ReductionStrategy = struct
        whd_val
          (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
          (inject c));
-    (fun fs env sigma c->
-       let evars ev = safe_evar_value sigma ev in
-       norm_val
-         (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
-         (inject c))
+    (fun fs env sigma->
+       clos_norm_flags (get_flags (env, sigma) fs.(0)) env sigma)
   |]
 
   let reduce sigma env strategy c =
@@ -442,34 +439,18 @@ let dest_Case (env, sigma) t =
 let make_Case (env, sigma) case =
   let open Lazy in
   let open Term in
-  let sigma, case_ind = mkUConstr "case_ind" sigma env in
-  let sigma, case_val = mkUConstr "case_val" sigma env in
-  let sigma, case_return = mkUConstr "case_return" sigma env in
-  let sigma, case_branches = mkUConstr "case_branches" sigma env in
-  let repr_ind = mkApp(case_ind, [|case|]) in
-  let repr_val = mkApp(case_val, [|case|]) in
-  let repr_val_red = RE.whd_betadeltaiota env sigma repr_val in
-  let repr_return = mkApp(case_return, [|case|]) in
-  let sigma, repr_return_unpack = mkelem repr_return sigma env in
-  let repr_return_red = RE.whd_betadeltaiota env sigma repr_return_unpack in
-  let repr_branches = mkApp(case_branches, [|case|]) in
-  let repr_branches_list = CoqList.from_coq (env, sigma) repr_branches in
-  let rsigma = ref sigma in
-  let repr_branches_dyns =
-    List.map (fun t ->
-      let sigma, c = mkelem t !rsigma env in
-      rsigma := sigma;
-      c) repr_branches_list in
-  let sigma = !rsigma in
-  let repr_branches_red =
-    List.map (fun t -> RE.whd_betadeltaiota env sigma t) repr_branches_dyns in
-  let t_type, l = decompose_app (RE.whd_betadeltaiota env sigma repr_ind) in
+  let (_, args) = decompose_appvect case in
+  let repr_ind = args.(0) in
+  let repr_val = args.(1) in
+  let repr_return = get_elem args.(2) in
+  let repr_branches = CoqList.from_coq_conv (env, sigma) get_elem args.(3) in
+  let t_type, l = decompose_appvect repr_ind in
   if isInd t_type then
     match kind_of_term t_type with
     | Ind ((mind, ind_i), _) ->
         let case_info = Inductiveops.make_case_info env (mind, ind_i) LetPatternStyle in
-        let match_term = mkCase (case_info, repr_return_red, repr_val_red,
-                                 Array.of_list (repr_branches_red)) in
+        let match_term = mkCase (case_info, repr_return, repr_val,
+                                 (Array.of_list repr_branches)) in
         let match_type = Retyping.get_type_of env sigma match_term in
         mkDyn match_type match_term sigma env
     | _ -> assert false
@@ -523,14 +504,17 @@ module Hypotheses = struct
     (sigma, CoqList.makeCons hyptype hyp renv)
 
   exception NotAVariable
+  exception NotAHyp
   let from_coq (env, sigma as ctx) c =
     let fvar = fun c ->
       if Term.isVar c || isRel c then c
       else raise NotAVariable
     in
-    let fdecl = fun d -> CoqOption.from_coq ctx d in
-    let args = ConstrBuilder.from_coq ahyp_constr ctx c in
-    (fvar args.(1), fdecl args.(2), args.(0))
+    let fdecl = CoqOption.from_coq ctx in
+    let oargs = ConstrBuilder.from_coq ahyp_constr ctx c in
+    match oargs with
+    | Some args -> (fvar args.(1), fdecl args.(2), args.(0))
+    | None -> raise NotAHyp
 
   let from_coq_list (env, sigma as ctx) =
     CoqList.from_coq_conv ctx (from_coq ctx)
@@ -850,11 +834,15 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
   let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
   let nth = Array.get args in
   if Term.isLetIn h then
+    let open ReductionStrategy in
     let (_, b, _, t) = Term.destLetIn h in
     let (h, args') = Term.decompose_appvect b in
-    if ReductionStrategy.isReduce h && Array.length args' = 3 then
-      let b = ReductionStrategy.reduce sigma env (Array.get args' 0) (Array.get args' 2) in
-      run' ctxt (Term.mkApp (Vars.subst1 b t, args))
+    if isReduce h && Array.length args' = 3 then
+      try
+        let b = reduce sigma env (Array.get args' 0) (Array.get args' 2) in
+        run' ctxt (Term.mkApp (Vars.subst1 b t, args))
+      with CoqList.NotAList l ->
+        fail sigma (E.mkFailure (E.error_stuck l))
     else
       run' ctxt (Term.mkApp (Vars.subst1 b t, args))
   else
@@ -1038,9 +1026,13 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
 
     | 27 -> (* make case *)
         let case = nth 0 in
-        let (sigma', case) = make_Case (env, sigma) case in
-        return sigma' case
-
+        begin
+          try
+            let (sigma', case) = make_Case (env, sigma) case in
+            return sigma' case
+          with CoqList.NotAList l ->
+            fail sigma (E.mkFailure (E.error_stuck l))
+        end
     | 28 -> (* munify *)
         let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in
         let feqT = CoqEq.mkAppEq a x y in

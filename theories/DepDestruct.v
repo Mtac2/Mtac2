@@ -359,7 +359,9 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
           let tsg := reduce RedHNF (type_of sg) in
           let rrf := reduce RedSimpl (RTele_Fun rt) in
           let rrt := reduce RedSimpl (RTele_Type rt) in
+          let type := reduce RedHNF (type_of n') in
           caseterm <- makecase {|
+                       case_ind := type;
                        case_val := n';
                        case_return := Dyn rrf;
                        case_branches := branches
