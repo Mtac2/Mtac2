@@ -1,6 +1,7 @@
 (*i camlp4deps: "parsing/grammar.cma" i*)
 (*i camlp4use: "pa_extend.cmo" i*)
 open MetaCoqInterp
+open Constrarg
 
 DECLARE PLUGIN "MetaCoqPlugin"
 

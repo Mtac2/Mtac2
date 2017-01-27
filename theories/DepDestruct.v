@@ -248,8 +248,9 @@ Polymorphic Program Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn
 Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (CTele it) :=
   fun isort it nindx =>
     mfix2 rec (A : stype_of isort) (a : selem_of A) : M (CTele it) :=
+      let Ty := type_of A in
       B <- evar Type;
-      F <- evar (B -> stype_of isort);
+      F <- evar (B -> Ty);
       oH <- munify A (ForAll F) UniCoq;
       match oH with
       | Some H =>
@@ -260,7 +261,7 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
           f' <- abs b r;
           ret (cProd f'))
       | None =>
-        H <- unify_or_fail B (stype_of isort);
+        H <- unify_or_fail B Ty;
         let idB := match_eq H (fun T=>B->T) (fun x=>x) in
         unify_or_fail F idB;;
         let A_red := reduce RedHNF A in (* why the reduction here? *)

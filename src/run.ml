@@ -14,7 +14,7 @@ open Environ
 open Evarutil
 open Evd
 open Names
-open Closure
+open CClosure
 open Util
 open Evarconv
 open Libnames
@@ -71,7 +71,7 @@ module Goal = struct
     let sigma, tg = mkUConstr "Goal" sigma env in
     sigma, mkApp (tg, [|ty;ev|])
 
-  let mkAHypOrDef ty name odef body sigma env =
+  let mkAHypOrDef (name, odef, ty) body sigma env =
     (* we are going to wrap the body in a function, so we need to lift
        the indices. we also replace the name with index 1 *)
     let body = replace_term (mkVar name) (mkRel 1) (Vars.lift 1 body) in
@@ -80,6 +80,7 @@ module Goal = struct
     sigma, mkApp (ahyp, [|ty; odef_coq; mkLambda(Name name,ty,body)|])
 
   let goal_of_evar (env:env) sigma ev =
+    let open Context.Named in
     let evinfo = Evd.find_undefined sigma ev in
     let evenv = named_context_of_val (evar_hyps evinfo) in
     (* we remove the elements in the hypotheses that are shared with
@@ -87,16 +88,16 @@ module Goal = struct
     let newenv =
       let rec remove = function
         | (nd1 :: evenv) as l1, (nd2 :: env) ->
-            if Context.eq_named_declaration nd1 nd2 then
+            if Declaration.equal nd1 nd2 then
               remove (evenv, env)
             else
               l1
         | l1, _ -> l1 in
       List.rev (remove (List.rev evenv, List.rev (named_context env))) in
-    let ids = Context.fold_named_context (fun (n,_,_) s -> mkVar n :: s) evenv ~init:[] in
+    let ids = List.map (fun v -> mkVar (Declaration.get_id v)) evenv in
     let evar = (ev, Array.of_list ids) in
     let sigma, tg = mkTheGoal (Evd.existential_type sigma evar) (mkEvar evar) sigma env in
-    Context.fold_named_context_reverse (fun (sigma,s) (n,odef,ty) -> mkAHypOrDef ty n odef s sigma env) newenv ~init:(sigma,tg)
+    fold_inside (fun (sigma,s) v -> mkAHypOrDef (Declaration.to_tuple v) s sigma env) newenv ~init:(sigma,tg)
 
 end
 
@@ -152,7 +153,7 @@ module Exceptions = struct
   let remove_var env x = "Term must be a variable " ^ constr_to_string_env env x
   let unknown_reduction_strategy = "Unknown reduction strategy"
 
-  let block = Errors.error
+  let block = CErrors.error
 end
 
 module E = Exceptions
@@ -160,8 +161,9 @@ module E = Exceptions
 module ReductionStrategy = struct
   open MetaCoqNames
   open Reductionops
-  open Closure
-  open Closure.RedFlags
+  open CClosure
+  open CClosure.RedFlags
+  open Context
 
   let isReduce c = isConstr "reduce" c
 
@@ -171,16 +173,12 @@ module ReductionStrategy = struct
       if not (is_transparent_variable ts var) then
         false
       else
-        let (_, v,_) = Environ.lookup_named var env in
-        match v with
-        | Some _ -> true
-        | _ -> false
+        let n = Environ.lookup_named var env in
+        Option.has_some (Named.Declaration.get_value n)
     else if isRel t then
       let n = destRel t in
-      let (_,v,_) = Environ.lookup_rel n env in
-      match v with
-      | Some _ -> true
-      | _ -> false
+      let n = Environ.lookup_rel n env in
+      Option.has_some (Rel.Declaration.get_value n)
     else if isConst t then
       let (c, _) = destConst t in
       is_transparent_constant ts c && Environ.evaluable_constant c env
@@ -190,22 +188,22 @@ module ReductionStrategy = struct
   let get_definition env t =
     if isVar t then
       let var = destVar t in
-      let (_, v,_) = Environ.lookup_named var env in
-      match v with
+      let n = Environ.lookup_named var env in
+      match Named.Declaration.get_value n with
       | Some c -> c
-      | _ -> Errors.anomaly (Pp.str "get_definition for var didn't have definition!")
+      | _ -> CErrors.anomaly (Pp.str "get_definition for var didn't have definition!")
     else if isRel t then
       let n = destRel t in
-      let (_,v,_) = Environ.lookup_rel n env in
-      match v with
+      let d = Environ.lookup_rel n env in
+      match Rel.Declaration.get_value d with
       | Some v -> (Vars.lift n) v
-      | _ -> Errors.anomaly (Pp.str "get_definition for rel didn't have definition!")
+      | _ -> CErrors.anomaly (Pp.str "get_definition for rel didn't have definition!")
     else if isConst t then
       let c = destConst t in
       let (d,_) = Environ.constant_value env c in
       d
     else
-      Errors.anomaly (Pp.str "get_definition didn't have definition!")
+      CErrors.anomaly (Pp.str "get_definition didn't have definition!")
 
   let try_unfolding ts env t =
     if has_definition ts env t then
@@ -226,7 +224,7 @@ module ReductionStrategy = struct
       | _ -> h, args
     in applist r
 
-  let redflags = [|fBETA;fDELTA;fIOTA;fZETA|]
+  let redflags = [|fBETA;fDELTA;fMATCH;fFIX;fZETA|]
   let posDeltaC = Array.length redflags
   let posDeltaX = posDeltaC + 1
   let posDeltaOnly = posDeltaX + 1
@@ -291,20 +289,13 @@ module ReductionStrategy = struct
   let whd_betadeltaiota_nolet env sigma c =
     let evars ev = safe_evar_value sigma ev in
     whd_val
-      (create_clos_infos ~evars betadeltaiotanolet env)
-      (inject c)
-
-  let whd_betadeltazeta env sigma c =
-    let betadeltazeta = red_add (red_add beta fDELTA) fZETA in
-    let evars ev = safe_evar_value sigma ev in
-    whd_val
-      (create_clos_infos ~evars betadeltazeta env)
+      (create_clos_infos ~evars CClosure.allnolet env)
       (inject c)
 
   let whd_betadeltaiota env sigma c =
     let evars ev = safe_evar_value sigma ev in
     whd_val
-      (create_clos_infos ~evars betadeltaiota env)
+      (create_clos_infos ~evars CClosure.all env)
       (inject c)
 
   let whd_betadelta env sigma c =
@@ -379,8 +370,9 @@ let return s t = Val (s, t)
 
 let fail s t = Err (s, t)
 
-let print env sigma s = Printf.printf "[DEBUG] %s\n"
-                          (CoqString.from_coq (env, sigma) s)
+let print env sigma s =
+  Feedback.msg_notice (app (app (str "[DEBUG] ")
+                              (str (CoqString.from_coq (env, sigma) s))) (fnl ()))
 
 let mysubstn t n c =
   let rec substrec in_arr depth c = match kind_of_term c with
@@ -392,21 +384,10 @@ let mysubstn t n c =
     | _ -> map_constr_with_binders succ (substrec in_arr) depth c in
   substrec false 0 c
 
-(* checks that no variable in env to the right of i (that is, smaller
-   to i) depends on i. *)
-let noccurn_env env i =
-  let rec noc n =
-    if n = 1 then true
-    else
-      let (_, t, a) = Environ.lookup_rel (i-n+1) env in
-      Vars.noccurn (n-1) a
-      && (if t = None then true else Vars.noccurn (n-1) (Option.get t))
-      && noc (n-1)
-  in noc i
-
 let name_occurn_env env n =
+  let open Context.Named.Declaration in
   let ids = Environ.fold_named_context_reverse
-              (fun s (n', _, _) -> Id.Set.add n' s)
+              (fun s n' -> Id.Set.add (get_id n') s)
               ~init:Id.Set.empty env in (* compute set of ids in env *)
   let ids = Id.Set.remove n ids in (* remove n *)
   let ids = Environ.really_needed env ids in (* and compute closure of ids *)
@@ -507,7 +488,7 @@ module Hypotheses = struct
   exception NotAHyp
   let from_coq (env, sigma as ctx) c =
     let fvar = fun c ->
-      if Term.isVar c || isRel c then c
+      if Term.isVar c then c
       else raise NotAVariable
     in
     let fdecl = CoqOption.from_coq ctx in
@@ -543,11 +524,12 @@ let name_depends_on deps ty ot =
 (* given a named_context env and a variable x it returns all the
    (named) variables that depends transitively on x *)
 let depends_on env x =
-  let open Idset in
+  let open Idset in let open Context.Named in
   let deps = singleton x in
-  Context.fold_named_context (fun (n, ot, ty) deps->
+  fold_outside (fun v deps->
+    let (n, ot, ty) = Declaration.to_tuple v in
     if name_depends_on deps ty ot then
-      add n deps
+      Idset.add n deps
     else
       deps) env ~init:deps
 
@@ -600,33 +582,16 @@ let abs case (env, sigma) a p x y n t : data =
      substitute the context, which is impossible *)
   if isVar x then
     if check_abs_deps env x y p then
-      if isRel x then
-        let rel = destRel x in
-        let (name, _, _) = lookup_rel rel env in
-        let y' = mysubstn (mkRel 1) rel y in
-        let t =
-          match case with
-          | AbsProd -> Term.mkProd (name, a, y')
-          | AbsFun -> Term.mkLambda (name, a, y')
-          | AbsLet -> Term.mkLetIn (name, t, a, y')
-          | AbsFix ->
-              if n_prods env sigma a n then
-                Term.mkFix (([|n-1|], 0), ([|name|], [|a|], [|y'|]))
-              else
-                E.mkFailure (E.error_abs_fix env a n)
-        in
-        return sigma t
-      else
-        let name = destVar x in
-        let y' = Vars.subst_vars [name] y in
-        let t =
-          match case with
-          | AbsProd -> Term.mkProd (Name name, a, y')
-          | AbsFun -> Term.mkLambda (Name name, a, y')
-          | AbsLet -> Term.mkLetIn (Name name, t, a, y')
-          | AbsFix -> Term.mkFix (([|n-1|], 0), ([|Name name|], [|a|], [|y'|]))
-        in
-        return sigma t
+      let name = destVar x in
+      let y' = Vars.subst_vars [name] y in
+      let t =
+        match case with
+        | AbsProd -> Term.mkProd (Name name, a, y')
+        | AbsFun -> Term.mkLambda (Name name, a, y')
+        | AbsLet -> Term.mkLetIn (Name name, t, a, y')
+        | AbsFix -> Term.mkFix (([|n-1|], 0), ([|Name name|], [|a|], [|y'|]))
+      in
+      return sigma t
     else
       fail sigma (E.mkFailure (Exceptions.error_abs_env env x t p))
   else
@@ -656,40 +621,26 @@ let new_env (env, sigma) hyps =
         try Option.map (multi_subst subs) odef
         with Not_found -> raise MissingDep
       in
-      if isRel var then
-        let n = destRel var in
-        let name, _, _ = List.nth (rel_context env) (n-1) in
-        (* since the name can be Anonymous, we need to generate a name *)
-        let id = Namegen.next_name_away name idlist in
-        (* if the variable is an index, its type might
-           refer to other indices, so we need to substitute *)
-        let ty =
-          try multi_subst subs ty
-          with Not_found -> raise MissingDep
-        in
-        let b = check_vars odef ty idset in
-        if b then
-          (id::idlist, Idset.add id idset, (n, mkVar id) :: subs, push_named (id, odef, ty) env')
-        else
-          raise MissingDep
-      else
-        (* if the variable is named, its type can only refer to named variables.
-           note that typing ensures the var has type ty, so its type must
-           be defined in the named context *)
+      (* if the variable is named, its type can only refer to named variables.
+         note that typing ensures the var has type ty, so its type must
+         be defined in the named context *)
+      if check_vars odef ty idset then
         let id = destVar var in
-        if check_vars odef ty idset then
-          (id::idlist, Idset.add id idset, subs, push_named (id, odef, ty) env')
-        else
-          raise MissingDep
+        (id::idlist, Idset.add id idset, subs, push_named (Context.Named.Declaration.of_tuple (id, odef, ty)) env')
+      else
+        raise MissingDep
     ) hyps ([], Idset.empty, [], empty_env)
   in subs, env
 
 let make_evar sigma env ty =
+  let open Sigma in
+  let sigma = Unsafe.of_evar_map sigma in
   if Term.isSort ty && ty <> mkProp then
-    let (sigma, (evar, _)) = Evarutil.new_type_evar env sigma Evd.UnivRigid in
-    sigma, evar
+    let Sigma ((evar, _), sigma, _) = Evarutil.new_type_evar env sigma Evd.UnivRigid in
+    to_evar_map sigma, evar
   else
-    Evarutil.new_evar env sigma ty
+    let Sigma (evar, sigma, _) = Evarutil.new_evar env sigma ty in
+    to_evar_map sigma, evar
 
 let cvar (env, sigma as ctx) ty ohyps =
   let ohyps = CoqOption.from_coq (env, sigma) ohyps in
@@ -725,8 +676,6 @@ let rec get_name (env, sigma) (t: constr) : constr option =
   (*  let t = whd_betadeltaiota_nolet env sigma t in *)
   let name =
     if isVar t then Some (Name (destVar t))
-    else if isRel t then
-      let (n, _, _) = lookup_rel (destRel t) env in Some n
     else if isLambda t then
       let (n, _, _) = destLambda t in Some n
     else if isProd t then
@@ -750,10 +699,9 @@ let hash (env, _, sigma, nus) c size =
 
 (* reflects the hypotheses in [env] in a list of [ahyp] *)
 let build_hypotheses sigma env =
-  let renv = List.mapi (fun i (_, t, ty)->(mkRel (i+1), t, ty))
-               (rel_context env)
-             @ (List.map (fun (n, t, ty)->(mkVar n, t, ty))
-                  (named_context env)) in
+  let open Context.Named.Declaration in
+  let renv = List.map (fun v->let (n, t, ty) = to_tuple v in (mkVar n, t, ty))
+               (named_context env) in
   (* the list is reversed: [H : x > 0, x : nat] *)
   let rec build renv =
     match renv with
@@ -765,25 +713,15 @@ let build_hypotheses sigma env =
   in
   build renv
 
+(* builds the context without x (which should be a variable) *)
 let env_without sigma env renv x =
+  let open Context.Named.Declaration in
   let name_env = named_context env in
-  let rel_env = rel_context env in
   let env = Environ.reset_context env in
-  if isVar x then
-    let nx = destVar x in
-    let env = Context.fold_named_context (fun (n, _, _ as decl) e -> if n = nx then e else push_named decl e)
-                name_env ~init:(env:env) in
-    let env = push_rel_context rel_env env in
-    env, build_hypotheses sigma env
-  else
-    let i = destRel x in
-    let _, env = Context.fold_rel_context (fun (n, ot, ty as decl) (j,e) ->
-      if j > i then (j-1, push_rel decl e)
-      else if j = i then (j-1, e)
-      else (j-1, push_rel (n, Option.map Termops.pop ot, Termops.pop ty) e))
-      rel_env ~init:(List.length rel_env,env) in
-    let env = push_named_context name_env env in
-    env, build_hypotheses sigma env
+  let nx = destVar x in
+  let name_env = List.filter (fun decl -> get_id decl <> nx) name_env in
+  let env = push_named_context name_env env in
+  env, build_hypotheses sigma env
 
 let rec run' (env, renv, sigma, nus as ctxt) t =
   let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
@@ -832,8 +770,8 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         (* we make sure the exception is a closed term: it does not depend on evars or nus *)
         let term = nf_evar sigma (nth 1) in
         let vars = collect_vars term in
-        let nuvars = List.map (fun (a, _, _) -> a) (CList.firstn nus (named_context env)) in
-        let intersect = Id.Set.inter vars (Id.Set.of_list nuvars) in
+        let nuvars = Context.Named.to_vars (CList.firstn nus (named_context env)) in
+        let intersect = Id.Set.inter vars nuvars in
         let closed = Id.Set.is_empty intersect && Evar.Set.is_empty (Evarutil.undefined_evars_of_term sigma term) in
         if closed then
           fail sigma term
@@ -880,7 +818,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         else begin
           let fx = Term.mkApp(f, [|Term.mkVar name|]) in
           let ot = CoqOption.from_coq (env, sigma) ot in
-          let env = push_named (name, ot, a) env in
+          let env = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
           let (sigma', renv) = Hypotheses.cons_hyp a (Term.mkVar name) ot renv sigma env in
           match run' (env, renv, sigma', (nus+1)) fx with
           | Val (sigma', e) ->
@@ -1028,11 +966,11 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
 
     | 31 -> (* get_var *)
         let s = CoqString.from_coq (env, sigma) (nth 0) in
-        let open Nametab in let open Libnames in
+        let open Context.Named in
         begin
           try
-            let (var, _, ty) = Context.lookup_named (Id.of_string s) (named_context env) in
-            let sigma, dyn = mkDyn ty (mkVar var) sigma env in
+            let var = lookup (Id.of_string s) (named_context env) in
+            let sigma, dyn = mkDyn (Declaration.get_type var) (mkVar (Declaration.get_id var)) sigma env in
             return sigma dyn
           with _ -> fail sigma (Exceptions.mkRefNotFound s)
         end
@@ -1069,13 +1007,13 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
             let sigma, goal = Goal.goal sigma env in
             let sigma, goals = CoqList.pto_coq goal (fun e sigma->Goal.goal_of_evar env sigma e) new_undef sigma in
             return sigma (CoqPair.mkPair concl goal c goals)
-          with Errors.UserError(s,ppm) ->
+          with CErrors.UserError(s,ppm) ->
             fail sigma (Exceptions.mkLtacError (s, ppm))
         end
     (* Tac (sigma, Tacinterp.eval_tactic tac, fun v -> Val v) *)
 
     | 33 -> (* list_ltac *)
-        let aux k _ = Pp.msg_info (Pp.str (Names.KerName.to_string k)) in
+        let aux k _ = Feedback.msg_info (Pp.str (Names.KerName.to_string k)) in
         KNmap.iter aux (Tacenv.ltac_entries ());
         return sigma (Lazy.force CoqUnit.mkTT)
 
@@ -1100,7 +1038,8 @@ let clean_unused_metas sigma metas term =
     ExistentialSet.fold (fun ev metas ->
       let ev_info = Evd.find sigma ev  in
       let metas = rem (Evd.evar_concl ev_info) metas in
-      let metas = List.fold_right (fun (_, body, ty) metas ->
+      let metas = List.fold_right (fun var metas ->
+        let (_, body, ty) = Context.Named.Declaration.to_tuple var in
         let metas = rem ty metas in
         match body with
         | None -> metas
@@ -1131,11 +1070,13 @@ let clean_unused_metas sigma metas term =
 
 (* returns the enviornment and substitution without db rels *)
 let db_to_named env =
+  let open Context in
   let env' = push_named_context (named_context env) (reset_context env) in
-  let vars = Id.Set.elements (Context.vars_of_named_context (named_context env)) in
-  let _, subs, env = CList.fold_right_i (fun n (name, odef, ty) (vars, subs, env') ->
+  let vars = Id.Set.elements (Named.to_vars (named_context env)) in
+  let _, subs, env = CList.fold_right_i (fun n var (vars, subs, env') ->
     (* the definition might refer to previously defined indices
        so we perform the substitution *)
+    let (name, odef, ty) = Rel.Declaration.to_tuple var in
     let odef = Option.map (multi_subst subs) odef in
     let ty = multi_subst subs ty in
     (* since the name can be Anonymous, we need to generate a name *)
@@ -1145,7 +1086,8 @@ let db_to_named env =
           Id.of_string ("_MC" ^ string_of_int n)
       | Name n ->
           Namegen.next_name_away name vars in
-    id::vars, (n, mkVar id) :: subs, push_named (id, odef, ty) env'
+    let nvar = Named.Declaration.of_tuple (id, odef, ty) in
+    id::vars, (n, mkVar id) :: subs, push_named nvar env'
   ) 1 (rel_context env) (vars, [], env') in
   subs, env
 

@@ -160,8 +160,8 @@ end
 module CoqSig = struct
   let rec from_coq (env, sigma) constr =
     (* NOTE: Hightly unsafe *)
-    let (_, args) = whd_betadeltaiota_stack env sigma constr in
-    List.nth args 1
+    let (_, args) = decompose_appvect (whd_all env sigma constr) in
+    args.(1)
 end
 
 module CoqNat = struct
@@ -185,7 +185,7 @@ module CoqNat = struct
           if isSucc s then
             1 + (fc (n.(0)))
           else
-            Errors.error "Not a nat"
+            CErrors.error "Not a nat"
         end
     in
     let c' = reduce_value env evd c in
@@ -214,7 +214,7 @@ module CoqPositive = struct
           else if isO s then
             (fc (i+1) (n.(0)))*2
           else
-            Errors.error "Not a positive"
+            CErrors.error "Not a positive"
         end
     in
     let c' = reduce_value env evd c in
@@ -248,7 +248,7 @@ module CoqN = struct
           if isP s then
             CoqPositive.from_coq (env, evd) (n.(0))
           else
-            Errors.error "Not a positive"
+            CErrors.error "Not a positive"
         end
     in
     let c' = reduce_value env evd c in
@@ -313,7 +313,7 @@ module CoqString = struct
       else if isString h then
         CoqAscii.from_coq ctx args.(0) ^ fc args.(1)
       else
-        Errors.error "Not a string"
+        CErrors.error "Not a string"
     in
     fc (reduce_value env sigma s)
 

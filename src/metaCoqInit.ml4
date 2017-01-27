@@ -48,7 +48,7 @@ let mproof_mode : Vernacexpr.vernac_expr Pcoq.Gram.entry =
 
 *)
 let wit_mproof_instr : (MetaCoqInstr.mproof_instr, Util.Empty.t, Util.Empty.t) Genarg.genarg_type =
-  Genarg.create_arg None "mproof_instr"
+  Genarg.create_arg "mproof_instr"
 
 (* FIXME: (Yann) I am not 100% sure that using all this machinery is really needed.
    FIXME: Indeed, for the moment [with_mproof_instr] is not used except in the following
@@ -58,10 +58,12 @@ let wit_mproof_instr : (MetaCoqInstr.mproof_instr, Util.Empty.t, Util.Empty.t) G
    FIXME: parsing phase?
 *)
 
+(* FIXME: (Beta) I have no idea what I'm doing *)
+
 (** We introduce a new grammar rule for MProof instructions. The type of
     the semantic values (with_mproof_instr) is specified. *)
 let mproof_instr : MetaCoqInstr.mproof_instr Pcoq.Gram.entry =
-  Pcoq.create_generic_entry "mproof_instr" (Genarg.rawwit wit_mproof_instr)
+  Pcoq.create_generic_entry Pcoq.uconstr "mproof_instr" (Genarg.rawwit wit_mproof_instr)
 
 (** We now declare the grammar rule named [mproof_mode] as the entry point
     for proof instructions (installed by [MetaCoqMode] in [ProofGlobal]).
@@ -86,7 +88,7 @@ let mproof_instr : MetaCoqInstr.mproof_instr Pcoq.Gram.entry =
 *)
 
 VERNAC mproof_mode EXTEND MProofInstr
-  [ - mproof_instr(_instr) ] => [ Vernacexpr.VtProofStep false, Vernacexpr.VtLater ] ->
+  [ - mproof_instr(_instr) ] => [ let open Vernacexpr in VtProofStep {parallel = `No; proof_block_detection = None}, VtLater ] ->
   [ MetaCoqInterp.interp_proof_constr _instr ]
 END
 
@@ -124,11 +126,11 @@ let () =
     name  = proof_mode_identifier ;
     set   =
       begin fun () ->
-        G_vernac.set_command_entry mproof_mode
+        Pcoq.set_command_entry mproof_mode
       end ;
     reset =
       begin fun () ->
-       G_vernac.set_command_entry G_vernac.noedit_mode
+       Pcoq.set_command_entry Pcoq.Vernac_.noedit_mode
       end
   }
 

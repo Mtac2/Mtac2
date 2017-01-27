@@ -1,4 +1,4 @@
-Require Import MetaCoq.MetaCoq.
+From MetaCoq Require Import MetaCoq.
 Require Import Bool.Bool.
 
 Example hyp_well_formed : True.

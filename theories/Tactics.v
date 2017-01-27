@@ -297,7 +297,7 @@ Monomorphic Structure semicolon (left_type compose_type : Type) := SemiColon {
   the_value : left_type -> right_type -> compose_type
 }.
 Arguments SemiColon {_ _ _} _.
-Arguments the_value {_ _ _ _ _}.
+Arguments the_value {_ _ _}.
 
 Monomorphic Canonical Structure semicolon_tactic_tactics :=
   SemiColon tactic_tactics.
@@ -312,7 +312,7 @@ Monomorphic Structure binding  (left_type middle_type compose_type : Type) :=
       bright_type : Type;
       the_bvalue : left_type -> (middle_type -> bright_type) -> compose_type }.
 Arguments Binding {_ _ _ _} _.
-Arguments the_bvalue {_ _ _ _ _ _}.
+Arguments the_bvalue {_ _ _ _}.
 
 Monomorphic Canonical Structure binding_mtac A B :=
   Binding (@bind A B).

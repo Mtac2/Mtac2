@@ -13,38 +13,38 @@ module MetaCoqRun = struct
     let metaCoqType = Lazy.force Run.MetaCoqNames.mkT_lazy in
     let sigma, tacticType = MCTactics.mkTactic sigma env in
     let ty = Retyping.get_type_of env sigma c in
-    let (h, args) = Reductionops.whd_betadeltaiota_stack env sigma ty in
+    let (h, args) = Reductionops.whd_all_stack env sigma ty in
     if Term.eq_constr_nounivs metaCoqType h && List.length args = 1 then
       try
         let sigma = Evarconv.the_conv_x_leq env concl (List.hd args) sigma in
         (sigma, c)
-      with Evarconv.UnableToUnify(_,_) -> Errors.error "Different types"
+      with Evarconv.UnableToUnify(_,_) -> CErrors.error "Different types"
     else if Term.eq_constr_nounivs tacticType ty && List.length args = 0 then
       let sigma, runTac = MCTactics.mkRunTac sigma env in
       (sigma, Term.mkApp(runTac, [|concl; c|]))
     else
-      Errors.error "Not a Mtactic"
+      CErrors.error "Not a Mtactic"
 
   let run env sigma concl c =
     let (sigma, t) = pretypeT env sigma concl c in
     match Run.run (env, sigma) t with
     | Run.Val (sigma, v) ->
-        Proofview.Refine.refine ~unsafe:false (fun _ ->(sigma, v))
+        Refine.refine ~unsafe:false {Sigma.run = fun _ ->Sigma.Unsafe.of_pair (v, sigma)}
     | Run.Err (_, e) ->
-        Errors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
+        CErrors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
 
   (** Get back the context given a goal, interp the constr_expr to obtain a constr
       Then run the interpretation fo the constr, and returns the tactic value,
       according to the value of the data returned by [run].
   *)
   let run_tac t =
-    Proofview.Goal.nf_enter begin fun gl ->
+    Proofview.Goal.nf_enter { enter = fun gl ->
       let env = Proofview.Goal.env gl in
       let concl = Proofview.Goal.concl gl in
       let sigma = Proofview.Goal.sigma gl in
-      let (sigma, c) = Constrintern.interp_open_constr env sigma t in
+      let (sigma, c) = Constrintern.interp_open_constr env (Sigma.to_evar_map sigma) t in
       run env sigma concl c
-    end
+    }
 
 
   let understand env sigma {Glob_term.closure=closure;term=term} =
@@ -58,13 +58,13 @@ module MetaCoqRun = struct
     understand_ltac flags env sigma lvar WithoutTypeConstraint term
 
   let run_tac_constr t =
-    Proofview.Goal.nf_enter begin fun gl ->
+    Proofview.Goal.nf_enter { enter = fun gl ->
       let env = Proofview.Goal.env gl in
       let concl = Proofview.Goal.concl gl in
       let sigma = Proofview.Goal.sigma gl in
-      let sigma, t = understand env sigma t in
+      let sigma, t = understand env (Sigma.to_evar_map sigma) t in
       run env sigma concl t
-    end
+    }
 
 end
 
@@ -105,7 +105,7 @@ end
 let interp_mproof_command () =
   let pf = Proof_global.give_me_the_proof () in
   if Proof.is_done pf then
-    Errors.error "Nothing left to prove here."
+    CErrors.error "Nothing left to prove here."
   else
     begin
       Proof_global.set_proof_mode "MProof";
