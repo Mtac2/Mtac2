@@ -354,9 +354,6 @@ MProof.
   exact I.
 Qed.
 
-(* a good example of why we need to get bindings right in tactics *)
-Fail Ltac test := rename x into y.
-
 Require Import MetaCoq.ImportedTactics.
 
 Goal forall x:nat, x = x.

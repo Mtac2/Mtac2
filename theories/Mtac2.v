@@ -44,7 +44,7 @@ Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
 
 Inductive RedFlags :=
-| RedBeta | RedDelta | RedIota | RedZeta
+| RedBeta | RedDelta | RedMatch | RedFix | RedZeta
 | RedDeltaC | RedDeltaX
 | RedDeltaOnly : list dyn -> RedFlags
 | RedDeltaBut : list dyn -> RedFlags.
@@ -258,8 +258,9 @@ Open Scope Mtac_scope.
 
 Notation "'M'" := Mtac : type_scope.
 
-Notation RedNF := (RedStrong [RedBeta;RedDelta;RedZeta;RedIota]).
-Notation RedHNF := (RedWhd [RedBeta;RedDelta;RedZeta;RedIota]).
+Notation RedAll := ([RedBeta;RedDelta;RedZeta;RedMatch;RedFix]).
+Notation RedNF := (RedStrong RedAll).
+Notation RedHNF := (RedWhd RedAll).
 
 Notation "'rsimpl'" := (reduce RedSimpl).
 Notation "'rhnf'" := (reduce RedHNF).
@@ -337,7 +338,7 @@ Polymorphic Fixpoint open_pattern {A P t} (p : pattern A P t) : M (P t) :=
     | Some eq =>
         (* eq has type x = t, but for the pattern we need t = x.
            we still want to provide eq_refl though, so we reduce it *)
-        let h := reduce (RedStrong [RedBeta;RedDelta;RedIota]) (eq_sym eq) in
+        let h := reduce (RedStrong [RedBeta;RedDelta;RedMatch]) (eq_sym eq) in
         match eq in _ = x return M (P x) with
         | eq_refl =>
           (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
@@ -454,6 +455,6 @@ Definition fresh_binder_name {A} (t: A) : M string :=
 
 Definition unfold_projection {A} (t: A) : M A :=
   let x := rone_step t in
-  let x := reduce (RedWhd (RedBeta::RedIota::nil)) x in ret x.
+  let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in ret x.
 
 End GeneralUtilities.

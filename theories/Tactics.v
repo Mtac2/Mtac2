@@ -150,7 +150,7 @@ Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
       e' <- evar Px;
       nG <- abs_let (P:=P) x def e';
       exact nG g;;
-      let x := reduce (RedWhd [RedIota]) (match eqBA with eq_refl => x end) in
+      let x := reduce (RedWhd [RedMatch]) (match eqBA with eq_refl => x end) in
       t x (Goal e') >> let_close_goals x)
 
   | [? P e] @Goal (forall x:A, P x) e =u>
@@ -400,8 +400,6 @@ Definition cprint {A} (s: string) (c: A) :=
   x <- pretty_print c;
   let s := reduce RedNF (s++x)%string in
   print s.
-
-Notation reduce_novars := (reduce (RedStrong [RedBeta;RedIota;RedDeltaC;RedZeta])).
 
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
   b <- let n := rcbv n in is_var n;
@@ -812,7 +810,7 @@ Definition unfold_slow {A} (x: A) : tactic := fun g=>
 
 Definition unfold {A} (x: A) : tactic := fun g=>
   gT <- goal_type g;
-  let gT' := reduce (RedStrong [RedBeta;RedIota;RedDeltaOnly [Dyn x]]) gT in
+  let gT' := reduce (RedStrong [RedBeta;RedMatch;RedDeltaOnly [Dyn x]]) gT in
   ng <- evar gT';
   exact ng g;;
   ret [Goal ng].
@@ -843,7 +841,7 @@ Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
         oeq' <- munify B T1 UniCoq;
         match oeq' with
         | Some eq' =>
-          let v' := reduce (RedWhd [RedIota]) match eq' as x in _ = x with eq_refl=> v end in
+          let v' := reduce (RedWhd [RedMatch]) match eq' as x in _ = x with eq_refl=> v end in
           ret (Dyn (f v'))
         | _ => raise (WrongType T1)
         end

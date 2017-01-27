@@ -70,7 +70,7 @@ Qed.
 Example reduce_BetaDeltaIota : unit.
 MProof.
 e <- evar unit;
-let x := reduce (RedWhd (RedBeta::RedDelta::RedIota::nil)) (elem (Dyn (let t := e in t))) in
+let x := reduce (RedWhd (RedBeta::RedDelta::RedMatch::nil)) (elem (Dyn (let t := e in t))) in
 assert_eq (let t := e in t) x e.
 Qed.
 
@@ -80,7 +80,7 @@ Section ASection.
 Example reduce_BetaDeltaIotaP : unit.
 MProof.
 e <- evar unit;
-let x := reduce (RedWhd (RedBeta::RedDelta::RedIota::nil)) (elem (Dyn (fst (p, e)))) in
+let x := reduce (RedWhd (RedBeta::RedDelta::RedMatch::nil)) (elem (Dyn (fst (p, e)))) in
   print_term x;;
 assert_eq 0 x e.
 Qed.
@@ -88,13 +88,13 @@ Qed.
 Example reduce_OneStepDyn : nat.
 MProof.
 let x := rone_step (elem (Dyn p)) in
-let x := reduce (RedWhd (RedBeta::RedIota::nil)) x in ret x.
+let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in ret x.
 Qed.
 
 Example reduce_deltac : unit.
 MProof.
 e <- evar unit;
-  let x := reduce (RedWhd (RedBeta::RedIota::RedDeltaC::nil)) (elem (Dyn (fst (p, e)))) in
+  let x := reduce (RedWhd (RedBeta::RedMatch::RedDeltaC::nil)) (elem (Dyn (fst (p, e)))) in
   print_term x;;
 assert_eq x 0 e.
 Qed.
@@ -103,14 +103,15 @@ Definition test_opaque : nat. exact 0. Qed.
 Example reduce_deltac_opaque : unit.
 MProof.
 e <- evar unit;
-let x := reduce (RedWhd (RedBeta::RedIota::RedDeltaC::nil)) (elem (Dyn (fst (test_opaque, e)))) in
+let x := reduce (RedWhd (RedBeta::RedMatch::RedDeltaC::nil)) (elem (Dyn (fst (test_opaque, e)))) in
 assert_eq x test_opaque e.
 Qed.
 
+Unset Printing All.
 Example reduce_deltax : unit.
 MProof.
 e <- evar unit;
-let x := reduce (RedStrong (RedBeta::RedIota::RedDeltaX::nil)) (elem (Dyn (fst (p, e)))) in
+let x := reduce (RedStrong (RedBeta::RedMatch::RedDeltaX::nil)) (elem (Dyn (fst (p, e)))) in
 assert_eq (elem (Dyn (fst (0, e)))) x e.
 Qed.
 
@@ -147,7 +148,7 @@ Example reduction_but : unit.
 MProof.
   e <- evar unit;
   n <- evar nat;
-  let x := reduce (RedStrong [RedBeta;RedIota;RedDeltaBut [Dyn (@id)]])
+  let x := reduce (RedStrong [RedBeta;RedMatch;RedFix;RedDeltaBut [Dyn (@id)]])
     (id (fun x=>x) ((fun x=>x) (0 + n))) in
   assert_eq x (id (fun x=>x) n) e.
 MQed.
