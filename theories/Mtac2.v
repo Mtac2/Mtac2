@@ -40,7 +40,7 @@ Definition CannotRemoveVar (x : string) : Exception. exact exception. Qed.
 Definition RefNotFound (x : string) : Exception. exact exception. Qed.
 
 
-Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
+Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
 
 Inductive RedFlags :=
@@ -65,7 +65,7 @@ Inductive Unification : Type :=
 Inductive Hyp : Type :=
 | ahyp : forall {A}, A -> option A -> Hyp.
 
-Polymorphic Record Case :=
+Record Case :=
     mkCase {
         case_ind : Type;
         case_val : case_ind;
@@ -77,7 +77,7 @@ Polymorphic Record Case :=
 Definition reduce (r : Reduction) {A} (x : A) := x.
 
 (** goal type *)
-Polymorphic Inductive goal :=
+Inductive goal :=
 | Goal : forall {A}, A -> goal
 | AHyp : forall {A}, option A -> (A -> goal) -> goal.
 
@@ -325,11 +325,11 @@ Definition Anomaly : Exception. exact exception. Qed.
 Definition Continue : Exception. exact exception. Qed.
 
 (** Pattern matching without pain *)
-Polymorphic Inductive pattern A (B : A -> Type) (t : A) : Prop :=
+Inductive pattern A (B : A -> Type) (t : A) : Prop :=
 | pbase : forall (x:A), (t = x -> Mtac (B x)) -> Unification -> pattern A B t
 | ptele : forall {C}, (forall (x : C), pattern A B t) -> pattern A B t.
 
-Polymorphic Fixpoint open_pattern {A P t} (p : pattern A P t) : M (P t) :=
+Fixpoint open_pattern {A P t} (p : pattern A P t) : M (P t) :=
   match p with
   | pbase _ _ _ x f u =>
     oeq <- munify x t u;
@@ -350,7 +350,7 @@ Polymorphic Fixpoint open_pattern {A P t} (p : pattern A P t) : M (P t) :=
     open_pattern (f e)
   end.
 
-Polymorphic Fixpoint tmatch {A P} t (ps : list (pattern A P t)) : M (P t) :=
+Fixpoint tmatch {A P} t (ps : list (pattern A P t)) : M (P t) :=
   match ps with
   | [] => raise NoPatternMatches
   | (p :: ps') =>

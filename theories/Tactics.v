@@ -7,7 +7,7 @@ Import ListNotations.
 
 Require Import Strings.String.
 
-Local Set Universe Polymorphism.
+(* Local Set Universe Polymorphism. *)
 
 Notation "'dreduce' ( l1 , .. , ln )" := (reduce (RedStrong [RedBeta;RedFix;RedMatch;RedDeltaOnly (Dyn (@l1) :: .. (Dyn (@ln) :: nil) ..)])) (at level 0).
 
