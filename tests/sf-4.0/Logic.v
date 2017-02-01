@@ -282,11 +282,10 @@ MProof.
 (* FIX intro pattern *)
   intros n m. destructn 0 asp [ ["Hn"]; ["Hm"] ].
   - (* Here, [n = 0] *)
-    rewrite Hn.
+    rewrite Hn. reflexivity.
   - (* Here, [m = 0] *)
     rewrite Hm. rewrite <- mult_n_O.
     reflexivity.
-reflexivity. (* FIX order of goals *)
 Qed.
 
 (** We can see in this example that, when we perform case analysis on
@@ -604,9 +603,9 @@ MProof.
     + left. right. apply H.
     + right. apply H.
   - destructn 0 asp [ []; ["H"] ]&> [destructn 0 asp [ ["H"]; ["H"]]; idtac].
-    + right. right. apply H.
     + left. apply H.
     + right. left. apply H.
+    + right. right. apply H.
 Qed.
 
 (** We can now use these facts with [rewrite] and [reflexivity] to
@@ -724,11 +723,10 @@ Example In_example_2 :
   exists n', n = 2 * n'.
 MProof.
   simpl.
-  intros n&> destructn 0 asp [ ["H"]; [] ].
-  (*FIX the order is wrong, why? *)
-  - destructn 0 asp [ ["H"]; []]&> [idtac; destructn 0].
-    mexists 2. rewrite <- H&> Tactics.reflexivity.
+  intros n &> destructn 0 asp [ ["H"]; [] ].
   - mexists 1. rewrite <- H. Tactics.reflexivity.
+  - destructn 0 asp [ ["H"]; []] l> destructn 0.
+    mexists 2. rewrite <- H &> Tactics.reflexivity.
 Qed.
 
 (** (Notice the use of the empty pattern to discharge the last case
@@ -745,14 +743,12 @@ Lemma In_map :
 MProof.
   intros A B f l x.
   induction l asp [ []; ["x'"; "l'"; "IHl'"]].
-  (* FIX order of subgoals *)
+  - (* l = nil, contradiction *)
+    simpl. destructn 0.
   - (* l = x' :: l' *)
     simpl. destructn 0 asp [ ["H"]; ["H"] ].
-    + rewrite H&> left&> Tactics.reflexivity.
+    + rewrite H &> left &> Tactics.reflexivity.
     + right. apply IHl'. apply H.
-  (*FIX bullet *)
-  * (* l = nil, contradiction *)
-    simpl. destructn 0.
 Qed.
 
 (** This way of defining propositions, though convenient in some
@@ -1082,9 +1078,8 @@ Lemma tr_rev_correct : forall X, @tr_rev X = @rev X.
 Theorem evenb_double : forall k, evenb (double k) = true.
 MProof.
   intros k. induction k asp [ []; ["k'"; "IHk'"] ].
-  (* FIX order of subgoals and bullet *)
+  - Tactics.reflexivity.
   - simpl. apply IHk'.
-  + Tactics.reflexivity.
 Qed.
 
 (** **** Exercise: 3 stars (evenb_double_conv)  *)

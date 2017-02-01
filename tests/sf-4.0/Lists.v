@@ -522,10 +522,11 @@ Theorem app_assoc : forall l1 l2 l3 : natlist,
   (l1 ++ l2) ++ l3 = l1 ++ (l2 ++ l3).
 MProof.
   intros l1 l2 l3. induction l1 asp ([]%list :: ("n"::"l1'"::"IHl1'"::[]%list)::[]%list)%list.
+  - (* l1 = nil *)
+    reflexivity.
   - (* l1 = cons n l1' *)
     simpl. rewrite -> IHl1'. reflexivity.
-  (*-*) (* l1 = nil *) (* FIX bullet *)
-    reflexivity.   Qed.
+ Qed.
 
 (** Notice that, as when doing induction on natural numbers, the
     [as...] clause provided to the [induction] tactic gives a name to
@@ -599,9 +600,8 @@ Theorem rev_length_firsttry : forall l : natlist,
   length (rev l) = length l.
 MProof.
   intros l. induction l asp list_patt.
-(*  - (* l = [] *)
+  - (* l = [] *)
     reflexivity.
-*)
   - (* l = n :: l' *)
     (* This is the tricky case.  Let's begin as usual
        by simplifying. *)
@@ -624,10 +624,11 @@ Theorem app_length : forall l1 l2 : natlist,
 MProof.
   (* WORKED IN CLASS *)
   intros l1 l2. induction l1 asp ([]::("x1"::"li1'"::"IHl1'"::[])::[])%list.
+  - (* l1 = nil *)
+    reflexivity.
   - (* l1 = cons *)
     simpl. rewrite -> IHl1'. reflexivity.
-  (*-*) (* l1 = nil *) (* FIX bullet *)
-    reflexivity.  Qed.
+Qed.
 
 (** Note that, to make the lemma as general as possible, we
     quantify over _all_ [natlist]s, not just those that result from an
@@ -642,11 +643,12 @@ Theorem rev_length : forall l : natlist,
   length (rev l) = length l.
 MProof.
   intros l. induction l asp list_patt.
+  - (* l = nil *)
+    reflexivity.
   - (* l = cons *)
     simpl. rewrite -> app_length, plus_comm.
     rewrite -> IHl'. reflexivity.
-  (*-*) (* l = nil *) (* FIX bullet *)
-    reflexivity.  Qed.
+Qed.
 
 (** For comparison, here are informal proofs of these two theorems:
 
@@ -826,10 +828,11 @@ Theorem ble_n_Sn : forall n,
   leb n (S n) = true.
 MProof.
   intros n. induction n asp nat_patt.
+  - (* 0 *)
+    simpl.  reflexivity.
   - (* S n' *)
     simpl.  rewrite IHn'.  reflexivity.
-  (*-*) (* 0 *) (* FIX bullet *)
-    simpl.  reflexivity.  Qed.
+Qed.
 
 Theorem remove_decreases_count: forall (s : bag),
   leb (count 0 (remove_one 0 s)) (count 0 s) = true.

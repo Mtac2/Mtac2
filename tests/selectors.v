@@ -32,5 +32,5 @@ Abort.
 
 Example test_selector7 : forall n, n >= 0.
 MProof.
-  Fail (destructn 0 &> srev |2> apply le_0_n) |2> idtac.
+  Fail (destructn 0 &> srev |2> apply le_0_n) |2> print_goal.
 Abort.

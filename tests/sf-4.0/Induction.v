@@ -82,10 +82,10 @@ Abort.
 Theorem plus_n_O : forall n:nat, n = n + 0.
 MProof.
   intros n. induction n asp [ []; ["n'"; "IHn'"]].
-(* FIX the order of subcases *)
+  - (* n = 0 *)    reflexivity.
   - (* n = S n' *) simpl. rewrite <- IHn'.
-  reflexivity.
-  + (* n = 0 *)    reflexivity.  Qed.
+    reflexivity.
+Qed.
 
 (** Like [destruct], the [induction] tactic takes an [as...]
     clause that specifies the names of the variables to be introduced
@@ -107,11 +107,11 @@ Theorem minus_diag : forall n,
 MProof.
   (* WORKED IN CLASS *)
   intros n. induction n asp nat_patt.
+  - (* n = 0 *)
+    simpl. reflexivity.
   - (* n = S n' *)
     simpl. rewrite -> IHn'.
     reflexivity.
-  (*-*) (* n = 0 *)  (* FIX bullet *)
-    simpl. reflexivity.
   Qed.
 
 (** (The use of the [intros] tactic in these proofs is actually
@@ -251,8 +251,8 @@ Theorem plus_rearrange : forall n m p q : nat,
 MProof.
   intros n m p q.
   assert (H: n + m = m + n).
-  { rewrite -> plus_comm. }
-  rewrite -> H. reflexivity. reflexivity.  Qed.
+  { rewrite -> plus_comm &> reflexivity. }
+  rewrite -> H. reflexivity.  Qed.
 
 (* ################################################################# *)
 (** * More Exercises *)
@@ -473,7 +473,7 @@ MProof.
 Theorem plus_assoc' : forall n m p : nat,
   n + (m + p) = (n + m) + p.
 MProof. intros n m p. induction n asp nat_patt.
-  simpl. rewrite -> IHn'. reflexivity. reflexivity.
+  reflexivity. simpl. rewrite -> IHn'. reflexivity.
     Qed.
 
 (** Coq is perfectly happy with this.  For a human, however, it
@@ -484,10 +484,11 @@ Theorem plus_assoc'' : forall n m p : nat,
   n + (m + p) = (n + m) + p.
 MProof.
   intros n m p. induction n asp nat_patt.
+  - (* n = 0 *)
+    reflexivity.
   - (* n = S n' *)
     simpl. rewrite -> IHn'. reflexivity.
-  (*-*) (* n = 0 *) (* FIX bullet *)
-    reflexivity.   Qed.
+Qed.
 
 (** ... and if you're used to Coq you may be able to step
     through the tactics one after the other in your mind and imagine

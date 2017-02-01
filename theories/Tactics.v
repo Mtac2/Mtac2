@@ -406,6 +406,7 @@ Definition cprint {A} (s: string) (c: A) :=
   print s.
 
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
+  let A := rhnf A in
   b <- let n := rcbv n in is_var n;
   ctx <- if b then hyps_except n else hypotheses;
   P <- Cevar (A->Type) ctx;
@@ -861,15 +862,22 @@ Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
 (** Type for goal manipulation primitives *)
 Definition selector := list goal -> M (list goal).
 
+Fixpoint nsplit {A} n (l : list A) :=
+  match n, l with
+  | 0, l => ([], l)
+  | S n', (x :: l') =>
+    let (l1, l2) := nsplit n' l' in
+    (x :: l1, l2)
+  | _, _ => ([], [])
+  end.
+
 Definition snth n t : selector := fun l=>
-  let l1 := reduce (RedOnlyComplete [Dyn pred; Dyn (@firstn)]) (firstn (pred n) l) in
-  let l2 := reduce (RedOnlyComplete [Dyn pred; Dyn (@skipn)]) (skipn n l) in
-  match nth_error l n with
+  let (l1, l2) := reduce (RedOnlyComplete [Dyn (@nsplit)]) (nsplit n l) in
+  match hd_error l2 with
   | None => raise NoGoalsLeft
   | Some g =>
     goals <- open_and_apply t g;
     let res := reduce (RedOnlyComplete [Dyn (@List.app)]) (l1 ++ goals ++ l2)%list in
-    print_term res;;
     ret res
   end.
 
@@ -883,7 +891,7 @@ Definition srev : selector := fun l=>
   let res := reduce (RedOnlyComplete [Dyn (@rev); Dyn (@app)]) (rev l) in ret res.
 
 Definition tactic_selector (t: tactic) (s: selector) : tactic :=
-  fun g=> l <- t g; s l.
+  fun g=> l <- t g; l' <- filter_goals l; s l'.
 
 Monomorphic Canonical Structure semicolon_tactic_selector :=
   SemiColon tactic_selector.
