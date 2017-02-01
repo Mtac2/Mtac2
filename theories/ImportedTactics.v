@@ -26,7 +26,8 @@ Definition subst : tactic := ltac (qualify "subst") nil.
 Ltac contradiction := contradiction.
 Definition contradiction : tactic := ltac (qualify "contradiction") nil.
 
-Definition tauto : tactic := ltac ("Coq.Init.Notations.tauto") nil.
+Ltac tauto' := tauto.
+Definition tauto : tactic := ltac (qualify "tauto'") nil.
 
 Ltac unfold x := unfold x.
 Definition unfold {A} (x: A) := ltac (qualify "unfold") [Dyn x].

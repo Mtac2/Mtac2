@@ -148,11 +148,10 @@ module Exceptions = struct
   let mkWrongTerm = mkConstr "WrongTerm"
   let mkHypMissesDependency = mkConstr "HypMissesDependency"
   let mkTypeMissesDependency = mkConstr "TypeMissesDependency"
-  let mkLtacError (s, ppm) =
+  let mkLtacError msg =
     let e = mkConstr "LtacError" in
-    let expl = string_of_ppcmds ppm in
-    let coqexp = CoqString.to_coq (s ^ ": " ^ expl) in
-    mkApp(Lazy.force e, [|coqexp|])
+    let coqmsg = CoqString.to_coq msg in
+    mkApp(Lazy.force e, [|coqmsg|])
 
   (* HACK: we put Prop as the type of the raise. We can put an evar, but
      what's the point anyway? *)
@@ -1034,7 +1033,10 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
             let sigma, goals = CoqList.pto_coq goal (fun e sigma->Goal.goal_of_evar env sigma e) new_undef sigma in
             return sigma (CoqPair.mkPair concl goal c goals)
           with CErrors.UserError(s,ppm) ->
-            fail sigma (Exceptions.mkLtacError (s, ppm))
+            let expl = string_of_ppcmds ppm in
+            fail sigma (Exceptions.mkLtacError (s ^ ": " ^ expl))
+             | e ->
+                 fail sigma (Exceptions.mkLtacError (Printexc.to_string e))
         end
     (* Tac (sigma, Tacinterp.eval_tactic tac, fun v -> Val v) *)
 
