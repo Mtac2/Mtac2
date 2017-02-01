@@ -9,7 +9,7 @@ module MetaCoqRun = struct
   (** Given a type concl and a term c, it checks that c has type:
       - [M concl]: then it returns [c]
       - [tactic]: then it returns [run_tac concl c] *)
-  let pretypeT env sigma concl c =
+  let pretypeT env sigma concl evar c =
     let metaCoqType = Lazy.force Run.MetaCoqNames.mkT_lazy in
     let sigma, tacticType = MCTactics.mkTactic sigma env in
     let ty = Retyping.get_type_of env sigma c in
@@ -17,33 +17,50 @@ module MetaCoqRun = struct
     if Term.eq_constr_nounivs metaCoqType h && List.length args = 1 then
       try
         let sigma = Evarconv.the_conv_x_leq env concl (List.hd args) sigma in
-        (sigma, c)
+        (false, sigma, c)
       with Evarconv.UnableToUnify(_,_) -> CErrors.error "Different types"
     else if Term.eq_constr_nounivs tacticType ty && List.length args = 0 then
-      let sigma, runTac = MCTactics.mkRunTac sigma env in
-      (sigma, Term.mkApp(runTac, [|concl; c|]))
+      let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
+      (true, sigma, Term.mkApp(c, [|goal|]))
     else
       CErrors.error "Not a Mtactic"
 
-  let run env sigma concl c =
-    let (sigma, t) = pretypeT env sigma concl c in
+  let run env sigma concl evar c =
+    let (istactic, sigma, t) = pretypeT env sigma concl evar c in
     match Run.run (env, sigma) t with
     | Run.Val (sigma, v) ->
-        Refine.refine ~unsafe:false {Sigma.run = fun _ ->Sigma.Unsafe.of_pair (v, sigma)}
+        if not istactic then
+          Refine.refine ~unsafe:false {Sigma.run = fun _ ->Sigma.Unsafe.of_pair (v, sigma)}
+        else
+          let goals = Constrs.CoqList.from_coq (env, sigma) v in
+          let goals = List.map (Run.Goal.evar_of_goal sigma env) goals in
+          let goals = List.filter Option.has_some goals in
+          let goals = List.map Option.get goals in
+          let open Proofview in let open Proofview.Notations in
+          Unsafe.tclEVARS sigma >>= fun _->
+          Unsafe.tclSETGOALS goals
+
     | Run.Err (_, e) ->
         CErrors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
+
+  let evar_of_goal gl =
+    let open Proofview.Goal in
+    let ids = List.map (fun d->Term.mkVar (Context.Named.Declaration.get_id d)) (Environ.named_context (env gl)) in
+    Term.mkEvar (goal gl, Array.of_list ids)
 
   (** Get back the context given a goal, interp the constr_expr to obtain a constr
       Then run the interpretation fo the constr, and returns the tactic value,
       according to the value of the data returned by [run].
   *)
   let run_tac t =
-    Proofview.Goal.nf_enter { enter = fun gl ->
-      let env = Proofview.Goal.env gl in
-      let concl = Proofview.Goal.concl gl in
-      let sigma = Proofview.Goal.sigma gl in
+    let open Proofview.Goal in
+    nf_enter { enter = fun gl ->
+      let env = env gl in
+      let concl = concl gl in
+      let sigma = sigma gl in
+      let evar = evar_of_goal gl in
       let (sigma, c) = Constrintern.interp_open_constr env (Sigma.to_evar_map sigma) t in
-      run env sigma concl c
+      run env sigma concl evar c
     }
 
 
@@ -58,39 +75,16 @@ module MetaCoqRun = struct
     understand_ltac flags env sigma lvar WithoutTypeConstraint term
 
   let run_tac_constr t =
-    Proofview.Goal.nf_enter { enter = fun gl ->
-      let env = Proofview.Goal.env gl in
-      let concl = Proofview.Goal.concl gl in
-      let sigma = Proofview.Goal.sigma gl in
+    let open Proofview.Goal in
+    nf_enter { enter = fun gl ->
+      let env = env gl in
+      let concl = concl gl in
+      let sigma = sigma gl in
+      let evar = evar_of_goal gl in
       let sigma, t = understand env (Sigma.to_evar_map sigma) t in
-      run env sigma concl t
+      run env sigma concl evar t
     }
 
-end
-
-module MetaCoqProofInfos = struct
-  (**
-     This module concerns the state of the proof tree
-  *)
-
-  let proof_focus = Proof.new_focus_kind ()
-  let proof_cond = Proof.no_cond proof_focus
-
-  (** focus on the proof *)
-  let focus () =
-    Proof_global.simple_with_current_proof
-      (fun _ -> Proof.focus proof_cond () 1)
-
-  (** unfocus *)
-  let maximal_unfocus () =
-    (* we should make sure the evars are cleaned *)
-    Proof_global.simple_with_current_proof (fun _ p  ->
-      Proof.unshelve (Proof.V82.grab_evars p))
-
-  let unfocus_if_done () =
-    let pf = Proof_global.give_me_the_proof () in
-    if Proof.is_done pf then
-      maximal_unfocus ()
 end
 
 (**
@@ -117,8 +111,7 @@ let interp_instr = function
   | MetaCoqInstr.MetaCoq_constr c -> MetaCoqRun.run_tac c
 
 let exec f =
-  ignore (Pfedit.by (f ()));
-  MetaCoqProofInfos.unfocus_if_done ()
+  ignore (Pfedit.by (f ()))
 
 (** Interpreter of a constr :
     - Interpretes the constr

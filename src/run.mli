@@ -16,6 +16,11 @@ module MetaCoqNames : sig
   val mkT_lazy : constr Lazy.t
 end
 
+module Goal : sig
+  val mkTheGoal : types -> constr -> Evd.evar_map -> Environ.env -> (Evd.evar_map * constr)
+  val evar_of_goal : Evd.evar_map -> Environ.env -> constr -> Evar.t option
+end
+
 (** DEBUG **)
 val run' :
   Environ.env * constr * Evd.evar_map * int ->

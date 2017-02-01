@@ -18,7 +18,8 @@ MProof.
     e <- Cevar _ [ahyp H None; ahyp y None; ahyp x None];
     exact e
   -}. (* misses z in the evar, but it still works, why? *)
-   exact I.
+  Unshelve.
+  exact I.
 Qed.
 
 Example ex3 : forall (x y: nat) (H: x>y), True.
@@ -39,5 +40,6 @@ MProof.
   -}.
   (* not a variable *)
   Fail Cevar _ [ahyp (x > y) None; ahyp y (Some x); ahyp x None].
+  Unshelve.
   exact I.
 Qed.

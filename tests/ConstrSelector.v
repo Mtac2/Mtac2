@@ -11,7 +11,7 @@ Definition get_constrs :=
       nu name None (fun x=>
         fill (P x)
       )
-    | _ =>print_term T;;
+    | _ =>
       l <- constrs T;
       let (_, l') := l in
       ret l'
@@ -65,8 +65,9 @@ Definition snth_indices (l:list dyn) (t:tactic) : selector := fun goals=>
     let ogoal := nth_error goals i in
     match ogoal with
     | Some g =>
-      newgoals <- open_and_apply (print_goal &> t) g;
-      ret (accu++newgoals)
+      newgoals <- open_and_apply t g;
+      let res := reduce (RedOnlyComplete [Dyn app]) (accu++newgoals) in
+      ret res
     | None => failwith "Wrong case"
     end) l goals.
 

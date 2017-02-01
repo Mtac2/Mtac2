@@ -65,10 +65,12 @@ open MetaCoqNames
 
 module Goal = struct
 
-  let goal = mkUConstr "goal"
+  let mkgoal = mkUConstr "goal"
+  let mkGoal = mkUConstr "Goal"
+  let mkAHyp = mkUConstr "AHyp"
 
   let mkTheGoal ty ev sigma env =
-    let sigma, tg = mkUConstr "Goal" sigma env in
+    let sigma, tg = mkGoal sigma env in
     sigma, mkApp (tg, [|ty;ev|])
 
   let mkAHypOrDef (name, odef, ty) body sigma env =
@@ -76,8 +78,32 @@ module Goal = struct
        the indices. we also replace the name with index 1 *)
     let body = replace_term (mkVar name) (mkRel 1) (Vars.lift 1 body) in
     let odef_coq = CoqOption.to_coq ty odef in
-    let sigma, ahyp = mkUConstr "AHyp" sigma env in
+    let sigma, ahyp = mkAHyp sigma env in
     sigma, mkApp (ahyp, [|ty; odef_coq; mkLambda(Name name,ty,body)|])
+
+  (* it assumes goal is of type goal *)
+  let evar_of_goal sigma env =
+    let rec eog goal =
+      let (c, args) = decompose_appvect goal in
+      if isConstruct c then
+        match get_constructor_pos c with
+        | 0 -> (* AGoal *)
+            let evar = whd_evar sigma args.(1) in
+            if isEvar evar then
+              Some (fst (destEvar evar))
+            else (* it is defined *)
+              None
+        | 1 -> (* AHyp *)
+            let func = args.(2) in
+            if isLambda func then
+              let (_, _, body) = destLambda func in
+              eog body
+            else
+              None
+        | _ -> failwith "Should not happen"
+      else
+        CErrors.error "Not a goal"
+    in eog
 
   let goal_of_evar (env:env) sigma ev =
     let open Context.Named in
@@ -1004,7 +1030,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
             let (c, sigma) = Pfedit.refine_by_tactic env sigma concl (Tacinterp.eval_tactic tac) in
             let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
             let new_undef = Evar.Set.elements new_undef in
-            let sigma, goal = Goal.goal sigma env in
+            let sigma, goal = Goal.mkgoal sigma env in
             let sigma, goals = CoqList.pto_coq goal (fun e sigma->Goal.goal_of_evar env sigma e) new_undef sigma in
             return sigma (CoqPair.mkPair concl goal c goals)
           with CErrors.UserError(s,ppm) ->

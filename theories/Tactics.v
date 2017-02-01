@@ -9,6 +9,8 @@ Require Import Strings.String.
 
 Local Set Universe Polymorphism.
 
+Notation "'RedOnlyComplete' l" := (RedStrong [RedBeta;RedFix;RedMatch;RedDeltaOnly l]) (at level 0).
+
 Definition CantCoerce : Exception. exact exception. Qed.
 
 (** [coerce x] coreces element [x] of type [A] into
@@ -281,7 +283,8 @@ Definition NoGoalsLeft : Exception. exact exception. Qed.
 Definition tactic_tactics (t:tactic) (l:list tactic) : tactic := fun g=>
   l' <- t g;
   ls <- gmap l l';
-  ret (concat ls).
+  let res := reduce (RedOnlyComplete [Dyn (@concat);Dyn (@List.app)]) (concat ls) in
+  ret res.
 
 Definition tactic_tactic (t u:tactic) : tactic := fun g=>
   l <- t g;
@@ -289,7 +292,8 @@ Definition tactic_tactic (t u:tactic) : tactic := fun g=>
     raise NoGoalsLeft
   else
     r <- mmap (open_and_apply u) l;
-    ret (concat r).
+    let res := reduce (RedOnlyComplete [Dyn (@concat);Dyn (@List.app)]) (concat r) in
+    ret res.
 
 (* Polymorphic CS are broken *)
 Monomorphic Structure semicolon (left_type compose_type : Type) := SemiColon {
@@ -423,7 +427,8 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
   case <- makecase c;
   case <- unfold_projection (elem case);
   exact case g;;
-  ret (List.map dyn_to_goal l).
+  let res := reduce (RedOnlyComplete [Dyn (@List.map); Dyn (@dyn_to_goal)]) (List.map dyn_to_goal l) in
+  ret res.
 
 (** Destructs the n-th hypotheses in the goal (counting from 0) *)
 Definition destructn (n : nat) : tactic := fun g=>
@@ -496,7 +501,7 @@ Definition constructor (n : nat) : tactic := fun g=>
   | S n =>
       l <- constrs A;
       match nth_error (snd l) n with
-        | Some x => apply (elem x) g
+        | Some (@Dyn A x) => apply x g
         | None => fail CantFindConstructor g
       end
   end.
@@ -507,7 +512,7 @@ Definition split : tactic := fun g=>
   A <- goal_type g;
   l <- constrs A;
   match snd l with
-  | [_] =>  constructor 1 g
+  | [_] => constructor 1 g
   | _ => raise Not1Constructor
   end.
 
@@ -857,20 +862,25 @@ Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
 Definition selector := list goal -> M (list goal).
 
 Definition snth n t : selector := fun l=>
-  let l1 := firstn (pred n) l in
-  let l2 := skipn n l in
+  let l1 := reduce (RedOnlyComplete [Dyn pred; Dyn (@firstn)]) (firstn (pred n) l) in
+  let l2 := reduce (RedOnlyComplete [Dyn pred; Dyn (@skipn)]) (skipn n l) in
   match nth_error l n with
   | None => raise NoGoalsLeft
   | Some g =>
     goals <- open_and_apply t g;
-    ret (l1 ++ goals ++ l2)%list
+    let res := reduce (RedOnlyComplete [Dyn (@List.app)]) (l1 ++ goals ++ l2)%list in
+    print_term res;;
+    ret res
   end.
 
-Definition slast t : selector := fun l=>snth (pred (List.length l)) t l.
+Definition slast t : selector := fun l=>
+  let n := reduce (RedOnlyComplete [Dyn pred; Dyn (@List.length)]) (pred (List.length l)) in
+  snth n t l.
 
 Definition sfirst t : selector := snth 0 t.
 
-Definition srev : selector := fun l=>ret (rev l).
+Definition srev : selector := fun l=>
+  let res := reduce (RedOnlyComplete [Dyn (@rev); Dyn (@app)]) (rev l) in ret res.
 
 Definition tactic_selector (t: tactic) (s: selector) : tactic :=
   fun g=> l <- t g; s l.

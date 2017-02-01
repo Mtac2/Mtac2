@@ -13,7 +13,8 @@ Abort.
 
 Example not_fail_not_var : 0 = 0.
 MProof.
-  destruct 0. reflexivity.
+  destruct 0.
+  - reflexivity.
 Abort.
 
 Example ex_destr (n:nat) : n = n.
@@ -82,6 +83,7 @@ Qed.
 Goal {x:nat & x > 0}.
 MProof.
   apply (existT _ 1 _).
+  Unshelve.
   hnf.
   apply le_n.
 Qed.
