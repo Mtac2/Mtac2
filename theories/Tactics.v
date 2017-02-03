@@ -661,9 +661,23 @@ Definition simpl_in_all : tactic := fun g=>
   | _ => raise exception (* should never happen *)
   end.
 
+Definition reduce_in r {P} (H: P) : tactic := fun g=>
+  l <- hypotheses;
+  l' <- mmap (fun hyp : Hyp =>
+    let (T, v, def) := hyp in
+    mif munify_cumul H v UniMatchNoRed then
+     let T' := reduce r T in ret (@ahyp T' v def)
+    else ret hyp) l;
+  gT <- goal_type g;
+  e <- Cevar gT l';
+  oeq <- munify (Goal e) g UniCoq;
+  match oeq with
+  | Some (eq_refl _) => ret [Goal e]
+  | _ => raise exception (* should never happen *)
+  end.
+
 Definition simpl_in {P} (H: P) : tactic :=
-  let P' := rsimpl P in
-  @change_hyp P P' H H.
+  reduce_in RedSimpl H.
 
 (** exists tactic *)
 Definition mexists {A} (x: A) : tactic := fun g=>
@@ -821,6 +835,9 @@ Definition unfold {A} (x: A) : tactic := fun g=>
   ng <- evar gT';
   exact ng g;;
   ret [Goal ng].
+
+Definition unfold_in {A B} (x: A) (h: B) : tactic :=
+  reduce_in (RedOnlyComplete [Dyn x]) h.
 
 Monomorphic Fixpoint intros_simpl (l: list string) : tactic :=
   match l with
