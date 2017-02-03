@@ -10,22 +10,28 @@ Qed.
 Goal forall x, 0 <= x.
 MProof.
   H <- get_reference "Peano.le_0_n";
-  exact H.(elem).
-Fail Qed.
+  match H with
+  | Dyn e => exact e
+  end.
+Qed.
 
 Goal forall x, 0 <= x.
 MProof.
   H <- get_reference "Coq.Init.Peano.le_0_n";
-  apply H.(elem).
-Fail Qed.
+  match H with
+  | Dyn e => apply e
+  end.
+Qed.
 
 Definition myle0n := le_0_n.
 
 Goal forall x, 0 <= x.
 MProof.
   H <- get_reference "myle0n";
-  apply H.(elem).
-Fail Qed.
+  match H with
+  | Dyn e => apply e
+  end.
+Qed.
 
 Goal forall x, 0 <= x -> 0 <= x.
 MProof.

@@ -282,9 +282,9 @@ MProof.
   destructn 0.
   - destructn 1.
     + Fail destructn 0.
-      destruct b2&> reflexivity.
-    + destruct b2&> reflexivity.
-  - introsn 2&> reflexivity.
+      select bool destruct &> reflexivity.
+    + select bool destruct &> reflexivity.
+  - introsn 2 &> reflexivity.
 Qed.
 
 (* clear *)
@@ -319,7 +319,7 @@ Qed.
 Goal forall (x y z : nat) (H: x = y), y = x.
 MProof.
   intros.
-  rewrite H.
+  select (_ = _) (fun x=>rewrite x).
   reflexivity.
 Qed.
 
@@ -332,12 +332,7 @@ Qed.
 
 Goal forall x : bool, true = x.
 MProof.
-  (* this fails with error "Parameter appears in returned value"
-     because reflexivity is throwing an exception containing
-     the variable introduced. If we remove the arguments from the
-     exception, then the message will be cryptic, but at the same
-     time this message is completely cryptic! *)
-  Fail tryt (intros&> reflexivity).
+  try (intros &> reflexivity).
 Abort.
 
 Goal forall x y : bool, x = y -> y = x.
@@ -363,7 +358,8 @@ MProof.
   trivial.
 Qed.
 
-Goal forall x:nat, False -> x = 0.
+
+Goal forall x:nat, forall y:nat, False -> x = 0.
 MProof.
   (** trivial is just testing that if it does not solve the goal, the goal is still there *)
   trivial&> intros&> contradiction.
@@ -392,9 +388,9 @@ Qed.
 
 Example intros_def': let x := 0 in forall y, x <= y.
 MProof.
-  intros.
+  intros x y.
   Ltac ind x :=induction x.
-  ltac "mctacticstests.ind" [Dyn y]&>((fun g=>print_term g;; apply le_0_n g):tactic).
+  ltac "mctacticstests.ind" [Dyn y]&> apply le_0_n.
 Qed.
 
 Example test_unfold : id 0 = 0.

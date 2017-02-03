@@ -25,3 +25,5 @@ Definition testex4 : ex4 = ex4l := eq_refl.
 Definition ex5_eval := fun x y:nat=>eval (ret (x + y)).
 
 Definition testex5 : ex5_eval = ex4plain := eq_refl.
+
+End test.

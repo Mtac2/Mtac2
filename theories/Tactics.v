@@ -205,6 +205,19 @@ Definition open_and_apply (t : tactic) : tactic :=
         open (f x) >> let_close_goals x)
     end.
 
+(** given a string s it appends a marker to avoid collition with user
+    provided names *)
+Definition anonymize s :=
+  let s' := rcbv ("__"++s) in
+  ret s'.
+
+(** Introduces an anonymous name based on a binder *)
+Definition intro_anonymous {A} (T: A) f (g: goal) : M goal :=
+  name <- get_binder_name T;
+  axn <- anonymize name;
+  axn <- f axn;
+  intro_simpl axn g >> hd_exception.
+
 (** Introduces all hypotheses. Does not fail if there are 0. *)
 Definition intros_all : tactic :=
   mfix1 f (g : goal) : M (list goal) :=
@@ -212,19 +225,13 @@ Definition intros_all : tactic :=
       match g return M (list goal) with
       | @Goal T e =>
         mtry
-          xn <- get_binder_name T;
-          r <- intro_simpl xn g;
-          g <- hd_exception r;
-          f g
+          intro_anonymous T mid g >> f
         with WrongTerm =>
           ret [g]
         | NotAProduct =>
           ret [g]
         | [? s] NameExistsInContext s =>
-          xn <- fresh_binder_name T;
-          r <- intro_simpl xn g;
-          g <- hd_exception r;
-          f g
+          intro_anonymous T fresh_name g >> f
         end
       | _ => raise NotAGoal
       end) g.
@@ -238,16 +245,10 @@ Definition introsn : nat -> tactic :=
       | (0, g) => ret [g]
       | (S n', @Goal T e) =>
         mtry
-          xn <- get_binder_name T;
-          r <- intro_simpl xn g;
-          g <- hd_exception r;
-          f n' g
+          intro_anonymous T mid g >> f n'
         with WrongTerm => raise NotAProduct
         | [? s] NameExistsInContext s =>
-          xn <- get_binder_name T;
-          r <- intro_simpl xn g;
-          g <- hd_exception r;
-          f n' g
+          intro_anonymous T fresh_name g >> f n'
         end
       | (_, _) => failwith "Should never get here"
       end) g.

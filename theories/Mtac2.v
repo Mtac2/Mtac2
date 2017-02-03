@@ -422,32 +422,25 @@ Definition names_of_hyp : M (list string) :=
   fold_left (fun (ns:M (list string)) (h:Hyp)=>
     let (_, var, _) := h in
     n <- get_binder_name var;
-    r <- ns; ret (n::r)) env (ret [])
-  .
+    r <- ns; ret (n::r)) env (ret []).
+
+Definition dec_bool {P} (x : {P}+{~P}) : bool :=
+  match x with
+  | left _ => true
+  | _ => false
+  end.
 
 Definition fresh_name (name: string) : M string :=
   names <- names_of_hyp;
   let find name : M bool :=
-    let f := reduce RedNF (
-      fold_left (fun (found: M bool) (n: string)=>
-        b <- found;
-        if b then
-          ret true
-        else
-         munify_cumul name n UniMatchNoRed
-        ) names (ret false))
-    in
-    f
+    let res := reduce RedNF (find (fun n => dec_bool (string_dec name n)) names) in
+    match res with None => ret false | _ => ret true end
   in
-  b <- find name;
-  if b then
-    (mfix2 f (name: string) (i: string) : M string :=
-      let name := reduce RedNF (name ++ i) in
-      b <- find name;
-      if b then f name i
-      else ret name) name "_"
-  else
-    ret name.
+  (mfix1 f (name: string) : M string :=
+     mif find name then
+       let name := reduce RedNF (name++"_") in
+       f name
+     else ret name) name.
 
 Definition fresh_binder_name {A} (t: A) : M string :=
   name <- mtry get_binder_name t with WrongTerm=> ret "x" end;
@@ -457,4 +450,5 @@ Definition unfold_projection {A} (t: A) : M A :=
   let x := rone_step t in
   let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in ret x.
 
+Definition mid {A} (x: A) := ret x.
 End GeneralUtilities.
