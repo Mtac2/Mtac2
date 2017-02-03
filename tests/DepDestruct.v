@@ -1,7 +1,25 @@
 From MetaCoq
 Require Export MetaCoq DepDestruct.
 
+Goal forall n, 0 <= n.
+MProof.
+  intros n.
+  new_destruct n.
+Abort.
+
 Section Bugs.
+
+(* It is not allowing indices to be definitions, it seems *)
+Goal forall n, n = S n -> False.
+MProof.
+  intros n H.
+  Fail new_destruct H. (* fine, all indices need to be var *)
+  pose (j := S n).
+  assert (eq : j = S n) |1> reflexivity.
+  move_back H (rewrite <- eq).
+  intro H. (* now H has only indices *)
+  Fail new_destruct H. (* cannot abstract non variable S n *)
+Abort.
 
 (** BUG: It fails with one constructor types, but not with two *)
 Inductive one_constr : Prop :=
@@ -37,6 +55,14 @@ Section ExampleReflect.
   Inductive reflect (P :Prop) : bool -> Type :=
   | RTrue : P -> reflect P true
   | RFalse : ~P -> reflect P false.
+
+Goal forall P b, reflect P b -> P <-> b = true.
+MProof.
+  intros P b r.
+  new_destruct r.
+  - intro xP &> split &> [reflexivity; intros &> assumption].
+  - intro nxP &> split &> [intros &> contradiction; intros &> discriminate].
+Qed.
 
   Example reflect_reflect P : ITele (SType) := iTele (fun b=>@iBase SType (reflect P b)).
 
@@ -134,19 +160,6 @@ Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
   end.
 
 
-(** FOR JANNO *)
-Goal forall P b, reflect P b -> P <-> b = true.
-MProof.
-  intros P b r.
-  new_destruct r.
-Abort.
-
-Goal forall n, 0 <= n.
-MProof.
-  intros n.
-  new_destruct n.
-Abort.
-
 Import TacticOverload.
 
 (* MetaCoq version *)
@@ -158,7 +171,7 @@ MProof.
   assert (T : get_type_of_branch rG (reflect_RTrue P)).
   { simpl. cintros x {- Tactics.split&> [cintros xP {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
   assert (F : get_type_of_branch rG (reflect_RFalse P)).
-  { simpl. intros. Tactics.split. intros. exact (match a x with end). intros&> discriminate. }
+  { simpl. intros. Tactics.split. intros. select (~ _) (fun a=>select P (fun x=>exact (match a x with end))). intros&> discriminate. }
   mpose (return_type := unfold_funs (RTele_Fun rG) 5).
   pose (mc :=
           makecase {|
@@ -167,8 +180,15 @@ MProof.
               case_branches := (Dyn T) :: (Dyn F) :: nil
             |}).
   let mc := reduce RedNF mc in r <- mc; pose (c := r).
-  exact (elem c).
-Qed.
+  clear mc.
+  unfold_in (@get_type_of_branch) T. simpl_in T.
+  unfold_in (@get_type_of_branch) F. simpl_in F.
+  clear return_type.
+  clear rG.
+  match c with
+  | Dyn c => exact c
+  end.
+Abort.
 
 
 End ExampleReflect.

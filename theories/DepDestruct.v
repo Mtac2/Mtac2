@@ -13,13 +13,13 @@ Import ListNotations.
 Definition abs {A} {P} (x:A) (t:P x) :=
   let y := reduce RedHNF x in abs_fun y t.
 
-Notation RedMatch := (RedWhd [RedIota]).
+Notation redMatch := (reduce (RedWhd [RedMatch])).
 
 (** [match_eq E P A] takes an equality of [T = S] and an element [A]
     of type [T], and returns [A] casted to [P S], but without any match
     (it reduces it). *)
 Notation match_eq E P A :=
-  (reduce RedMatch match E in _ = R return P R with eq_refl => A end).
+  (redMatch match E in _ = R return P R with eq_refl => A end).
 
 (** A polymorphic function that returns the type of an element. *)
 Polymorphic Definition type_of@{tof} {A : Type@{tof}} (x : A) : Type@{tof} := A.
@@ -173,6 +173,8 @@ Polymorphic Fixpoint RTele_Fun {isort} {it : ITele isort} {rsort} (rt : RTele rs
   | rTele rt => fun t => (RTele_Fun (rt t))
   end.
 
+Notation reduce_novars := (reduce (RedStrong [RedBeta;RedMatch;RedFix;RedDeltaC;RedZeta])).
+
 (* We need to handle Prop (maybe) *)
 Polymorphic Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (args : ATele it) (G : stype_of rsort) :
   selem_of (ITele_App args) -> M (RTele rsort it) :=
@@ -248,9 +250,8 @@ Polymorphic Program Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn
 Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (CTele it) :=
   fun isort it nindx =>
     mfix2 rec (A : stype_of isort) (a : selem_of A) : M (CTele it) :=
-      let Ty := type_of A in
       B <- evar Type;
-      F <- evar (B -> Ty);
+      F <- evar (B -> stype_of isort);
       oH <- munify A (ForAll F) UniCoq;
       match oH with
       | Some H =>
@@ -261,9 +262,10 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
           f' <- abs b r;
           ret (cProd f'))
       | None =>
+        let Ty := stype_of isort in
         H <- unify_or_fail B Ty;
-        let idB := match_eq H (fun T=>B->T) (fun x=>x) in
-        unify_or_fail F idB;;
+        let idB : B -> Ty := match_eq H (fun T=>B->T) (fun x=>x) in
+        cumul_or_fail F idB;;
         let A_red := reduce RedHNF A in (* why the reduction here? *)
         args <- args_of_max nindx (Dyn A_red);
         atele <- get_ATele it args;
@@ -369,5 +371,4 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
                      |};
           let gterm := dyn_to_goal caseterm in
           unify_or_fail gterm g;;
-          ret goals
-.
+          ret goals.
