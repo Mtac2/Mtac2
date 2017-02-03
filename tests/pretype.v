@@ -20,3 +20,8 @@ Definition ex4plain := fun x y:nat=>x + y.
    is a bug in Coq. For the moment we take it as if that is the
    expected behavior.  *)
 Definition testex4 : ex4 = ex4l := eq_refl.
+
+(* We do what must be done: rewrite x to be x0 *)
+Definition ex5_eval := fun x y:nat=>eval (ret (x + y)).
+
+Definition testex5 : ex5_eval = ex4plain := eq_refl.
