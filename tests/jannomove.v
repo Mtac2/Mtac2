@@ -47,7 +47,8 @@ fix loop (l : LIP) (a : A) {struct l} : M A :=
 
 Ltac done := intros; tauto || trivial || assumption || reflexivity.
 
-Definition done := ltac "Top.done" [ ]%list.
+Definition NotDone : Exception. exact exception. Qed.
+Definition done := ltac "Top.done" [ ]%list or (fail NotDone).
 
 Fixpoint do_intro lip : tactic :=
   match lip with
@@ -99,3 +100,8 @@ Goal forall x y z : nat, x = y -> x + z = y + z.
 MProof.
   do_intro '\x y z <l //.
 Qed.
+
+Goal forall x y z : nat, x + z = y + z.
+MProof.
+  Fail do_intro '\x y z //.
+Abort.
