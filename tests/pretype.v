@@ -12,5 +12,11 @@ Variable x : nat.
 
 Definition ex4 := fun x y:nat=>ltac:(mrun (ret (x + y))).
 
-(* It is interpreting that the x comes from the Variable *)
-Definition testex4 : ex4 = (fun x y:nat=>x + y) := eq_refl.
+Definition ex4l := fun x y:nat=>ltac:(exact (x + y)).
+
+Definition ex4plain := fun x y:nat=>x + y.
+
+(* It is interpreting that the x comes from the Variable. That
+   is a bug in Coq. For the moment we take it as if that is the
+   expected behavior.  *)
+Definition testex4 : ex4 = ex4l := eq_refl.
