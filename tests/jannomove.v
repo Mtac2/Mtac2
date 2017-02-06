@@ -48,7 +48,7 @@ fix loop (l : LIP) (a : A) {struct l} : M A :=
 Ltac done := intros; tauto || trivial || assumption || reflexivity.
 
 Definition NotDone : Exception. exact exception. Qed.
-Definition done := ltac "Top.done" [ ]%list or (fail NotDone).
+Definition done := ltac "jannomove.done" [ ]%list or (fail NotDone).
 
 Fixpoint do_intro lip : tactic :=
   match lip with

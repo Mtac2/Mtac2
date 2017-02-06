@@ -11,14 +11,14 @@ Definition induction {A} (n:A) : tactic := ltac (qualify "induction") [Dyn n].
 
 Goal forall n:nat, 0 <= n.
 MProof.
-  intros.
+  intros n.
   induction n &> [apply le_n; apply le_S&> assumption].
 Qed.
 
 
 Goal forall m n:nat, 0 <= n.
 MProof.
-  intros.
+  intros m n.
   (* m shouldn't be in the list of hypotheses, as it is shared *)
   (fun g=>r <- induction n g;
    match r with

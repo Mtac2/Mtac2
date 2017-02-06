@@ -124,8 +124,8 @@ Example trans_eq_example' : forall (a b c d e f : nat),
      [c;d] = [e;f] ->
      [a;b] = [e;f].
 MProof.
-  intros.
-  apply (trans_eq mwhere "y":=[c;d]) &> assumption.
+  intros a b c d e f.
+  apply (trans_eq mwhere "y":=[c;d]).
 Qed.
 
 Notation "x ?" := (ltac:(mrun (apply x))) (at level 0).
