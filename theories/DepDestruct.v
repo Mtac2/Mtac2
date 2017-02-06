@@ -4,8 +4,8 @@ Import MtacNotations.
 Import TacticsNotations.
 
 Require Import Strings.String.
-Require Import Lists.List.
-Import ListNotations.
+Require Import MetaCoq.Plist.
+Import PlistNotations.
 
 (** This is the [abs] from [MetaCoq] but first reducing the variable
     [x] (in case it is [id x] or some convertible term to a variable)
@@ -214,12 +214,12 @@ Polymorphic Fixpoint get_type_of_branch {isort} {rsort} {it : ITele isort} (rt :
 
 (* Get exactly `max` many arguments *)
 Definition NotEnoughArguments : Exception. exact exception. Qed.
-Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
+Fixpoint args_of_max (max : nat) : dyn -> M (plist dyn) :=
     match max with
-    | 0 => fun _ => ret nil
+    | 0 => fun _ => ret []
     | S max => fun d=>
       mmatch d with
-      | [? T Q (t : T) (f : T -> Q)] Dyn (f t) => r <- args_of_max max (Dyn f); ret (app r (Dyn t :: nil))
+      | [? T Q (t : T) (f : T -> Q)] Dyn (f t) => r <- args_of_max max (Dyn f); ret (app r (Dyn t :: []))
                                                                            | _ =>
         T <- evar Type;
         P <- evar (T -> Type);
@@ -228,7 +228,7 @@ Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
         let el := rhnf (d.(elem)) in
         b <- munify_cumul el (f t) UniCoq;
         if b then
-          r <- args_of_max max (Dyn f); ret (app r (Dyn t :: nil))
+          r <- args_of_max max (Dyn f); ret (app r (Dyn t :: []))
         else
           raise NotEnoughArguments
       end
@@ -236,9 +236,9 @@ Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
 
 (** Given a inductive described in [it] and a list of elements [al],
     it returns the [ATele] describing the applied version of [it] with [al]. *)
-Polymorphic Program Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn) {struct al} : M (ATele it) :=
+Polymorphic Program Fixpoint get_ATele {isort} (it : ITele isort) (al : plist dyn) {struct al} : M (ATele it) :=
     match it as it', al return M (ATele it') with
-    | iBase T, nil => ret (@aBase _ T)
+    | iBase T, [] => ret (@aBase _ T)
     | iTele f, t_dyn :: al =>
       (* We coerce the type of the element in [t_dyn] to match that expected by f *)
       t <- coerce (elem t_dyn);
@@ -306,7 +306,7 @@ Polymorphic Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT I
     end.
 
 Polymorphic Definition get_ind {A : Type} (n : A) :
-  M (nat * sigT (fun s => (ITele s)) * list dyn) :=
+  M (nat * sigT (fun s => (ITele s)) * plist dyn) :=
   r <- constrs A;
   let (indP, constrs) := r in
   sortit <- get_ITele (elem indP) : M (nat * sigT ITele);
@@ -316,7 +316,7 @@ Polymorphic Definition get_ind {A : Type} (n : A) :
 
 (* Compute ind type ATele *)
 Polymorphic Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) :=
-  indlist <- args_of_max nindx (Dyn A) : M (list dyn);
+  indlist <- args_of_max nindx (Dyn A) : M (plist dyn);
   atele <- get_ATele it indlist : M (ATele it);
   ret atele.
 

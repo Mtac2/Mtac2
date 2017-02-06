@@ -12,6 +12,7 @@ src/metaCoqInterp.ml
 src/metaCoqInterp.mli
 src/metaCoqTactic.ml4
 src/MetaCoqPlugin.mllib
+theories/Plist.v
 theories/Mtac2.v
 theories/ListUtils.v
 theories/Tactics.v
