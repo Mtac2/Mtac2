@@ -256,16 +256,16 @@ Bind Scope Mtac_scope with Mtac.
 Delimit Scope Mtac_scope with MC.
 Open Scope Mtac_scope.
 
-Notation "'M'" := Mtac : type_scope.
+Notation M := Mtac.
 
 Notation RedAll := ([RedBeta;RedDelta;RedZeta;RedMatch;RedFix]).
 Notation RedNF := (RedStrong RedAll).
 Notation RedHNF := (RedWhd RedAll).
 
-Notation "'rsimpl'" := (reduce RedSimpl).
-Notation "'rhnf'" := (reduce RedHNF).
-Notation "'rcbv'" := (reduce RedNF).
-Notation "'rone_step'" := (reduce RedOneStep).
+Notation rsimpl := (reduce RedSimpl).
+Notation rhnf := (reduce RedHNF).
+Notation rcbv := (reduce RedNF).
+Notation rone_step := (reduce RedOneStep).
 
 Notation "r '<-' t1 ';' t2" := (@bind _ _ t1 (fun r=> t2%MC))
   (at level 81, right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : Mtac_scope.
