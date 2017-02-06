@@ -1,15 +1,15 @@
 Require Import Strings.String.
 From MetaCoq Require Export Mtac2.
-Require Import MetaCoq.ListUtils.
-Require Import Lists.List.
+From MetaCoq Require Import Plist ListUtils.
 Import MtacNotations.
-Import ListNotations.
+Import PlistNotations.
 
 Require Import Strings.String.
 
 Local Set Universe Polymorphism.
 
-Notation "'dreduce' ( l1 , .. , ln )" := (reduce (RedStrong [RedBeta;RedFix;RedMatch;RedDeltaOnly (Dyn (@l1) :: .. (Dyn (@ln) :: nil) ..)])) (at level 0).
+Notation "'dreduce' ( l1 , .. , ln )" :=
+  (reduce (RedStrong [RedBeta;RedFix;RedMatch;RedDeltaOnly (Dyn (@l1) :: .. (Dyn (@ln) :: pnil) ..)])) (at level 0).
 
 Definition CantCoerce : Exception. exact exception. Qed.
 
@@ -24,7 +24,7 @@ Definition coerce {A B : Type} (x : A) : M B :=
   end.
 
 (** The type for tactics *)
-Definition tactic := goal -> M (list goal).
+Definition tactic := goal -> M (plist goal).
 
 (** Executing a tactic in Mtac. It is called by
     the MProof environment. *)
@@ -80,24 +80,24 @@ Definition cumul_or_fail {A B} (x: A) (y: B) : M unit :=
 
 Definition exact {A} (x:A) : tactic := fun g=>
   match g with
-  | Goal g => cumul_or_fail x g;; ret nil
+  | Goal g => cumul_or_fail x g;; ret []
   | _ => raise NotAGoal
   end.
 
 Definition try (t:tactic) : tactic := fun g=>
-  mtry t g with _ => ret ( g :: nil) end.
+  mtry t g with _ => ret ( g :: []) end.
 
 Definition or (t u : tactic) : tactic := fun g=>
   mtry t g with _ => u g end.
 
 (** [close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] to each of them. *)
-Definition close_goals {A} (x:A) : list goal -> M (list goal) :=
+Definition close_goals {A} (x:A) : plist goal -> M (plist goal) :=
   mmap (fun g'=>r <- abs_fun x g'; ret (@AHyp A None r)).
 
 (** [let_close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] with its definition to each of them (it assumes it is defined). *)
-Definition let_close_goals {A} (x: A) : list goal -> M (list goal) :=
+Definition let_close_goals {A} (x: A) : plist goal -> M (plist goal) :=
   let t := rone_step x in (* to obtain x's definition *)
   mmap (fun g':goal=>
           r <- abs_fun x g';
@@ -111,7 +111,7 @@ Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
     arguments. For instance, [decompose (3 + 3)] returns
     [(Dyn add, [Dyn 3; Dyn 3])] *)
 Definition decompose {A} (x: A) :=
-  (mfix2 f (d : dyn) (args: list dyn) : M (dyn * list dyn)%type :=
+  (mfix2 f (d : dyn) (args: plist dyn) : M (dyn * plist dyn)%type :=
     mmatch d with
     | [? A B (t1: A -> B) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :: args)
     | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :: args)
@@ -143,7 +143,7 @@ Definition NotAProduct : Exception. exact exception. Qed.
     in the context and executes [t n].
     Raises [NotAProduct] if the goal is not a product or a let-binding. *)
 Definition intro_base {A} (var : string) (t: A->tactic) : tactic := fun g=>
-  mmatch g return M list goal with
+  mmatch g return M plist goal with
   | [? B (def: B) P e] @Goal (let x := def in P x) e =n>
     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
     eqBA <- unify_or_fail B A;
@@ -186,7 +186,7 @@ Fixpoint is_open (g : goal) : M bool :=
   end.
 
 (** removes the goals that were solved *)
-Definition filter_goals : list goal -> M (list goal) := mfilter is_open.
+Definition filter_goals : plist goal -> M (plist goal) := mfilter is_open.
 
 (** [open_and_apply t] is a tactic that "opens" the current goal
     (pushes all the hypotheses in the context) and applies tactic [t]
@@ -220,9 +220,9 @@ Definition intro_anonymous {A} (T: A) f (g: goal) : M goal :=
 
 (** Introduces all hypotheses. Does not fail if there are 0. *)
 Definition intros_all : tactic :=
-  mfix1 f (g : goal) : M (list goal) :=
+  mfix1 f (g : goal) : M (plist goal) :=
     open_and_apply (fun g =>
-      match g return M (list goal) with
+      match g return M (plist goal) with
       | @Goal T e =>
         mtry
           intro_anonymous T mid g >>= f
@@ -239,7 +239,7 @@ Definition intros_all : tactic :=
 (** Introduces up to n binders. Throws [NotAProduct] if there
     aren't enough products in the goal.  *)
 Definition introsn : nat -> tactic :=
-  mfix2 f (n : nat) (g : goal) : M (list goal) :=
+  mfix2 f (n : nat) (g : goal) : M (plist goal) :=
     open_and_apply (fun g =>
       match (n, g) with
       | (0, g) => ret [g]
@@ -257,7 +257,7 @@ Definition introsn : nat -> tactic :=
 Definition prim_reflexivity : tactic := fun g=>
   A <- evar Type;
   x <- evar A;
-  unify_or_fail g (Goal (eq_refl x));; ret nil.
+  unify_or_fail g (Goal (eq_refl x));; ret [].
 
 (** Fist introduces the hypotheses and then applies reflexivity *)
 Definition reflexivity : tactic := fun g=>
@@ -265,10 +265,10 @@ Definition reflexivity : tactic := fun g=>
   g <- hd_exception l;
   open_and_apply prim_reflexivity g.
 
-Definition NotSameSize (l : list tactic) (l' : list goal) : Exception. exact exception. Qed.
-Fixpoint gmap (funs : list tactic) (ass : list goal) : M (list (list goal)) :=
+Definition NotSameSize (l : plist tactic) (l' : plist goal) : Exception. exact exception. Qed.
+Fixpoint gmap (funs : plist tactic) (ass : plist goal) : M (plist (plist goal)) :=
   match funs, ass with
-  | nil, nil => ret nil
+  | [], [] => ret []
   | f::funs', g::ass' =>
     fa <- open_and_apply f g;
     rest <- gmap funs' ass';
@@ -276,15 +276,15 @@ Fixpoint gmap (funs : list tactic) (ass : list goal) : M (list (list goal)) :=
   | l, l' => raise (NotSameSize l l')
   end.
 
-Definition is_empty {A} (l: list A) :=
+Definition is_empty {A} (l: plist A) :=
   match l with [] => true | _ => false end.
 
 Definition NoGoalsLeft : Exception. exact exception. Qed.
 
-Definition tactic_tactics (t:tactic) (l:list tactic) : tactic := fun g=>
+Definition tactic_tactics (t:tactic) (l:plist tactic) : tactic := fun g=>
   l' <- t g;
   ls <- gmap l l';
-  let res := dreduce (concat, List.app) (concat ls) in
+  let res := dreduce (concat, @Plist.app) (concat ls) in
   ret res.
 
 Definition tactic_tactic (t u:tactic) : tactic := fun g=>
@@ -293,7 +293,7 @@ Definition tactic_tactic (t u:tactic) : tactic := fun g=>
     raise NoGoalsLeft
   else
     r <- mmap (open_and_apply u) l;
-    let res := dreduce (concat, @List.app) (concat r) in
+    let res := dreduce (concat, @Plist.app) (concat r) in
     ret res.
 
 (* Polymorphic CS are broken *)
@@ -348,7 +348,7 @@ Definition copy_ctx {A} (B : A -> Type) :=
     | _ => print_term A;; raise (SomethingNotRight d)
     end.
 
-Definition hyps_except {A} (x : A) : M (list Hyp) :=
+Definition hyps_except {A} (x : A) : M (plist Hyp) :=
   l <- hypotheses;
   mfilter (fun y=>mmatch y with
     | [? b] ahyp x b => ret false
@@ -364,7 +364,7 @@ Definition find_hyp_index {A} (x : A) : M (option nat) :=
 
 Definition type_of {A} (x:A) : Type := A.
 
-Fixpoint but_last {A} (l : list A) : list A :=
+Fixpoint but_last {A} (l : plist A) : plist A :=
   match l with
   | [] => []
   | [a] => []
@@ -429,7 +429,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
   case <- makecase c;
   case <- unfold_projection (elem case);
   exact case g;;
-  let res := dreduce (List.map, dyn_to_goal) (List.map dyn_to_goal l) in
+  let res := dreduce (Plist.map, dyn_to_goal) (Plist.map dyn_to_goal l) in
   ret res.
 
 (** Destructs the n-th hypotheses in the goal (counting from 0) *)
@@ -449,12 +449,12 @@ Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 
 Definition apply {T} (c : T) : tactic := fun g=>
   match g with Goal eg =>
-    (mfix1 app (d : dyn) : M (list goal) :=
+    (mfix1 app (d : dyn) : M (plist goal) :=
       let (_, el) := d in
       mif munify_cumul el eg UniCoq then
         ret []
       else
-        mmatch d return M (list goal) with
+        mmatch d return M (plist goal) with
         | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- evar T1;
           r <- app (Dyn (f e));
@@ -552,7 +552,7 @@ Definition DoesNotMatchGoal : Exception. exact exception. Qed.
 Definition NoPatternMatchesGoal : Exception. exact exception. Qed.
 
 Fixpoint match_goal_pattern'
-    (u : Unification) (p : goal_pattern) : list Hyp -> list Hyp -> tactic :=
+    (u : Unification) (p : goal_pattern) : plist Hyp -> plist Hyp -> tactic :=
   fix go l1 l2 g :=
   match p, l2 with
   | gbase P t, _ =>
@@ -564,7 +564,7 @@ Fixpoint match_goal_pattern'
     match oeqCA with
     | Some eqCA =>
       let a' := rcbv match eq_sym eqCA with eq_refl => a end in
-      mtry match_goal_pattern' u (f a') [] (List.rev_append l1 l2')%list g
+      mtry match_goal_pattern' u (f a') [] (Plist.rev_append l1 l2')%list g
       with DoesNotMatchGoal =>
         go (ahyp a d :: l1) l2' g
       end
@@ -576,9 +576,9 @@ Fixpoint match_goal_pattern'
   end.
 
 Definition match_goal_pattern (u : Unification) (p : goal_pattern) : tactic := fun g=>
-  r <- hypotheses; match_goal_pattern' u p [] (List.rev' r) g.
+  r <- hypotheses; match_goal_pattern' u p [] (Plist.rev' r) g.
 
-Fixpoint match_goal_base (u : Unification) (ps : list goal_pattern) : tactic := fun g =>
+Fixpoint match_goal_base (u : Unification) (ps : plist goal_pattern) : tactic := fun g =>
   match ps with
   | [] => raise NoPatternMatchesGoal
   | p :: ps' =>
@@ -586,7 +586,7 @@ Fixpoint match_goal_base (u : Unification) (ps : list goal_pattern) : tactic := 
     with DoesNotMatchGoal => match_goal_base u ps' g end
   end.
 
-Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
+Definition ltac (t : string) (args : plist dyn) : tactic := fun g=>
   d <- goal_to_dyn g;
   let (ty, el) := d in
   v <- @call_ltac ty t args;
@@ -607,7 +607,7 @@ Definition destruct_all (T : Type) : tactic := fun g=>
     let (Th, _, _) := h in
     r <- munify Th T UniCoq;
     ret (option_to_bool r)) l;
-  (fix f (l : list Hyp) : tactic :=
+  (fix f (l : plist Hyp) : tactic :=
     match l with
     | [] => idtac
     | (ahyp x _ :: l) => tactic_tactic (destruct x) (f l)
@@ -798,7 +798,7 @@ Definition fix_tac (f : string) (n : N) : tactic := fun g=>
     (it should only generate at most 1 subgoal), until no
     changes or no goal is left. *)
 Definition repeat (t : tactic) : tactic := fun g=>
-  (mfix1 f (g : goal) : M (list goal) :=
+  (mfix1 f (g : goal) : M (plist goal) :=
     r <- try t g; (* if it fails, the execution will stop below *)
     match r with
     | [] => ret []
@@ -863,13 +863,13 @@ Definition unfold {A} (x: A) : tactic := fun g=>
 Definition unfold_in {A B} (x: A) (h: B) : tactic :=
   reduce_in (RedStrong [RedBeta; RedMatch; RedFix; RedDeltaOnly [Dyn x]]) h.
 
-Fixpoint intros_simpl (l: list string) : tactic :=
+Fixpoint intros_simpl (l: plist string) : tactic :=
   match l with
   | [] => idtac
   | (n :: l) => tactic_tactic (intro_simpl n) (intros_simpl l)
   end.
 
-Fixpoint name_pattern (l: list (list string)) : list tactic :=
+Fixpoint name_pattern (l: plist (plist string)) : plist tactic :=
   match l with
   | [] => []
   | (ns :: l) => intros_simpl ns :: name_pattern l
@@ -902,9 +902,9 @@ Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
   ) (Dyn c).
 
 (** Type for goal manipulation primitives *)
-Definition selector := list goal -> M (list goal).
+Definition selector := plist goal -> M (plist goal).
 
-Fixpoint nsplit {A} (n : nat) (l : list A) : list A * list A :=
+Fixpoint nsplit {A} (n : nat) (l : plist A) : plist A * plist A :=
   match n, l with
   | 0, l => ([], l)
   | S n', (x :: l') =>
@@ -919,18 +919,18 @@ Definition snth (n : nat) (t : tactic) : selector := fun l=>
   | None => raise NoGoalsLeft
   | Some g =>
     goals <- open_and_apply t g;
-    let res := dreduce (@List.app) (l1 ++ goals ++ l2)%list in
+    let res := dreduce (@Plist.app) (l1 ++ goals ++ l2)%plist in
     ret res
   end.
 
 Definition slast (t : tactic) : selector := fun l=>
-  let n := dreduce (pred, List.length) (pred (List.length l)) in
+  let n := dreduce (pred, Plist.length) (pred (Plist.length l)) in
   snth n t l.
 
 Definition sfirst (t : tactic) : selector := snth 0 t.
 
 Definition srev : selector := fun l=>
-  let res := dreduce (rev', rev_append, app) (rev' l) in ret res.
+  let res := dreduce (rev', rev_append, @app) (rev' l) in ret res.
 
 Definition tactic_selector (t: tactic) (s: selector) : tactic :=
   fun g=> l <- t g; l' <- filter_goals l; s l'.
@@ -991,10 +991,10 @@ Notation "[[ x .. y |- ps ] ] => t" :=
 Delimit Scope match_goal_pattern_scope with match_goal_pattern.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
-  ((@cons goal_pattern p1%match_goal_pattern (.. (@cons goal_pattern pn%match_goal_pattern nil) ..)))
+  ((@pcons goal_pattern p1%match_goal_pattern (.. (@pcons goal_pattern pn%match_goal_pattern pnil) ..)))
     (at level 91, p1 at level 210, pn at level 210) : match_goal_with_scope.
 Notation "'with' p1 | .. | pn 'end'" :=
-  ((@cons goal_pattern p1%match_goal_pattern (.. (@cons goal_pattern pn%match_goal_pattern nil) ..)))
+  ((@pcons goal_pattern p1%match_goal_pattern (.. (@pcons goal_pattern pn%match_goal_pattern pnil) ..)))
     (at level 91, p1 at level 210, pn at level 210) : match_goal_with_scope.
 
 Delimit Scope match_goal_with_scope with match_goal_with.

@@ -6,8 +6,8 @@ Declare ML Module "MetaCoqPlugin".
 Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
-Require Import Lists.List.
-Import ListNotations.
+Require Import Plist.
+Import PlistNotations.
 
 (* From MetaCoq Require Export Types. *)
 
@@ -54,15 +54,15 @@ Arguments Dyn {_} _.
 Inductive RedFlags :=
 | RedBeta | RedDelta | RedMatch | RedFix | RedZeta
 | RedDeltaC | RedDeltaX
-| RedDeltaOnly : list dyn -> RedFlags
-| RedDeltaBut : list dyn -> RedFlags.
+| RedDeltaOnly : plist dyn -> RedFlags
+| RedDeltaBut : plist dyn -> RedFlags.
 
 Inductive Reduction :=
 | RedNone
 | RedSimpl
 | RedOneStep
-| RedWhd : list RedFlags -> Reduction
-| RedStrong : list RedFlags -> Reduction
+| RedWhd : plist RedFlags -> Reduction
+| RedStrong : plist RedFlags -> Reduction
 | RedVmCompute.
 
 Inductive Unification : Type :=
@@ -79,7 +79,7 @@ Polymorphic Record Case :=
         case_ind : Type;
         case_val : case_ind;
         case_return : dyn;
-        case_branches : list dyn
+        case_branches : plist dyn
         }.
 
 (* Reduction primitive. It throws [NotAList] if the list of flags is not a list.  *)
@@ -183,7 +183,7 @@ Inductive Mtac : Type -> Prop :=
     something that is not a variable, it raises [NotAVar]. If it contains duplicated
     occurrences of a variable, it raises a [DuplicatedVariable].
 *)
-| evar : forall (A : Type), option (list Hyp) -> Mtac A
+| evar : forall (A : Type), option (plist Hyp) -> Mtac A
 
 (** [is_evar e] returns if [e] is a meta-variable. *)
 | is_evar : forall {A : Type}, A -> Mtac bool
@@ -202,14 +202,14 @@ Inductive Mtac : Type -> Prop :=
 | pretty_print : forall {A : Type}, A -> Mtac string
 
 (** [hypotheses] returns the list of hypotheses. *)
-| hypotheses : Mtac (list Hyp)
+| hypotheses : Mtac (plist Hyp)
 
 | destcase : forall {A : Type} (a : A), Mtac (Case)
 
 (** Given an inductive type A, applied to all its parameters (but not *)
 (*     necessarily indices), it returns the type applied to exactly the *)
 (*     parameters, and a list of constructors (applied to the parameters). *)
-| constrs : forall {A : Type} (a : A), Mtac (prod dyn (list dyn))
+| constrs : forall {A : Type} (a : A), Mtac (prod dyn (plist dyn))
 | makecase : forall (C : Case), Mtac dyn
 
 (** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
@@ -229,7 +229,7 @@ Inductive Mtac : Type -> Prop :=
 (** [get_var s] returns the var named after s. *)
 | get_var : string -> Mtac dyn
 
-| call_ltac : forall {A : Type}, string -> list dyn -> Mtac (prod A (list goal))
+| call_ltac : forall {A : Type}, string -> plist dyn -> Mtac (prod A (plist goal))
 | list_ltac : Mtac unit
 .
 
@@ -264,7 +264,7 @@ Delimit Scope Mtac_scope with MC.
 Open Scope Mtac_scope.
 
 Notation M := Mtac.
-
+Open Scope plist.
 Notation RedAll := ([RedBeta;RedDelta;RedZeta;RedMatch;RedFix]).
 Notation RedNF := (RedStrong RedAll).
 Notation RedHNF := (RedWhd RedAll).
@@ -357,7 +357,7 @@ Polymorphic Fixpoint open_pattern {A P t} (p : pattern A P t) : M (P t) :=
     open_pattern (f e)
   end.
 
-Polymorphic Fixpoint tmatch {A P} t (ps : list (pattern A P t)) : M (P t) :=
+Polymorphic Fixpoint tmatch {A P} t (ps : plist (pattern A P t)) : M (P t) :=
   match ps with
   | [] => raise NoPatternMatches
   | (p :: ps') =>
@@ -393,10 +393,10 @@ Notation "p '=u>' [ H ] b" := (pbase p%core (fun H=>b%core) UniCoq)
 Delimit Scope metaCoq_pattern_scope with metaCoq_pattern.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
-  ((@cons (pattern _ _ _) p1%metaCoq_pattern (.. (@cons (pattern _ _ _) pn%metaCoq_pattern nil) ..)))
+  ((@pcons (pattern _ _ _) p1%metaCoq_pattern (.. (@pcons (pattern _ _ _) pn%metaCoq_pattern pnil) ..)))
     (at level 91, p1 at level 210, pn at level 210) : mmatch_with.
 Notation "'with' p1 | .. | pn 'end'" :=
-  ((@cons (pattern _ _ _) p1%metaCoq_pattern (.. (@cons (pattern _ _ _) pn%metaCoq_pattern nil) ..)))
+  ((@pcons (pattern _ _ _) p1%metaCoq_pattern (.. (@pcons (pattern _ _ _) pn%metaCoq_pattern pnil) ..)))
     (at level 91, p1 at level 210, pn at level 210) : mmatch_with.
 
 Delimit Scope mmatch_with with mmatch_with.
@@ -410,10 +410,10 @@ Notation "'mmatch' x 'as' y 'return' 'M' p ls" := (@tmatch _ (fun y=>p) x ls%mma
 
 Notation "'mtry' a ls" :=
   (ttry a (fun e=>
-    (@tmatch _ (fun _=>_) e (app ls%mmatch_with (cons ([? x] x=>raise x)%metaCoq_pattern nil)))))
+    (@tmatch _ (fun _=>_) e (app ls%mmatch_with (pcons ([? x] x=>raise x)%metaCoq_pattern pnil)))))
     (at level 82, a at level 100, ls at level 91, only parsing).
 
-Definition Cevar (A : Type) (ctx : list Hyp) : M A := evar A (Some ctx).
+Definition Cevar (A : Type) (ctx : plist Hyp) : M A := evar A (Some ctx).
 Definition evar (A : Type) : M A := evar A None.
 
 Notation "'mif' b 'then' t 'else' u" :=
@@ -434,9 +434,9 @@ Definition munify_cumul {A B} (x: A) (y: B) (u : Unification) : Mtac bool :=
   | None => ret false
   end.
 
-Definition names_of_hyp : M (list string) :=
+Definition names_of_hyp : M (plist string) :=
   env <- hypotheses;
-  fold_left (fun (ns:M (list string)) (h:Hyp)=>
+  fold_left (fun (ns:M (plist string)) (h:Hyp)=>
     let (_, var, _) := h in
     n <- get_binder_name var;
     r <- ns; ret (n::r)) env (ret []).
@@ -465,7 +465,7 @@ Definition fresh_binder_name {A} (t: A) : M string :=
 
 Definition unfold_projection {A} (t: A) : M A :=
   let x := rone_step t in
-  let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in ret x.
+  let x := reduce (RedWhd (RedBeta::RedMatch::pnil)) x in ret x.
 
 Definition mid {A} (x: A) : M A := ret x.
 End GeneralUtilities.

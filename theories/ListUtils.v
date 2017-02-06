@@ -1,10 +1,9 @@
-From MetaCoq Require Export Mtac2.
+From MetaCoq Require Export Plist Mtac2.
 Import MtacNotations.
-Require Import Lists.List.
-Import ListNotations.
+Import PlistNotations.
 
 Definition mmap {A B : Type} (f : A -> M B) :=
-  mfix1 rec (l : list A) : M (list B) :=
+  mfix1 rec (l : plist A) : M (plist B) :=
     match l with
     | [] =>
         ret []
@@ -14,7 +13,7 @@ Definition mmap {A B : Type} (f : A -> M B) :=
         ret (x :: xs)
     end.
 
-Fixpoint mmapi' n {A B} (f : nat -> A -> M B) (l: list A) : M (list B) :=
+Fixpoint mmapi' n {A B} (f : nat -> A -> M B) (l: plist A) : M (plist B) :=
   match l with
   | [] => ret []
   | x :: xs =>
@@ -26,7 +25,7 @@ Fixpoint mmapi' n {A B} (f : nat -> A -> M B) (l: list A) : M (list B) :=
 Definition mmapi := @mmapi' 0.
 Arguments mmapi {_ _} _ _.
 
-Definition mfilter {A} (b : A -> M bool) : list A -> M (list A) :=
+Definition mfilter {A} (b : A -> M bool) : plist A -> M (plist A) :=
   fix f l :=
     match l with
     | [] => ret []
@@ -35,20 +34,20 @@ Definition mfilter {A} (b : A -> M bool) : list A -> M (list A) :=
     end.
 
 Definition EmptyList : Exception. exact exception. Qed.
-Definition hd_exception {A} (l : list A) : M A :=
+Definition hd_exception {A} (l : plist A) : M A :=
   match l with
   | (a :: _) => ret a
   | _ => raise EmptyList
   end.
 
-Fixpoint last_exception {A} (l : list A) : M A :=
+Fixpoint last_exception {A} (l : plist A) : M A :=
   match l with
   | [a] => ret a
   | (_ :: s) => last_exception s
   | _ => raise EmptyList
   end.
 
-Definition mfold_right {A B} (f : B -> A -> M A) (x : A) : list B -> M A :=
+Definition mfold_right {A B} (f : B -> A -> M A) (x : A) : plist B -> M A :=
   fix loop l :=
     match l with
     | [] => ret x
@@ -56,7 +55,7 @@ Definition mfold_right {A B} (f : B -> A -> M A) (x : A) : list B -> M A :=
                  f x r
     end.
 
-Definition mfold_left {A B} (f : A -> B -> M A) : list B -> A -> M A :=
+Definition mfold_left {A B} (f : A -> B -> M A) : plist B -> A -> M A :=
   fix loop l (a : A) :=
     match l with
     | [] => ret a
@@ -64,7 +63,7 @@ Definition mfold_left {A B} (f : A -> B -> M A) : list B -> A -> M A :=
                  loop bs r
     end.
 
-Definition mindex_of {A} (f : A -> M bool) (l : list A) : M (option nat) :=
+Definition mindex_of {A} (f : A -> M bool) (l : plist A) : M (option nat) :=
   ir <- mfold_left (fun (ir : (nat * option nat)) x =>
     let (i, r) := ir in
     match r with
@@ -78,14 +77,14 @@ Definition mindex_of {A} (f : A -> M bool) (l : list A) : M (option nat) :=
 
 Definition NotThatManyElements : Exception. exact exception. Qed.
 
-Fixpoint nth_exception {A} n (l : list A) : M A :=
+Fixpoint nth_exception {A} n (l : plist A) : M A :=
   match n, l with
   | 0, (a :: _) => ret a
   | S n, (_ :: s) => nth_exception n s
   | _, _ => raise NotThatManyElements
   end.
 
-Definition miterate {A} (f : A -> M unit) : list A -> M unit :=
+Definition miterate {A} (f : A -> M unit) : plist A -> M unit :=
   fix loop l :=
     match l with
     | [] => ret tt
