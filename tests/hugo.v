@@ -21,7 +21,7 @@ Fixpoint prove_leq n m : M (n < m) :=
   end.
 
 Definition to_fin_MP : selector := fun l=>
-  let n := List.length l in
+  let n := length l in
   mmapi (fun i g =>
     H <- prove_leq i n;
     let v := rcbv (of_nat_lt H) in

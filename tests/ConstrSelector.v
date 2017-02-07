@@ -3,7 +3,7 @@ Require Import MetaCoq.MetaCoq.
 (** Obtains the list of constructors of a type I from a type of the
    form A1 -> ... -> An -> I *)
 Definition get_constrs :=
-  mfix1 fill (T : Type) : M (list dyn) :=
+  mfix1 fill (T : Type) : M (plist dyn) :=
     mmatch T with
     | [? A B] A -> B => fill B
     | [? A (P:A->Type)] forall x:A, P x =>
@@ -19,7 +19,7 @@ Definition get_constrs :=
 
 Definition index {A} (c: A) :=
   l <- get_constrs A;
-  (mfix2 f (i : nat) (l : list dyn) : M nat :=
+  (mfix2 f (i : nat) (l : plist dyn) : M nat :=
     mmatch l with
     | [? l'] (Dyn c :: l') => ret i
     | [? d' l'] (d' :: l') => f (S i) l'
@@ -58,21 +58,21 @@ MProof.
   intros &> simpl. select (_ = _) rrewrite &> reflexivity.
 Qed.
 
-Definition snth_indices (l:list dyn) (t:tactic) : selector := fun goals=>
-  mfold_left (fun (accu : list goal) (d : dyn)=>
+Definition snth_indices (l:plist dyn) (t:tactic) : selector := fun goals=>
+  mfold_left (fun (accu : plist goal) (d : dyn)=>
     let (_, c) := d in
     i <- index c;
     let ogoal := nth_error goals i in
     match ogoal with
     | Some g =>
       newgoals <- open_and_apply t g;
-      let res := dreduce (app) (accu++newgoals) in
+      let res := dreduce (@app) (accu++newgoals) in
       ret res
     | None => failwith "Wrong case"
     end) l goals.
 
 Notation "'case' c , .. , d 'do' t" :=
-  (snth_indices (Dyn c :: .. (Dyn d :: nil) ..) t) (at level 40).
+  (snth_indices (Dyn c :: .. (Dyn d :: pnil) ..) t) (at level 40).
 
 Goal forall n, n + 0 = n.
 MProof.

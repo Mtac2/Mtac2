@@ -83,10 +83,10 @@ Qed.
   Example bla_RTele P b (r : reflect P b) :=
     Eval compute in eval (abstract_goal (rsort := SProp) (reflect_args P b) ((P <-> b = true)) r).
 
-  Example bla_goals P b r : list dyn :=
+  Example bla_goals P b r : plist dyn :=
     Eval compute in
       map (fun cs => Dyn (get_type_of_branch (rsort := SProp) (bla_RTele P b r) cs))
-          (reflect_RTrue P :: reflect_RFalse P :: nil).
+          (reflect_RTrue P :: reflect_RFalse P :: pnil).
 
   Example reflectP_it : ITele _ :=
     iTele (fun P => iTele (fun b => iBase (sort := SType) (reflect P b))).
@@ -102,10 +102,10 @@ Qed.
   Example blaP_RTele P b r :=
     Eval compute in eval (abstract_goal (rsort := SProp) (reflectP_args P b) ((P <-> b = true)) r).
 
-  Example blaP_goals P b r : list dyn :=
+  Example blaP_goals P b r : plist dyn :=
     Eval compute in
       map (fun cs => Dyn (get_type_of_branch (blaP_RTele P b r) cs))
-          (reflectP_RFalse :: reflectP_RTrue :: nil).
+          (reflectP_RFalse :: reflectP_RTrue :: pnil).
 
   Goal True.
     MProof.
@@ -113,7 +113,7 @@ Qed.
        r <- destcase (match 3 with 0 => true | S _ => false end);
        print_term r;;
                   cpose r (fun r=>idtac) g) : tactic.
-    (fun g=>
+Fail    (fun g=>
        let c := reduce RedHNF r in
        case <- makecase c;
        cpose case (fun y=>idtac) g) : tactic.
@@ -132,7 +132,7 @@ Qed.
             makecase {|
                 case_val := r;
                 case_return := Dyn (RTele_Fun rG);
-                case_branches := (Dyn T) :: (Dyn F) :: nil
+                case_branches := (Dyn T) :: (Dyn F) :: pnil
               |}).
     compute in mc.
     pose (c := eval mc).
@@ -177,7 +177,7 @@ MProof.
           makecase {|
               case_val := r;
               case_return := Dyn (return_type);
-              case_branches := (Dyn T) :: (Dyn F) :: nil
+              case_branches := (Dyn T) :: (Dyn F) :: pnil
             |}).
   let mc := reduce RedNF mc in r <- mc; pose (c := r).
   clear mc.
@@ -197,7 +197,7 @@ End ExampleReflect.
 
 Module VectorExample.
 Require Import Vector.
-Goal forall n (v : t nat n), n = length (to_list v).
+Goal forall n (v : t nat n), n = List.length (to_list v).
 Proof.
   pose (it := iTele (fun n => @iBase (SType) (t nat n))).
   pose (vnil := ((@cBase SType _ (aTele 0 aBase) (nil nat))) : CTele it).
@@ -205,7 +205,7 @@ Proof.
   fix f 2.
   intros n v.
   pose (a := (aTele n (aBase)) : ATele it).
-  pose (rt := eval (abstract_goal (rsort := SProp) a (n = length (to_list v)) v)).
+  pose (rt := eval (abstract_goal (rsort := SProp) a (n = List.length (to_list v)) v)).
   simpl in vcons, rt.
   assert (N : get_type_of_branch rt vnil).
   { now auto. }
@@ -215,7 +215,7 @@ Proof.
           makecase {|
               case_val := v;
               case_return := Dyn (RTele_Fun rt);
-              case_branches := Dyn N :: Dyn C :: List.nil
+              case_branches := Dyn N :: Dyn C :: pnil
             |}
        ).
   simpl RTele_Fun in mc.

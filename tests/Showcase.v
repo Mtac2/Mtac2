@@ -25,7 +25,7 @@ MProof.
 Qed.
 
 Theorem tl_length_pred : forall l: list nat,
-  pred (length l) = length (tl l).
+  pred (List.length l) = List.length (List.tl l).
 MProof.
   destructn 0 asp [ [] ; ["n"; "l'"] ].
   - (* l = nil *)
@@ -76,7 +76,7 @@ MProof.
 Qed.
 
 Theorem tl_length_pred' : forall A (l: list A),
-  pred (length l) = length (tl l).
+  pred (List.length l) = List.length (List.tl l).
 MProof.
   destructn 1 &> intros &> reflexivity.
 Qed.
@@ -105,16 +105,16 @@ Require Import Lists.ListTactics.
 Ltac apply_one_of l :=
   list_fold_left ltac:(fun a b => (b || apply (elem a))) fail l.
 
-Goal forall x y z : nat, In x (z :: y :: x :: nil).
+Goal forall x y z : nat, In x (z :: y :: x :: pnil).
 Proof.
   intros.
-  repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
-Qed.
+  Fail apply_one_of [Dyn in_eq; Dyn in_cons].
+Abort.
 
 Definition apply_one_of l : tactic :=
   fold_left (fun a b=>a or (apply (elem b))) l (fail exception).
 
-Goal forall x y z : nat, In x (z :: y :: x :: nil).
+Goal forall x y z : nat, In x (z :: y :: x :: pnil).
 MProof.
   Time intros &> Tactics.repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
 Qed.

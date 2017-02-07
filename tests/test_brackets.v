@@ -21,8 +21,6 @@ MProof.
 Qed.
 
 Require Import MetaCoq.ImportedTactics.
-Require Import Lists.List.
-Import ListNotations.
 
 Theorem plus_n_O : forall n:nat, n = n + 0.
 MProof.
