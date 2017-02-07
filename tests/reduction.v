@@ -1,9 +1,8 @@
 From MetaCoq
-  Require Import Mtac2 Tactics.
+  Require Import Mtac2 Tactics Plist.
 
 Import MtacNotations.
-Require Import Lists.List.
-Import ListNotations.
+Import PlistNotations.
 
 (** assert x y e asserts that y is syntactically equal to x. Since we
 need to make sure the convertibility check is not triggered, we assume
@@ -55,19 +54,19 @@ Print is_not_breaking_letins.
 
 Example reduce_beta : unit.
 MProof.
-let x := reduce (RedWhd (RedBeta::nil)) (id ((fun x=>x) tt)) in
+let x := reduce (RedWhd (RedBeta::pnil)) (id ((fun x=>x) tt)) in
 assert_eq x (id ((fun x=>x) tt)).
 Qed.
 
 Example reduce_beta2 : unit.
 MProof.
-let x := reduce (RedWhd (RedBeta::nil)) ((fun x=>x) (fun x=>x) tt) in
+let x := reduce (RedWhd (RedBeta::pnil)) ((fun x=>x) (fun x=>x) tt) in
 assert_eq x tt.
 Qed.
 
 Example reduce_BetaDeltaIota : unit.
 MProof.
-let x := reduce (RedWhd (RedBeta::RedDelta::RedMatch::nil)) (elem (Dyn (let t := tt in t))) in
+let x := reduce (RedWhd (RedBeta::RedDelta::RedMatch::pnil)) (elem (Dyn (let t := tt in t))) in
 assert_eq x (let t := tt in t).
 Qed.
 
@@ -76,32 +75,32 @@ Section ASection.
 
 Example reduce_BetaDeltaIotaP : unit.
 MProof.
-let x := reduce (RedWhd (RedBeta::RedDelta::RedMatch::nil)) (elem (Dyn (fst (p, tt)))) in
+let x := reduce (RedWhd (RedBeta::RedDelta::RedMatch::pnil)) (elem (Dyn (fst (p, tt)))) in
 assert_eq x 0.
 Qed.
 
 Example reduce_OneStepDyn : nat.
 MProof.
 let x := rone_step (elem (Dyn p)) in
-let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in ret x.
+let x := reduce (RedWhd (RedBeta::RedMatch::pnil)) x in ret x.
 Qed.
 
 Example reduce_deltac : unit.
 MProof.
-let x := reduce (RedWhd (RedBeta::RedMatch::RedDeltaC::nil)) (elem (Dyn (fst (p, tt)))) in
+let x := reduce (RedWhd (RedBeta::RedMatch::RedDeltaC::pnil)) (elem (Dyn (fst (p, tt)))) in
 assert_eq x p.
 Qed.
 
 Example reduce_deltax : unit.
 MProof.
-let x := reduce (RedStrong (RedBeta::RedMatch::RedDeltaX::nil)) (elem (Dyn (fst (p, tt)))) in
+let x := reduce (RedStrong (RedBeta::RedMatch::RedDeltaX::pnil)) (elem (Dyn (fst (p, tt)))) in
 assert_eq x (elem (Dyn (fst (0, tt)))).
 Qed.
 
 Definition test_opaque : nat. exact 0. Qed.
 Example reduce_deltac_opaque : unit.
 MProof.
-let x := reduce (RedWhd (RedBeta::RedMatch::RedDeltaC::nil)) (elem (Dyn (fst (test_opaque, tt)))) in
+let x := reduce (RedWhd (RedBeta::RedMatch::RedDeltaC::pnil)) (elem (Dyn (fst (test_opaque, tt)))) in
 assert_eq x test_opaque.
 Qed.
 

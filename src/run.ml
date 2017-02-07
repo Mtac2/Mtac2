@@ -417,8 +417,8 @@ let dest_Case (env, sigma) t =
       fun t (sigma,l) ->
         let dyn_type = Retyping.get_type_of env sigma t in
         let sigma, cdyn = mkDyn dyn_type t sigma env in
-        sigma, CoqList.makeCons dyn cdyn l
-    ) branches (sigma, CoqList.makeNil dyn) in
+        CoqList.makeCons dyn cdyn l sigma env
+    ) branches (CoqList.makeNil dyn sigma env) in
     let ind_type = Retyping.get_type_of env sigma discriminant in
     let return_type_type = Retyping.get_type_of env sigma return_type in
     let sigma, ret_dyn = mkDyn return_type_type return_type sigma env in
@@ -467,16 +467,17 @@ let get_Constrs (env, sigma) t =
                         let coq_constr = Term.applist (Term.mkConstruct constr, args) in
                         let ty = Retyping.get_type_of env sigma coq_constr in
                         let sigma, dyn_constr = mkDyn ty coq_constr sigma env in
-                        sigma, CoqList.makeCons dyn dyn_constr l
+                        CoqList.makeCons dyn dyn_constr l sigma env
                      )
                      (* this is just a dirty hack to get the indices of constructors *)
                      (Array.mapi (fun i t -> i+1) ind.mind_consnames)
-                     (sigma, CoqList.makeNil dyn)
+                     (CoqList.makeNil dyn sigma env)
     in
     let indty = Term.applist (t_type, args) in
     let indtyty = Retyping.get_type_of env sigma indty in
     let sigma, indtydyn = mkDyn indtyty indty sigma env in
-    let pair = CoqPair.mkPair dyn (CoqList.makeType dyn) indtydyn l in
+    let sigma, listtype = CoqList.makeType dyn sigma env in
+    let pair = CoqPair.mkPair dyn listtype indtydyn l in
     (sigma, pair)
   else
     Exceptions.block "The argument of Mconstrs is not an inductive type"
@@ -496,7 +497,7 @@ module Hypotheses = struct
   let cons_hyp ty n t renv sigma env =
     let hyptype = Lazy.force mkHypType in
     let hyp = mkAHyp ty n t in
-    (sigma, CoqList.makeCons hyptype hyp renv)
+    CoqList.makeCons hyptype hyp renv sigma env
 
   exception NotAVariable
   exception NotAHyp
@@ -717,15 +718,15 @@ let build_hypotheses sigma env =
   let renv = List.map (fun v->let (n, t, ty) = to_tuple v in (mkVar n, t, ty))
                (named_context env) in
   (* the list is reversed: [H : x > 0, x : nat] *)
-  let rec build renv =
+  let rec build sigma renv =
     match renv with
     | [] -> let ty = Lazy.force Hypotheses.mkHypType in
-        (sigma, CoqList.makeNil ty)
+        CoqList.makeNil ty sigma env
     | (n, t, ty) :: renv ->
-        let (sigma, r) = build renv in
+        let (sigma, r) = build sigma renv in
         Hypotheses.cons_hyp ty n t r sigma env
   in
-  build renv
+  build sigma renv
 
 (* builds the context without x (which should be a variable) *)
 let env_without sigma env renv x =
@@ -1021,7 +1022,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
             let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
             let new_undef = Evar.Set.elements new_undef in
             let sigma, goal = Goal.mkgoal sigma env in
-            let sigma, goals = CoqList.pto_coq goal (fun e sigma->Goal.goal_of_evar env sigma e) new_undef sigma in
+            let sigma, goals = CoqList.pto_coq goal (fun e sigma->Goal.goal_of_evar env sigma e) new_undef sigma env in
             return sigma (CoqPair.mkPair concl goal c goals)
           with CErrors.UserError(s,ppm) ->
             let expl = string_of_ppcmds ppm in

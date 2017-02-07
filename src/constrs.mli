@@ -1,4 +1,6 @@
 open Constr
+open Evd
+open Environ
 
 module Constr : sig
   exception Constr_not_found of string
@@ -48,9 +50,9 @@ end
 
 module CoqList : sig
 
-  val makeNil : types -> constr
-  val makeCons : types -> constr -> constr -> constr
-  val makeType : types -> types
+  val makeNil : types -> evar_map -> env -> evar_map * constr
+  val makeCons : types -> constr -> constr -> evar_map -> env -> evar_map * constr
+  val makeType : types -> evar_map -> env -> evar_map * types
   val from_coq : (Environ.env * Evd.evar_map) -> constr -> constr list
 
   (** Allows skipping an element in the conversion *)
@@ -61,8 +63,8 @@ module CoqList : sig
   val from_coq_conv : (Environ.env * Evd.evar_map) -> (constr -> 'a)
     -> constr -> 'a list
 
-  val to_coq : types -> ('a -> constr) -> 'a list -> constr
-  val pto_coq : types -> ('a -> Evd.evar_map -> Evd.evar_map * constr) -> 'a list -> Evd.evar_map -> Evd.evar_map * constr
+  val to_coq : types -> ('a -> constr) -> 'a list -> evar_map -> env -> evar_map * constr
+  val pto_coq : types -> ('a -> Evd.evar_map -> Evd.evar_map * constr) -> 'a list -> Evd.evar_map -> env -> Evd.evar_map * constr
 end
 
 module CoqOption : sig

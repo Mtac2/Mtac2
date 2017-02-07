@@ -98,19 +98,17 @@ module CoqOption = struct
 end
 
 module CoqList = struct
-  let mkNil  = Constr.mkConstr "Coq.Init.Datatypes.nil"
-  let mkCons = Constr.mkConstr "Coq.Init.Datatypes.cons"
+  open UConstrBuilder
+  let mkNil  = from_string "MetaCoq.Plist.pnil"
+  let mkCons = from_string "MetaCoq.Plist.pcons"
+  let mkType = from_string "MetaCoq.Plist.plist"
 
-  let makeNil ty = Term.mkApp (Lazy.force mkNil, [| ty |])
-  let makeCons t x xs = Term.mkApp (Lazy.force mkCons, [| t ; x ; xs |])
-  let makeType ty = Term.mkApp (Lazy.force (Constr.mkConstr "Coq.Init.Datatypes.list"), [|ty|])
+  let makeNil ty sigma env = build_app mkNil sigma env [| ty |]
+  let makeCons t x xs sigma env = build_app mkCons sigma env [| t ; x ; xs |]
+  let makeType ty sigma env = build_app mkType sigma env [|ty|]
 
-  let mkListType ty =
-    mkApp (Lazy.force (Constr.mkConstr "Coq.Init.Datatypes.cons"),
-           [|ty|])
-
-  let isNil  = Constr.isConstr mkNil
-  let isCons = Constr.isConstr mkCons
+  let isNil  = equal mkNil
+  let isCons = equal mkCons
 
   exception Skip
   exception NotAList of constr
@@ -121,8 +119,8 @@ module CoqList = struct
   let from_coq_conv (env, sigma) (fconv : Term.constr -> 'a) cterm =
     let rec fcc cterm =
       let (constr, args) = decompose_appvect cterm in
-      if isNil constr then [] else
-      if not (isCons constr) then raise (NotAList cterm)
+      if isNil sigma env constr then [] else
+      if not (isCons sigma env constr) then raise (NotAList cterm)
       else
         let tail = fcc args.(2) in
         try fconv args.(1) :: tail with Skip -> tail
@@ -132,13 +130,14 @@ module CoqList = struct
   let from_coq (env, sigma) =
     from_coq_conv (env, sigma) (fun x->x)
 
-  let to_coq ty f l =
-    List.fold_right (fun e l -> makeCons ty (f e) l) l (makeNil ty)
+  let to_coq ty f l sigma env =
+    List.fold_right (fun e (sigma, l) ->
+      makeCons ty (f e) l sigma env) l (makeNil ty sigma env)
 
-  let pto_coq ty f l sigma =
+  let pto_coq ty f l sigma env =
     List.fold_right (fun e (sigma, l) ->
       let sigma, c = f e sigma in
-      sigma, makeCons ty c l) l (sigma, makeNil ty)
+      makeCons ty c l sigma env) l (makeNil ty sigma env)
 end
 
 module CoqEq = struct

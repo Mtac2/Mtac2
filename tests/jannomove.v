@@ -5,7 +5,7 @@ Inductive IPB := .
 Inductive IP :=
 | NoOp : IP
 | B (binder : IPB -> unit) : IP
-| C (cases : list LIP)
+| C (cases : plist LIP)
 | R : RewriteDirection -> IP
 | Done
 | Simpl : IP
@@ -49,7 +49,7 @@ fix loop (l : LIP) (a : A) {struct l} : M A :=
 Ltac done := intros; tauto || trivial || assumption || reflexivity.
 
 Definition NotDone : Exception. exact exception. Qed.
-Definition done := ltac "jannomove.done" [ ]%list or (fail NotDone).
+Definition done := ltac "jannomove.done" [ ]%plist or (fail NotDone).
 
 Fixpoint mmap_plist (f: LIP -> tactic) (l: list LIP) : list tactic :=
   match l with

@@ -65,13 +65,13 @@ Definition trewrite (d: RewriteDirection) (args: plist dyn) : tactic := fun g=>
 
 
 Notation "'rewrite' '->' x , .. , z" :=
-  (trewrite RightRewrite (cons (Dyn x) .. (cons (Dyn z) nil) ..))
+  (trewrite RightRewrite (pcons (Dyn x) .. (pcons (Dyn z) pnil) ..))
     (at level 0, x at next level, z at next level).
 Notation "'rewrite' '<-' x , .. , z" :=
-  (trewrite LeftRewrite (cons (Dyn x) .. (cons (Dyn z) nil) ..))
+  (trewrite LeftRewrite (pcons (Dyn x) .. (pcons (Dyn z) pnil) ..))
     (at level 0, x at next level, z at next level).
 Notation "'rewrite' x , .. , z" :=
-  (trewrite RightRewrite (cons (Dyn x) .. (cons (Dyn z) nil) ..))
+  (trewrite RightRewrite (pcons (Dyn x) .. (pcons (Dyn z) pnil) ..))
     (at level 0, x at next level, z at next level).
 
 Ltac elim h := elim h.
