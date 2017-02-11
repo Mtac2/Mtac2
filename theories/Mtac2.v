@@ -271,8 +271,8 @@ Notation "r '<-' t1 ';' t2" := (@bind _ _ t1 (fun r=> t2%MC))
   (at level 81, right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : Mtac_scope.
 Notation "t1 ';;' t2" := (@bind _ _ t1 (fun _=>t2%MC))
   (at level 81, right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : Mtac_scope.
-Notation "f @@ x" := (bind f (fun r=>(ret (r x))%MC)) (at level 70) : Mtac_scope.
-Notation "f >> x" := (bind f (fun r=>(x r) % MC)) (at level 70) : Mtac_scope.
+Notation "t @@ x" := (bind t (fun r=>(ret (r x))%MC)) (at level 70) : Mtac_scope.
+Notation "t >> f" := (bind t f) (at level 70) : Mtac_scope.
 Open Scope string.
 
 (* We cannot make this notation recursive, so we loose
