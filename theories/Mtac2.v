@@ -406,8 +406,8 @@ Notation "'mtry' a ls" :=
     (@tmatch _ (fun _=>_) e (app ls (cons ([? x] x=>raise x)%metaCoq_pattern nil)))))
     (at level 82, a at level 100, ls at level 91, only parsing).
 
-Definition Cevar A ctx := evar A (Some ctx).
-Definition evar A := evar A None.
+Definition Cevar (A : Type) (ctx : list Hyp) : M A := evar A (Some ctx).
+Definition evar (A : Type) : M A := evar A None.
 
 Notation "'mif' b 'then' t 'else' u" :=
   (cond <- b; if cond then t else u) (at level 200).
@@ -450,5 +450,5 @@ Definition unfold_projection {A} (t: A) : M A :=
   let x := rone_step t in
   let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in ret x.
 
-Definition mid {A} (x: A) := ret x.
+Definition mid {A} (x: A) : M A := ret x.
 End GeneralUtilities.
