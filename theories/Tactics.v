@@ -552,9 +552,8 @@ Definition DoesNotMatchGoal : Exception. exact exception. Qed.
     oeqCA <- munify C A UniCoq;
     match oeqCA with
     | Some eqCA =>
-      e <- evar C;
-      munify_cumul e a UniCoq;;
-      mtry match_goal' (f e) l g
+      let a' := rcbv match eq_sym eqCA with eq_refl => a end in
+      mtry match_goal' (f a') l g
       with DoesNotMatchGoal =>
         match_goal' p l g
       end
