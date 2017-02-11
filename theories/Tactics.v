@@ -37,14 +37,14 @@ Definition run_tac {P} (t : tactic) : M P :=
 Definition NotAGoal : Exception. exact exception. Qed.
 (** [goal_type g] extracts the type of the goal or raises [NotAGoal]
     if [g] is not [Goal]. *)
-Definition goal_type g : M Type :=
+Definition goal_type (g : goal) : M Type :=
   match g with
     | @Goal A _ => ret A
     | _ => raise NotAGoal
   end.
 
 (** Convertion functions from [dyn] to [goal]. *)
-Definition dyn_to_goal d :=
+Definition dyn_to_goal (d : dyn) : goal :=
   match d with
   | Dyn x => Goal x
   end.
@@ -67,7 +67,7 @@ Definition unify_or_fail {A} (x y : A) : M (x = y) :=
   oeq <- munify x y UniCoq;
   match oeq with
   | None => raise (NotUnifiable x y)
-  | Some eq=> ret eq
+  | Some eq => ret eq
   end.
 
 (** Unifies [x] with [y] using cumulativity and raises
@@ -142,7 +142,7 @@ Definition NotAProduct : Exception. exact exception. Qed.
 (** [intro_base n t] introduces variable or definition named [n]
     in the context and executes [t n].
     Raises [NotAProduct] if the goal is not a product or a let-binding. *)
-Definition intro_base {A} var (t: A->tactic) : tactic := fun g=>
+Definition intro_base {A} (var : string) (t: A->tactic) : tactic := fun g=>
   mmatch g return M list goal with
   | [? B (def: B) P e] @Goal (let x := def in P x) e =n>
     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
@@ -207,7 +207,7 @@ Definition open_and_apply (t : tactic) : tactic :=
 
 (** given a string s it appends a marker to avoid collition with user
     provided names *)
-Definition anonymize s :=
+Definition anonymize (s : string) : M string :=
   let s' := rcbv ("__"++s) in
   ret s'.
 
@@ -348,23 +348,23 @@ Definition copy_ctx {A} (B : A -> Type) :=
     | _ => print_term A;; raise (SomethingNotRight d)
     end.
 
-Definition hyps_except {A} (x : A) :=
+Definition hyps_except {A} (x : A) : M (list Hyp) :=
   l <- hypotheses;
   mfilter (fun y=>mmatch y with
     | [? b] ahyp x b => ret false
     | _ => ret true
     end) l.
 
-Definition find_hyp_index {A} (x : A) :=
+Definition find_hyp_index {A} (x : A) : M (option nat) :=
   l <- hypotheses;
   mindex_of (fun y=>mmatch y with
     | [? b] ahyp x b => ret true
     | _ => ret false
     end) l.
 
-Definition type_of {A} (x:A) := A.
+Definition type_of {A} (x:A) : Type := A.
 
-Fixpoint but_last {A} (l : list A) :=
+Fixpoint but_last {A} (l : list A) : list A :=
   match l with
   | [] => []
   | [a] => []
@@ -399,9 +399,9 @@ Definition cclear {A} (x:A) (cont: tactic) : tactic := fun g=>
   exact e g;;
   ret l.
 
-Definition clear {A} (x:A) := cclear x idtac.
+Definition clear {A} (x:A) : tactic := cclear x idtac.
 
-Definition cprint {A} (s: string) (c: A) :=
+Definition cprint {A} (s: string) (c: A) : M unit :=
   x <- pretty_print c;
   let s := reduce RedNF (s++x)%string in
   print s.
@@ -562,7 +562,7 @@ Definition DoesNotMatchGoal : Exception. exact exception. Qed.
   | _, _ => raise DoesNotMatchGoal
   end.
 
-Definition match_goal p : tactic := fun g=>
+Definition match_goal (p : goal_pattern) : tactic := fun g=>
   r <- hypotheses; match_goal' p (List.rev r) g.
 
 Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
@@ -617,7 +617,7 @@ Definition typed_intros (T : Type) : tactic := fun g=>
       idtac g
     end) g.
 
-Definition cpose_base {A} name (t: A) (cont: A -> tactic) : tactic := fun g=>
+Definition cpose_base {A} (name : string) (t: A) (cont: A -> tactic) : tactic := fun g=>
   nu name (Some t) (fun x=>
     gT <- goal_type g;
     r <- evar gT;
@@ -629,7 +629,7 @@ Definition cpose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
   n <- get_binder_name cont;
   cpose_base n t cont g.
 
-Definition cassert_base {A} name (cont: A -> tactic) : tactic := fun g=>
+Definition cassert_base {A} (name : string) (cont: A -> tactic) : tactic := fun g=>
   a <- evar A; (* [a] will be the goal to solve [A] *)
   nu name None (fun x=>
     gT <- goal_type g;
@@ -692,7 +692,7 @@ Definition mexists {A} (x: A) : tactic := fun g=>
 (** Printing of a goal *)
 Require Import Strings.String.
 
-Definition print_hypothesis (a:Hyp) :=
+Definition print_hypothesis (a:Hyp) : M unit :=
   let (A, x, ot) := a in
   sA <- pretty_print A;
   sx <- pretty_print x;
@@ -703,7 +703,7 @@ Definition print_hypothesis (a:Hyp) :=
   | None => print (sx ++ " : " ++ sA)
   end.
 
-Definition print_hypotheses :=
+Definition print_hypotheses : M unit :=
   l <- hypotheses;
   let l := rev l in
   miterate print_hypothesis l.
@@ -751,7 +751,7 @@ Require Import NArith.BinNatDef.
     with a new goal as body, containing a variable named [f] with
     the current goal as type. The goal is expected to have at least
     [n] products. *)
-Definition fix_tac f n : tactic := fun g=>
+Definition fix_tac (f : string) (n : N) : tactic := fun g=>
   gT <- goal_type g;
   r <- nu f None (fun f:gT=>
     (* We introduce the recursive definition f and create the new
@@ -773,7 +773,7 @@ Definition fix_tac f n : tactic := fun g=>
 (** [repeat t] applies tactic [t] to the goal several times
     (it should only generate at most 1 subgoal), until no
     changes or no goal is left. *)
-Definition repeat t : tactic := fun g=>
+Definition repeat (t : tactic) : tactic := fun g=>
   (mfix1 f (g : goal) : M (list goal) :=
     r <- try t g; (* if it fails, the execution will stop below *)
     match r with
@@ -880,7 +880,7 @@ Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
 (** Type for goal manipulation primitives *)
 Definition selector := list goal -> M (list goal).
 
-Fixpoint nsplit {A} n (l : list A) :=
+Fixpoint nsplit {A} (n : nat) (l : list A) : list A * list A :=
   match n, l with
   | 0, l => ([], l)
   | S n', (x :: l') =>
@@ -889,7 +889,7 @@ Fixpoint nsplit {A} n (l : list A) :=
   | _, _ => ([], [])
   end.
 
-Definition snth n t : selector := fun l=>
+Definition snth (n : nat) (t : tactic) : selector := fun l=>
   let (l1, l2) := reduce (RedOnlyComplete [Dyn (@nsplit)]) (nsplit n l) in
   match hd_error l2 with
   | None => raise NoGoalsLeft
@@ -899,11 +899,11 @@ Definition snth n t : selector := fun l=>
     ret res
   end.
 
-Definition slast t : selector := fun l=>
+Definition slast (t : tactic) : selector := fun l=>
   let n := reduce (RedOnlyComplete [Dyn pred; Dyn (@List.length)]) (pred (List.length l)) in
   snth n t l.
 
-Definition sfirst t : selector := snth 0 t.
+Definition sfirst (t : tactic) : selector := snth 0 t.
 
 Definition srev : selector := fun l=>
   let res := reduce (RedOnlyComplete [Dyn (@rev); Dyn (@app)]) (rev l) in ret res.
