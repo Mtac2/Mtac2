@@ -542,27 +542,28 @@ Monomorphic Inductive goal_pattern : Type :=
 
 Definition DoesNotMatchGoal : Exception. exact exception. Qed.
 
-(* Monomorphic*) Fixpoint match_goal' (p : goal_pattern) (l : list Hyp) : tactic := fun g=>
-  match p, l with
+Definition match_goal' : goal_pattern -> list Hyp -> list Hyp -> tactic :=
+  mfix4 match_goal' (p : goal_pattern) (l1 : list Hyp) (l2 : list Hyp) (g : goal) : M (list goal) :=
+  match p, l2 with
   | gbase P t, _ =>
     gT <- goal_type g;
     mif munify_cumul P gT UniCoq then t g
     else raise DoesNotMatchGoal
-  | @gtele C f, (@ahyp A a _ :: l) =>
+  | @gtele C f, (@ahyp A a d :: l2') =>
     oeqCA <- munify C A UniCoq;
     match oeqCA with
     | Some eqCA =>
       let a' := rcbv match eq_sym eqCA with eq_refl => a end in
-      mtry match_goal' (f a') l g
+      mtry match_goal' (f a') [] (l1++l2')%list g
       with DoesNotMatchGoal =>
-        match_goal' p l g
+        match_goal' p (l1++[ahyp a d])%list l2' g
       end
-    | None => match_goal' p l g end
+    | None => match_goal' p (l1++[ahyp a d])%list l2' g end
   | _, _ => raise DoesNotMatchGoal
   end.
 
 Definition match_goal (p : goal_pattern) : tactic := fun g=>
-  r <- hypotheses; match_goal' p (List.rev r) g.
+  r <- hypotheses; match_goal' p [] (List.rev r) g.
 
 Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   d <- goal_to_dyn g;
