@@ -563,7 +563,7 @@ Definition match_goal' : goal_pattern -> list Hyp -> list Hyp -> tactic :=
   end.
 
 Definition match_goal (p : goal_pattern) : tactic := fun g=>
-  r <- hypotheses; match_goal' p [] (List.rev r) g.
+  r <- hypotheses; match_goal' p [] (List.rev' r) g.
 
 Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   d <- goal_to_dyn g;
@@ -708,7 +708,7 @@ Definition print_hypothesis (a:Hyp) : M unit :=
 
 Definition print_hypotheses : M unit :=
   l <- hypotheses;
-  let l := rev l in
+  let l := rev' l in
   miterate print_hypothesis l.
 
 Definition print_goal : tactic := fun g=>
@@ -909,7 +909,7 @@ Definition slast (t : tactic) : selector := fun l=>
 Definition sfirst (t : tactic) : selector := snth 0 t.
 
 Definition srev : selector := fun l=>
-  let res := reduce (RedOnlyComplete [Dyn (@rev); Dyn (@app)]) (rev l) in ret res.
+  let res := reduce (RedOnlyComplete [Dyn (@rev'); Dyn (@rev_append); Dyn (@app)]) (rev' l) in ret res.
 
 Definition tactic_selector (t: tactic) (s: selector) : tactic :=
   fun g=> l <- t g; l' <- filter_goals l; s l'.
