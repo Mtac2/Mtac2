@@ -41,7 +41,7 @@ Definition LIP_mfold_left {A} f :=
 fix loop (l : LIP) (a : A) {struct l} : M A :=
   match l with
   | lnil => ret a
-  | lcons b bs => f a b >> loop bs
+  | lcons b bs => f a b >>= loop bs
   end.
 
 

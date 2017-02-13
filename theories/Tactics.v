@@ -153,7 +153,7 @@ Definition intro_base {A} (var : string) (t: A->tactic) : tactic := fun g=>
       nG <- abs_let (P:=P) x def e';
       exact nG g;;
       let x := reduce (RedWhd [RedMatch]) (match eqBA with eq_refl => x end) in
-      t x (Goal e') >> let_close_goals x)
+      t x (Goal e') >>= let_close_goals x)
 
   | [? P e] @Goal (forall x:A, P x) e =u>
     nu var None (fun x=>
@@ -161,7 +161,7 @@ Definition intro_base {A} (var : string) (t: A->tactic) : tactic := fun g=>
       e' <- evar Px;
       nG <- abs_fun (P:=P) x e';
       exact nG g;;
-      t x (Goal e') >> close_goals x)
+      t x (Goal e') >>= close_goals x)
   | _ => raise NotAProduct
   end.
 
@@ -198,11 +198,11 @@ Definition open_and_apply (t : tactic) : tactic :=
     | @AHyp C None f =>
       x <- fresh_binder_name f;
       nu x None (fun x : C=>
-        open (f x) >> close_goals x)
+        open (f x) >>= close_goals x)
     | @AHyp C (Some t) f =>
       x <- fresh_binder_name f;
       nu x (Some t) (fun x : C=>
-        open (f x) >> let_close_goals x)
+        open (f x) >>= let_close_goals x)
     end.
 
 (** given a string s it appends a marker to avoid collition with user
@@ -216,7 +216,7 @@ Definition intro_anonymous {A} (T: A) f (g: goal) : M goal :=
   name <- get_binder_name T;
   axn <- anonymize name;
   axn <- f axn;
-  intro_simpl axn g >> hd_exception.
+  intro_simpl axn g >>= hd_exception.
 
 (** Introduces all hypotheses. Does not fail if there are 0. *)
 Definition intros_all : tactic :=
@@ -225,13 +225,13 @@ Definition intros_all : tactic :=
       match g return M (list goal) with
       | @Goal T e =>
         mtry
-          intro_anonymous T mid g >> f
+          intro_anonymous T mid g >>= f
         with WrongTerm =>
           ret [g]
         | NotAProduct =>
           ret [g]
         | [? s] NameExistsInContext s =>
-          intro_anonymous T fresh_name g >> f
+          intro_anonymous T fresh_name g >>= f
         end
       | _ => raise NotAGoal
       end) g.
@@ -245,10 +245,10 @@ Definition introsn : nat -> tactic :=
       | (0, g) => ret [g]
       | (S n', @Goal T e) =>
         mtry
-          intro_anonymous T mid g >> f n'
+          intro_anonymous T mid g >>= f n'
         with WrongTerm => raise NotAProduct
         | [? s] NameExistsInContext s =>
-          intro_anonymous T fresh_name g >> f n'
+          intro_anonymous T fresh_name g >>= f n'
         end
       | (_, _) => failwith "Should never get here"
       end) g.
@@ -622,7 +622,7 @@ Definition cpose_base {A} (name : string) (t: A) (cont: A -> tactic) : tactic :=
     r <- evar gT;
     value <- abs_let x t r;
     exact value g;;
-    cont x (Goal r) >> let_close_goals x).
+    cont x (Goal r) >>= let_close_goals x).
 
 Definition cpose {A} (t: A) (cont: A -> tactic) : tactic := fun g=>
   n <- get_binder_name cont;
@@ -635,7 +635,7 @@ Definition cassert_base {A} (name : string) (cont: A -> tactic) : tactic := fun 
     r <- evar gT; (* The new goal now referring to n *)
     value <- abs_fun x r;
     exact (value a) g;; (* instantiate the old goal with the new one *)
-    v <- cont x (Goal r) >> close_goals x;
+    v <- cont x (Goal r) >>= close_goals x;
     ret (Goal a :: v)). (* append the goal for a to the top of the goals *)
 
 Definition cassert {A} (cont: A -> tactic) : tactic := fun g=>
@@ -736,7 +736,7 @@ Definition n_etas (n : nat) {A} (f:A) : M A :=
          ty <- unfold_projection (type d);
          name <- get_binder_name ty;
          nu name None (fun x:B =>
-           loop n' (Dyn (f x)) >> abs_fun x
+           loop n' (Dyn (f x)) >>= abs_fun x
          )
        | _ => raise NotAProduct
        end
