@@ -396,8 +396,8 @@ let return s t = Val (s, t)
 let fail s t = Err (s, t)
 
 let print env sigma s =
-  Feedback.msg_notice (app (app (str "[DEBUG] ")
-                              (str (CoqString.from_coq (env, sigma) s))) (fnl ()))
+  Feedback.msg_notice (app (str "[DEBUG] ")
+                         (str (CoqString.from_coq (env, sigma) s)))
 
 let mysubstn t n c =
   let rec substrec in_arr depth c = match kind_of_term c with

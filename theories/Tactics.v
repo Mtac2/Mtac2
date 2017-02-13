@@ -595,8 +595,11 @@ Definition treduce (r : Reduction) : tactic := fun g=>
   T <- goal_type g;
   let T := reduce r T in
   e <- evar T;
-  exact e g;;
-  ret [Goal e].
+  oeq <- munify g (Goal e) UniMatch;
+  match oeq with
+  | Some _ => ret [Goal e]
+  | _ => failwith "It should never fail here"
+  end.
 
 Definition NotThatType : Exception. exact exception. Qed.
 Definition typed_intro (T : Type) : tactic := fun g=>
