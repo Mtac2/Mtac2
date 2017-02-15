@@ -542,8 +542,8 @@ Monomorphic Inductive goal_pattern : Type :=
 
 Definition DoesNotMatchGoal : Exception. exact exception. Qed.
 
-Definition match_goal' : goal_pattern -> list Hyp -> list Hyp -> tactic :=
-  mfix4 match_goal' (p : goal_pattern) (l1 : list Hyp) (l2 : list Hyp) (g : goal) : M (list goal) :=
+Fixpoint match_goal' (p : goal_pattern) : list Hyp -> list Hyp -> tactic :=
+  fix go l1 l2 g :=
   match p, l2 with
   | gbase P t, _ =>
     gT <- goal_type g;
@@ -554,11 +554,11 @@ Definition match_goal' : goal_pattern -> list Hyp -> list Hyp -> tactic :=
     match oeqCA with
     | Some eqCA =>
       let a' := rcbv match eq_sym eqCA with eq_refl => a end in
-      mtry match_goal' (f a') [] (l1++l2')%list g
+      mtry match_goal' (f a') [] (List.rev_append l1 l2')%list g
       with DoesNotMatchGoal =>
-        match_goal' p (l1++[ahyp a d])%list l2' g
+        go (ahyp a d :: l1) l2' g
       end
-    | None => match_goal' p (l1++[ahyp a d])%list l2' g end
+    | None => go (ahyp a d :: l1) l2' g end
   | _, _ => raise DoesNotMatchGoal
   end.
 
