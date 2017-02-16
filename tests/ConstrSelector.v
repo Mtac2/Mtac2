@@ -199,11 +199,23 @@ Definition remember {A} (x:A) (def eq : string) : tactic :=
   cpose_base def x (fun y:A=>
     cassert_base eq (fun H: y = x =>lrewrite H) &> [reflexivity; idtac]).
 
+Ltac ind H := induction H.
+Definition induction {A} (x:A) := ltac "Top.ind" [Dyn x].
+
 Lemma WHILE_true_nonterm : forall b c st st',
      bequiv b BTrue ->
      ~( (WHILE b DO c END) / st \\ st' ).
 MProof.
   intros b c st st' Hb.
   remember (WHILE b DO c END) "cw" "Heqcw".
-  elim0 &> case E_WhileLoop, E_Seq, E_IfFalse, E_IfTrue do (intros &> assumption).
-Abort. (* elim is not as smart as induction, but induction messes badly with the context *)
+  intro H.
+  induction H &> case E_Skip, E_Ass, E_IfTrue, E_IfFalse, E_Seq do discriminate.
+  - (* E_WhileEnd *) (* contradictory -- b is always true! *)
+    inversion Heqcw. subst.
+    unfold_in bequiv Hb.
+    (* [rewrite] is able to instantiate the quantifier in [st] *)
+    move_back H idtac.
+    rewrite Hb. intro H. simpl_in H. discriminate.
+  - (* E_WhileLoop *) (* immediate from the IH *)
+    apply IHceval2 &> assumption.
+Qed.

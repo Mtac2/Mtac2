@@ -179,7 +179,7 @@ Fixpoint is_open (g : goal) : M bool :=
   match g with
   | Goal e => is_evar e
   | @AHyp C _ f =>
-    x <- get_binder_name f;
+    x <- fresh_binder_name f;
     (* we get the name in order to avoid inserting existing names
       (nu will raise an exception otherwise) *)
     nu x None (fun x : C=>is_open (f x))
