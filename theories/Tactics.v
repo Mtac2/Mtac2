@@ -538,7 +538,8 @@ Definition right : tactic := fun g=>
 
 Monomorphic Inductive goal_pattern : Type :=
 | gbase : forall {A}, A -> tactic -> goal_pattern
-| gtele : forall {C}, (C -> goal_pattern) -> goal_pattern.
+| gtele : forall {C}, (C -> goal_pattern) -> goal_pattern
+| gtele_evar : forall {C}, (C -> goal_pattern) -> goal_pattern.
 
 Definition DoesNotMatchGoal : Exception. exact exception. Qed.
 
@@ -559,6 +560,9 @@ Fixpoint match_goal' (p : goal_pattern) : list Hyp -> list Hyp -> tactic :=
         go (ahyp a d :: l1) l2' g
       end
     | None => go (ahyp a d :: l1) l2' g end
+  | @gtele_evar C f, _ =>
+    e <- evar C;
+    match_goal' (f e) l1 l2 g
   | _, _ => raise DoesNotMatchGoal
   end.
 
@@ -953,9 +957,16 @@ Notation "[[ |- ps ] ] => t" :=
   (gbase ps t)
   (at level 202, ps at next level) : goal_match_scope.
 
+Notation "[[? a .. b | x .. y |- ps ] ] => t" :=
+  (gtele_evar (fun a => .. (gtele_evar (fun b =>
+     gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))).. ))
+  (at level 202, a binder, b binder,
+   x binder, y binder, ps at next level) : goal_match_scope.
+
 Notation "[[ x .. y |- ps ] ] => t" :=
   (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
   (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
+
 Delimit Scope goal_match_scope with goal_match.
 
 Arguments match_goal _%goal_match _.
