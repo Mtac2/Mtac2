@@ -66,7 +66,7 @@ Definition snth_indices (l:list dyn) (t:tactic) : selector := fun goals=>
     match ogoal with
     | Some g =>
       newgoals <- open_and_apply t g;
-      let res := reduce (RedOnlyComplete [Dyn app]) (accu++newgoals) in
+      let res := dreduce (app) (accu++newgoals) in
       ret res
     | None => failwith "Wrong case"
     end) l goals.

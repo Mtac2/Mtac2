@@ -9,7 +9,7 @@ Require Import Strings.String.
 
 Local Set Universe Polymorphism.
 
-Notation "'RedOnlyComplete' l" := (RedStrong [RedBeta;RedFix;RedMatch;RedDeltaOnly l]) (at level 0).
+Notation "'dreduce' ( l1 , .. , ln )" := (reduce (RedStrong [RedBeta;RedFix;RedMatch;RedDeltaOnly (Dyn (@l1) :: .. (Dyn (@ln) :: nil) ..)])) (at level 0).
 
 Definition CantCoerce : Exception. exact exception. Qed.
 
@@ -284,7 +284,7 @@ Definition NoGoalsLeft : Exception. exact exception. Qed.
 Definition tactic_tactics (t:tactic) (l:list tactic) : tactic := fun g=>
   l' <- t g;
   ls <- gmap l l';
-  let res := reduce (RedOnlyComplete [Dyn (@concat);Dyn (@List.app)]) (concat ls) in
+  let res := dreduce (concat, List.app) (concat ls) in
   ret res.
 
 Definition tactic_tactic (t u:tactic) : tactic := fun g=>
@@ -293,7 +293,7 @@ Definition tactic_tactic (t u:tactic) : tactic := fun g=>
     raise NoGoalsLeft
   else
     r <- mmap (open_and_apply u) l;
-    let res := reduce (RedOnlyComplete [Dyn (@concat);Dyn (@List.app)]) (concat r) in
+    let res := dreduce (concat, @List.app) (concat r) in
     ret res.
 
 (* Polymorphic CS are broken *)
@@ -429,7 +429,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
   case <- makecase c;
   case <- unfold_projection (elem case);
   exact case g;;
-  let res := reduce (RedOnlyComplete [Dyn (@List.map); Dyn (@dyn_to_goal)]) (List.map dyn_to_goal l) in
+  let res := dreduce (List.map, dyn_to_goal) (List.map dyn_to_goal l) in
   ret res.
 
 (** Destructs the n-th hypotheses in the goal (counting from 0) *)
@@ -834,13 +834,13 @@ Definition unfold_slow {A} (x: A) : tactic := fun g=>
 
 Definition unfold {A} (x: A) : tactic := fun g=>
   gT <- goal_type g;
-  let gT' := reduce (RedStrong [RedBeta;RedMatch;RedDeltaOnly [Dyn x]]) gT in
+  let gT' := dreduce (x) gT in
   ng <- evar gT';
   exact ng g;;
   ret [Goal ng].
 
 Definition unfold_in {A B} (x: A) (h: B) : tactic :=
-  reduce_in (RedOnlyComplete [Dyn x]) h.
+  reduce_in (RedStrong [RedBeta; RedMatch; RedFix; RedDeltaOnly [Dyn x]]) h.
 
 Monomorphic Fixpoint intros_simpl (l: list string) : tactic :=
   match l with
@@ -893,23 +893,23 @@ Fixpoint nsplit {A} (n : nat) (l : list A) : list A * list A :=
   end.
 
 Definition snth (n : nat) (t : tactic) : selector := fun l=>
-  let (l1, l2) := reduce (RedOnlyComplete [Dyn (@nsplit)]) (nsplit n l) in
+  let (l1, l2) := dreduce (@nsplit) (nsplit n l) in
   match hd_error l2 with
   | None => raise NoGoalsLeft
   | Some g =>
     goals <- open_and_apply t g;
-    let res := reduce (RedOnlyComplete [Dyn (@List.app)]) (l1 ++ goals ++ l2)%list in
+    let res := dreduce (@List.app) (l1 ++ goals ++ l2)%list in
     ret res
   end.
 
 Definition slast (t : tactic) : selector := fun l=>
-  let n := reduce (RedOnlyComplete [Dyn pred; Dyn (@List.length)]) (pred (List.length l)) in
+  let n := dreduce (pred, List.length) (pred (List.length l)) in
   snth n t l.
 
 Definition sfirst (t : tactic) : selector := snth 0 t.
 
 Definition srev : selector := fun l=>
-  let res := reduce (RedOnlyComplete [Dyn (@rev'); Dyn (@rev_append); Dyn (@app)]) (rev' l) in ret res.
+  let res := dreduce (rev', rev_append, app) (rev' l) in ret res.
 
 Definition tactic_selector (t: tactic) (s: selector) : tactic :=
   fun g=> l <- t g; l' <- filter_goals l; s l'.
