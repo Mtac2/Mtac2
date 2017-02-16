@@ -304,7 +304,8 @@ module ReductionStrategy = struct
          (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
          (inject c));
     (fun fs env sigma->
-       clos_norm_flags (get_flags (env, sigma) fs.(0)) env sigma)
+       clos_norm_flags (get_flags (env, sigma) fs.(0)) env sigma);
+    (fun _ -> Redexpr.cbv_vm) (* vm_compute *)
   |]
 
   let reduce sigma env strategy c =

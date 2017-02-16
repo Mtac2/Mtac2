@@ -54,7 +54,8 @@ Inductive Reduction :=
 | RedSimpl
 | RedOneStep
 | RedWhd : list RedFlags -> Reduction
-| RedStrong : list RedFlags -> Reduction.
+| RedStrong : list RedFlags -> Reduction
+| RedVmCompute.
 
 Inductive Unification : Type :=
 | UniCoq : Unification

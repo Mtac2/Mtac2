@@ -156,3 +156,25 @@ MQed.
 Abort.
 Abort.
 Abort. (* MQed is leaving definitions open somehow *)
+
+Fixpoint fib (n : nat) :=
+  match n with
+  | 0 => 1
+  | S n' =>
+    match n' with
+    | 0 => 1
+    | S n'' => fib n' + fib n''
+    end
+  end.
+
+Example reducion_cbv : nat.
+MProof.
+  Time let res := reduce RedNF (fib 20) in
+  ret res.
+Qed.
+
+Example reducion_vm : nat.
+MProof.
+  Time let res := reduce RedVmCompute (fib 20) in
+  ret res.
+Qed.
