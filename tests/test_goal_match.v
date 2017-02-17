@@ -32,3 +32,15 @@ MProof.
 intros x H y.
 match_goal ([[ (Q : x > 0) (z : nat) |- x = z ]] => reflexivity).
 Qed.
+
+Goal forall (x : nat) (H : x > 0) (y : bool), x = x.
+MProof.
+intros x H y.
+match_goal ([[? a | (Q : a > 0) (z : nat) |- a = z ]] => reflexivity).
+Qed.
+
+Goal forall (x : nat) (H : x > 0) (y : bool), 0 + x = x.
+MProof.
+intros x H y.
+match_goal ([[? a | (Q : a > 0) (z : nat) |- a = z ]] => apply (eq_refl a)).
+Qed.
