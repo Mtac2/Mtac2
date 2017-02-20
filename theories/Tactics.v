@@ -536,7 +536,7 @@ Definition right : tactic := fun g=>
   | _ => raise Not2Constructor
   end.
 
-Monomorphic Inductive goal_pattern : Type :=
+Inductive goal_pattern : Type :=
 | gbase : forall {A}, A -> tactic -> goal_pattern
 | gtele : forall {C}, (C -> goal_pattern) -> goal_pattern
 | gtele_evar : forall {C}, (C -> goal_pattern) -> goal_pattern.
@@ -856,13 +856,13 @@ Definition unfold {A} (x: A) : tactic := fun g=>
 Definition unfold_in {A B} (x: A) (h: B) : tactic :=
   reduce_in (RedStrong [RedBeta; RedMatch; RedFix; RedDeltaOnly [Dyn x]]) h.
 
-Monomorphic Fixpoint intros_simpl (l: list string) : tactic :=
+Fixpoint intros_simpl (l: list string) : tactic :=
   match l with
   | [] => idtac
   | (n :: l) => tactic_tactic (intro_simpl n) (intros_simpl l)
   end.
 
-Monomorphic Fixpoint name_pattern (l: list (list string)) : list tactic :=
+Fixpoint name_pattern (l: list (list string)) : list tactic :=
   match l with
   | [] => []
   | (ns :: l) => intros_simpl ns :: name_pattern l
