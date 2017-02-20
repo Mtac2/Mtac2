@@ -966,6 +966,10 @@ Notation "[[? a .. b | x .. y |- ps ] ] => t" :=
   (at level 202, a binder, b binder,
    x binder, y binder, ps at next level) : goal_match_scope.
 
+Notation "[[? a .. b |- ps ] ] => t" :=
+  (gtele_evar (fun a => .. (gtele_evar (fun b => gbase ps t)).. ))
+  (at level 202, a binder, b binder, ps at next level) : goal_match_scope.
+
 Notation "[[ x .. y |- ps ] ] => t" :=
   (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
   (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
