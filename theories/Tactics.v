@@ -543,31 +543,34 @@ Monomorphic Inductive goal_pattern : Type :=
 
 Definition DoesNotMatchGoal : Exception. exact exception. Qed.
 
-Fixpoint match_goal' (p : goal_pattern) : list Hyp -> list Hyp -> tactic :=
+Fixpoint match_goal' (u : Unification) (p : goal_pattern) : list Hyp -> list Hyp -> tactic :=
   fix go l1 l2 g :=
   match p, l2 with
   | gbase P t, _ =>
     gT <- goal_type g;
-    mif munify_cumul P gT UniCoq then t g
+    mif munify_cumul P gT u then t g
     else raise DoesNotMatchGoal
   | @gtele C f, (@ahyp A a d :: l2') =>
-    oeqCA <- munify C A UniCoq;
+    oeqCA <- munify C A u;
     match oeqCA with
     | Some eqCA =>
       let a' := rcbv match eq_sym eqCA with eq_refl => a end in
-      mtry match_goal' (f a') [] (List.rev_append l1 l2')%list g
+      mtry match_goal' u (f a') [] (List.rev_append l1 l2')%list g
       with DoesNotMatchGoal =>
         go (ahyp a d :: l1) l2' g
       end
     | None => go (ahyp a d :: l1) l2' g end
   | @gtele_evar C f, _ =>
     e <- evar C;
-    match_goal' (f e) l1 l2 g
+    match_goal' u (f e) l1 l2 g
   | _, _ => raise DoesNotMatchGoal
   end.
 
-Definition match_goal (p : goal_pattern) : tactic := fun g=>
-  r <- hypotheses; match_goal' p [] (List.rev' r) g.
+Definition match_goal_base (u : Unification) (p : goal_pattern) : tactic := fun g=>
+  r <- hypotheses; match_goal' u p [] (List.rev' r) g.
+
+Definition match_goal := match_goal_base UniCoq.
+Definition match_goal_nored := match_goal_base UniMatchNoRed.
 
 Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   d <- goal_to_dyn g;
@@ -598,11 +601,11 @@ Definition destruct_all (T : Type) : tactic := fun g=>
 
 Definition treduce (r : Reduction) : tactic := fun g=>
   T <- goal_type g;
-  let T := reduce r T in
-  e <- evar T;
-  oeq <- munify g (Goal e) UniMatch;
-  match oeq with
-  | Some _ => ret [Goal e]
+  let T' := reduce r T in
+  e <- evar T';
+  b <- munify_cumul g (@Goal T e) UniMatch;
+  match b with
+  | true => ret [Goal e]
   | _ => failwith "It should never fail here"
   end.
 
@@ -970,6 +973,7 @@ Notation "[[ x .. y |- ps ] ] => t" :=
 Delimit Scope goal_match_scope with goal_match.
 
 Arguments match_goal _%goal_match _.
+Arguments match_goal_nored _%goal_match _.
 
 Notation "t 'mwhere' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
 

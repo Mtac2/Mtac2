@@ -44,3 +44,11 @@ MProof.
 intros x H y.
 match_goal ([[? a | (Q : a > 0) (z : nat) |- a = z ]] => apply (eq_refl a)).
 Qed.
+
+Goal forall (x : nat) (H : x > 0) (y : bool), 0 + x = x.
+MProof.
+intros x H y.
+(* a is instantiated with x, and then when matching x with 0 + x it fails (as it should) *)
+Fail match_goal_nored ([[? a | (Q : a > 0) (z : nat) |- a = z ]] => apply (eq_refl a)).
+match_goal_nored ([[? a | (Q : a > 0) (z : nat) |- 0 + a = z ]] => apply (eq_refl a)).
+Qed.

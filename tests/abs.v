@@ -6,11 +6,12 @@ Require Import Strings.String.
 Require Import Lists.List.
 Import ListNotations.
 
-Definition assert_eq {A} (a b : A) := mmatch a with b => ret I | _ => raise exception end.
+Definition assert_eq {A} (a b : A) := mmatch b with a => ret I | _ => raise exception end.
 
 (* Abstracting an index works *)
 Goal True.
-  mrun (\nu x:nat, r <- abs_fun (P:=fun _ :nat=>nat) x x; assert_eq r (@id nat)).
+  pose (code := (\nu x:nat, r <- abs_fun (P:=fun _ :nat=>nat) x x; assert_eq r (@id nat))).
+  mrun code.
 Qed.
 
 (* Abstracting the second index works too *)

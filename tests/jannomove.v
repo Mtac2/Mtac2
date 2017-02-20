@@ -71,12 +71,7 @@ Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
                    let (_, var, _) := h : Hyp in
                    (trewrite d [Dyn var] &> clear var) g) : tactic)
   | Done => done
-  | Simpl => fun g=>
-    T <- goal_type g;
-    let T := reduce RedSimpl T in
-    e <- evar T;
-    oeq <- munify g (Goal e) UniMatch;
-    match oeq with Some _ => ret [Goal e] | _ => failwith "WHAT" end
+  | Simpl => simpl
   end.
 
 Definition do_intro :  LIP -> tactic :=
