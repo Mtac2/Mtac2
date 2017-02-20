@@ -388,22 +388,23 @@ Delimit Scope metaCoq_pattern_scope with metaCoq_pattern.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
   ((@cons (pattern _ _ _) p1%metaCoq_pattern (.. (@cons (pattern _ _ _) pn%metaCoq_pattern nil) ..)))
-    (at level 91, p1 at level 210, pn at level 210).
+    (at level 91, p1 at level 210, pn at level 210) : mmatch_with.
 Notation "'with' p1 | .. | pn 'end'" :=
   ((@cons (pattern _ _ _) p1%metaCoq_pattern (.. (@cons (pattern _ _ _) pn%metaCoq_pattern nil) ..)))
-    (at level 91, p1 at level 210, pn at level 210).
+    (at level 91, p1 at level 210, pn at level 210) : mmatch_with.
 
-Notation "'mmatch' x ls" := (@tmatch _ (fun _=>_) x ls)
-  (at level 90, ls at level 91) : Mtac_scope.
-Notation "'mmatch' x 'return' 'M' p ls" := (@tmatch _ (fun x=>p) x ls)
-  (at level 90, ls at level 91) : Mtac_scope.
-Notation "'mmatch' x 'as' y 'return' 'M' p ls" := (@tmatch _ (fun y=>p) x ls)
-  (at level 90, ls at level 91) : Mtac_scope.
+Delimit Scope mmatch_with with mmatch_with.
 
+Notation "'mmatch' x ls" := (@tmatch _ (fun _=>_) x ls%mmatch_with)
+  (at level 90, ls at level 91) : Mtac_scope.
+Notation "'mmatch' x 'return' 'M' p ls" := (@tmatch _ (fun x=>p) x ls%mmatch_with)
+  (at level 90, ls at level 91) : Mtac_scope.
+Notation "'mmatch' x 'as' y 'return' 'M' p ls" := (@tmatch _ (fun y=>p) x ls%mmatch_with)
+  (at level 90, ls at level 91) : Mtac_scope.
 
 Notation "'mtry' a ls" :=
   (ttry a (fun e=>
-    (@tmatch _ (fun _=>_) e (app ls (cons ([? x] x=>raise x)%metaCoq_pattern nil)))))
+    (@tmatch _ (fun _=>_) e (app ls%mmatch_with (cons ([? x] x=>raise x)%metaCoq_pattern nil)))))
     (at level 82, a at level 100, ls at level 91, only parsing).
 
 Definition Cevar (A : Type) (ctx : list Hyp) : M A := evar A (Some ctx).
