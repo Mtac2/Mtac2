@@ -177,12 +177,12 @@ MProof.
 Qed.
 
 Definition testmg :=
-  ([[ (b : nat) |- S b > 0  ]] => fun g=>destruct b g)%goal_match.
+  match_goal with [[ (b : nat) |- S b > 0  ]] => fun g=>destruct b g end.
 
 Goal forall b : nat, S b > 0.
 MProof.
   intros b.
-  match_goal testmg.
+  testmg.
   - omega.
   - intros n'&> omega.
 Qed.
@@ -190,7 +190,7 @@ Qed.
 Goal forall a b : nat, S b > 0.
 MProof.
   intros a b.
-  match_goal testmg.
+  testmg.
   - omega.
   - intros n'&> omega.
 Qed.
@@ -198,7 +198,7 @@ Qed.
 Goal forall a b c : nat, S b > 0.
 MProof.
   intros a b c.
-  match_goal testmg.
+  testmg.
   - omega.
   - intros n'&> omega.
 Qed.
@@ -226,7 +226,7 @@ Qed.
 Goal forall x : bool, orb x true = true.
 MProof.
   intro x.
-  match_goal ([[ z:bool |- _ ]] => destruct  z).
+  match_goal with [[ z:bool |- _ ]] => destruct z end.
   - reflexivity.
   - reflexivity.
 Qed.
@@ -234,25 +234,25 @@ Qed.
 Goal forall (a b : nat) (Hb : b = 0) (Ha : a = 0), b = 0.
 MProof.
   intros a b Hb Ha.
-  match_goal ([[ (x:nat) (Hx : x = 0) |- x = 0 ]] => exact Hx).
+  match_goal with [[ (x:nat) (Hx : x = 0) |- x = 0 ]] => exact Hx end.
 Qed.
 
 Goal forall (a b : nat) (Hb : b = 0) (Ha : a = 0), a = 0.
 MProof.
   intros a b Hb Ha.
-  match_goal ([[ (x:nat) (Hx : x = 0) |- x = 0 ]] => exact Hx).
+  match_goal with [[ (x:nat) (Hx : x = 0) |- x = 0 ]] => exact Hx end.
 Qed.
 
 Goal forall (a b : nat) (Ha : a = 0) (Hb : b = 0), a = a.
 MProof.
   intros a b Ha Hb.
-  match_goal ([[ (x:nat) (Hx : x = 0) |- x = x ]] => reflexivity).
+  match_goal with [[ (x:nat) (Hx : x = 0) |- x = x ]] => reflexivity end.
 Qed.
 
 Goal forall (a b : nat) (Ha : a = 0) (Hb : b = 0), b = b.
 MProof.
   intros a b Ha Hb.
-  match_goal ([[ (x:nat) (Hx : x = 0) |- x = x ]] => reflexivity).
+  match_goal with [[ (x:nat) (Hx : x = 0) |- x = x ]] => reflexivity end.
 Qed.
 
 Example apply_tactic (a b : nat) : a > b -> S a > S b.

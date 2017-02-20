@@ -542,8 +542,10 @@ Monomorphic Inductive goal_pattern : Type :=
 | gtele_evar : forall {C}, (C -> goal_pattern) -> goal_pattern.
 
 Definition DoesNotMatchGoal : Exception. exact exception. Qed.
+Definition NoPatternMatchesGoal : Exception. exact exception. Qed.
 
-Fixpoint match_goal' (u : Unification) (p : goal_pattern) : list Hyp -> list Hyp -> tactic :=
+Fixpoint match_goal_pattern'
+    (u : Unification) (p : goal_pattern) : list Hyp -> list Hyp -> tactic :=
   fix go l1 l2 g :=
   match p, l2 with
   | gbase P t, _ =>
@@ -555,22 +557,27 @@ Fixpoint match_goal' (u : Unification) (p : goal_pattern) : list Hyp -> list Hyp
     match oeqCA with
     | Some eqCA =>
       let a' := rcbv match eq_sym eqCA with eq_refl => a end in
-      mtry match_goal' u (f a') [] (List.rev_append l1 l2')%list g
+      mtry match_goal_pattern' u (f a') [] (List.rev_append l1 l2')%list g
       with DoesNotMatchGoal =>
         go (ahyp a d :: l1) l2' g
       end
     | None => go (ahyp a d :: l1) l2' g end
   | @gtele_evar C f, _ =>
     e <- evar C;
-    match_goal' u (f e) l1 l2 g
+    match_goal_pattern' u (f e) l1 l2 g
   | _, _ => raise DoesNotMatchGoal
   end.
 
-Definition match_goal_base (u : Unification) (p : goal_pattern) : tactic := fun g=>
-  r <- hypotheses; match_goal' u p [] (List.rev' r) g.
+Definition match_goal_pattern (u : Unification) (p : goal_pattern) : tactic := fun g=>
+  r <- hypotheses; match_goal_pattern' u p [] (List.rev' r) g.
 
-Definition match_goal := match_goal_base UniCoq.
-Definition match_goal_nored := match_goal_base UniMatchNoRed.
+Fixpoint match_goal_base (u : Unification) (ps : list goal_pattern) : tactic := fun g =>
+  match ps with
+  | [] => raise NoPatternMatchesGoal
+  | p :: ps' =>
+    mtry match_goal_pattern u p g
+    with DoesNotMatchGoal => match_goal_base u ps' g end
+  end.
 
 Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
   d <- goal_to_dyn g;
@@ -958,26 +965,37 @@ Notation "t 'asp' n" := (tactic_tactics t (name_pattern n)) (at level 40).
 
 Notation "[[ |- ps ] ] => t" :=
   (gbase ps t)
-  (at level 202, ps at next level) : goal_match_scope.
+  (at level 202, ps at next level) : match_goal_pattern_scope.
 
 Notation "[[? a .. b | x .. y |- ps ] ] => t" :=
   (gtele_evar (fun a => .. (gtele_evar (fun b =>
      gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))).. ))
   (at level 202, a binder, b binder,
-   x binder, y binder, ps at next level) : goal_match_scope.
+   x binder, y binder, ps at next level) : match_goal_pattern_scope.
 
 Notation "[[? a .. b |- ps ] ] => t" :=
   (gtele_evar (fun a => .. (gtele_evar (fun b => gbase ps t)).. ))
-  (at level 202, a binder, b binder, ps at next level) : goal_match_scope.
+  (at level 202, a binder, b binder, ps at next level) : match_goal_pattern_scope.
 
 Notation "[[ x .. y |- ps ] ] => t" :=
   (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
-  (at level 202, x binder, y binder, ps at next level) : goal_match_scope.
+  (at level 202, x binder, y binder, ps at next level) : match_goal_pattern_scope.
 
-Delimit Scope goal_match_scope with goal_match.
+Delimit Scope match_goal_pattern_scope with match_goal_pattern.
 
-Arguments match_goal _%goal_match _.
-Arguments match_goal_nored _%goal_match _.
+Notation "'with' | p1 | .. | pn 'end'" :=
+  ((@cons goal_pattern p1%match_goal_pattern (.. (@cons goal_pattern pn%match_goal_pattern nil) ..)))
+    (at level 91, p1 at level 210, pn at level 210) : match_goal_with_scope.
+Notation "'with' p1 | .. | pn 'end'" :=
+  ((@cons goal_pattern p1%match_goal_pattern (.. (@cons goal_pattern pn%match_goal_pattern nil) ..)))
+    (at level 91, p1 at level 210, pn at level 210) : match_goal_with_scope.
+
+Delimit Scope match_goal_with_scope with match_goal_with.
+
+Notation "'match_goal' ls" := (match_goal_base UniCoq ls%match_goal_with)
+  (at level 90, ls at level 91) : Mtac_scope.
+Notation "'match_goal_nored' ls" := (match_goal_base UniMatchNoRed ls%match_goal_with)
+  (at level 90, ls at level 91) : Mtac_scope.
 
 Notation "t 'mwhere' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
 
@@ -1007,13 +1025,13 @@ Import TacticsNotations.
 
 Definition assumption : tactic := fun g=>
   P <- goal_type g;
-  match_goal ([[ x:P |- P ]] => exact x) g.
+  (match_goal with [[ x:P |- P ]] => exact x end) g.
 
 (** Given a type [T] it searches for a hypothesis with that type and
     executes the [cont]inuation on it.  *)
 Definition select T (cont: T -> tactic) : tactic := fun g=>
   G <- goal_type g;
-  match_goal ([[(x : T) |- G ]] => cont x) g.
+  (match_goal with [[(x : T) |- G ]] => cont x end) g.
 
 (** [cut U] creates two goals with types [U -> T] and [U], where
     [T] is the type of the current goal. *)
