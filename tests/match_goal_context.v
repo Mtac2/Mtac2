@@ -13,8 +13,8 @@ Abort.
 Goal forall x, x = 0.
 MProof.
   intros x.
-Fail  match_goal with
-  | [[? y |- context C [y = 0] ]] => change (C (y = 0 + 0))
+  match_goal with
+  | [[? y |- context C [y = 0 : Type] ]] => change (C (y = 0 + 0))
   end.
   (* Error: Uncaught exception: NoPatternMatchesGoal
   Why does this fail? *)
@@ -40,5 +40,13 @@ Abort.
 Goal nat * nat.
 MProof.
   Fail match_goal with
-  | [[ |- context C [ nat ] ]] => idtac
+  | [[ |- context C [ nat : Set ] ]] => idtac
   end. (* It fails on non Prop goals... *)
+Abort.
+
+Goal nat * nat.
+MProof.
+  match_goal with
+  | [[ |- context C [ nat : Type ] ]] => idtac
+  end. (* It works on Type *)
+Abort.

@@ -557,17 +557,20 @@ Definition match_goal_context
   mfix4 go (B : Type) (y : B) (t : (A -> B) -> tactic) (g : goal) : M (list goal) :=
   let recur := fun {B} (y : B) (t : (A -> B) -> tactic) =>
     mmatch y with
-    | [? A' (h : A' -> B) z] h z =>
+    | [? A' (h : A' -> B) z] h z =n>
       mtry go _ z (fun C => t (fun a => h (C a))) g with
       | DoesNotMatchGoal => go _ h (fun C => t (fun a => C a z)) g
       end
     | _ => raise DoesNotMatchGoal
     end in
-  oeqAB <- munify A B UniMatchNoRed;
+  oeqAB <- munify B A UniMatchNoRed;
   match oeqAB with
   | Some eqAB =>
-    let 'eq_refl := eqAB in fun (y : A) t =>
-    mif munify_cumul x y UniMatchNoRed then t (fun a => a) g else recur y t
+    let 'eq_refl := eq_sym eqAB in fun (y : A) t =>
+    mif munify_cumul x y UniMatchNoRed then
+      let term := reduce (RedStrong [RedBeta]) (t (fun a => a) g) in
+      term
+    else recur y t
   | None => recur
   end y t.
 
