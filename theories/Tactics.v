@@ -468,6 +468,13 @@ Definition apply {T} (c : T) : tactic := fun g=>
   | _ => raise NotAGoal
   end.
 
+Definition change (P : Type) : tactic := fun g =>
+  gT <- goal_type g;
+  unify_or_fail P gT;;
+  e <- evar P;
+  exact e g;;
+  ret [Goal e].
+
 Definition change_hyp {P Q} (H: P) (newH: Q) : tactic := fun g=>
   gT <- goal_type g;
   n <- get_binder_name H;
