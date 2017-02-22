@@ -29,3 +29,16 @@ MProof.
   (* Result: True /\ x = x + (fun a : nat => a) (y + (0 * 0 * 0 * 0)) /\ True
   How to get rid of the identity? *)
 Abort.
+
+Goal True /\ True.
+MProof.
+  match_goal with
+  | [[ |- context C [ True ] ]] => change (C (id True))
+  end. (* works on Prop goals *)
+Abort.
+
+Goal nat * nat.
+MProof.
+  Fail match_goal with
+  | [[ |- context C [ nat ] ]] => idtac
+  end. (* It fails on non Prop goals... *)
