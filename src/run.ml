@@ -967,15 +967,17 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
               return sigma none
         end
 
-    | 29 -> (* munify_cumul *)
-        let x, y, uni = nth 2, nth 3, nth 4 in
+    | 29 -> (* munify_univ *)
+        let x, y, uni = nth 0, nth 1, nth 2 in
+        let fT = mkProd(Name.Anonymous, x, y) in
         begin
           let r = UnificationStrategy.unify None sigma env uni Reduction.CUMUL x y in
           match r with
           | Evarsolve.Success sigma, _ ->
-              return sigma CoqBool.mkTrue
+              let id = mkLambda(Name.Anonymous,x,mkRel 1) in
+              return sigma (CoqOption.mkSome fT id)
           | _, _ ->
-              return sigma CoqBool.mkFalse
+              return sigma (CoqOption.mkNone fT)
         end
 
     | 30 -> (* get_reference *)
