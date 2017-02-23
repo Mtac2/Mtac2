@@ -563,16 +563,16 @@ Definition match_goal_context
       end
     | _ => raise DoesNotMatchGoal
     end in
-  oeqAB <- munify B A UniMatchNoRed;
-  match oeqAB with
-  | Some eqAB =>
-    let 'eq_refl := eq_sym eqAB in fun (y : A) t =>
-    mif munify_cumul x y UniMatchNoRed then
-      let term := reduce (RedStrong [RedBeta]) (t (fun a => a) g) in
+  ofAB <- munify_univ A B UniMatchNoRed;
+  match ofAB with
+  | Some fAB =>
+    let fx := reduce (RedWhd [RedBeta]) (fAB x) in
+    mif munify fx y UniMatchNoRed then
+      let term := reduce (RedStrong [RedBeta]) (t fAB g) in
       term
     else recur y t
-  | None => recur
-  end y t.
+  | None => recur y t
+  end.
 
 Fixpoint match_goal_pattern'
     (u : Unification) (p : goal_pattern) : list Hyp -> list Hyp -> tactic :=
