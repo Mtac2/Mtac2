@@ -211,11 +211,10 @@ Inductive Mtac : Type -> Prop :=
     try to equate its leveles. *)
 | munify {A} (x y : A) : Unification -> Mtac (option (x = y))
 
-(** [munify_cumul x y r] uses reduction strategy [r] to equate [x] and
-    [y].  Note that they might have different types.  It uses
-    cumulativity of universes, e.g., it succeeds if [x] is [Prop] and
-    [y] is [Type]. *)
-| munify_cumul {A B} (x: A) (y: B) : Unification -> Mtac bool
+(** [munify_univ A B r] uses reduction strategy [r] to equate universes
+    [A] and [B].  It uses cumulativity of universes, e.g., it succeeds if
+    [x] is [Prop] and [y] is [Type]. *)
+| munify_univ (A B : Type) : Unification -> Mtac (option (A -> B))
 
 (** [get_reference s] returns the constant that is reference by s. *)
 | get_reference : string -> Mtac dyn
@@ -417,6 +416,16 @@ End MtacNotations.
 
 Section GeneralUtilities.
 Import MtacNotations.
+
+Definition munify_cumul {A B} (x: A) (y: B) (u : Unification) : Mtac bool :=
+  of <- munify_univ A B u;
+  match of with
+  | Some f =>
+    let fx := reduce RedOneStep (f x) in
+    oeq <- munify fx y u;
+    match oeq with Some _ => ret true | None => ret false end
+  | None => ret false
+  end.
 
 Definition names_of_hyp : M (list string) :=
   env <- hypotheses;
