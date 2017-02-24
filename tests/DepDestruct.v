@@ -184,7 +184,8 @@ MProof.
   unfold_in (@get_type_of_branch) T. simpl_in T.
   unfold_in (@get_type_of_branch) F. simpl_in F.
   clear return_type.
-  clear rG.
+  (* TODO: figure out why `unfold` above doesn't work anymore. *)
+  (* clear rG. *)
   match c with
   | Dyn c => exact c
   end.
