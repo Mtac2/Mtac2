@@ -246,26 +246,19 @@ Polymorphic Program Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn
       ret (aTele t r)
     | _, _ => raise NoPatternMatches
     end.
-
 Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (CTele it) :=
   fun isort it nindx =>
     mfix2 rec (A : stype_of isort) (a : selem_of A) : M (CTele it) :=
-      B <- evar Type;
-      F <- evar (B -> stype_of isort);
-      oH <- munify A (ForAll F) UniCoq;
-      match oH with
-      | Some H =>
+    mmatch A with
+    | [? B (F : B -> stype_of isort)] ForAll F =u> [ H ]
         let f := match_eq H selem_of a in
         n <- fresh_name "b";
         nu n None (fun b : B =>
           r <- rec (F b) (App f b);
+          print "before `abs b r`";;
           f' <- abs b r;
           ret (cProd f'))
-      | None =>
-        let Ty := stype_of isort in
-        H <- unify_or_fail B Ty;
-        let idB : B -> Ty := match_eq H (fun T=>B->T) (fun x=>x) in
-        cumul_or_fail F idB;;
+    | _ =>
         let A_red := reduce RedHNF A in (* why the reduction here? *)
         args <- args_of_max nindx (Dyn A_red);
         atele <- get_ATele it args;
