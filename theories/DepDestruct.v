@@ -11,7 +11,9 @@ Import ListNotations.
     [x] (in case it is [id x] or some convertible term to a variable)
     *)
 Definition abs {A} {P} (x:A) (t:P x) :=
-  let y := reduce RedHNF x in abs_fun y t.
+  (* let y := reduce RedHNF x in *)
+  (* abs_fun y t. *)
+  abs_fun x t.
 
 Notation redMatch := (reduce (RedWhd [RedMatch])).
 
@@ -183,10 +185,10 @@ Polymorphic Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (args : AT
     let t := reduce_novars t in
     b <- is_var t;
     if b then
-      let Gty := reduce RedNF (type_of G) in
-      let T' := reduce RedNF (type_of t) in
+      let Gty := reduce RedHNF (type_of G) in
+      let T' := reduce RedHNF (type_of t) in
       r <- @abs T' (fun _=>Gty) t G;
-      let r := reduce RedNF (rBase r) in
+      let r := reduce RedHNF (rBase r) in
       ret r
     else
       failwith "Argument t should be a variable"
@@ -195,10 +197,10 @@ Polymorphic Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (args : AT
       let v := reduce_novars v in
       b <- is_var v;
       if b then
-        let Gty := reduce RedNF (fun v'=>RTele rsort (f v')) in
-        let T' := reduce RedNF (type_of v) in
+        let Gty := reduce RedHNF (fun v'=>RTele rsort (f v')) in
+        let T' := reduce RedHNF (type_of v) in
         r <- @abs T' Gty v r;
-        let r := reduce RedNF (rTele r) in
+        let r := reduce RedHNF (rTele r) in
         ret r
       else
         failwith "All indices need to be variables"
@@ -228,8 +230,6 @@ Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
         if b then
           r <- args_of_max max (Dyn f); ret (app r (Dyn t :: nil))
         else
-          print "Failed args_of_max while matching:";;
-          print_term d;;
           raise NotEnoughArguments
       end
     end.
@@ -255,7 +255,6 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
         n <- fresh_name "b";
         nu n None (fun b : B =>
           r <- rec (F b) (App f b);
-          print "before `abs b r`";;
           f' <- abs b r;
           ret (cProd f'))
     | _ =>

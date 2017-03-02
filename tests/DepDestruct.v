@@ -9,18 +9,6 @@ Abort.
 
 Section Bugs.
 
-(* It is not allowing indices to be definitions, it seems *)
-Goal forall n, n = S n -> False.
-MProof.
-  intros n H.
-  Fail new_destruct H. (* fine, all indices need to be var *)
-  pose (j := S n).
-  assert (eq : j = S n) |1> reflexivity.
-  move_back H (rewrite <- eq).
-  intro H. (* now H has only indices *)
-  Fail new_destruct H. (* cannot abstract non variable S n *)
-Abort.
-
 (** BUG: It fails with one constructor types, but not with two *)
 Inductive one_constr : Prop :=
 | the_one_constr : one_constr
@@ -48,6 +36,18 @@ Unset Unicoq Debug.
 
 End Bugs.
 
+(* The 2nd new_destruct used to fail. *)
+Goal forall n, n = S n -> False.
+MProof.
+  intros n H.
+  Fail new_destruct H. (* fine, all indices need to be var *)
+  pose (j := S n).
+  assert (eq : j = S n) |1> reflexivity.
+  move_back H (rewrite <- eq).
+  intro H. (* now H has only indices *)
+  move_back eq (idtac).
+  new_destruct H.
+Abort.
 
 
 Section ExampleReflect.
