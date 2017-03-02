@@ -132,10 +132,6 @@ let constr_to_string_env env t = string_of_ppcmds (Termops.print_constr_env env 
 
 module Exceptions = struct
 
-  let mkFailure s =
-    let msg = CoqString.to_coq s in
-    mkApp (Lazy.force (mkConstr "Failure"), [|msg|])
-
   let mkCannotRemoveVar env x =
     let varname = CoqString.to_coq (constr_to_string_env env x) in
     mkApp(Lazy.force (mkConstr "CannotRemoveVar"), [|varname|])
@@ -144,10 +140,18 @@ module Exceptions = struct
     let msg = CoqString.to_coq s in
     mkApp (Lazy.force (mkConstr "RefNotFound"), [|msg|])
 
-  let mkTermNotGround = mkConstr "TermNotGround"
-  let mkWrongTerm = mkConstr "WrongTerm"
-  let mkHypMissesDependency = mkConstr "HypMissesDependency"
-  let mkTypeMissesDependency = mkConstr "TypeMissesDependency"
+  let mkTermNotGround () = Lazy.force (mkConstr "TermNotGround")
+  let mkWrongTerm () = Lazy.force (mkConstr "WrongTerm")
+  let mkHypMissesDependency () = Lazy.force (mkConstr "HypMissesDependency")
+  let mkTypeMissesDependency () = Lazy.force (mkConstr "TypeMissesDependency")
+  let mkAbsDependencyError () = Lazy.force (mkConstr "AbsDependencyError")
+  let mkExceptionNotGround () = Lazy.force (mkConstr "ExceptionNotGround")
+  let mkDuplicatedVariable () = Lazy.force (mkConstr "DuplicatedVariable")
+  let mkNotAVar () = Lazy.force (mkConstr "NotAVar")
+  let mkStuckTerm () = Lazy.force (mkConstr "StuckTerm")
+  let mkNotAList () = Lazy.force (mkConstr "NotAList")
+  let mkVarAppearsInValue () = Lazy.force (mkConstr "VarAppearsInValue")
+
   let mkLtacError msg =
     let e = mkConstr "LtacError" in
     let coqmsg = CoqString.to_coq msg in
@@ -161,22 +165,6 @@ module Exceptions = struct
     mkApp(c, [|mkProp; a|])
 
   let mkNameExists s = mkApp (Lazy.force (mkConstr "NameExistsInContext"), [|s|])
-
-  let mkExceptionNotGround env term =
-    let e = mkConstr "ExceptionNotGround" in
-    let s = string_of_ppcmds (Termops.print_constr_env env term) in
-    let coqexp = CoqString.to_coq s in
-    mkApp(Lazy.force e, [|coqexp|])
-
-  let error_stuck t = "Cannot reduce term, perhaps an opaque definition? " ^ constr_to_string t
-  let error_param env n t = "Parameter " ^ n ^ " appears in value " ^ constr_to_string_env env t
-  let error_abs env x = "Cannot abstract non variable " ^ (constr_to_string_env env x)
-  let error_abs_env env x t ty = "Cannot abstract "  ^ (constr_to_string_env env x) ^ " from " ^ (constr_to_string_env env t) ^ " of type " ^ (constr_to_string_env env ty)
-  let error_abs_let = "Trying to let-abstract a variable without definition"
-  let error_abs_let_noconv env t t' = "Definition " ^ (constr_to_string_env env t) ^ " must be convertible to " ^ (constr_to_string_env env t')
-  let error_abs_fix env ty n = "The type of the fixpoint " ^ (constr_to_string_env env ty) ^ " must have " ^ (string_of_int n) ^ " products"
-  let remove_var env x = "Term must be a variable " ^ constr_to_string_env env x
-  let unknown_reduction_strategy = "Unknown reduction strategy"
 
   let block = CErrors.error
 end
@@ -619,9 +607,9 @@ let abs case (env, sigma) a p x y n t : data =
       in
       return sigma t
     else
-      fail sigma (E.mkFailure (Exceptions.error_abs_env env x t p))
+      fail sigma (E.mkAbsDependencyError ())
   else
-    fail sigma (E.mkFailure (Exceptions.error_abs env x))
+    fail sigma (E.mkNotAVar ())
 
 (** checks if (option) definition od and type ty has named
     vars included in vars *)
@@ -685,13 +673,13 @@ let cvar (env, sigma as ctx) ty ohyps =
           return sigma (mkEvar (e, Array.of_list vars))
         with
         | MissingDep ->
-            fail sigma (Lazy.force E.mkHypMissesDependency)
+            fail sigma (E.mkHypMissesDependency ())
         | Not_found ->
-            fail sigma (Lazy.force E.mkTypeMissesDependency)
+            fail sigma (E.mkTypeMissesDependency ())
       else
-        fail sigma (E.mkFailure "Duplicated variable in hypotheses")
+        fail sigma (E.mkDuplicatedVariable ())
     with Hypotheses.NotAVariable ->
-      fail sigma (E.mkFailure "All hypothesis should be variables")
+      fail sigma (E.mkNotAVar ())
   else
     let sigma, evar = make_evar sigma env ty in
     return sigma evar
@@ -761,7 +749,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         let b = reduce sigma env (Array.get args' 0) (Array.get args' 2) in
         run' ctxt (Term.mkApp (Vars.subst1 b t, args))
       with CoqList.NotAList l ->
-        fail sigma (E.mkFailure (E.error_stuck l))
+        fail sigma (E.mkNotAList ())
     else
       run' ctxt (Term.mkApp (Vars.subst1 b t, args))
   else
@@ -774,7 +762,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
       else -1
     in
     match constr h with
-    | -1 -> fail sigma (E.mkFailure (E.error_stuck h))
+    | -1 -> fail sigma (E.mkStuckTerm ())
     | 1 -> (* ret *)
         return sigma (nth 1)
 
@@ -802,7 +790,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         if closed then
           fail sigma term
         else
-          fail sigma (Exceptions.mkExceptionNotGround env term)
+          fail sigma (E.mkExceptionNotGround ())
 
     | 5 -> (* fix1 *)
         let a, b, s, i, f, x = nth 0, nth 1, nth 2, nth 3, nth 4, nth 5 in
@@ -849,7 +837,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
           match run' (env, renv, sigma', (nus+1)) fx with
           | Val (sigma', e) ->
               if occur_var env name e then
-                fail sigma (E.mkFailure (E.error_param env namestr e))
+                fail sigma (E.mkVarAppearsInValue ())
               else
                 return sigma' e
           | Err (sigma, e) ->
@@ -881,7 +869,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         begin
           match s with
           | Some s -> return sigma s
-          | None -> fail sigma (Lazy.force Exceptions.mkWrongTerm)
+          | None -> fail sigma (Exceptions.mkWrongTerm ())
         end
 
     | 17 -> (* remove *)
@@ -899,7 +887,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
           else
             fail sigma (E.mkCannotRemoveVar env x)
         else
-          fail sigma (E.mkFailure (E.remove_var env x))
+          fail sigma (E.mkNotAVar ())
 
     | 18 -> (* evar *)
         let ty, hyp = nth 0, nth 1 in
@@ -950,7 +938,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
             let (sigma', case) = make_Case (env, sigma) case in
             return sigma' case
           with CoqList.NotAList l ->
-            fail sigma (E.mkFailure (E.error_stuck l))
+            fail sigma (E.mkNotAList ())
         end
     | 28 -> (* munify *)
         let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in

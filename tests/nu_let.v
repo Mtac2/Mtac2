@@ -21,3 +21,11 @@ MProof.
    | _ => ret I
    end.
 Qed.
+
+Example fail_returning_var : True.
+MProof.
+  mtry
+    (\nu x := I, ret x);; raise exception
+  with VarAppearsInValue => ret I
+  end.
+Qed.

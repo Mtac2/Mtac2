@@ -12,5 +12,5 @@ Abort.
 
 Example nu_returning_x_fails (x: nat) : forall y:nat, 0 <= y.
 MProof.
-  mtry nu "z" None (fun y=>ret y) with [? s] Failure s =>print s;; ret _ end.
+  mtry nu "z" None (fun y=>ret y) with VarAppearsInValue => ret _ end.
 Abort.

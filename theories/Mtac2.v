@@ -16,14 +16,18 @@ Unset Universe Minimization ToSet.
 
 Inductive Exception : Type := exception : Exception.
 
-Definition TermNotGround : Exception. exact exception. Qed.
+Definition StuckTerm : Exception. exact exception. Qed.
 
-Definition NoPatternMatches : Exception. exact exception. Qed.
+Definition NotAList : Exception. exact exception. Qed.
+
+Definition TermNotGround : Exception. exact exception. Qed.
 
 Definition WrongTerm : Exception. exact exception. Qed.
 
 Definition HypMissesDependency : Exception. exact exception. Qed.
 Definition TypeMissesDependency : Exception. exact exception. Qed.
+Definition DuplicatedVariable : Exception. exact exception. Qed.
+Definition NotAVar : Exception. exact exception. Qed.
 
 Definition LtacError (s:string) : Exception. exact exception. Qed.
 
@@ -33,11 +37,15 @@ Definition Failure (s : string) : Exception. exact exception. Qed.
 
 Definition NameExistsInContext (s : string) : Exception. exact exception. Qed.
 
-Definition ExceptionNotGround (s : string) : Exception. exact exception. Qed.
+Definition ExceptionNotGround : Exception. exact exception. Qed.
 
 Definition CannotRemoveVar (x : string) : Exception. exact exception. Qed.
 
 Definition RefNotFound (x : string) : Exception. exact exception. Qed.
+
+Definition AbsDependencyError : Exception. exact exception. Qed.
+
+Definition VarAppearsInValue : Exception. exact exception. Qed.
 
 
 Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
@@ -74,7 +82,7 @@ Polymorphic Record Case :=
         case_branches : list dyn
         }.
 
-(* Reduction primitive *)
+(* Reduction primitive. It throws [NotAList] if the list of flags is not a list.  *)
 Definition reduce (r : Reduction) {A} (x : A) := x.
 
 (** goal type *)
@@ -120,26 +128,25 @@ Inductive Mtac : Type -> Prop :=
 (** [is_var e] returns if [e] is a variable. *)
 | is_var : forall {A : Type}, A -> Mtac bool
 
-(* [nu x od f] executes [f x] where variable [x] is added to
-   the local context, optionally with definition [d] with
-   [od = Some d].
-   It raises [NameExistsInContext] if the name "x" is in the context,
-   or [Failure] if executing [f x] results in a term containing
-   variable [x]. *)
+(* [nu x od f] executes [f x] where variable [x] is added to the local context,
+   optionally with definition [d] with [od = Some d].  It raises
+   [NameExistsInContext] if the name "x" is in the context, or
+   [VarAppearsInValue] if executing [f x] results in a term containing variable
+   [x]. *)
 | nu : forall {A : Type} {B : Type}, string -> option A -> (A -> Mtac B) -> Mtac B
 
-(** [abs_fun x e] abstracts variable [x] from [e]. It raises [Failure] if
-    [x] is not a variable, or if [e] or its type [P] depends on a
-    variable also depending on [x]. *)
+(** [abs_fun x e] abstracts variable [x] from [e]. It raises [NotAVar[] if [x]
+    is not a variable, or [AbsDependencyError] if [e] or its type [P] depends on
+    a variable also depending on [x]. *)
 | abs_fun : forall {A : Type} {P : A -> Type} (x : A), P x -> Mtac (forall x, P x)
 
-(** [abs_let x d e] returns [let x := d in e]. It raises [Failure] if
-    [x] is not a variable, or if [e] or its type [P] depends on a
+(** [abs_let x d e] returns [let x := d in e]. It raises [NotAVar] if [x] is not
+    a variable, or [AbsDependencyError] if [e] or its type [P] depends on a
     variable also depending on [x]. *)
 | abs_let : forall {A : Type} {P : A -> Type} (x: A) (t: A), P x -> Mtac (let x := t in P x)
 
-(** [abs_prod x e] returns [forall x, e]. It raises [Failure] if
-    [x] is not a variable, or if [e] or its type [P] depends on a
+(** [abs_prod x e] returns [forall x, e]. It raises [NotAVar] if [x] is not a
+    variable, or [AbsDependencyError] if [e] or its type [P] depends on a
     variable also depending on [x]. *)
 | abs_prod : forall {A : Type} (x : A), Type -> Mtac Type
 
@@ -157,7 +164,7 @@ Inductive Mtac : Type -> Prop :=
 | get_binder_name : forall {A : Type}, A -> Mtac string
 
 (** [remove x t] executes [t] in a context without variable [x].
-    Raises a failure if [x] is not a variable, and raises
+    Raises [NotAVar] if [x] is not a variable, and
     [CannotRemoveVar "x"] if [t] or the environment depends on [x]. *)
 | remove : forall {A : Type} {B : Type}, A -> Mtac B -> Mtac B
 
@@ -173,8 +180,8 @@ Inductive Mtac : Type -> Prop :=
 
     If the type [A] is referring to variables not in the list of
     hypotheses, it raise [TypeMissesDependency]. If the list contains
-    something that is not a variable, or contains duplicated
-    occurrences of a variable, it raises a [Failure].
+    something that is not a variable, it raises [NotAVar]. If it contains duplicated
+    occurrences of a variable, it raises a [DuplicatedVariable].
 *)
 | evar : forall (A : Type), option (list Hyp) -> Mtac A
 

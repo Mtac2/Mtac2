@@ -59,8 +59,10 @@ Qed.
    return value depends on it *)
 Goal forall n m:nat, True.
   intros n m.
-  Fail mrun (\nu H: n=m, r <- abs_fun (P:=fun n'=>n'=m) n H; ret I).
-Abort.
+  mrun (mtry
+          \nu H: n=m, r <- abs_fun (P:=fun n'=>n'=m) n H; ret I
+        with AbsDependencyError => ret I end).
+Qed.
 
 (* No dependency in the term should raise no problem *)
 Goal True.
@@ -76,5 +78,5 @@ Qed.
 (* Evars prevent abstracting of a var *)
 Goal forall A (x : A), True.
   intros A x.
-  Fail mrun (e <- evar True; r <- abs_fun A e; ret e).
-Abort.
+  mrun (mtry e <- evar True; r <- abs_fun A e; ret e with AbsDependencyError => ret I end).
+Qed.
