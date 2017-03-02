@@ -255,7 +255,6 @@ Polymorphic Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx 
         n <- fresh_name "b";
         nu n None (fun b : B =>
           r <- rec (F b) (App f b);
-          print "before `abs b r`";;
           f' <- abs b r;
           ret (cProd f'))
     | _ =>
