@@ -34,8 +34,8 @@ Notation "~~" := (lcons NoOp lnil) : IP_scope.
 Notation "r>" := (lcons (R RightRewrite) lnil) : IP_scope.
 Notation "<l" := (lcons (R LeftRewrite) lnil) : IP_scope.
 
-Notation "[| ]" := (lcons (C nil) lnil) : IP_scope.
-Notation "[| x | .. | y ]" := (lcons (C ( cons x .. (cons y nil) .. )) lnil) : IP_scope.
+Notation "[| ]" := (lcons (C pnil) lnil) : IP_scope.
+Notation "[| x | .. | y ]" := (lcons (C ( pcons x .. (pcons y pnil) .. )) lnil) : IP_scope.
 
 Close Scope IP.
 
@@ -51,10 +51,10 @@ Ltac done := intros; tauto || trivial || assumption || reflexivity.
 Definition NotDone : Exception. exact exception. Qed.
 Definition done := ltac "jannomove.done" [ ]%plist or (fail NotDone).
 
-Fixpoint mmap_plist (f: LIP -> tactic) (l: list LIP) : list tactic :=
+Fixpoint mmap_plist (f: LIP -> tactic) (l: plist LIP) : plist tactic :=
   match l with
-  | nil => []
-  | cons a l' => f a :: mmap_plist f l'
+  | [] => []
+  | a :: l' => f a :: mmap_plist f l'
   end.
 
 Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
@@ -75,7 +75,7 @@ Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
   end.
 
 Definition do_intro :  LIP -> tactic :=
-  mfix2 do_intro (lip : LIP) (g : goal) : M (list goal) :=
+  mfix2 do_intro (lip : LIP) (g : goal) : M (plist goal) :=
   (match lip return tactic with
   | lnil => idtac
   | lcons ip lnil => to_tactic ip do_intro
