@@ -86,3 +86,7 @@ Definition injection {A} (x: A) : tactic :=
 Ltac inversion H := inversion H.
 Definition inversion {A} (x: A) : tactic :=
   ltac (qualify "inversion") [Dyn x].
+
+Ltac typeclasses_eauto := typeclasses eauto.
+Definition typeclasses_eauto : tactic :=
+  ltac (qualify "typeclasses_eauto") [].
