@@ -333,8 +333,8 @@ end
 
 module MCTactics = struct
   let reduceGoal = "metaCoqReduceGoal"
-  let runTac = "run_tac"
-  let tactic = "tactic"
+  let runTac = "MetaCoq.Tactics.run_tac"
+  let tactic = "MetaCoq.Tactics.tactic"
 
   let mkConstr s =
     let open Nametab in let open Libnames in
