@@ -46,10 +46,9 @@ fix loop (l : LIP) (a : A) {struct l} : M A :=
   | lcons b bs => f a b >>= loop bs
   end.
 
-Ltac done := intros; tauto || trivial || assumption || reflexivity.
-
 Definition NotDone : Exception. exact exception. Qed.
-Definition done := ltac "jannomove.done" [ ]%list or (fail NotDone).
+Definition done :=
+  intros &> (tauto or assumption or reflexivity) or (fail NotDone).
 
 Fixpoint mmap_plist (f: LIP -> tactic) (l: list LIP) : list tactic :=
   match l with
