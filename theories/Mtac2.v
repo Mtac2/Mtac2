@@ -101,26 +101,26 @@ Inductive Mtac : Type -> Prop :=
     Mtac A -> (A -> Mtac B) -> Mtac B
 | ttry : forall {A : Type}, Mtac A -> (Exception -> Mtac A) -> Mtac A
 | raise : forall {A : Type}, Exception -> Mtac A
-| tfix1' : forall {A : Type} {B : A -> Type} (S : Type -> Prop),
+| fix1' : forall {A : Type} {B : A -> Type} (S : Type -> Prop),
   (forall a : Type, S a -> Mtac a) ->
   ((forall x : A, S (B x)) -> (forall x : A, S (B x))) ->
   forall x : A, Mtac (B x)
-| tfix2' : forall {A1 : Type} {A2 : A1 -> Type} {B : forall (a1 : A1), A2 a1 -> Type} (S : Type -> Prop),
+| fix2' : forall {A1 : Type} {A2 : A1 -> Type} {B : forall (a1 : A1), A2 a1 -> Type} (S : Type -> Prop),
   (forall a : Type, S a -> Mtac a) ->
   ((forall (x1 : A1) (x2 : A2 x1), S (B x1 x2)) ->
     (forall (x1 : A1) (x2 : A2 x1), S (B x1 x2))) ->
   forall (x1 : A1) (x2 : A2 x1), Mtac (B x1 x2)
-| tfix3' : forall {A1 : Type} {A2 : A1 -> Type}  {A3 : forall (a1 : A1), A2 a1 -> Type} {B : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type} (S : Type -> Prop),
+| fix3' : forall {A1 : Type} {A2 : A1 -> Type}  {A3 : forall (a1 : A1), A2 a1 -> Type} {B : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type} (S : Type -> Prop),
   (forall a : Type, S a -> Mtac a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), S (B x1 x2 x3)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), S (B x1 x2 x3))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), Mtac (B x1 x2 x3)
-| tfix4' : forall {A1 : Type} {A2 : A1 -> Type} {A3 : forall (a1 : A1), A2 a1 -> Type} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type} (S : Type -> Prop),
+| fix4' : forall {A1 : Type} {A2 : A1 -> Type} {A3 : forall (a1 : A1), A2 a1 -> Type} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type} (S : Type -> Prop),
   (forall a : Type, S a -> Mtac a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), Mtac (B x1 x2 x3 x4)
-| tfix5' : forall {A1 : Type} {A2 : A1 -> Type} {A3 : forall (a1 : A1), A2 a1 -> Type} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type} {A5 : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2) (a4 : A4 a1 a2 a3), A5 a1 a2 a3 a4 -> Type} (S : Type -> Prop),
+| fix5' : forall {A1 : Type} {A2 : A1 -> Type} {A3 : forall (a1 : A1), A2 a1 -> Type} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type} {A5 : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2) (a4 : A4 a1 a2 a3), A5 a1 a2 a3 a4 -> Type} (S : Type -> Prop),
   (forall a : Type, S a -> Mtac a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5))) ->
@@ -238,11 +238,11 @@ Arguments Mtac (_%type).
 
 Definition failwith {A} (s : string) : Mtac A := raise (Failure s).
 
-Definition tfix1 {A} B := @tfix1' A B Mtac (fun _ x => x).
-Definition tfix2 {A1 A2} B := @tfix2' A1 A2 B Mtac (fun _ x => x).
-Definition tfix3 {A1 A2 A3} B := @tfix3' A1 A2 A3 B Mtac (fun _ x => x).
-Definition tfix4 {A1 A2 A3 A4} B := @tfix4' A1 A2 A3 A4 B Mtac (fun _ x => x).
-Definition tfix5 {A1 A2 A3 A4 A5} B := @tfix5' A1 A2 A3 A4 A5 B Mtac (fun _ x => x).
+Definition fix1 {A} B := @fix1' A B Mtac (fun _ x => x).
+Definition fix2 {A1 A2} B := @fix2' A1 A2 B Mtac (fun _ x => x).
+Definition fix3 {A1 A2 A3} B := @fix3' A1 A2 A3 B Mtac (fun _ x => x).
+Definition fix4 {A1 A2 A3 A4} B := @fix4' A1 A2 A3 A4 B Mtac (fun _ x => x).
+Definition fix5 {A1 A2 A3 A4 A5} B := @fix5' A1 A2 A3 A4 A5 B Mtac (fun _ x => x).
 
 (** Defines [eval f] to execute after elaboration the Mtactic [f].
     It allows e.g. [rewrite (eval f)]. *)
@@ -301,27 +301,28 @@ Notation "'\nu' x := t , a" := (
   n <- get_binder_name f;
   nu n (Some t) f) (at level 81, x at next level, right associativity) : Mtac_scope.
 
-Notation "'mfix1' f ( x : A ) : 'M' T := b" := (tfix1 (fun x=>T%type) (fun f (x : A)=>b%MC))
+Notation "'mfix1' f ( x : A ) : 'M' T := b" :=
+  (fix1 (fun x=>T%type) (fun f (x : A)=>b%MC))
   (at level 85, f at level 0, x at next level, format
   "'[v  ' 'mfix1'  f  '(' x  ':'  A ')'  ':'  'M'  T  ':=' '/  ' b ']'") : Mtac_scope.
 
 Notation "'mfix2' f ( x : A ) ( y : B ) : 'M' T := b" :=
-  (tfix2 (fun (x : A) (y : B)=>T%type) (fun f (x : A) (y : B)=>b%MC))
+  (fix2 (fun (x : A) (y : B)=>T%type) (fun f (x : A) (y : B)=>b%MC))
   (at level 85, f at level 0, x at next level, y at next level, format
   "'[v  ' 'mfix2'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  ':'  'M'  T  ':=' '/  ' b ']'") : Mtac_scope.
 
 Notation "'mfix3' f ( x : A ) ( y : B ) ( z : C ) : 'M' T := b" :=
-  (tfix3 (fun (x : A) (y : B) (z : C)=>T%type) (fun f (x : A) (y : B) (z : C)=>b%MC))
+  (fix3 (fun (x : A) (y : B) (z : C)=>T%type) (fun f (x : A) (y : B) (z : C)=>b%MC))
   (at level 85, f at level 0, x at next level, y at next level, z at next level, format
   "'[v  ' 'mfix3'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  '(' z  ':'  C ')'  ':'  'M'  T  ':=' '/  ' b ']'") : Mtac_scope.
 
 Notation "'mfix4' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) : 'M' T := b" :=
-  (tfix4 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4)=>T%type) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) =>b%MC))
+  (fix4 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4)=>T%type) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) =>b%MC))
   (at level 85, f at level 0, x1 at next level, x2 at next level, x3 at next level, x4 at next level, format
   "'[v  ' 'mfix4'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  ':'  'M'  T  ':=' '/  ' b ']'") : Mtac_scope.
 
 Notation "'mfix5' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) ( x5 : A5 ) : 'M' T := b" :=
-  (tfix5 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) (x5 : A5)=>T%type) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) (x5 : A5) =>b%MC))
+  (fix5 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) (x5 : A5)=>T%type) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) (x5 : A5) =>b%MC))
   (at level 85, f at level 0, x1 at next level, x2 at next level, x3 at next level, x4 at next level, x5 at next level, format
   "'[v  ' 'mfix5'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  '(' x5  ':'  A5 ')'  ':'  'M'  T  ':=' '/  ' b ']'") : Mtac_scope.
 
