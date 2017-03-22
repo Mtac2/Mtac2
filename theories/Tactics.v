@@ -824,30 +824,38 @@ Monomorphic Canonical Structure binding_selector A :=
   Binding (@mtac_selector A).
 
 Module TacticsNotations.
+Delimit Scope tactic_scope with tactic.
+Bind Scope tactic_scope with tactic.
+Open Scope tactic_scope.
 
-Notation "t 'or' u" := (or t u) (at level 50).
+Notation "t 'or' u" := (or t u) (at level 50) : tactic_scope.
 
 (* We need a fresh evar to be able to use intro with ;; *)
 Notation "'intro' x" :=
-  ((fun g=>T <- evar Type; @intro_cont T (fun x=>idtac) g) : tactic) (at level 40).
+  ((fun g=>T <- evar Type; @intro_cont T (fun x=>idtac) g) : tactic)
+  (at level 40) : tactic_scope.
 Notation "'intros' x .. y" :=
   (intro_cont (fun x=>.. (intro_cont (fun y=>idtac)) ..))
-    (at level 0, x binder, y binder, right associativity).
-Notation "'intros'" := (intros_all).
+  (at level 0, x binder, y binder, right associativity) : tactic_scope.
+Notation "'intros'" := intros_all : tactic_scope.
 
-Notation "'cintro' x '{-' t '-}'" := (intro_cont (fun x=>t)) (at level 0, right associativity).
+Notation "'cintro' x '{-' t '-}'" :=
+  (intro_cont (fun x=>t)) (at level 0, right associativity) : tactic_scope.
 Notation "'cintros' x .. y '{-' t '-}'" :=
   (intro_cont (fun x=>.. (intro_cont (fun y=>t)) ..))
-    (at level 0, x binder, y binder, t at next level, right associativity).
+  (at level 0, x binder, y binder, t at next level, right associativity) : tactic_scope.
 
-Notation "'simpl'" := (treduce RedSimpl).
-Notation "'hnf'" := (treduce RedHNF).
-Notation "'cbv'" := (treduce RedNF).
+Notation "'simpl'" := (treduce RedSimpl) : tactic_scope.
+Notation "'hnf'" := (treduce RedHNF) : tactic_scope.
+Notation "'cbv'" := (treduce RedNF) : tactic_scope.
 
-Notation "'pose' ( x := t )" := (cpose t (fun x=>idtac)) (at level 40, x at next level).
-Notation "'assert' ( x : T )" := (cassert (fun x:T=>idtac)) (at level 40, x at next level).
+Notation "'pose' ( x := t )" :=
+  (cpose t (fun x=>idtac)) (at level 40, x at next level) : tactic_scope.
+Notation "'assert' ( x : T )" :=
+  (cassert (fun x:T=>idtac)) (at level 40, x at next level) : tactic_scope.
 
-Notation "t 'asp' n" := (tactic_tactics t (name_pattern n)) (at level 40).
+Notation "t 'asp' n" :=
+  (tactic_tactics t (name_pattern n)) (at level 40) : tactic_scope.
 
 Notation "[[ |- ps ] ] => t" :=
   (gbase ps t)
@@ -879,20 +887,34 @@ Notation "'with' p1 | .. | pn 'end'" :=
 Delimit Scope match_goal_with_scope with match_goal_with.
 
 Notation "'match_goal' ls" := (match_goal_base UniCoq ls%match_goal_with)
-  (at level 90, ls at level 91) : Mtac_scope.
+  (at level 90, ls at level 91) : tactic_scope.
 Notation "'match_goal_nored' ls" := (match_goal_base UniMatchNoRed ls%match_goal_with)
-  (at level 90, ls at level 91) : Mtac_scope.
+  (at level 90, ls at level 91) : tactic_scope.
 
-Notation "t1 '&>' t2" := (the_value t1 t2) (at level 41, left associativity).
-Notation "t1 '|1>' t2" := (t1 &> snth 0 t2) (at level 41, left associativity, t2 at level 100).
-Notation "t1 '|2>' t2" := (t1 &> snth 1 t2) (at level 41, left associativity, t2 at level 100).
-Notation "t1 '|3>' t2" := (t1 &> snth 2 t2) (at level 41, left associativity, t2 at level 100).
-Notation "t1 '|4>' t2" := (t1 &> snth 3 t2) (at level 41, left associativity, t2 at level 100).
-Notation "t1 '|5>' t2" := (t1 &> snth 4 t2) (at level 41, left associativity, t2 at level 100).
-Notation "t1 '|6>' t2" := (t1 &> snth 5 t2) (at level 41, left associativity, t2 at level 100).
+Notation "t1 '&>' t2" :=
+  (the_value t1 t2) (at level 41, left associativity) : tactic_scope.
+Notation "t1 '|1>' t2" :=
+  (t1 &> snth 0 t2)
+  (at level 41, left associativity, t2 at level 100) : tactic_scope.
+Notation "t1 '|2>' t2" :=
+  (t1 &> snth 1 t2)
+  (at level 41, left associativity, t2 at level 100) : tactic_scope.
+Notation "t1 '|3>' t2" :=
+  (t1 &> snth 2 t2)
+  (at level 41, left associativity, t2 at level 100) : tactic_scope.
+Notation "t1 '|4>' t2" :=
+  (t1 &> snth 3 t2)
+  (at level 41, left associativity, t2 at level 100) : tactic_scope.
+Notation "t1 '|5>' t2" :=
+  (t1 &> snth 4 t2)
+  (at level 41, left associativity, t2 at level 100) : tactic_scope.
+Notation "t1 '|6>' t2" :=
+  (t1 &> snth 5 t2)
+  (at level 41, left associativity, t2 at level 100) : tactic_scope.
 
-Notation "t1 'l>' t2" := (t1 &> slast t2) (at level 41, left associativity, t2 at level 100).
-
+Notation "t1 'l>' t2" :=
+  (t1 &> slast t2)
+  (at level 41, left associativity, t2 at level 100) : tactic_scope.
 End TacticsNotations.
 
 Module TacticOverload.
@@ -925,7 +947,6 @@ Definition cut U : tactic := fun g=>
   u <- evar U;
   exact (ut u) g;;
   ret [Goal ut; Goal u].
-
 
 (** generalize with clear *)
 Definition move_back {A} (x:A) (cont: tactic) : tactic :=
