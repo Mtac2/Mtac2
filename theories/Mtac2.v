@@ -401,9 +401,9 @@ Delimit Scope mmatch_with with mmatch_with.
 
 Notation "'mmatch' x ls" := (@tmatch _ (fun _=>_) x ls%mmatch_with)
   (at level 90, ls at level 91) : Mtac_scope.
-Notation "'mmatch' x 'return' 'M' p ls" := (@tmatch _ (fun x=>p) x ls%mmatch_with)
+Notation "'mmatch' x 'return' 'M' p ls" := (@tmatch _ (fun x=>p%type) x ls%mmatch_with)
   (at level 90, ls at level 91) : Mtac_scope.
-Notation "'mmatch' x 'as' y 'return' 'M' p ls" := (@tmatch _ (fun y=>p) x ls%mmatch_with)
+Notation "'mmatch' x 'as' y 'return' 'M' p ls" := (@tmatch _ (fun y=>p%type) x ls%mmatch_with)
   (at level 90, ls at level 91) : Mtac_scope.
 
 Notation "'mtry' a ls" :=
