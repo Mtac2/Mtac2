@@ -417,8 +417,8 @@ let dest_Case (env, sigma) t =
       fun t (sigma,l) ->
         let dyn_type = Retyping.get_type_of env sigma t in
         let sigma, cdyn = mkDyn dyn_type t sigma env in
-        sigma, CoqList.makeCons dyn cdyn l
-    ) branches (sigma, CoqList.makeNil dyn) in
+        sigma, CoqList.mkCons dyn cdyn l
+    ) branches (sigma, CoqList.mkNil dyn) in
     let ind_type = Retyping.get_type_of env sigma discriminant in
     let return_type_type = Retyping.get_type_of env sigma return_type in
     let sigma, ret_dyn = mkDyn return_type_type return_type sigma env in
@@ -467,16 +467,16 @@ let get_Constrs (env, sigma) t =
                         let coq_constr = Term.applist (Term.mkConstruct constr, args) in
                         let ty = Retyping.get_type_of env sigma coq_constr in
                         let sigma, dyn_constr = mkDyn ty coq_constr sigma env in
-                        sigma, CoqList.makeCons dyn dyn_constr l
+                        sigma, CoqList.mkCons dyn dyn_constr l
                      )
                      (* this is just a dirty hack to get the indices of constructors *)
                      (Array.mapi (fun i t -> i+1) ind.mind_consnames)
-                     (sigma, CoqList.makeNil dyn)
+                     (sigma, CoqList.mkNil dyn)
     in
     let indty = Term.applist (t_type, args) in
     let indtyty = Retyping.get_type_of env sigma indty in
     let sigma, indtydyn = mkDyn indtyty indty sigma env in
-    let pair = CoqPair.mkPair dyn (CoqList.makeType dyn) indtydyn l in
+    let pair = CoqPair.mkPair dyn (CoqList.mkType dyn) indtydyn l in
     (sigma, pair)
   else
     Exceptions.block "The argument of Mconstrs is not an inductive type"
@@ -496,7 +496,7 @@ module Hypotheses = struct
   let cons_hyp ty n t renv sigma env =
     let hyptype = Lazy.force mkHypType in
     let hyp = mkAHyp ty n t in
-    (sigma, CoqList.makeCons hyptype hyp renv)
+    (sigma, CoqList.mkCons hyptype hyp renv)
 
   exception NotAVariable
   exception NotAHyp
@@ -720,7 +720,7 @@ let build_hypotheses sigma env =
   let rec build renv =
     match renv with
     | [] -> let ty = Lazy.force Hypotheses.mkHypType in
-        (sigma, CoqList.makeNil ty)
+        (sigma, CoqList.mkNil ty)
     | (n, t, ty) :: renv ->
         let (sigma, r) = build renv in
         Hypotheses.cons_hyp ty n t r sigma env
@@ -905,12 +905,12 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
 
     | 21 -> (* solve_typeclasses *)
         let evd' = Typeclasses.resolve_typeclasses ~fail:false env sigma in
-        return evd' (Lazy.force CoqUnit.mkTT)
+        return evd' CoqUnit.mkTT
 
     | 22 -> (* print *)
         let s = nth 0 in
         print env sigma s;
-        return sigma (Lazy.force CoqUnit.mkTT)
+        return sigma CoqUnit.mkTT
 
     | 23 -> (* pretty_print *)
         let t = nth 1 in
@@ -942,12 +942,12 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         end
     | 28 -> (* munify *)
         let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in
-        let feqT = CoqEq.mkAppEq a x y in
+        let feqT = CoqEq.mkType a x y in
         begin
           let r = UnificationStrategy.unify None sigma env uni Reduction.CONV x y in
           match r with
           | Evarsolve.Success sigma, _ ->
-              let feq = CoqEq.mkAppEqRefl a x in
+              let feq = CoqEq.mkEqRefl a x in
               let someFeq = CoqOption.mkSome feqT feq in
               return sigma someFeq
           | _, _ ->
@@ -1034,7 +1034,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
     | 33 -> (* list_ltac *)
         let aux k _ = Feedback.msg_info (Pp.str (Names.KerName.to_string k)) in
         KNmap.iter aux (Tacenv.ltac_entries ());
-        return sigma (Lazy.force CoqUnit.mkTT)
+        return sigma CoqUnit.mkTT
 
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"

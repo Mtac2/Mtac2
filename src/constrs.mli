@@ -6,11 +6,9 @@ module Constr : sig
 
   val mkConstr : string -> constr Lazy.t
 
-  val mkUConstr : string -> Evd.evar_map -> Environ.env
-    -> (Evd.evar_map * constr)
+  val mkUConstr : string -> Evd.evar_map -> Environ.env -> (Evd.evar_map * constr)
 
   val isConstr : Term.constr Lazy.t -> Term.constr -> bool
-
 end
 
 module ConstrBuilder : sig
@@ -18,8 +16,7 @@ module ConstrBuilder : sig
 
   val from_string : string -> t
 
-  val from_coq : t -> (Environ.env * Evd.evar_map)
-    -> constr -> (constr array) option
+  val from_coq : t -> (Environ.env * Evd.evar_map) -> constr -> (constr array) option
 
   val build_app : t -> constr array -> constr
 
@@ -34,63 +31,67 @@ module UConstrBuilder : sig
 end
 
 module CoqN : sig
+  exception NotAnN
 
   val from_coq : (Environ.env * Evd.evar_map) -> constr -> int
   val to_coq : int -> constr
 end
 
 module CoqString : sig
+  exception NotAString
 
   val from_coq : (Environ.env * Evd.evar_map) -> constr -> string
   val to_coq : string -> constr
-
 end
 
 module CoqList : sig
+  val mkNil : types -> constr
+  val mkCons : types -> constr -> constr -> constr
+  val mkType : types -> types
 
-  val makeNil : types -> constr
-  val makeCons : types -> constr -> constr -> constr
-  val makeType : types -> types
+  exception NotAList of constr
+
   val from_coq : (Environ.env * Evd.evar_map) -> constr -> constr list
 
   (** Allows skipping an element in the conversion *)
   exception Skip
-
-  exception NotAList of constr
-
-  val from_coq_conv : (Environ.env * Evd.evar_map) -> (constr -> 'a)
-    -> constr -> 'a list
+  val from_coq_conv : (Environ.env * Evd.evar_map) -> (constr -> 'a) -> constr -> 'a list
 
   val to_coq : types -> ('a -> constr) -> 'a list -> constr
   val pto_coq : types -> ('a -> Evd.evar_map -> Evd.evar_map * constr) -> 'a list -> Evd.evar_map -> Evd.evar_map * constr
 end
 
 module CoqOption : sig
-  exception NotAnOptionType
-
   val mkNone : types -> constr
-
   val mkSome : types -> constr -> constr
 
-  val from_coq : (Environ.env * Evd.evar_map) -> constr
-    -> constr option
+  exception NotAnOption
+
+  val from_coq : (Environ.env * Evd.evar_map) -> constr -> constr option
 
   (** to_coq ty ot constructs an option type with type ty *)
   val to_coq : types -> constr option -> constr
 end
 
 module CoqUnit : sig
-  val mkTT : constr Lazy.t
+  val mkType : constr
+  val mkTT : constr
 end
 
 module CoqBool : sig
+  val mkType : constr
   val mkTrue : constr
   val mkFalse : constr
+
+  exception NotABool
+
+  val to_coq : bool -> constr
+  val from_coq : constr -> bool
 end
 
 module CoqEq : sig
-  val mkAppEq : types -> constr -> constr -> constr
-  val mkAppEqRefl : types -> constr -> constr
+  val mkType : types -> constr -> constr -> constr
+  val mkEqRefl : types -> constr -> constr
 end
 
 module CoqSig : sig
@@ -98,9 +99,13 @@ module CoqSig : sig
 end
 
 module MCTactics : sig
-  val mkTactic : Evd.evar_map -> Environ.env -> Evd.evar_map * Term.constr
+  val mkTactic : Environ.env -> Evd.evar_map -> Evd.evar_map * Term.constr
 end
 
 module CoqPair : sig
+  exception NotAPair
+
   val mkPair : types -> types -> constr -> constr -> constr
+
+  val from_coq : (Environ.env * Evd.evar_map) -> constr -> constr * constr
 end

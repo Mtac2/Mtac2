@@ -11,7 +11,7 @@ module MetaCoqRun = struct
       - [tactic]: then it returns [run_tac concl c] *)
   let pretypeT env sigma concl evar c =
     let metaCoqType = Lazy.force Run.MetaCoqNames.mkT_lazy in
-    let sigma, tacticType = MCTactics.mkTactic sigma env in
+    let sigma, tacticType = MCTactics.mkTactic env sigma in
     let ty = Retyping.get_type_of env sigma c in
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
     if Term.eq_constr_nounivs metaCoqType h && List.length args = 1 then

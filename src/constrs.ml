@@ -26,11 +26,9 @@ module Constr = struct
     eq_constr_nounivs (snd (mkUConstr r sigma env)) c
 
   let eq_ind i1 i2 = Names.eq_ind (fst i1) (fst i2)
-
 end
 
 module ConstrBuilder = struct
-
   type t = string
 
   let from_string (s:string) : t = s
@@ -42,14 +40,10 @@ module ConstrBuilder = struct
 
   let from_coq s _ cterm =
     let (head, args) = decompose_appvect cterm in
-    if equal s head then
-      Some args
-    else
-      None
+    if equal s head then Some args else None
 end
 
 module UConstrBuilder = struct
-
   type t = string
 
   let from_string (s:string) : t = s
@@ -62,31 +56,28 @@ module UConstrBuilder = struct
 
   let from_coq s (env, sigma) cterm =
     let (head, args) = decompose_appvect cterm in
-    if equal s sigma env head then
-      Some args
-    else
-      None
+    if equal s sigma env head then Some args else None
 end
 
 module CoqOption = struct
   open ConstrBuilder
 
+  let optionBuilder = from_string "Coq.Init.Datatypes.option"
   let noneBuilder = from_string "Coq.Init.Datatypes.None"
-
-  let mkNone ty = build_app noneBuilder [|ty|]
-
   let someBuilder = from_string "Coq.Init.Datatypes.Some"
 
+  let mkType ty = build_app optionBuilder [|ty|]
+  let mkNone ty = build_app noneBuilder [|ty|]
   let mkSome ty t = build_app someBuilder [|ty; t|]
 
-  exception NotAnOptionType
+  exception NotAnOption
+
   let from_coq (env, sigma as ctx) cterm =
     match from_coq noneBuilder ctx cterm with
     | None ->
-        begin
-          match from_coq someBuilder ctx cterm with
-          | None -> raise NotAnOptionType
-          | Some arr -> Some arr.(1)
+        begin match from_coq someBuilder ctx cterm with
+        | None -> raise NotAnOption
+        | Some args -> Some args.(1)
         end
     | Some _ -> None
 
@@ -94,23 +85,18 @@ module CoqOption = struct
     match oterm with
     | None -> mkNone ty
     | Some t -> mkSome ty t
-
 end
 
 module CoqList = struct
-  let mkNil  = Constr.mkConstr "Coq.Init.Datatypes.nil"
-  let mkCons = Constr.mkConstr "Coq.Init.Datatypes.cons"
+  open ConstrBuilder
 
-  let makeNil ty = Term.mkApp (Lazy.force mkNil, [| ty |])
-  let makeCons t x xs = Term.mkApp (Lazy.force mkCons, [| t ; x ; xs |])
-  let makeType ty = Term.mkApp (Lazy.force (Constr.mkConstr "Coq.Init.Datatypes.list"), [|ty|])
+  let listBuilder = from_string "Coq.Init.Datatypes.list"
+  let nilBuilder  = from_string "Coq.Init.Datatypes.nil"
+  let consBuilder = from_string "Coq.Init.Datatypes.cons"
 
-  let mkListType ty =
-    mkApp (Lazy.force (Constr.mkConstr "Coq.Init.Datatypes.cons"),
-           [|ty|])
-
-  let isNil  = Constr.isConstr mkNil
-  let isCons = Constr.isConstr mkCons
+  let mkType ty = build_app listBuilder [|ty|]
+  let mkNil ty = build_app nilBuilder [|ty|]
+  let mkCons t x xs = build_app consBuilder [| t ; x ; xs |]
 
   exception Skip
   exception NotAList of constr
@@ -118,14 +104,17 @@ module CoqList = struct
       it creates a list of elements using the converstion function.
       if fconv raises Skip, that element is not included.
       if the list is ill-formed, an exception NotAList is raised. *)
-  let from_coq_conv (env, sigma) (fconv : Term.constr -> 'a) cterm =
+  let from_coq_conv (env, sigma as ctx) (fconv : Term.constr -> 'a) cterm =
     let rec fcc cterm =
-      let (constr, args) = decompose_appvect cterm in
-      if isNil constr then [] else
-      if not (isCons constr) then raise (NotAList cterm)
-      else
-        let tail = fcc args.(2) in
-        try fconv args.(1) :: tail with Skip -> tail
+      match from_coq consBuilder ctx cterm with
+      | None ->
+          begin match from_coq nilBuilder ctx cterm with
+          | None -> raise (NotAList cterm)
+          | Some _ -> []
+          end
+      | Some args ->
+          let tail = fcc args.(2) in
+          try fconv args.(1) :: tail with Skip -> tail
     in
     fcc cterm
 
@@ -133,29 +122,31 @@ module CoqList = struct
     from_coq_conv (env, sigma) (fun x->x)
 
   let to_coq ty f l =
-    List.fold_right (fun e l -> makeCons ty (f e) l) l (makeNil ty)
+    List.fold_right (fun e l -> mkCons ty (f e) l) l (mkNil ty)
 
   let pto_coq ty f l sigma =
     List.fold_right (fun e (sigma, l) ->
       let sigma, c = f e sigma in
-      sigma, makeCons ty c l) l (sigma, makeNil ty)
+      sigma, mkCons ty c l) l (sigma, mkNil ty)
 end
 
 module CoqEq = struct
-  let mkEq = Constr.mkConstr "Coq.Init.Logic.eq"
-  let mkEqRefl = Constr.mkConstr "Coq.Init.Logic.eq_refl"
+  open ConstrBuilder
 
-  let mkAppEq a x y = mkApp(Lazy.force mkEq, [|a;x;y|])
-  let mkAppEqRefl a x = mkApp(Lazy.force mkEqRefl, [|a;x|])
+  let eqBuilder = from_string "Coq.Init.Logic.eq"
+  let eqReflBuilder = from_string "Coq.Init.Logic.eq_refl"
+
+  let mkType a x y = build_app eqBuilder [|a;x;y|]
+  let mkEqRefl a x = build_app eqReflBuilder [|a;x|]
 end
 
 module CoqSigT = struct
-  let mkExistT  = Constr.mkConstr "Coq.Init.Specif.existT"
+  open ConstrBuilder
 
-  let mkAppExistT a p x px =
-    mkApp (Lazy.force mkExistT, [|a; p; x; px|])
+  let existTBuilder = from_string "Coq.Init.Specif.existT"
+
+  let mkAppExistT a p x px = build_app existTBuilder [|a; p; x; px|]
 end
-
 
 module CoqSig = struct
   let rec from_coq (env, sigma) constr =
@@ -190,7 +181,6 @@ module CoqNat = struct
     in
     let c' = reduce_value env evd c in
     fc c'
-
 end
 
 module CoqPositive = struct
@@ -227,7 +217,6 @@ module CoqPositive = struct
       mkApp(Lazy.force xO, [|to_coq (n / 2)|])
     else
       mkApp(Lazy.force xI, [|to_coq ((n-1)/2)|])
-
 end
 
 module CoqN = struct
@@ -237,6 +226,8 @@ module CoqN = struct
 
   let is0 = Constr.isConstr h0
   let isP = Constr.isConstr hP
+
+  exception NotAnN
 
   let from_coq (env, evd) c =
     let rec fc c =
@@ -248,7 +239,7 @@ module CoqN = struct
           if isP s then
             CoqPositive.from_coq (env, evd) (n.(0))
           else
-            CErrors.error "Not a positive"
+            raise NotAnN
         end
     in
     let c' = reduce_value env evd c in
@@ -262,30 +253,35 @@ module CoqN = struct
 end
 
 module CoqBool = struct
+  open ConstrBuilder
 
-  let trueB = ConstrBuilder.from_string "Coq.Init.Datatypes.true"
-  let falseB = ConstrBuilder.from_string "Coq.Init.Datatypes.false"
+  let boolBuilder = from_string "Coq.Init.Datatypes.bool"
+  let trueBuilder = from_string "Coq.Init.Datatypes.true"
+  let falseBuilder = from_string "Coq.Init.Datatypes.false"
 
-  let isTrue = ConstrBuilder.equal trueB
+  let mkType = build boolBuilder
+  let mkTrue = build trueBuilder
+  let mkFalse = build falseBuilder
 
-  let mkTrue = ConstrBuilder.build trueB
-  let mkFalse = ConstrBuilder.build falseB
+  exception NotABool
 
-  let to_coq b = if b then
-      ConstrBuilder.build trueB
-    else ConstrBuilder.build falseB
-
+  let to_coq b = if b then mkTrue else mkFalse
+  let from_coq c =
+    if equal trueBuilder c then true
+    else if equal falseBuilder c then false
+    else raise NotABool
 end
 
 module CoqAscii = struct
+  open ConstrBuilder
 
-  let asciiBuilder = ConstrBuilder.from_string "Coq.Strings.Ascii.Ascii"
+  let asciiBuilder = from_string "Coq.Strings.Ascii.Ascii"
 
-  let from_coq _ c =
+  let from_coq c =
     let (h, args) = decompose_appvect c in
     let rec from_bits n =
       if n >= Array.length args then 0
-      else (if CoqBool.isTrue args.(n) then 1 else 0) lsl n + from_bits (n+1)
+      else (if CoqBool.from_coq args.(n) then 1 else 0) lsl n + from_bits (n+1)
     in
     let n = from_bits 0 in
     String.make 1 (Char.chr n)
@@ -294,41 +290,45 @@ module CoqAscii = struct
     let c = int_of_char c in
     let a = Array.init 8 (fun i->(c lsr i) mod 2 = 1) in
     let a = Array.map CoqBool.to_coq a in
-    ConstrBuilder.build_app asciiBuilder a
-
+    build_app asciiBuilder a
 end
 
 module CoqString = struct
+  open ConstrBuilder
 
-  let emptyB = ConstrBuilder.from_string "Coq.Strings.String.EmptyString"
-  let stringB = ConstrBuilder.from_string "Coq.Strings.String.String"
+  let emptyBuilder = from_string "Coq.Strings.String.EmptyString"
+  let stringBuilder = from_string "Coq.Strings.String.String"
 
-  let isEmpty = ConstrBuilder.equal emptyB
-  let isString = ConstrBuilder.equal stringB
+  exception NotAString
 
-  let from_coq (env, sigma as ctx) s =
+  let from_coq (env, sigma) s =
     let rec fc s =
       let (h, args) = decompose_appvect s in
-      if isEmpty h then ""
-      else if isString h then
-        CoqAscii.from_coq ctx args.(0) ^ fc args.(1)
+      if equal emptyBuilder h then ""
+      else if equal stringBuilder h then
+        CoqAscii.from_coq args.(0) ^ fc args.(1)
       else
-        CErrors.error "Not a string"
+        raise NotAString
     in
     fc (reduce_value env sigma s)
 
   let rec to_coq s =
     if String.length s = 0 then
-      ConstrBuilder.build emptyB
+      build emptyBuilder
     else
-      ConstrBuilder.build_app stringB [|
+      build_app stringBuilder [|
         CoqAscii.to_coq s.[0];
         to_coq (String.sub s 1 (String.length s -1))|]
-
 end
 
 module CoqUnit = struct
-  let mkTT = Constr.mkConstr "Coq.Init.Datatypes.tt"
+  open ConstrBuilder
+
+  let unitBuilder = from_string "Coq.Init.Datatypes.unit"
+  let ttBuilder = from_string "Coq.Init.Datatypes.tt"
+
+  let mkType = build unitBuilder
+  let mkTT = build ttBuilder
 end
 
 module MCTactics = struct
@@ -339,7 +339,7 @@ module MCTactics = struct
     try Universes.constr_of_global (locate (qualid_of_string s))
     with _ -> raise (Constr.Constr_not_found s)
 
-  let mkUConstr s sigma env =
+  let mkUConstr s env sigma =
     let open Nametab in let open Libnames in
     try Evd.fresh_global env sigma (locate (qualid_of_string s))
     with _ -> raise (Constr.Constr_not_found s)
@@ -348,7 +348,16 @@ module MCTactics = struct
 end
 
 module CoqPair = struct
-  let pairBuilder = ConstrBuilder.from_string "Coq.Init.Datatypes.pair"
+  open ConstrBuilder
 
-  let mkPair tya tyb a b = ConstrBuilder.build_app pairBuilder [|tya;tyb;a;b|]
+  let pairBuilder = from_string "Coq.Init.Datatypes.pair"
+
+  let mkPair tya tyb a b = build_app pairBuilder [|tya;tyb;a;b|]
+
+  exception NotAPair
+
+  let from_coq ctx cterm =
+    match from_coq pairBuilder ctx cterm with
+    | None -> raise NotAPair
+    | Some args -> (args.(2), args.(3))
 end
