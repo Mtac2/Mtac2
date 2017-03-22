@@ -6,6 +6,8 @@ Import MtacNotations.
 Import ListNotations.
 
 Require Import Strings.String.
+Require Import NArith.BinNat.
+Require Import NArith.BinNatDef.
 
 Local Set Universe Polymorphism.
 
@@ -641,8 +643,6 @@ Definition mexists {A} (x: A) : tactic := fun g=>
   end.
 
 (** Printing of a goal *)
-Require Import Strings.String.
-
 Definition print_hypothesis (a:Hyp) : M unit :=
   let (A, x, ot) := a in
   sA <- pretty_print A;
@@ -694,10 +694,6 @@ Definition n_etas (n : nat) {A} (f:A) : M A :=
        end
     end) n (Dyn f).
 
-
-Require Import NArith.BinNat.
-Require Import NArith.BinNatDef.
-
 (** [fix_tac f n] is like Coq's [fix] tactic: it generates a fixpoint
     with a new goal as body, containing a variable named [f] with
     the current goal as type. The goal is expected to have at least
@@ -736,8 +732,6 @@ Definition repeat (t : tactic) : tactic := fun g=>
       end
     | _ => print_term r;; failwith "The tactic generated more than a goal"
     end) g.
-
-Require Import Bool.Bool.
 
 Definition map_term (f : forall d:dyn, M d.(type)) : forall d : dyn, M d.(type) :=
   mfix1 rec (d : dyn) : M d.(type) :=
