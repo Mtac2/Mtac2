@@ -461,6 +461,4 @@ Definition fresh_binder_name {A} (t: A) : M string :=
 Definition unfold_projection {A} (t: A) : M A :=
   let x := rone_step t in
   let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in ret x.
-
-Definition mid {A} (x: A) : M A := ret x.
 End GeneralUtilities.

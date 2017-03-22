@@ -225,7 +225,7 @@ Definition intros_all : tactic :=
       match g return M (list goal) with
       | @Goal T e =>
         mtry
-          intro_anonymous T mid g >>= f
+          intro_anonymous T ret g >>= f
         with WrongTerm =>
           ret [g]
         | NotAProduct =>
@@ -245,7 +245,7 @@ Definition introsn : nat -> tactic :=
       | (0, g) => ret [g]
       | (S n', @Goal T e) =>
         mtry
-          intro_anonymous T mid g >>= f n'
+          intro_anonymous T ret g >>= f n'
         with WrongTerm => raise NotAProduct
         | [? s] NameExistsInContext s =>
           intro_anonymous T fresh_name g >>= f n'
