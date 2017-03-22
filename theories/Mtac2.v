@@ -303,27 +303,27 @@ Notation "'\nu' x := t , a" := (
 
 Notation "'mfix1' f ( x : A ) : 'M' T := b" := (tfix1 (fun x=>T%type) (fun f (x : A)=>b%MC))
   (at level 85, f at level 0, x at next level, format
-  "'[v  ' 'mfix1'  f  '(' x  ':'  A ')'  ':'  'M'  T  ':=' '/  ' b ']'").
+  "'[v  ' 'mfix1'  f  '(' x  ':'  A ')'  ':'  'M'  T  ':=' '/  ' b ']'") : Mtac_scope.
 
 Notation "'mfix2' f ( x : A ) ( y : B ) : 'M' T := b" :=
   (tfix2 (fun (x : A) (y : B)=>T%type) (fun f (x : A) (y : B)=>b%MC))
   (at level 85, f at level 0, x at next level, y at next level, format
-  "'[v  ' 'mfix2'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  ':'  'M'  T  ':=' '/  ' b ']'").
+  "'[v  ' 'mfix2'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  ':'  'M'  T  ':=' '/  ' b ']'") : Mtac_scope.
 
 Notation "'mfix3' f ( x : A ) ( y : B ) ( z : C ) : 'M' T := b" :=
   (tfix3 (fun (x : A) (y : B) (z : C)=>T%type) (fun f (x : A) (y : B) (z : C)=>b%MC))
   (at level 85, f at level 0, x at next level, y at next level, z at next level, format
-  "'[v  ' 'mfix3'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  '(' z  ':'  C ')'  ':'  'M'  T  ':=' '/  ' b ']'").
+  "'[v  ' 'mfix3'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  '(' z  ':'  C ')'  ':'  'M'  T  ':=' '/  ' b ']'") : Mtac_scope.
 
 Notation "'mfix4' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) : 'M' T := b" :=
   (tfix4 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4)=>T%type) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) =>b%MC))
   (at level 85, f at level 0, x1 at next level, x2 at next level, x3 at next level, x4 at next level, format
-  "'[v  ' 'mfix4'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  ':'  'M'  T  ':=' '/  ' b ']'").
+  "'[v  ' 'mfix4'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  ':'  'M'  T  ':=' '/  ' b ']'") : Mtac_scope.
 
 Notation "'mfix5' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) ( x5 : A5 ) : 'M' T := b" :=
   (tfix5 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) (x5 : A5)=>T%type) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) (x5 : A5) =>b%MC))
   (at level 85, f at level 0, x1 at next level, x2 at next level, x3 at next level, x4 at next level, x5 at next level, format
-  "'[v  ' 'mfix5'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  '(' x5  ':'  A5 ')'  ':'  'M'  T  ':=' '/  ' b ']'").
+  "'[v  ' 'mfix5'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  '(' x5  ':'  A5 ')'  ':'  'M'  T  ':=' '/  ' b ']'") : Mtac_scope.
 
 Definition DoesNotMatch : Exception. exact exception. Qed.
 Definition NoPatternMatches : Exception. exact exception. Qed.
@@ -409,13 +409,13 @@ Notation "'mmatch' x 'as' y 'return' 'M' p ls" := (@tmatch _ (fun y=>p) x ls%mma
 Notation "'mtry' a ls" :=
   (ttry a (fun e=>
     (@tmatch _ (fun _=>_) e (app ls%mmatch_with (cons ([? x] x=>raise x)%metaCoq_pattern nil)))))
-    (at level 82, a at level 100, ls at level 91, only parsing).
+    (at level 82, a at level 100, ls at level 91, only parsing) : Mtac_scope.
 
 Definition Cevar (A : Type) (ctx : list Hyp) : M A := evar A (Some ctx).
 Definition evar (A : Type) : M A := evar A None.
 
 Notation "'mif' b 'then' t 'else' u" :=
-  (cond <- b; if cond then t else u) (at level 200).
+  (cond <- b; if cond then t else u) (at level 200) : Mtac_scope.
 
 Definition NameNotFound (n: string) : Exception. exact exception. Qed.
 Definition WrongType (T: Type) : Exception. exact exception. Qed.
@@ -443,7 +443,8 @@ Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
     end
   ) (Dyn c).
 
-Notation "t 'mwhere' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
+Notation "t 'mwhere' m := u" :=
+  (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0) : Mtac_scope.
 End MtacNotations.
 
 Section GeneralUtilities.
