@@ -1,6 +1,6 @@
 Require Import Strings.String.
 From MetaCoq Require Export Mtac2.
-Require Import MetaCoq.ListUtils.
+Require Import MetaCoq.ListUtils MetaCoq.Utils.
 Require Import Lists.List.
 Import MtacNotations.
 Import ListNotations.
@@ -276,9 +276,6 @@ Fixpoint gmap (funs : list tactic) (ass : list goal) : M (list (list goal)) :=
   | l, l' => raise (NotSameSize l l')
   end.
 
-Definition is_empty {A} (l: list A) :=
-  match l with [] => true | _ => false end.
-
 Definition NoGoalsLeft : Exception. exact exception. Qed.
 
 Definition tactic_tactics (t:tactic) (l:list tactic) : tactic := fun g=>
@@ -363,13 +360,6 @@ Definition find_hyp_index {A} (x : A) : M (option nat) :=
     end) l.
 
 Definition type_of {A} (x:A) : Type := A.
-
-Fixpoint but_last {A} (l : list A) : list A :=
-  match l with
-  | [] => []
-  | [a] => []
-  | (a :: ls) => a :: but_last ls
-  end.
 
 (** Generalizes a goal given a certain hypothesis [x]. It does not
     remove [x] from the goal. *)
@@ -597,9 +587,6 @@ Definition ltac (t : string) (args : list dyn) : tactic := fun g=>
     ret [Goal v] (* it wasn't solved *)
   else
     ret l.
-
-Definition option_to_bool {A} (ox : option A) :=
-  match ox with Some _ => true | _ => false end.
 
 Definition destruct_all (T : Type) : tactic := fun g=>
   l <- hypotheses;
@@ -903,15 +890,6 @@ Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
 
 (** Type for goal manipulation primitives *)
 Definition selector := list goal -> M (list goal).
-
-Fixpoint nsplit {A} (n : nat) (l : list A) : list A * list A :=
-  match n, l with
-  | 0, l => ([], l)
-  | S n', (x :: l') =>
-    let (l1, l2) := nsplit n' l' in
-    (x :: l1, l2)
-  | _, _ => ([], [])
-  end.
 
 Definition snth (n : nat) (t : tactic) : selector := fun l=>
   let (l1, l2) := dreduce (@nsplit) (nsplit n l) in

@@ -3,6 +3,7 @@ Declare ML Module "unicoq".
 (** Load library "MetaCoqPlugin.cma". *)
 Declare ML Module "MetaCoqPlugin".
 
+Require Import MetaCoq.Utils.
 Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
@@ -440,12 +441,6 @@ Definition names_of_hyp : M (list string) :=
     let (_, var, _) := h in
     n <- get_binder_name var;
     r <- ns; ret (n::r)) env (ret []).
-
-Definition dec_bool {P} (x : {P}+{~P}) : bool :=
-  match x with
-  | left _ => true
-  | _ => false
-  end.
 
 Definition fresh_name (name: string) : M string :=
   names <- names_of_hyp;
