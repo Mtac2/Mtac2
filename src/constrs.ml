@@ -332,8 +332,6 @@ module CoqUnit = struct
 end
 
 module MCTactics = struct
-  let reduceGoal = "metaCoqReduceGoal"
-  let runTac = "MetaCoq.Tactics.run_tac"
   let tactic = "MetaCoq.Tactics.tactic"
 
   let mkConstr s =
@@ -346,12 +344,7 @@ module MCTactics = struct
     try Evd.fresh_global env sigma (locate (qualid_of_string s))
     with _ -> raise (Constr.Constr_not_found s)
 
-  let mkReduceGoal = lazy (mkConstr reduceGoal)
-
-  let mkRunTac = mkUConstr runTac
-
   let mkTactic = mkUConstr tactic
-
 end
 
 module CoqPair = struct

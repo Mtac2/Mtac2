@@ -14,13 +14,6 @@ Local Set Universe Polymorphism.
 (** The type for tactics *)
 Definition tactic := goal -> M (list goal).
 
-(** Executing a tactic in Mtac. It is called by
-    the MProof environment. *)
-Definition run_tac {P} (t : tactic) : M P :=
-  e <- evar P;
-  t (Goal e);;
-  ret e.
-
 (** no-op tactic *)
 Definition idtac : tactic := fun g => ret [g].
 
