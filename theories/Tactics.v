@@ -9,20 +9,6 @@ Require Import Strings.String.
 
 Local Set Universe Polymorphism.
 
-Notation "'dreduce' ( l1 , .. , ln )" := (reduce (RedStrong [RedBeta;RedFix;RedMatch;RedDeltaOnly (Dyn (@l1) :: .. (Dyn (@ln) :: nil) ..)])) (at level 0).
-
-Definition CantCoerce : Exception. exact exception. Qed.
-
-(** [coerce x] coreces element [x] of type [A] into
-    an element of type [B], assuming [A] and [B] are
-    unifiable. It raises [CantCoerce] if it fails. *)
-Definition coerce {A B : Type} (x : A) : M B :=
-  oH <- munify A B UniCoq;
-  match oH with
-  | Some H => match H with eq_refl => ret x end
-  | _ => raise CantCoerce
-  end.
-
 (** The type for tactics *)
 Definition tactic := goal -> M (list goal).
 
@@ -33,50 +19,11 @@ Definition run_tac {P} (t : tactic) : M P :=
   t (Goal e);;
   ret e.
 
-
-Definition NotAGoal : Exception. exact exception. Qed.
-(** [goal_type g] extracts the type of the goal or raises [NotAGoal]
-    if [g] is not [Goal]. *)
-Definition goal_type (g : goal) : M Type :=
-  match g with
-    | @Goal A _ => ret A
-    | _ => raise NotAGoal
-  end.
-
-(** Convertion functions from [dyn] to [goal]. *)
-Definition dyn_to_goal (d : dyn) : goal :=
-  match d with
-  | Dyn x => Goal x
-  end.
-
-Definition goal_to_dyn : goal -> M dyn := fun g =>
-  match g with
-  | Goal d => ret (Dyn d)
-  | _ => raise NotAGoal
-  end.
-
 (** no-op tactic *)
 Definition idtac : tactic := fun g => ret [g].
 
 (** fail tactic *)
 Definition fail (e : Exception) : tactic := fun g=>raise e.
-
-(** Unifies [x] with [y] and raises [NotUnifiable] if it they
-    are not unifiable. *)
-Definition unify_or_fail {A} (x y : A) : M (x = y) :=
-  oeq <- munify x y UniCoq;
-  match oeq with
-  | None => raise (NotUnifiable x y)
-  | Some eq => ret eq
-  end.
-
-(** Unifies [x] with [y] using cumulativity and raises
-    [NotCumul] if it they
-    are not unifiable. *)
-Definition NotCumul {A B} (x: A) (y: B) : Exception. exact exception. Qed.
-Definition cumul_or_fail {A B} (x: A) (y: B) : M unit :=
-  b <- munify_cumul x y UniCoq;
-  if b then ret tt else raise (NotCumul x y).
 
 Definition exact {A} (x:A) : tactic := fun g=>
   match g with
@@ -359,8 +306,6 @@ Definition find_hyp_index {A} (x : A) : M (option nat) :=
     | _ => ret false
     end) l.
 
-Definition type_of {A} (x:A) : Type := A.
-
 (** Generalizes a goal given a certain hypothesis [x]. It does not
     remove [x] from the goal. *)
 Definition generalize {A} (x:A) : tactic := fun g=>
@@ -390,11 +335,6 @@ Definition cclear {A} (x:A) (cont: tactic) : tactic := fun g=>
   ret l.
 
 Definition clear {A} (x:A) : tactic := cclear x idtac.
-
-Definition cprint {A} (s: string) (c: A) : M unit :=
-  x <- pretty_print c;
-  let s := reduce RedNF (s++x)%string in
-  print s.
 
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
   let A := rhnf A in
@@ -797,16 +737,9 @@ Definition repeat (t : tactic) : tactic := fun g=>
     | _ => print_term r;; failwith "The tactic generated more than a goal"
     end) g.
 
-Definition is_prop_or_type (d: dyn) : M bool :=
-  mmatch d with
-  | Dyn Prop => ret true
-  | Dyn Type => ret true
-  | _ => ret false
-  end.
-
 Require Import Bool.Bool.
 
-Definition map_term (f : forall d:dyn, M d.(type)) :=
+Definition map_term (f : forall d:dyn, M d.(type)) : forall d : dyn, M d.(type) :=
   mfix1 rec (d : dyn) : M d.(type) :=
     let (ty, el) := d in
     mmatch d as d return M d.(type) with
@@ -861,32 +794,6 @@ Fixpoint name_pattern (l: list (list string)) : list tactic :=
   | [] => []
   | (ns :: l) => intros_simpl ns :: name_pattern l
   end.
-
-Definition NameNotFound (n: string) : Exception. exact exception. Qed.
-Definition WrongType (T: Type) : Exception. exact exception. Qed.
-
-Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
-  (mfix1 app (d : dyn) : M _ :=
-    let (ty, el) := d in
-    mmatch d with
-    | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
-      binder <- get_binder_name ty;
-      oeq <- munify binder n UniMatchNoRed;
-      if oeq then
-        oeq' <- munify B T1 UniCoq;
-        match oeq' with
-        | Some eq' =>
-          let v' := reduce (RedWhd [RedMatch]) match eq' as x in _ = x with eq_refl=> v end in
-          ret (Dyn (f v'))
-        | _ => raise (WrongType T1)
-        end
-      else
-        e <- evar T1;
-        app (Dyn (f e))
-    | _ =>
-        raise (NameNotFound n)
-    end
-  ) (Dyn c).
 
 (** Type for goal manipulation primitives *)
 Definition selector := list goal -> M (list goal).
@@ -981,8 +888,6 @@ Notation "'match_goal' ls" := (match_goal_base UniCoq ls%match_goal_with)
   (at level 90, ls at level 91) : Mtac_scope.
 Notation "'match_goal_nored' ls" := (match_goal_base UniMatchNoRed ls%match_goal_with)
   (at level 90, ls at level 91) : Mtac_scope.
-
-Notation "t 'mwhere' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
 
 Notation "t1 '&>' t2" := (the_value t1 t2) (at level 41, left associativity).
 Notation "t1 '|1>' t2" := (t1 &> snth 0 t2) (at level 41, left associativity, t2 at level 100).

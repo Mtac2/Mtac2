@@ -236,7 +236,7 @@ Inductive Mtac : Type -> Prop :=
 
 Arguments Mtac (_%type).
 
-Definition failwith {A} s : Mtac A := raise (Failure s).
+Definition failwith {A} (s : string) : Mtac A := raise (Failure s).
 
 Definition tfix1 {A} B := @tfix1' A B Mtac (fun _ x => x).
 Definition tfix2 {A1 A2} B := @tfix2' A1 A2 B Mtac (fun _ x => x).
@@ -254,9 +254,8 @@ Arguments eval {A} _ {_}.
 Hint Extern 20 (runner ?f) =>
   (exact (Build_runner f ltac:(mrun f)))  : typeclass_instances.
 
-Definition print_term {A} (x: A) : Mtac unit :=
+Definition print_term {A} (x : A) : Mtac unit :=
   bind (pretty_print x) (fun s=> print s).
-
 
 Module MtacNotations.
 
@@ -274,6 +273,9 @@ Notation rsimpl := (reduce RedSimpl).
 Notation rhnf := (reduce RedHNF).
 Notation rcbv := (reduce RedNF).
 Notation rone_step := (reduce RedOneStep).
+Notation "'dreduce' ( l1 , .. , ln )" :=
+  (reduce (RedStrong [RedBeta;RedFix;RedMatch;RedDeltaOnly (Dyn (@l1) :: .. (Dyn (@ln) :: nil) ..)]))
+  (at level 0).
 
 Notation "r '<-' t1 ';' t2" := (@bind _ _ t1 (fun r=> t2%MC))
   (at level 81, right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : Mtac_scope.
@@ -295,7 +297,7 @@ Notation "'\nu' x : A , a" := (
   nu n None f) (at level 81, x at next level, right associativity) : Mtac_scope.
 
 Notation "'\nu' x := t , a" := (
-  let f := fun x=>a in
+  let f := fun x => a in
   n <- get_binder_name f;
   nu n (Some t) f) (at level 81, x at next level, right associativity) : Mtac_scope.
 
@@ -323,10 +325,6 @@ Notation "'mfix5' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) ( x5 : A5 ) 
   (at level 85, f at level 0, x1 at next level, x2 at next level, x3 at next level, x4 at next level, x5 at next level, format
   "'[v  ' 'mfix5'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  '(' x5  ':'  A5 ')'  ':'  'M'  T  ':=' '/  ' b ']'").
 
-
-Definition type_inside {A} (x : M A) := A.
-
-
 Definition DoesNotMatch : Exception. exact exception. Qed.
 Definition NoPatternMatches : Exception. exact exception. Qed.
 Definition Anomaly : Exception. exact exception. Qed.
@@ -337,9 +335,12 @@ Polymorphic Inductive pattern A (B : A -> Type) (t : A) : Prop :=
 | pbase : forall (x:A), (t = x -> Mtac (B x)) -> Unification -> pattern A B t
 | ptele : forall {C}, (forall (x : C), pattern A B t) -> pattern A B t.
 
+Arguments ptele {A B t C} _.
+Arguments pbase {A B t} _ _ _.
+
 Polymorphic Fixpoint open_pattern {A P t} (p : pattern A P t) : M (P t) :=
   match p with
-  | pbase _ _ _ x f u =>
+  | pbase x f u =>
     oeq <- munify x t u;
     match oeq return M (P t) with
     | Some eq =>
@@ -367,10 +368,6 @@ Polymorphic Fixpoint tmatch {A P} t (ps : list (pattern A P t)) : M (P t) :=
       if oeq then tmatch t ps' else raise e
     )
   end.
-
-Arguments ptele {A B t C} _.
-Arguments pbase {A B t} _ _ _.
-
 
 Notation "[? x .. y ] ps" := (ptele (fun x=> .. (ptele (fun y=>ps)).. ))
   (at level 202, x binder, y binder, ps at next level) : metaCoq_pattern_scope.
@@ -420,10 +417,40 @@ Definition evar (A : Type) : M A := evar A None.
 Notation "'mif' b 'then' t 'else' u" :=
   (cond <- b; if cond then t else u) (at level 200).
 
+Definition NameNotFound (n: string) : Exception. exact exception. Qed.
+Definition WrongType (T: Type) : Exception. exact exception. Qed.
+
+Definition mwith {A} {B} (c: A) (n: string) (v: B) : M dyn :=
+  (mfix1 app (d : dyn) : M _ :=
+    let (ty, el) := d in
+    mmatch d with
+    | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
+      binder <- get_binder_name ty;
+      oeq <- munify binder n UniMatchNoRed;
+      if oeq then
+        oeq' <- munify B T1 UniCoq;
+        match oeq' with
+        | Some eq' =>
+          let v' := reduce (RedWhd [RedMatch]) match eq' as x in _ = x with eq_refl=> v end in
+          ret (Dyn (f v'))
+        | _ => raise (WrongType T1)
+        end
+      else
+        e <- evar T1;
+        app (Dyn (f e))
+    | _ =>
+        raise (NameNotFound n)
+    end
+  ) (Dyn c).
+
+Notation "t 'mwhere' m := u" := (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0).
 End MtacNotations.
 
 Section GeneralUtilities.
 Import MtacNotations.
+
+Definition type_of {A} (x:A) : Type := A.
+Definition type_inside {A} (x : Mtac A) := A.
 
 Definition munify_cumul {A B} (x: A) (y: B) (u : Unification) : Mtac bool :=
   of <- munify_univ A B u;
@@ -434,6 +461,23 @@ Definition munify_cumul {A B} (x: A) (y: B) (u : Unification) : Mtac bool :=
     match oeq with Some _ => ret true | None => ret false end
   | None => ret false
   end.
+
+(** Unifies [x] with [y] and raises [NotUnifiable] if it they
+    are not unifiable. *)
+Definition unify_or_fail {A} (x y : A) : M (x = y) :=
+  oeq <- munify x y UniCoq;
+  match oeq with
+  | None => raise (NotUnifiable x y)
+  | Some eq => ret eq
+  end.
+
+(** Unifies [x] with [y] using cumulativity and raises
+    [NotCumul] if it they
+    are not unifiable. *)
+Definition NotCumul {A B} (x: A) (y: B) : Exception. exact exception. Qed.
+Definition cumul_or_fail {A B} (x: A) (y: B) : M unit :=
+  b <- munify_cumul x y UniCoq;
+  if b then ret tt else raise (NotCumul x y).
 
 Definition names_of_hyp : M (list string) :=
   env <- hypotheses;
@@ -461,4 +505,49 @@ Definition fresh_binder_name {A} (t: A) : M string :=
 Definition unfold_projection {A} (t: A) : M A :=
   let x := rone_step t in
   let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in ret x.
+
+Definition CantCoerce : Exception. exact exception. Qed.
+
+(** [coerce x] coreces element [x] of type [A] into
+    an element of type [B], assuming [A] and [B] are
+    unifiable. It raises [CantCoerce] if it fails. *)
+Definition coerce {A B : Type} (x : A) : M B :=
+  oH <- munify A B UniCoq;
+  match oH with
+  | Some H => match H with eq_refl => ret x end
+  | _ => raise CantCoerce
+  end.
+
+Definition is_prop_or_type (d: dyn) : M bool :=
+  mmatch d with
+  | Dyn Prop => ret true
+  | Dyn Type => ret true
+  | _ => ret false
+  end.
+
+Definition NotAGoal : Exception. exact exception. Qed.
+(** [goal_type g] extracts the type of the goal or raises [NotAGoal]
+    if [g] is not [Goal]. *)
+Definition goal_type (g : goal) : M Type :=
+  match g with
+    | @Goal A _ => ret A
+    | _ => raise NotAGoal
+  end.
+
+(** Convertion functions from [dyn] to [goal]. *)
+Definition dyn_to_goal (d : dyn) : goal :=
+  match d with
+  | Dyn x => Goal x
+  end.
+
+Definition goal_to_dyn : goal -> M dyn := fun g =>
+  match g with
+  | Goal d => ret (Dyn d)
+  | _ => raise NotAGoal
+  end.
+
+Definition cprint {A} (s : string) (c : A) : M unit :=
+  x <- pretty_print c;
+  let s := reduce RedNF (s ++ x)%string in
+  print s.
 End GeneralUtilities.
