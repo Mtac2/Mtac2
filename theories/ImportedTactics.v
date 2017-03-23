@@ -1,4 +1,4 @@
-From MetaCoq Require Import Mtac2 Tactics.
+From MetaCoq Require Import Mtac2 Tactics ListUtils.
 Import MtacNotations.
 Import TacticsNotations.
 
@@ -57,12 +57,11 @@ Ltac lrewrite5 a b c d e := rewrite <- a, b, c, d, e.
 
 Inductive RewriteDirection := LeftRewrite | RightRewrite.
 
-Definition trewrite (d: RewriteDirection) (args: list dyn) : tactic := fun g=>
-  ter <- compute_terminator args;
+Definition trewrite (d : RewriteDirection) (args : list dyn) : tactic := fun g =>
+  (ter <- compute_terminator args;
   let prefix := match d with LeftRewrite => "l" | RightRewrite => "r" end in
   let name := reduce RedNF (qualify (prefix++"rewrite"++ter)) in
-  ltac name args g.
-
+  ltac name args g)%MC.
 
 Notation "'rewrite' '->' x , .. , z" :=
   (trewrite RightRewrite (cons (Dyn x) .. (cons (Dyn z) nil) ..))

@@ -7,5 +7,5 @@ Qed.
 
 Goal True.
 MProof.
-  r <- ret I; ret r.
+  (r <- ret I; ret r)%MC.
 Qed.

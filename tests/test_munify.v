@@ -1,6 +1,6 @@
 Require Import MetaCoq.MetaCoq.
 
-Definition test {A} (o : M (option A)) :=
+Definition test {A} (o : M (option A)) : M _ :=
   o <- o;
   match o with Some x => ret x | _ => raise exception end.
 

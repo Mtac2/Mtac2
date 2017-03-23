@@ -5,4 +5,3 @@ From MetaCoq
 Export MtacNotations.
 Export TacticsNotations.
 Export ListNotations.
-Export TacticOverload.

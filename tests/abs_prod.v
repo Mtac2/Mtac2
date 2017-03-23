@@ -1,7 +1,5 @@
 Require Import MetaCoq.MetaCoq.
 
-Import TacticUnoverload.
-
 Goal forall x:nat, True.
 MProof.
   intro x.

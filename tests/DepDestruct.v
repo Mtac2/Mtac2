@@ -60,8 +60,8 @@ Goal forall P b, reflect P b -> P <-> b = true.
 MProof.
   intros P b r.
   new_destruct r.
-  - intro xP &> split &> [reflexivity; intros &> assumption].
-  - intro nxP &> split &> [intros &> contradiction; intros &> discriminate].
+  - intro xP;; split &> [reflexivity; intros;; assumption].
+  - intro nxP;; split &> [intros;; contradiction; intros;; discriminate].
 Qed.
 
   Example reflect_reflect P : ITele (SType) := iTele (fun b=>@iBase SType (reflect P b)).
@@ -109,11 +109,11 @@ Qed.
 
   Goal True.
     MProof.
-    (fun g =>
+    (\tactic g =>
        r <- destcase (match 3 with 0 => true | S _ => false end);
        print_term r;;
-                  cpose r (fun r=>idtac) g) : tactic.
-    (fun g=>
+                  cpose r (fun r=>idtac) g).
+    (\tactic g=>
        let c := reduce RedHNF r in
        case <- makecase c;
        cpose case (fun y=>idtac) g) : tactic.
@@ -140,7 +140,7 @@ Qed.
     exact (elem c).
   Qed.
 
-Notation "'mpose' ( x := t )" := ((fun g=>r <- t; cpose r (fun x=>idtac) g) : tactic)
+Notation "'mpose' ( x := t )" := (r <- t; cpose r (fun x=>idtac))
   (at level 40, x at next level).
 
 Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
@@ -153,14 +153,11 @@ Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
       name <- fresh_name "A";
       nu name None (fun x=>
         r <- unfold_funs (t' x) n';
-      abs x r)
+        abs x r)
     | [? A'] A' => [H]
       match H in _ = P return M P with eq_refl => ret t end
     end
-  end.
-
-
-Import TacticOverload.
+  end%MC.
 
 (* MetaCoq version *)
 Goal forall P b, reflect P b -> P <-> b = true.
@@ -171,7 +168,7 @@ MProof.
   assert (T : get_type_of_branch rG (reflect_RTrue P)).
   { simpl. cintros x {- Tactics.split&> [cintros xP {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
   assert (F : get_type_of_branch rG (reflect_RFalse P)).
-  { simpl. intros. Tactics.split. intros. select (~ _) (fun a=>select P (fun x=>exact (match a x with end))). intros&> discriminate. }
+  { simpl. intros. Tactics.split. intros. select (~ _) (fun a=>select P (fun x=>exact (match a x with end))). intros;; discriminate. }
   mpose (return_type := unfold_funs (RTele_Fun rG) 5).
   pose (mc :=
           makecase {|

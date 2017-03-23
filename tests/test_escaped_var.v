@@ -4,7 +4,7 @@ Require Import Bool.Bool.
 
 Definition anat : nat.
 MProof.
-  _ <- evar nat; ret 0.
+  (_ <- evar nat; ret 0)%MC.
 MQed.
 
 Definition escaped_evar : nat.

@@ -35,7 +35,7 @@ module MetaCoqNames = struct
   let mkConstr e = Constr.mkConstr (metaCoq_module_name ^ "." ^ e)
   let mkBuilder e = ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
   let mkT_lazy = mkConstr "Mtac"
-  let mkUConstr e = (Constr.mkUConstr (metaCoq_module_name ^ "." ^ e))
+  let mkUConstr e = Constr.mkUConstr (metaCoq_module_name ^ "." ^ e)
 
   let isConstr e =
     let c = Lazy.force (mkConstr e) in
@@ -44,7 +44,6 @@ module MetaCoqNames = struct
   let mkCase ind v ret branch sigma env =
     let sigma, c = mkUConstr "mkCase" sigma env in
     sigma, mkApp(c, [|ind;v;ret;branch|])
-
 
   let mkelem d sigma env =
     let sigma, c = mkUConstr "elem" sigma env in
@@ -58,7 +57,6 @@ module MetaCoqNames = struct
 
   (* dyn is expected to be Dyn ty el *)
   let get_elem dyn = (snd (destApp dyn)).(1)
-
 end
 
 open MetaCoqNames

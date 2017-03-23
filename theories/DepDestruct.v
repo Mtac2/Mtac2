@@ -204,7 +204,7 @@ Polymorphic Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (args : AT
         ret r
       else
         failwith "All indices need to be variables"
-  end.
+  end%MC.
 
 Polymorphic Fixpoint get_type_of_branch {isort} {rsort} {it : ITele isort} (rt : RTele rsort it) (ct : CTele it) : stype_of rsort :=
   match ct with
@@ -232,7 +232,7 @@ Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
         else
           raise NotEnoughArguments
       end
-    end.
+    end%MC.
 
 (** Given a inductive described in [it] and a list of elements [al],
     it returns the [ATele] describing the applied version of [it] with [al]. *)
@@ -315,13 +315,12 @@ Polymorphic Definition get_ind {A : Type} (n : A) :
   ret (nindx, existT _ _ it, constrs).
 
 (* Compute ind type ATele *)
-Polymorphic Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) :=
+Polymorphic Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) : M (ATele it) :=
   indlist <- args_of_max nindx (Dyn A) : M (list dyn);
   atele <- get_ATele it indlist : M (ATele it);
   ret atele.
 
-Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
-  fun (g : goal) =>
+Polymorphic Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
     ind <- get_ind n;
       let (nsortit, constrs) := ind in
       let (nindx, sortit) := nsortit in
@@ -363,4 +362,5 @@ Polymorphic Definition new_destruct {A : Type} (n : A) : tactic :=
                      |};
           let gterm := dyn_to_goal caseterm in
           unify_or_fail gterm g;;
-          ret goals.
+          let goals' := dreduce (@List.map) (map (pair tt) goals) in
+          ret goals'.

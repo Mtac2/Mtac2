@@ -11,7 +11,10 @@ module MetaCoqRun = struct
       - [tactic]: then it returns [run_tac concl c] *)
   let pretypeT env sigma concl evar c =
     let metaCoqType = Lazy.force Run.MetaCoqNames.mkT_lazy in
-    let sigma, tacticType = MCTactics.mkTactic env sigma in
+    let sigma, _ = MCTactics.mkTactic env sigma in
+    (* FIXME *)
+    (* let tacticType = MCTactics.mkTactic env sigma in
+       let gTacticType = MCTactics.mkGTactic env sigma in *)
     let ty = Retyping.get_type_of env sigma c in
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
     if Term.eq_constr_nounivs metaCoqType h && List.length args = 1 then
@@ -19,7 +22,8 @@ module MetaCoqRun = struct
         let sigma = Evarconv.the_conv_x_leq env concl (List.hd args) sigma in
         (false, sigma, c)
       with Evarconv.UnableToUnify(_,_) -> CErrors.error "Different types"
-    else if Term.eq_constr_nounivs tacticType ty && List.length args = 0 then
+    else if (* Term.eq_constr_nounivs tacticType h && List.length args = 0 ||
+               Term.eq_constr_nounivs gTacticType h && List.length args = 1*) true then
       let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
       (true, sigma, Term.mkApp(c, [|goal|]))
     else
@@ -33,6 +37,7 @@ module MetaCoqRun = struct
           Refine.refine ~unsafe:false {Sigma.run = fun _ ->Sigma.Unsafe.of_pair (v, sigma)}
         else
           let goals = Constrs.CoqList.from_coq (env, sigma) v in
+          let goals = List.map (fun x -> snd (Constrs.CoqPair.from_coq (env, sigma) x)) goals in
           let goals = List.map (Run.Goal.evar_of_goal sigma env) goals in
           let goals = List.filter Option.has_some goals in
           let goals = List.map Option.get goals in

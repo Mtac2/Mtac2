@@ -20,18 +20,18 @@ Fixpoint prove_leq n m : M (n < m) :=
   | _, _ => failwith "n not < m"
   end.
 
-Definition to_fin_MP : selector := fun l=>
+Definition to_fin_MP : selector := (fun l=>
   let n := List.length l in
-  mmapi (fun i g =>
+  mmapi (fun i '(_,g) =>
     H <- prove_leq i n;
     let v := rcbv (of_nat_lt H) in
     exact v g) l;;
-  ret [].
+  ret [])%MC.
 
 Goal my_enum_type -> Fin.t 3.
 MProof.
   intro H.
-  destruct H &> to_fin_MP.
+  tactic_selector (destruct H) (to_fin_MP). (* FIXME: get notation back *)
 Qed.
 
 Goal my_enum_type.

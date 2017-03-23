@@ -11,7 +11,6 @@ MProof.
   exact I.
 Qed.
 
-Import TacticOverload.
 Example ex2 : forall (x y: nat) (H: x>y) (z:nat), True.
 MProof.
   cintros (x y: nat) (H: x>y) (z: nat) {-

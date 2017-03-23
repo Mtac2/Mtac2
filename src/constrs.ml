@@ -333,6 +333,7 @@ end
 
 module MCTactics = struct
   let tactic = "MetaCoq.Tactics.tactic"
+  let gTactic = "MetaCoq.Tactics.gtactic"
 
   let mkConstr s =
     let open Nametab in let open Libnames in
@@ -345,6 +346,7 @@ module MCTactics = struct
     with _ -> raise (Constr.Constr_not_found s)
 
   let mkTactic = mkUConstr tactic
+  let mkGTactic = mkUConstr gTactic
 end
 
 module CoqPair = struct

@@ -2,7 +2,7 @@ Require Import MetaCoq.MetaCoq.
 
 Goal True.
 MProof.
-  evar nat;; evar bool;; ret _.
+  (evar nat;; evar bool;; ret _)%MC. (* FIXME: why are all evars shelved when we do this in the tactic monad? *)
   ret _.
   ret _.
   ret I.

@@ -17,7 +17,7 @@ Definition get_constrs :=
       ret l'
     end.
 
-Definition index {A} (c: A) :=
+Definition index {A} (c: A) : M _ :=
   l <- get_constrs A;
   (mfix2 f (i : nat) (l : list dyn) : M nat :=
     mmatch l with
