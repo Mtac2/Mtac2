@@ -34,7 +34,7 @@ module MetaCoqNames = struct
   let metaCoq_module_name = "MetaCoq.Mtac2"
   let mkConstr e = Constr.mkConstr (metaCoq_module_name ^ "." ^ e)
   let mkBuilder e = ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
-  let mkT_lazy = mkConstr "Mtac"
+  let mkT_lazy = mkConstr "M.t"
   let mkUConstr e = Constr.mkUConstr (metaCoq_module_name ^ "." ^ e)
 
   let isConstr e =

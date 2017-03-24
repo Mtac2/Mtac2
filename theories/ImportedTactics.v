@@ -1,6 +1,6 @@
-From MetaCoq Require Import Mtac2 Tactics ListUtils.
-Import MtacNotations.
-Import TacticsNotations.
+From MetaCoq Require Import Mtac2 Tactics.
+Import M.notations.
+Import T.notations.
 
 Require Import Strings.String.
 Require Import Lists.List.
@@ -9,28 +9,28 @@ Import ListNotations.
 Definition qualify s := String.append "MetaCoq.ImportedTactics." s.
 
 Ltac trivial := trivial.
-Definition trivial : tactic := ltac (qualify "trivial") nil.
+Definition trivial : tactic := T.ltac (qualify "trivial") nil.
 
 Ltac discriminate := discriminate.
-Definition discriminate : tactic := ltac (qualify "discriminate") nil.
+Definition discriminate : tactic := T.ltac (qualify "discriminate") nil.
 
 Ltac intuition := intuition.
-Definition intuition : tactic := ltac (qualify "intuition") nil.
+Definition intuition : tactic := T.ltac (qualify "intuition") nil.
 
 Ltac auto := auto.
-Definition auto : tactic := ltac (qualify "auto") nil.
+Definition auto : tactic := T.ltac (qualify "auto") nil.
 
 Ltac subst := subst.
-Definition subst : tactic := ltac (qualify "subst") nil.
+Definition subst : tactic := T.ltac (qualify "subst") nil.
 
 Ltac contradiction := contradiction.
-Definition contradiction : tactic := ltac (qualify "contradiction") nil.
+Definition contradiction : tactic := T.ltac (qualify "contradiction") nil.
 
 Ltac tauto' := tauto.
-Definition tauto : tactic := ltac (qualify "tauto'") nil.
+Definition tauto : tactic := T.ltac (qualify "tauto'") nil.
 
 Ltac unfold x := unfold x.
-Definition unfold {A} (x: A) := ltac (qualify "unfold") [Dyn x].
+Definition unfold {A} (x: A) := T.ltac (qualify "unfold") [Dyn x].
 
 Ltac rrewrite1 a := rewrite a.
 Ltac rrewrite2 a b := rewrite a, b.
@@ -40,14 +40,14 @@ Ltac rrewrite5 a b c d e := rewrite a, b, c, d, e.
 
 Definition compute_terminator {A} (l: list A) : M string :=
   match l with
-  | [] => failwith "At least one required"
-  | [_] => ret "1"
-  | [_;_] => ret "2"
-  | [_;_;_] => ret "3"
-  | [_;_;_;_] => ret "4"
-  | [_;_;_;_;_] => ret "5"
-  | _ => failwith "Unsupported"
-  end.
+  | [] => M.failwith "At least one required"
+  | [_] => M.ret "1"
+  | [_;_] => M.ret "2"
+  | [_;_;_] => M.ret "3"
+  | [_;_;_;_] => M.ret "4"
+  | [_;_;_;_;_] => M.ret "5"
+  | _ => M.failwith "Unsupported"
+  end%string.
 
 Ltac lrewrite1 a := rewrite <- a.
 Ltac lrewrite2 a b := rewrite <- a, b.
@@ -59,9 +59,9 @@ Inductive RewriteDirection := LeftRewrite | RightRewrite.
 
 Definition trewrite (d : RewriteDirection) (args : list dyn) : tactic := fun g =>
   (ter <- compute_terminator args;
-  let prefix := match d with LeftRewrite => "l" | RightRewrite => "r" end in
+  let prefix := match d with LeftRewrite => "l"%string | RightRewrite => "r"%string end in
   let name := reduce RedNF (qualify (prefix++"rewrite"++ter)) in
-  ltac name args g)%MC.
+  T.ltac name args g)%MC.
 
 Notation "'rewrite' '->' x , .. , z" :=
   (trewrite RightRewrite (cons (Dyn x) .. (cons (Dyn z) nil) ..))
@@ -75,17 +75,17 @@ Notation "'rewrite' x , .. , z" :=
 
 Ltac elim h := elim h.
 Definition elim {A} (x:A) : tactic :=
-  ltac (qualify "elim") (cons (Dyn x) nil).
+  T.ltac (qualify "elim") (cons (Dyn x) nil).
 
 Notation induction := elim.
 
 Definition injection {A} (x: A) : tactic :=
-  ltac ("Coq.Init.Notations.injection") [Dyn x].
+  T.ltac ("Coq.Init.Notations.injection") [Dyn x].
 
 Ltac inversion H := inversion H.
 Definition inversion {A} (x: A) : tactic :=
-  ltac (qualify "inversion") [Dyn x].
+  T.ltac (qualify "inversion") [Dyn x].
 
 Ltac typeclasses_eauto := typeclasses eauto.
 Definition typeclasses_eauto : tactic :=
-  ltac (qualify "typeclasses_eauto") [].
+  T.ltac (qualify "typeclasses_eauto") [].

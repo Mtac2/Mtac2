@@ -1,7 +1,6 @@
 Require Export Lists.List.
-From MetaCoq
-  Require Export Mtac2 Tactics ListUtils ImportedTactics.
+From MetaCoq Require Export Mtac2 Tactics ImportedTactics.
 
-Export MtacNotations.
-Export TacticsNotations.
+Export M.notations.
+Export T.notations.
 Export ListNotations.
