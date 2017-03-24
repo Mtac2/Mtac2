@@ -165,11 +165,9 @@ Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
 
 Definition bind {A B} (t : gtactic A) (f : A -> gtactic B) : gtactic B := fun g =>
   gs <- t g;
-  if is_empty gs then M.raise NoGoalsLeft
-  else
-    r <- M.map (fun '(x,g') => open_and_apply (f x) g') gs;
-    let res := dreduce (concat, @List.app) (concat r) in
-    M.ret res.
+  r <- M.map (fun '(x,g') => open_and_apply (f x) g') gs;
+  let res := dreduce (concat, @List.app) (concat r) in
+  M.ret res.
 
 Fixpoint gmap {A} (tacs : list (gtactic A)) (gs : list goal) : M (list (list (A * goal))) :=
   match tacs, gs with
