@@ -414,20 +414,23 @@ Definition change_hyp {P Q} (H : P) (newH: Q) : tactic := fun g =>
   M.unify_or_fail (Goal (f newH)) g;;
   M.ret [(tt, AHyp None g')].
 
-Inductive goal_pattern : Type :=
-| gbase : forall {A}, A -> tactic -> goal_pattern
-| gtele : forall {C}, (C -> goal_pattern) -> goal_pattern
-| gtele_evar : forall {C}, (C -> goal_pattern) -> goal_pattern.
+Inductive goal_pattern (B : Type) :=
+  | gbase : forall {A}, A -> gtactic B -> goal_pattern B
+  | gtele : forall {C}, (C -> goal_pattern B) -> goal_pattern B
+  | gtele_evar : forall {C}, (C -> goal_pattern B) -> goal_pattern B.
+Arguments gbase {B A} _ _.
+Arguments gtele {B C} _.
+Arguments gtele_evar {B C} _.
 
-Fixpoint match_goal_pattern'
-    (u : Unification) (p : goal_pattern) : list Hyp -> list Hyp -> tactic :=
+Fixpoint match_goal_pattern' {B}
+    (u : Unification) (p : goal_pattern B) : list Hyp -> list Hyp -> gtactic B :=
   fix go l1 l2 g :=
   match p, l2 with
   | gbase P t, _ =>
     gT <- M.goal_type g;
     mif M.unify_cumul P gT u then t g
     else M.raise DoesNotMatchGoal
-  | @gtele C f, (@ahyp A a d :: l2') =>
+  | @gtele _ C f, (@ahyp A a d :: l2') =>
     oeqCA <- M.unify C A u;
     match oeqCA with
     | Some eqCA =>
@@ -437,16 +440,18 @@ Fixpoint match_goal_pattern'
         go (ahyp a d :: l1) l2' g
       end
     | None => go (ahyp a d :: l1) l2' g end
-  | @gtele_evar C f, _ =>
+  | @gtele_evar _ C f, _ =>
     e <- M.evar C;
     match_goal_pattern' u (f e) l1 l2 g
   | _, _ => M.raise DoesNotMatchGoal
   end.
 
-Definition match_goal_pattern (u : Unification) (p : goal_pattern) : tactic := fun g=>
+Definition match_goal_pattern {B} (u : Unification)
+    (p : goal_pattern B) : gtactic B := fun g=>
   r <- M.hyps; match_goal_pattern' u p [] (List.rev' r) g.
 
-Fixpoint match_goal_base (u : Unification) (ps : list goal_pattern) : tactic := fun g =>
+Fixpoint match_goal_base {B} (u : Unification)
+    (ps : list (goal_pattern B)) : gtactic B := fun g =>
   match ps with
   | [] => M.raise NoPatternMatchesGoal
   | p :: ps' =>
@@ -870,10 +875,10 @@ Module notations.
   Delimit Scope match_goal_pattern_scope with match_goal_pattern.
 
   Notation "'with' | p1 | .. | pn 'end'" :=
-    ((@cons goal_pattern p1%match_goal_pattern (.. (@cons goal_pattern pn%match_goal_pattern nil) ..)))
+    ((@cons (goal_pattern _) p1%match_goal_pattern (.. (@cons (goal_pattern _) pn%match_goal_pattern nil) ..)))
       (at level 91, p1 at level 210, pn at level 210) : match_goal_with_scope.
   Notation "'with' p1 | .. | pn 'end'" :=
-    ((@cons goal_pattern p1%match_goal_pattern (.. (@cons goal_pattern pn%match_goal_pattern nil) ..)))
+    ((@cons (goal_pattern _) p1%match_goal_pattern (.. (@cons (goal_pattern _) pn%match_goal_pattern nil) ..)))
       (at level 91, p1 at level 210, pn at level 210) : match_goal_with_scope.
 
   Delimit Scope match_goal_with_scope with match_goal_with.
