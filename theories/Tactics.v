@@ -15,9 +15,6 @@ Local Set Universe Polymorphism.
 Definition NoGoalsLeft : Exception. exact exception. Qed.
 Definition NotSameSize : Exception. exact exception. Qed.
 
-Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
-Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
-
 Definition NotAProduct : Exception. exact exception. Qed.
 
 Definition SomethingNotRight {A} (t : A) : Exception. exact exception. Qed.
@@ -163,7 +160,7 @@ Fixpoint gmap {A} (tacs : list (gtactic A)) (gs : list goal) : M (list (list (A 
   | l, l' => M.raise NotSameSize
   end.
 
-Definition bind_list {A} (t : tactic) (f : list (gtactic A)) : gtactic A := fun g =>
+Definition seq_list {A} (t : tactic) (f : list (gtactic A)) : gtactic A := fun g =>
   gs <- t g;
   ls <- gmap f (map snd gs);
   let res := dreduce (List.concat, List.app) (concat ls) in
@@ -178,28 +175,10 @@ Definition exact {A} (x:A) : tactic := fun g =>
 
 Definition goal_type : gtactic Type := with_goal M.goal_type.
 
-(** [instantiate x t] tries to instantiate meta-variable [x] with [t].
-    It fails with [NotAnEvar] if [x] is not a meta-variable (applied to a spine), or
-    [CantInstantiate] if it fails to find a suitable instantiation. [t] is beta-reduced
-    to avoid false dependencies. *)
-Definition instantiate {A} (x t : A) : M unit :=
-  k <- M.decompose x;
-  let (h, _) := k in
-  let h := rcbv h.(elem) in
-  b <- M.is_evar h;
-  let t := reduce (RedWhd [RedBeta]) t in
-  if b then
-    r <- M.unify x t UniEvarconv;
-    match r with
-    | Some _ => M.ret tt
-    | _ => M.raise (CantInstantiate x t)
-    end
-  else M.raise (NotAnEvar h).
-
 (** [intro_base n t] introduces variable or definition named [n]
     in the context and executes [t n].
     Raises [NotAProduct] if the goal is not a product or a let-binding. *)
-Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := fun g=>
+Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := fun g =>
   mmatch g with
   | [? B (def: B) P e] @Goal (let x := def in P x) e =n>
     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
@@ -548,7 +527,7 @@ Definition simpl_in_all : tactic := fun g =>
   | _ => M.raise exception (* should never happen *)
   end.
 
-Definition reduce_in (r : Reduction) {P} (H: P) : tactic := fun g =>
+Definition reduce_in (r : Reduction) {P} (H : P) : tactic := fun g =>
   l <- M.hyps;
   l' <- M.map (fun hyp : Hyp =>
     let (T, v, def) := hyp in
@@ -563,7 +542,7 @@ Definition reduce_in (r : Reduction) {P} (H: P) : tactic := fun g =>
   | _ => M.raise exception (* should never happen *)
   end.
 
-Definition simpl_in {P} (H: P) : tactic :=
+Definition simpl_in {P} (H : P) : tactic :=
   reduce_in RedSimpl H.
 
 (** exists tactic *)
@@ -576,36 +555,7 @@ Definition mexists {A} (x: A) : tactic := fun g =>
   | _ => M.raise (NotUnifiable g (Goal (@ex_intro _ P x e)))
   end.
 
-(** Printing of a goal *)
-Definition print_hyp (a : Hyp) : M unit :=
-  let (A, x, ot) := a in
-  sA <- M.pretty_print A;
-  sx <- M.pretty_print x;
-  match ot with
-  | Some t =>
-    st <- M.pretty_print t;
-    M.print (sx ++ " := " ++ st ++ " : " ++ sA)
-  | None => M.print (sx ++ " : " ++ sA)
-  end.
-
-Definition print_hyps : M unit :=
-  l <- M.hyps;
-  let l := rev' l in
-  M.iterate print_hyp l.
-
-Definition print_goal : tactic := fun g =>
-  let repeat c := (fix repeat s n :=
-    match n with
-    | 0 => s
-    | S n => repeat (c++s)%string n
-    end) ""%string in
-  G <- M.goal_type g;
-  sg <- M.pretty_print G;
-  let sep := repeat "="%string 20 in
-  print_hyps;;
-  M.print sep;;
-  M.print sg;;
-  idtac g.
+Definition print_goal : tactic := with_goal M.print_goal.
 
 (** [n_etas n f] takes a function f with type [forall x1, ..., xn, T]
     and returns its eta-expansion: [fun x1, ..., xn=>f x1 .. xn].
@@ -761,9 +711,13 @@ Module notations.
 
   Notation "r '<-' t1 ';' t2" := (bind t1 (fun r => t2%tactic))
     (at level 81, right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
-  Notation "t1 ';;' t2" := (bind t1 (fun _=>t2%tactic))
-    (at level 81, right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : tactic_scope.
   Notation "t >>= f" := (bind t f) (at level 70) : tactic_scope.
+
+  Notation "t1 ';;' t2" := (bind t1 (fun _ => t2%tactic))
+    (at level 81, right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : tactic_scope.
+
+  Notation "t1 '&>' ts" :=
+    (seq_list t1 ts) (at level 41, left associativity) : tactic_scope.
 
   Notation "'mif' b 'then' t 'else' u" :=
     (cond <- b; if cond then t else u) (at level 200) : tactic_scope.
@@ -836,7 +790,7 @@ Module notations.
     (cassert (fun x:T=>idtac)) (at level 40, x at next level) : tactic_scope.
 
   Notation "t 'asp' n" :=
-    (bind_list t (name_pattern n)) (at level 40) : tactic_scope.
+    (seq_list t (name_pattern n)) (at level 40) : tactic_scope.
 
   Notation "[[ |- ps ] ] => t" :=
     (gbase ps t)
@@ -872,8 +826,6 @@ Module notations.
   Notation "'match_goal_nored' ls" := (match_goal_base UniMatchNoRed ls%match_goal_with)
     (at level 90, ls at level 91) : tactic_scope.
 
-  Notation "t1 '&>' ts" :=
-    (bind_list t1 ts) (at level 41, left associativity) : tactic_scope.
   Notation "t1 '|1>' t2" :=
     (tactic_selector t1 (S.nth 0 t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.

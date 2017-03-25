@@ -64,6 +64,9 @@ Definition NotThatManyElements : Exception. exact exception. Qed.
 Definition CantCoerce : Exception. exact exception. Qed.
 Definition NotCumul {A B} (x: A) (y: B) : Exception. exact exception. Qed.
 
+Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
+Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
+
 Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
 
@@ -336,7 +339,7 @@ Module monad_notations.
 
   Notation "r '<-' t1 ';' t2" := (@bind _ _ t1 (fun r=> t2%MC))
     (at level 81, right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
-  Notation "t1 ';;' t2" := (@bind _ _ t1 (fun _=>t2%MC))
+  Notation "t1 ';;' t2" := (bind t1 (fun _ => t2%MC))
     (at level 81, right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : M_scope.
   Notation "t >>= f" := (bind t f) (at level 70) : M_scope.
 
@@ -660,6 +663,37 @@ Definition cprint {A} (s : string) (c : A) : t unit :=
   let s := reduce RedNF (s ++ x)%string in
   print s.
 
+(** Printing of a goal *)
+Definition print_hyp (a : Hyp) : t unit :=
+  let (A, x, ot) := a in
+  sA <- pretty_print A;
+  sx <- pretty_print x;
+  match ot with
+  | Some t =>
+    st <- pretty_print t;
+    M.print (sx ++ " := " ++ st ++ " : " ++ sA)
+  | None => print (sx ++ " : " ++ sA)
+  end.
+
+Definition print_hyps : t unit :=
+  l <- hyps;
+  let l := rev' l in
+  iterate print_hyp l.
+
+Definition print_goal (g : goal) : t unit :=
+  let repeat c := (fix repeat s n :=
+    match n with
+    | 0 => s
+    | S n => repeat (c++s)%string n
+    end) ""%string in
+  G <- goal_type g;
+  sg <- pretty_print G;
+  let sep := repeat "="%string 20 in
+  print_hyps;;
+  print sep;;
+  print sg;;
+  ret tt.
+
 (** [decompose x] decomposes value [x] into a head and a spine of
     arguments. For instance, [decompose (3 + 3)] returns
     [(Dyn add, [Dyn 3; Dyn 3])] *)
@@ -668,8 +702,26 @@ Definition decompose {A} (x : A) :=
     mmatch d with
     | [? A B (t1: A -> B) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :: args)
     | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :: args)
-    | _ => M.ret (d, args)
+    | _ => ret (d, args)
     end) (Dyn x) [].
+
+(** [instantiate x t] tries to instantiate meta-variable [x] with [t].
+    It fails with [NotAnEvar] if [x] is not a meta-variable (applied to a spine), or
+    [CantInstantiate] if it fails to find a suitable instantiation. [t] is beta-reduced
+    to avoid false dependencies. *)
+Definition instantiate {A} (x y : A) : t unit :=
+  k <- decompose x;
+  let (h, _) := k in
+  let h := rcbv h.(elem) in
+  b <- is_evar h;
+  let t := reduce (RedWhd [RedBeta]) t in
+  if b then
+    r <- unify x y UniEvarconv;
+    match r with
+    | Some _ => M.ret tt
+    | _ => raise (CantInstantiate x y)
+    end
+  else raise (NotAnEvar h).
 End M.
 
 Notation M := M.t.
