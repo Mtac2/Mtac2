@@ -120,12 +120,14 @@ Polymorphic Inductive goal :=
   | AHyp : forall {A}, option A -> (A -> goal) -> goal.
 
 (** Pattern matching without pain *)
+(* The M will be instantiated with the M monad or the gtactic monad. In principle,
+we could make it part of the B, but then higher order unification will fail. *)
 Polymorphic Inductive pattern (M : Type -> Type) (A : Type) (B : A -> Type) (y : A) : Prop :=
   | pbase : forall x : A, (y = x -> M (B x)) -> Unification -> pattern M A B y
   | ptele : forall {C}, (forall x : C, pattern M A B y) -> pattern M A B y.
 
-Arguments ptele {M A B y C} _.
 Arguments pbase {M A B y} _ _ _.
+Arguments ptele {M A B y C} _.
 
 Notation "[? x .. y ] ps" := (ptele (fun x => .. (ptele (fun y => ps)).. ))
   (at level 202, x binder, y binder, ps at next level) : pattern_scope.

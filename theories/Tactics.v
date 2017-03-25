@@ -84,32 +84,16 @@ Definition fix4 {A1} {A2 : A1 -> Type} {A3 : forall a1 : A1, A2 a1 -> Type}
     forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), gtactic (B x1 x2 x3 x4) :=
   @M.fix5 A1 A2 A3 A4 (fun _ _ _ _ => goal) (fun x y z z' _ => list (B x y z z' * goal)).
 
-(* TODO: copy paste should be avoided *)
-Polymorphic Fixpoint open_pattern {A P y} (p : pattern gtactic A P y)
-    (g : goal) : M (list (P y * goal)) :=
+Fixpoint pattern_map {A} {B : A -> Type} (g : goal) (y : A)
+    (p : pattern gtactic A B y) : pattern M A (fun y => list (B y * goal)) y :=
   match p with
-  | pbase x f u =>
-    oeq <- M.unify x y u;
-    match oeq return M (list (P y * goal)) with
-    | Some eq =>
-      (* eq has type x = t, but for the pattern we need t = x.
-         we still want to provide eq_refl though, so we reduce it *)
-      let h := reduce (RedStrong [RedBeta;RedDelta;RedMatch]) (eq_sym eq) in
-      let 'eq_refl := eq in
-      (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
-      let b := reduce (RedStrong [RedBeta]) (f h g) in b
-    | None => M.raise DoesNotMatch
-    end
-  | @ptele _ _ _ _ C f => e <- M.evar C; open_pattern (f e) g
+  | pbase x f r => pbase x (fun Heq => f Heq g) r
+  | ptele f => ptele (fun x => pattern_map g y (f x))
   end.
 
-Polymorphic Fixpoint mmatch' {A P} (y : A) (ps : list (pattern gtactic A P y)) : gtactic (P y) :=
-  match ps with
-  | [] => raise NoPatternMatches
-  | p :: ps' => fun g =>
-    M.mtry' (open_pattern p g) (fun e =>
-      mif M.unify e DoesNotMatch UniMatchNoRed then mmatch' y ps' g else M.raise e)
-  end.
+Definition mmatch' {A P} (y : A)
+    (ps : list (pattern gtactic A P y)) : gtactic (P y) := fun g =>
+  M.mmatch' y (map (pattern_map g y) ps).
 
 Definition ret {A} (x : A) : gtactic A := fun g => M.ret [(x,g)].
 Definition idtac : tactic := ret tt.
