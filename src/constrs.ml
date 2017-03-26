@@ -332,7 +332,6 @@ module CoqUnit = struct
 end
 
 module MCTactics = struct
-  let tactic = "MetaCoq.Tactics.tactic"
   let gTactic = "MetaCoq.Tactics.gtactic"
 
   let mkConstr s =
@@ -345,7 +344,6 @@ module MCTactics = struct
     try Evd.fresh_global env sigma (locate (qualid_of_string s))
     with _ -> raise (Constr.Constr_not_found s)
 
-  let mkTactic = mkUConstr tactic
   let mkGTactic = mkUConstr gTactic
 end
 

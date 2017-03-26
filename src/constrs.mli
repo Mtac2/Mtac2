@@ -99,7 +99,6 @@ module CoqSig : sig
 end
 
 module MCTactics : sig
-  val mkTactic : Environ.env -> Evd.evar_map -> Evd.evar_map * Term.constr
   val mkGTactic : Environ.env -> Evd.evar_map -> Evd.evar_map * Term.constr
 end
 

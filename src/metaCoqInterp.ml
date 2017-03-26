@@ -8,13 +8,9 @@ module MetaCoqRun = struct
 
   (** Given a type concl and a term c, it checks that c has type:
       - [M concl]: then it returns [c]
-      - [tactic]: then it returns [run_tac concl c] *)
+      - [tactic]: then it returns [c (Goal concl evar)] *)
   let pretypeT env sigma concl evar c =
     let metaCoqType = Lazy.force Run.MetaCoqNames.mkT_lazy in
-    let sigma, _ = MCTactics.mkTactic env sigma in
-    (* FIXME *)
-    (* let tacticType = MCTactics.mkTactic env sigma in
-       let gTacticType = MCTactics.mkGTactic env sigma in *)
     let ty = Retyping.get_type_of env sigma c in
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
     if Term.eq_constr_nounivs metaCoqType h && List.length args = 1 then
@@ -22,8 +18,8 @@ module MetaCoqRun = struct
         let sigma = Evarconv.the_conv_x_leq env concl (List.hd args) sigma in
         (false, sigma, c)
       with Evarconv.UnableToUnify(_,_) -> CErrors.error "Different types"
-    else if (* Term.eq_constr_nounivs tacticType h && List.length args = 0 ||
-               Term.eq_constr_nounivs gTacticType h && List.length args = 1*) true then
+    else if Term.isProd ty then
+      (* FIXME: we only check it is a product. we don't want to call full unification for this. *)
       let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
       (true, sigma, Term.mkApp(c, [|goal|]))
     else
