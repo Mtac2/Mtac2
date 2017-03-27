@@ -32,6 +32,8 @@ Definition NoPatternMatchesGoal : Exception. exact exception. Qed.
 
 Definition NotThatType : Exception. exact exception. Qed.
 
+Definition NoProgress : Exception. constructor. Qed.
+
 (** The type for tactics *)
 Definition gtactic (A : Type) := goal -> M (list (A * goal)).
 Notation tactic := (gtactic unit).
@@ -599,6 +601,17 @@ Definition fix_tac (f : string) (n : N) : tactic := fun g =>
   let (f, new_goal) := r in
   exact f g;;
   M.ret [(tt,new_goal)].
+
+Definition progress {A} (t : gtactic A) : gtactic A := fun g =>
+  r <- t g;
+  match r with
+  | [(x,g')] =>
+    mmatch g with
+    | g' => M.raise NoProgress
+    | _ => M.ret [(x,g')]
+    end
+  | _ => M.ret r
+  end.
 
 (** [repeat t] applies tactic [t] to the goal several times
     (it should only generate at most 1 subgoal), until no
