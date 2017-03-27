@@ -620,13 +620,12 @@ Definition repeat (t : tactic) : tactic :=
   fix0 _ (fun rec g =>
     r <- try t g; (* if it fails, the execution will stop below *)
     match r with
-    | [] => M.ret []
     | [(_,g')] =>
       mmatch g with
       | g' => M.ret [(tt,g)] (* the goal is the same, return *)
       | _ => rec g'
       end
-    | _ => M.print_term r;; M.failwith "The tactic generated more than a goal"
+    | _ => M.ret r
     end).
 
 Definition map_term (f : forall d:dyn, M d.(type)) : forall d : dyn, M d.(type) :=
