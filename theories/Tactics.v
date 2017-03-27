@@ -34,10 +34,9 @@ Definition NotThatType : Exception. exact exception. Qed.
 
 (** The type for tactics *)
 Definition gtactic (A : Type) := goal -> M (list (A * goal)).
-Definition tactic := gtactic unit.
+Notation tactic := (gtactic unit).
 
 Delimit Scope tactic_scope with tactic.
-Bind Scope tactic_scope with tactic.
 Bind Scope tactic_scope with gtactic.
 
 Module T.
@@ -584,7 +583,7 @@ Definition n_etas (n : nat) {A} (f : A) : M A :=
     [n] products. *)
 Definition fix_tac (f : string) (n : N) : tactic := fun g =>
   gT <- M.goal_type g;
-  r <- M.nu f None (fun f : gT=>
+  r <- M.nu f None (fun f : gT =>
     (* We introduce the recursive definition f and create the new
        goal having it. *)
     new_goal <- M.evar gT;
