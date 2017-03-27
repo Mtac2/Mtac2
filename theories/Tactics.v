@@ -914,3 +914,5 @@ Definition select (T : Type) (cont : T -> tactic) : tactic :=
 Definition move_back {A} (x : A) (cont : tactic) : tactic :=
   generalize x ;; cclear x cont.
 End T.
+
+Coercion T.of_M : M >-> gtactic.
