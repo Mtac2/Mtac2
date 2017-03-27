@@ -42,13 +42,13 @@ Close Scope IP.
 Definition LIP_mfold_left {A} f :=
 fix loop (l : LIP) (a : A) {struct l} : M A :=
   match l with
-  | lnil => ret a
+  | lnil => M.ret a
   | lcons b bs => f a b >>= loop bs
   end%MC.
 
 Definition NotDone : Exception. exact exception. Qed.
 Definition done : tactic :=
-  intros ;; (tauto or assumption or reflexivity) or (fail NotDone).
+  intros ;; (tauto or T.assumption or T.reflexivity) or (T.raise NotDone).
 
 Fixpoint mmap_plist (f: LIP -> tactic) (l: list LIP) : list tactic :=
   match l with
@@ -58,19 +58,19 @@ Fixpoint mmap_plist (f: LIP -> tactic) (l: list LIP) : list tactic :=
 
 Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
   match ip return tactic with
-  | NoOp => idtac
+  | NoOp => T.idtac
   | B binder =>
-    var <- get_binder_name binder;
-    intro_simpl var
+    var <- M.get_binder_name binder;
+    T.intro_simpl var
   | C ips =>
-    destructn 0 &> mmap_plist do_intro ips
+    T.destructn 0 &> mmap_plist do_intro ips
   | R d =>
-    introsn 1;;
-    l <- hypotheses;
-    h <- hd_exception l;
+    T.introsn 1;;
+    l <- M.hyps;
+    h <- M.hd l;
     let (_, var, _) := h : Hyp in
     trewrite d [Dyn var];;
-    clear var
+    T.clear var
   | Done => done
   | Simpl => simpl
   end.
@@ -78,7 +78,7 @@ Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
 Definition do_intro :  LIP -> tactic :=
   mfix2 do_intro (lip : LIP) (g : goal) : M (list (unit * goal)) :=
   (match lip return tactic with
-  | lnil => idtac
+  | lnil => T.idtac
   | lcons ip lnil => to_tactic ip do_intro
   | lcons ip lip => to_tactic ip do_intro ;; do_intro lip
   end%tactic) g.

@@ -1,4 +1,5 @@
 Require Import MetaCoq.MetaCoq.
+Import T.
 
 Goal forall x : nat, forall y : bool, True.
 MProof.
@@ -51,7 +52,7 @@ intros x H y.
 match_goal with
 | [[? a |- a = a + a ]] => idtac
 | [[? a | (Q : a > 0) (z : nat) |- a = z ]] => apply (eq_refl a)
-| [[? a : nat |- a = a ]] => fail (Failure "should not happen")
+| [[? a : nat |- a = a ]] => raise (Failure "should not happen")
 end.
 Qed.
 

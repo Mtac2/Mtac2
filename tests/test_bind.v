@@ -2,10 +2,10 @@ Require Import MetaCoq.MetaCoq.
 
 Goal True.
 MProof.
-  bind (ret I) (fun r => ret r).
+  M.bind (M.ret I) (fun r => M.ret r).
 Qed.
 
 Goal True.
 MProof.
-  (r <- ret I; ret r)%MC.
+  (r <- M.ret I; M.ret r)%MC.
 Qed.

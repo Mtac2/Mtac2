@@ -2,40 +2,40 @@ Require Import MetaCoq.MetaCoq.
 
 Goal True.
 MProof.
-  (evar nat;; evar bool;; ret _)%MC. (* FIXME: why are all evars shelved when we do this in the tactic monad? *)
-  ret _.
-  ret _.
-  ret I.
-  ret 0.
-  ret true.
+  (M.evar nat;; M.evar bool;; M.ret _)%MC. (* FIXME: why are all evars shelved when we do this in the tactic monad? *)
+  M.ret _.
+  M.ret _.
+  M.ret I.
+  M.ret 0.
+  M.ret true.
 Qed.
 
 Definition ThrowANat (n : nat) : Exception. exact exception. Qed.
-Definition test n :=
+Definition test n : M nat :=
   mmatch n with
-  | [? n'] S n' => raise (ThrowANat n')
-  | _ => ret 0
+  | [? n'] S n' => M.raise (ThrowANat n')
+  | _ => M.ret 0
   end.
 
 Goal True.
 MProof.
-  ttry (test 1;; ret I) (fun _=>ret I).
+  M.mtry' (test 1;; M.ret I) (fun _=> M.ret I).
 Qed.
 
 Goal {n:nat| n = n}.
 MProof.
-  mtry test 1;; raise exception
-  with [? n'] ThrowANat n' => ret (exist _ n' _) end.
+  (mtry test 1;; M.raise exception
+  with [? n'] ThrowANat n' => M.ret (exist _ n' _) end)%MC.
 Abort.
 
 
 Goal {n:nat| n = n}.
 MProof.
-  mmatch 2 + 4 with
-  | [? n] n + n => ret (exist _ (n + n) eq_refl)
-  | [? n] n + n => ret (exist _ (n + n) eq_refl)
-  | [? n] n + n => ret (exist _ (n + n) eq_refl)
-  | [? n] n + n => ret (exist _ (n + n) eq_refl)
-  | [? n m] n + m => ret (exist (fun n=>n=n) (n + m) eq_refl)
-  end.
+  (mmatch 2 + 4 with
+  | [? n] n + n => M.ret (exist _ (n + n) eq_refl)
+  | [? n] n + n => M.ret (exist _ (n + n) eq_refl)
+  | [? n] n + n => M.ret (exist _ (n + n) eq_refl)
+  | [? n] n + n => M.ret (exist _ (n + n) eq_refl)
+  | [? n m] n + m => M.ret (exist (fun n=>n=n) (n + m) eq_refl)
+  end)%MC.
 Qed.

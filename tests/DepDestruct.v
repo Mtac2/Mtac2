@@ -1,5 +1,6 @@
 From MetaCoq
 Require Export MetaCoq DepDestruct.
+Import T.
 
 Goal forall n, 0 <= n.
 MProof.
@@ -60,8 +61,8 @@ Goal forall P b, reflect P b -> P <-> b = true.
 MProof.
   intros P b r.
   new_destruct r.
-  - intro xP;; split &> [reflexivity; intros;; assumption].
-  - intro nxP;; split &> [intros;; contradiction; intros;; discriminate].
+  - intro xP &> split &> [reflexivity; intros &> assumption].
+  - intro nxP &> split &> [intros &> contradiction; intros &> discriminate].
 Qed.
 
   Example reflect_reflect P : ITele (SType) := iTele (fun b=>@iBase SType (reflect P b)).
@@ -81,7 +82,7 @@ Qed.
 
 
   Example bla_RTele P b (r : reflect P b) :=
-    Eval compute in eval (abstract_goal (rsort := SProp) (reflect_args P b) ((P <-> b = true)) r).
+    Eval compute in M.eval (abstract_goal (rsort := SProp) (reflect_args P b) ((P <-> b = true)) r).
 
   Example bla_goals P b r : list dyn :=
     Eval compute in
@@ -100,7 +101,7 @@ Qed.
   Example reflect_app P b := Eval compute in ITele_App (reflect_args P b).
 
   Example blaP_RTele P b r :=
-    Eval compute in eval (abstract_goal (rsort := SProp) (reflectP_args P b) ((P <-> b = true)) r).
+    Eval compute in M.eval (abstract_goal (rsort := SProp) (reflectP_args P b) ((P <-> b = true)) r).
 
   Example blaP_goals P b r : list dyn :=
     Eval compute in
@@ -110,33 +111,33 @@ Qed.
   Goal True.
     MProof.
     (\tactic g =>
-       r <- destcase (match 3 with 0 => true | S _ => false end);
-       print_term r;;
+       r <- M.destcase (match 3 with 0 => true | S _ => false end);
+       M.print_term r;;
                   cpose r (fun r=>idtac) g).
     (\tactic g=>
        let c := reduce RedHNF r in
-       case <- makecase c;
+       case <- M.makecase c;
        cpose case (fun y=>idtac) g) : tactic.
   Abort.
 
   Goal forall P b, reflect P b -> P <-> b = true.
   Proof.
     intros P b r.
-    pose (rG := eval (abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r)).
+    pose (rG := M.eval (abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r)).
     simpl in rG.
     assert (T : get_type_of_branch rG (reflect_RTrue P)).
     { now firstorder. }
     assert (F : get_type_of_branch rG (reflect_RFalse P)).
     { compute. firstorder. now discriminate. }
     pose (mc :=
-            makecase {|
+            M.makecase {|
                 case_val := r;
                 case_return := Dyn (RTele_Fun rG);
                 case_branches := (Dyn T) :: (Dyn F) :: nil
               |}).
     compute in mc.
-    pose (c := eval mc).
-    unfold eval in c.
+    pose (c := M.eval mc).
+    unfold M.eval in c.
     exact (elem c).
   Qed.
 
@@ -145,17 +146,17 @@ Notation "'mpose' ( x := t )" := (r <- t; cpose r (fun x=>idtac))
 
 Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
   match n with
-  | 0 => ret t
+  | 0 => M.ret t
   | S n' =>
     mmatch A as A' return M A' with
     | [? B (fty : B -> Type)] forall x, fty x => [H]
       let t' := reduce RedSimpl match H in _ = P return P with eq_refl => t end in (* we need to reduce this *)
-      name <- fresh_name "A";
-      nu name None (fun x=>
+      name <- M.fresh_name "A";
+      M.nu name None (fun x=>
         r <- unfold_funs (t' x) n';
         abs x r)
     | [? A'] A' => [H]
-      match H in _ = P return M P with eq_refl => ret t end
+      match H in _ = P return M P with eq_refl => M.ret t end
     end
   end%MC.
 
@@ -166,12 +167,12 @@ MProof.
   mpose (rG := abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r).
   simpl.
   assert (T : get_type_of_branch rG (reflect_RTrue P)).
-  { simpl. cintros x {- Tactics.split&> [cintros xP {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
+  { simpl. cintros x {- split&> [cintros xP {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
   assert (F : get_type_of_branch rG (reflect_RFalse P)).
-  { simpl. intros. Tactics.split. intros. select (~ _) (fun a=>select P (fun x=>exact (match a x with end))). intros;; discriminate. }
+  { simpl. intros. split. intros. select (~ _) (fun a=>select P (fun x=>exact (match a x with end))). intros;; discriminate. }
   mpose (return_type := unfold_funs (RTele_Fun rG) 5).
   pose (mc :=
-          makecase {|
+          M.makecase {|
               case_val := r;
               case_return := Dyn (return_type);
               case_branches := (Dyn T) :: (Dyn F) :: nil
@@ -202,14 +203,14 @@ Proof.
   fix f 2.
   intros n v.
   pose (a := (aTele n (aBase)) : ATele it).
-  pose (rt := eval (abstract_goal (rsort := SProp) a (n = length (to_list v)) v)).
+  pose (rt := M.eval (abstract_goal (rsort := SProp) a (n = length (to_list v)) v)).
   simpl in vcons, rt.
   assert (N : get_type_of_branch rt vnil).
   { now auto. }
   assert (C : get_type_of_branch rt vcons).
   { intros x k v'. hnf. simpl. f_equal. exact (f _ _). }
   pose (mc :=
-          makecase {|
+          M.makecase {|
               case_val := v;
               case_return := Dyn (RTele_Fun rt);
               case_branches := Dyn N :: Dyn C :: List.nil
@@ -222,14 +223,14 @@ Proof.
   (*              end)). *)
   (* pose (c' := eval (destcase ma)). *)
   (* unfold eval in c'. *)
-  pose (c := eval mc).
-  unfold eval in c.
+  pose (c := M.eval mc).
+  unfold M.eval in c.
   exact (elem c).
 Qed.
 End VectorExample.
 
 
-Example get_reflect_ITele := Eval compute in ltac:(mrun (get_ITele (reflect True))).
+Example get_reflect_ITele := Eval compute in ltac:(mrun (get_ITele (reflect True)))%MC.
 Example reflect_nindx := Eval compute in let (n, _) := get_reflect_ITele in n.
 Example reflect_sort := Eval compute in let (sort, _) := snd get_reflect_ITele in sort.
 Example reflect_itele : ITele reflect_sort :=

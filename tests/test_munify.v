@@ -2,14 +2,14 @@ Require Import MetaCoq.MetaCoq.
 
 Definition test {A} (o : M (option A)) : M _ :=
   o <- o;
-  match o with Some x => ret x | _ => raise exception end.
+  match o with Some x => M.ret x | _ => M.raise exception end.
 
 Goal True = True.
 MProof.
-  test (munify True True UniCoq).
+  test (M.unify True True UniCoq).
 Qed.
 
 Goal True = False.
 MProof.
-  Fail test (munify True False UniCoq).
+  Fail test (M.unify True False UniCoq).
 Abort.

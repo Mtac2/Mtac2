@@ -4,28 +4,28 @@ Require Import Bool.Bool.
 Example hyp_well_formed : True.
 MProof.
   (\nu x := I,
-   l <- hypotheses;
-   oeq <- munify l [ahyp x (Some I)] UniCoq;
+   l <- M.hyps;
+   oeq <- M.unify l [ahyp x (Some I)] UniCoq;
    match oeq with
-   | None => raise exception
-   | _ => ret I
+   | None => M.raise exception
+   | _ => M.ret I
    end)%MC.
 Qed.
 
 Example env_well_formed : True.
 MProof.
   (\nu x := I,
-   oeq <- munify x I UniCoq;
+   oeq <- M.unify x I UniCoq;
    match oeq with
-   | None => raise exception
-   | _ => ret I
+   | None => M.raise exception
+   | _ => M.ret I
    end)%MC.
 Qed.
 
 Example fail_returning_var : True.
 MProof.
-  mtry
-    (\nu x := I, ret x);; raise exception
-  with VarAppearsInValue => ret I
-  end.
+  (mtry
+    (\nu x := I, M.ret x);; M.raise exception
+  with VarAppearsInValue => M.ret I
+  end)%MC.
 Qed.

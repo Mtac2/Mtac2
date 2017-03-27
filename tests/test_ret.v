@@ -2,5 +2,5 @@ Require Import MetaCoq.MetaCoq.
 
 Goal True.
 MProof.
-ret I.
+M.ret I.
 Qed.

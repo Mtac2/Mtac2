@@ -2,43 +2,43 @@ Require Import MetaCoq.MetaCoq.
 
 Example ex1 (x y: nat) (H: x>y) (z: nat) : True.
 MProof.
-  Cevar _ [ahyp H None; ahyp y None; ahyp x None].
+  M.Cevar _ [ahyp H None; ahyp y None; ahyp x None].
   (* wrong order of variables *)
-  Fail Cevar _ [ahyp x None; ahyp H None; ahyp y None].
+  Fail M.Cevar _ [ahyp x None; ahyp H None; ahyp y None].
   (* dup variable *)
-  Fail Cevar _ [ahyp x None; ahyp x None; ahyp y None].
-  Cevar _ [ahyp H None; ahyp y (Some 0); ahyp x None].
-  exact I.
+  Fail M.Cevar _ [ahyp x None; ahyp x None; ahyp y None].
+  M.Cevar _ [ahyp H None; ahyp y (Some 0); ahyp x None].
+  T.exact I.
 Qed.
 
 Example ex2 : forall (x y: nat) (H: x>y) (z:nat), True.
 MProof.
   cintros (x y: nat) (H: x>y) (z: nat) {-
-    e <- Cevar _ [ahyp H None; ahyp y None; ahyp x None];
-    exact e
+    e <- M.Cevar _ [ahyp H None; ahyp y None; ahyp x None];
+    T.exact e
   -}. (* misses z in the evar, but it still works, why? *)
   Unshelve.
-  exact I.
+  T.exact I.
 Qed.
 
 Example ex3 : forall (x y: nat) (H: x>y), True.
 MProof.
   (* wrong order of variables *)
   Fail cintros (x y: nat) (H: x>y) {-
-    e <- Cevar True [ahyp x None; ahyp H None; ahyp y None];
-    exact e
+    e <- M.Cevar True [ahyp x None; ahyp H None; ahyp y None];
+    T.exact e
   -}.
   (* dup variable *)
   Fail cintros (x y: nat) (H: x>y) {-
-    e <- Cevar True [ahyp x None; ahyp x None; ahyp y None];
-    exact e
+    e <- M.Cevar True [ahyp x None; ahyp x None; ahyp y None];
+    T.exact e
   -}.
   cintros (x y: nat) (H: x>y) {-
-    e <- Cevar _ [ahyp H None; ahyp y (Some x); ahyp x None];
-    exact e
+    e <- M.Cevar _ [ahyp H None; ahyp y (Some x); ahyp x None];
+    T.exact e
   -}.
   (* not a variable *)
-  Fail Cevar _ [ahyp (x > y) None; ahyp y (Some x); ahyp x None].
+  Fail M.Cevar _ [ahyp (x > y) None; ahyp y (Some x); ahyp x None].
   Unshelve.
-  exact I.
+  T.exact I.
 Qed.

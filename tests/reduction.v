@@ -1,7 +1,5 @@
-From MetaCoq
-  Require Import Mtac2 Tactics.
+From MetaCoq Require Import MetaCoq.
 
-Import MtacNotations.
 Require Import Lists.List.
 Import ListNotations.
 
@@ -9,11 +7,11 @@ Import ListNotations.
 need to make sure the convertibility check is not triggered, we assume
 the terms x and/or y contains an evar e that is instantiated with
 tt. *)
-Definition assert_eq {A} (x y: A) :=
-  o1 <- munify x y UniMatchNoRed;
+Definition assert_eq {A} (x y: A) : M unit :=
+  o1 <- M.unify x y UniMatchNoRed;
   match o1 with
-    | Some _ => ret tt
-    | _ => raise (NotUnifiable x y)
+    | Some _ => M.ret tt
+    | _ => M.raise (NotUnifiable x y)
   end.
 
 Example reduce_no_reduction : unit.
@@ -48,8 +46,8 @@ Qed.
 
 Example is_not_breaking_letins : True.
 MProof.
-  let x := ret _ in x.
-  let x := id I in ret x.
+  let x := M.ret _ in x.
+  let x := id I in M.ret x.
 Qed.
 Print is_not_breaking_letins.
 
@@ -83,7 +81,7 @@ Qed.
 Example reduce_OneStepDyn : nat.
 MProof.
 let x := rone_step (elem (Dyn p)) in
-let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in ret x.
+let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in M.ret x.
 Qed.
 
 Example reduce_deltac : unit.
@@ -109,39 +107,39 @@ End ASection.
 
 Example reduction_only : unit.
 MProof.
-  e <- evar unit;
-  n <- evar nat;
+  (e <- M.evar unit;
+  n <- M.evar nat;
   let x := reduce (RedStrong [RedDeltaOnly [Dyn (@id)]])
     (id ((fun x:nat=>x) n)) in
-  assert_eq x ((fun A (x:A)=>x) nat ((fun x:nat=>x) n)).
-  ret tt.
-  ret 0.
+  assert_eq x ((fun A (x:A)=>x) nat ((fun x:nat=>x) n)))%MC.
+  M.ret tt.
+  M.ret 0.
 Qed.
 
 Example reduction_only2 : unit.
 MProof.
   Fail
-    e <- evar unit;
+    (e <- evar unit;
     n <- evar nat;
     let x := reduce (RedStrong [RedBeta; RedDeltaOnly [Dyn (@id)]])
       (id ((fun x=>x)) (n+0)) in
-    assert_eq x ((fun A (x:A)=>x) nat ((fun x=>x) (n + 0))).
-  e <- evar unit;
-  n <- evar nat;
+    assert_eq x ((fun A (x:A)=>x) nat ((fun x=>x) (n + 0))))%MC.
+  (e <- M.evar unit;
+  n <- M.evar nat;
   let x := reduce (RedStrong [RedBeta; RedDeltaOnly [Dyn (@id)]])
     (id ((fun x=>x)) (n+0)) in
-  ret tt.
-  ret tt.
+  M.ret tt)%MC.
+  M.ret tt.
 MQed.
 
 Example reduction_but : unit.
 MProof.
-  e <- evar unit;
-  n <- evar nat;
+  (e <- M.evar unit;
+  n <- M.evar nat;
   let x := reduce (RedStrong [RedBeta;RedMatch;RedFix;RedDeltaBut [Dyn (@id)]])
     (id (fun x=>x) ((fun x=>x) (0 + n))) in
-  assert_eq x (id (fun x=>x) n).
-  ret tt. ret 0.
+  assert_eq x (id (fun x=>x) n))%MC.
+  M.ret tt. M.ret 0.
 Qed.
 
 Fixpoint fib (n : nat) :=
@@ -157,11 +155,11 @@ Fixpoint fib (n : nat) :=
 Example reducion_cbv : nat.
 MProof.
   Time let res := reduce RedNF (fib 20) in
-  ret res.
+  M.ret res.
 Qed.
 
 Example reducion_vm : nat.
 MProof.
   Time let res := reduce RedVmCompute (fib 20) in
-  ret res.
+  M.ret res.
 Qed.

@@ -1,5 +1,6 @@
 Require Import Bool.Bool.
 Require Import MetaCoq.MetaCoq.
+Import T.
 
 Goal True.
 MProof.
@@ -218,7 +219,7 @@ Qed.
 Goal forall P Q : Prop, Q -> P -> Q -> P /\ Q.
 MProof.
   intros P Q xQ xP xP'.
-  Tactics.split.
+  split.
   - assumption.
   - assumption.
 Qed.

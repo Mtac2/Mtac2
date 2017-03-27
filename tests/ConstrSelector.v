@@ -1,4 +1,5 @@
 Require Import MetaCoq.MetaCoq.
+Import T.
 
 (** Obtains the list of constructors of a type I from a type of the
    form A1 -> ... -> An -> I *)
@@ -7,33 +8,32 @@ Definition get_constrs :=
     mmatch T with
     | [? A B] A -> B => fill B
     | [? A (P:A->Type)] forall x:A, P x =>
-      name <- fresh_binder_name T;
-      nu name None (fun x=>
+      name <- M.fresh_binder_name T;
+      M.nu name None (fun x=>
         fill (P x)
       )
     | _ =>
-      l <- constrs T;
+      l <- M.constrs T;
       let (_, l') := l in
-      ret l'
+      M.ret l'
     end.
 
 Definition index {A} (c: A) : M _ :=
   l <- get_constrs A;
   (mfix2 f (i : nat) (l : list dyn) : M nat :=
     mmatch l with
-    | [? l'] (Dyn c :: l') => ret i
+    | [? l'] (Dyn c :: l') => M.ret i
     | [? d' l'] (d' :: l') => f (S i) l'
     end) 0 l.
 
-Eval compute in eval (index 0).
-Eval compute in eval (index S).
-Eval compute in eval (index eq_refl).
-Eval compute in eval (index nil).
-Eval compute in eval (index (@cons _)).
+Eval compute in M.eval (index 0).
+Eval compute in M.eval (index S).
+Eval compute in M.eval (index eq_refl).
+Eval compute in M.eval (index nil).
+Eval compute in M.eval (index (@cons _)).
 
-
-Definition snth_index {A:Type} (c:A) (t:tactic) : selector :=
-  i <- index c; snth i t.
+Definition snth_index {A:Type} (c:A) (t:tactic) : T.selector unit := fun l =>
+  (i <- index c; S.nth i t l)%MC.
 
 Notation "'case' c 'do' t" := (snth_index c t) (at level 40).
 
@@ -43,11 +43,11 @@ MProof.
   reflexivity.
 Qed.
 
-Definition elim0 : tactic := fun g=>
-  gT <- goal_type g;
-  m <- fresh_binder_name gT;
-  A <- evar Type;
-  intro_base m (fun x:A=>elim x) g.
+Definition elim0 : tactic :=
+  gT <- goal_type;
+  m <- M.fresh_binder_name gT;
+  A <- M.evar Type;
+  intro_base m (fun x:A=>elim x).
 
 Definition rrewrite {A} (x: A) := trewrite RightRewrite [Dyn x].
 Definition lrewrite {A} (x: A) := trewrite LeftRewrite [Dyn x].
@@ -58,18 +58,18 @@ MProof.
   intros &> simpl. select (_ = _) rrewrite &> reflexivity.
 Qed.
 
-Definition snth_indices (l:list dyn) (t:tactic) : selector := fun goals=>
-  mfold_left (fun (accu : list goal) (d : dyn)=>
+Definition snth_indices (l:list dyn) (t:tactic) : selector unit := fun goals=>
+  M.fold_left (fun (accu : list (unit * goal)) (d : dyn)=>
     let (_, c) := d in
     i <- index c;
     let ogoal := nth_error goals i in
     match ogoal with
-    | Some g =>
+    | Some (_, g) =>
       newgoals <- open_and_apply t g;
-      let res := dreduce (app) (accu++newgoals) in
-      ret res
-    | None => failwith "Wrong case"
-    end) l goals.
+      let res := dreduce (app, map) (accu++newgoals) in
+      M.ret res
+    | None => M.failwith "Wrong case"
+    end)%MC l goals.
 
 Notation "'case' c , .. , d 'do' t" :=
   (snth_indices (Dyn c :: .. (Dyn d :: nil) ..) t) (at level 40).

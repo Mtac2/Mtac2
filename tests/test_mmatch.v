@@ -1,36 +1,37 @@
 Require Import MetaCoq.MetaCoq.
+Import T.
 
 Goal True.
 MProof.
-  mmatch I with
-  [? i] i => ret i : M True
-  end.
+  (mmatch I with
+  [? i] i => M.ret i : M True
+  end)%MC.
 Qed.
 
 Goal True.
 MProof.
-  mmatch _ with
-  [? i] i => ret i : M True
-  end.
-  mmatch (fun x=>x) I with
-  [? i] (fun x=>x) i => ret i : M True
-  end.
+  (mmatch _ with
+  [? i] i => M.ret i : M True
+  end)%MC.
+  (mmatch (fun x=>x) I with
+  [? i] (fun x=>x) i => M.ret i : M True
+  end)%MC.
 Qed.
 
 Goal True.
 MProof.
   (* uninstantiated i *)
-  mmatch (fun x=>x) I with
-  [? i] I => ret i : M True
-  end.
+  (mmatch (fun x=>x) I with
+  [? i] I => M.ret i : M True
+  end)%MC.
   (* do not reduce pattern *)
-  Fail mmatch I with
-  [? i] (fun x=>x) i => ret i : M True
-  end.
-  mmatch I with
-  | [? i] (fun x=>x) i => ret i : M True
-  | [? i] i => ret i : M True
-  end.
+  Fail (mmatch I with
+  [? i] (fun x=>x) i => M.ret i : M True
+  end)%MC.
+  (mmatch I with
+  | [? i] (fun x=>x) i => M.ret i : M True
+  | [? i] i => M.ret i : M True
+  end)%MC.
 Qed.
 
 
@@ -44,16 +45,16 @@ Definition inlist A (x : A) : forall l : list A, M (In x l) :=
   mfix1 f (l : list A) : M (In x l) :=
   mmatch l with
   | [? l r] l ++ r =>
-      ttry (
+      M.mtry' (
         il <- f l;
-        ret (in_or_app l r x (or_introl il)) )
+        M.ret (in_or_app l r x (or_introl il)) )
       (fun e=>mmatch e with NotFound =>
         ir <- f r;
-        ret (in_or_app l r x (or_intror ir))
+        M.ret (in_or_app l r x (or_intror ir))
       end)
-  | [? s] (x :: s) => ret (in_eq _ _)
-  | [? y s] (y :: s) => r <- f s; ret (in_cons y _ _ r)
-  | _ => raise NotFound
+  | [? s] (x :: s) => M.ret (in_eq _ _)
+  | [? y s] (y :: s) => r <- f s; M.ret (in_cons y _ _ r)
+  | _ => M.raise NotFound
   end.
 
 
@@ -91,15 +92,15 @@ Fail Definition test (t : nat)  :=
   end.
 
 (* We need the [return] clause *)
-Definition test_return (t : nat) :=
+Definition test_return (t : nat) : M (t = t) :=
   mmatch t return M (t = t) with
-  | 0 => ret (eq_refl 0)
+  | 0 => M.ret (eq_refl 0)
   end.
 
 (* testing with a different name *)
 Definition test_return_in (t : nat) : M (t = t) :=
   mmatch 0+t as x return M (x = x) with
-  | 0 => ret (eq_refl 0)
+  | 0 => M.ret (eq_refl 0)
   end.
 
 (* testing no reducing patterns *)
@@ -107,17 +108,17 @@ Definition test_return_in (t : nat) : M (t = t) :=
 Definition inlist_nored A (x : A) : forall l : list A, M (In x l) :=
   mfix1 f (l : list A) : M (In x l) :=
   mmatch l with
-  | [? s] (x :: s) =n> ret (in_eq _ _)
-  | [? y s] (y :: s) =n> r <- f s; ret (in_cons y _ _ r)
+  | [? s] (x :: s) =n> M.ret (in_eq _ _)
+  | [? y s] (y :: s) =n> r <- f s; M.ret (in_cons y _ _ r)
   | [? l r] l ++ r =n>
     mtry
       il <- f l;
-      ret (in_or_app l r x (or_introl il))
+      M.ret (in_or_app l r x (or_introl il))
     with NotFound =>
       ir <- f r;
-      ret (in_or_app l r x (or_intror ir))
+      M.ret (in_or_app l r x (or_intror ir))
     end
-  | _ => raise NotFound
+  | _ => M.raise NotFound
   end.
 
 Example with_red : In 0 ([1;2]++[0;4]).
@@ -140,17 +141,17 @@ Proof. reflexivity. Qed.
 Definition inlist_redcons A (x : A) : forall l : list A, M (In x l) :=
   mfix1 f (l : list A) : M (In x l) :=
   mmatch l with
-  | [? s] (x :: s) => ret (in_eq _ _)
-  | [? y s] (y :: s) => r <- f s; ret (in_cons y _ _ r)
+  | [? s] (x :: s) => M.ret (in_eq _ _)
+  | [? y s] (y :: s) => r <- f s; M.ret (in_cons y _ _ r)
   | [? l r] l ++ r =n>
     mtry
       il <- f l;
-      ret (in_or_app l r x (or_introl il))
+      M.ret (in_or_app l r x (or_introl il))
     with NotFound =>
       ir <- f r;
-      ret (in_or_app l r x (or_intror ir))
+      M.ret (in_or_app l r x (or_intror ir))
     end
-  | _ => raise NotFound
+  | _ => M.raise NotFound
   end.
 
 Example with_redcons : In 0 ([1;2]++[0;4]).

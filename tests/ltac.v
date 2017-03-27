@@ -1,5 +1,6 @@
 From MetaCoq
 Require Import MetaCoq.
+Import T.
 
 Require Import Bool.Bool.
 
@@ -23,8 +24,8 @@ MProof.
   (\tactic g =>
    r <- induction n g;
    match r with
-   | ((_,Goal _) :: _) => ret r
-   | _ => raise exception
+   | ((_,Goal _) :: _) => M.ret r
+   | _ => M.raise exception
    end) &> [apply le_n; apply le_S;; assumption].
 Qed.
 

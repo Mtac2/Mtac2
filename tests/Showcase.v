@@ -1,5 +1,5 @@
 Require Import MetaCoq.MetaCoq.
-
+Import T.
 Require Import Bool.Bool.
 
 (** This file contains several examples showing the different
@@ -48,7 +48,7 @@ Theorem exists_example_2 : forall n,
   (exists o, n = 2 + o).
 MProof.
   cintros n {-
-    r <- hypotheses; print_term r;; destructn 0;; intros m Hm
+    r <- M.hyps; M.print_term r;; destructn 0;; intros m Hm
   -}.
   mexists (2 + m).
   apply Hm.
@@ -65,8 +65,8 @@ MProof.
 Qed.
 
 Definition apply_fun : tactic :=
-  A <- evar Type;
-  B <- evar Type;
+  A <- M.evar Type;
+  B <- M.evar Type;
   select (A -> B) apply.
 
 Goal forall P Q, (P -> Q) -> P -> Q.
@@ -111,11 +111,11 @@ Proof.
 Qed.
 
 Definition apply_one_of l : tactic :=
-  fold_left (fun a b=>a or (apply (elem b))) l (fail exception).
+  fold_left (fun a b=>a or (apply (elem b))) l (raise exception).
 
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 MProof.
-  Time intros;; Tactics.repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
+  Time intros;; repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
 Qed.
 
 Example trans_eq_example' : forall (a b c d e f : nat),
