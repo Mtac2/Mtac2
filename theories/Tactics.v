@@ -616,18 +616,18 @@ Definition progress {A} (t : gtactic A) : gtactic A := fun g =>
 (** [repeat t] applies tactic [t] to the goal several times
     (it should only generate at most 1 subgoal), until no
     changes or no goal is left. *)
-Definition repeat (t : tactic) : tactic := fun g =>
-  (mfix1 f (g : goal) : M (list (unit * goal)) :=
+Definition repeat (t : tactic) : tactic :=
+  fix0 _ (fun rec g =>
     r <- try t g; (* if it fails, the execution will stop below *)
     match r with
     | [] => M.ret []
     | [(_,g')] =>
       mmatch g with
       | g' => M.ret [(tt,g)] (* the goal is the same, return *)
-      | _ => f g'
+      | _ => rec g'
       end
     | _ => M.print_term r;; M.failwith "The tactic generated more than a goal"
-    end) g.
+    end).
 
 Definition map_term (f : forall d:dyn, M d.(type)) : forall d : dyn, M d.(type) :=
   mfix1 rec (d : dyn) : M d.(type) :=
