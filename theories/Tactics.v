@@ -151,6 +151,12 @@ Definition bind {A B} (t : gtactic A) (f : A -> gtactic B) : gtactic B := fun g 
   let res := dreduce (concat, @List.app) (concat r) in
   M.ret res.
 
+Class Seq (A B C : Type) :=
+  seq : gtactic A -> C -> gtactic B.
+Arguments seq {A B C _} _%tactic _%tactic.
+
+Instance seq_one {A B} : Seq A B (gtactic B) := fun t1 t2 => bind t1 (fun _ => t2).
+
 Fixpoint gmap {A} (tacs : list (gtactic A)) (gs : list goal) : M (list (list (A * goal))) :=
   match tacs, gs with
   | [], [] => M.ret []
@@ -161,12 +167,11 @@ Fixpoint gmap {A} (tacs : list (gtactic A)) (gs : list goal) : M (list (list (A 
   | l, l' => M.raise NotSameSize
   end.
 
-Definition seq_list {A} (t : tactic) (f : list (gtactic A)) : gtactic A := fun g =>
+Instance seq_list {A B} : Seq A B (list (gtactic B)) := fun t f g =>
   gs <- t g;
   ls <- gmap f (map snd gs);
   let res := dreduce (List.concat, List.app) (concat ls) in
   M.ret res.
-
 
 Definition exact {A} (x:A) : tactic := fun g =>
   match g with
@@ -685,14 +690,14 @@ Fixpoint name_pattern (l : list (list string)) : list tactic :=
   end.
 
 (** Type for goal manipulation primitives *)
-Definition selector := list (unit * goal) -> M (list (unit * goal)).
+Definition selector A := list (A * goal) -> M (list (A * goal)).
 
-Definition tactic_selector (t: tactic) (s: selector) : tactic := fun g =>
+Instance tactic_selector A : Seq A A (selector A) := fun t s g =>
   l <- t g;
   filter_goals l >>= s.
 
 Module S.
-  Definition nth (n : nat) (t : tactic) : selector := fun l =>
+  Definition nth {A} (n : nat) (t : gtactic A) : selector A := fun l =>
     let (l1, l2) := dreduce (@nsplit) (nsplit n l) in
     match hd_error l2 with
     | None => M.raise NoGoalsLeft
@@ -702,13 +707,13 @@ Module S.
       M.ret res
     end.
 
-  Definition last (t : tactic) : selector := fun l =>
+  Definition last {A} (t : gtactic A) : selector A := fun l =>
     let n := dreduce (pred, List.length) (pred (List.length l)) in
     nth n t l.
 
-  Definition first (t : tactic) : selector := nth 0 t.
+  Definition first {A} (t : gtactic A) : selector A := nth 0 t.
 
-  Definition rev : selector := fun l =>
+  Definition rev {A} : selector A := fun l =>
     let res := dreduce (rev', rev_append, app) (rev' l) in M.ret res.
 End S.
 
@@ -724,11 +729,8 @@ Module notations.
     (at level 81, right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
   Notation "t >>= f" := (bind t f) (at level 70) : tactic_scope.
 
-  Notation "t1 ';;' t2" := (bind t1 (fun _ => t2%tactic))
+  Notation "t1 ';;' t2" := (seq t1 t2)
     (at level 81, right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : tactic_scope.
-
-  Notation "t1 '&>' ts" :=
-    (seq_list t1 ts) (at level 41, left associativity) : tactic_scope.
 
   Notation "'mif' b 'then' t 'else' u" :=
     (cond <- b; if cond then t else u) (at level 200) : tactic_scope.
@@ -837,23 +839,32 @@ Module notations.
   Notation "'match_goal_nored' ls" := (match_goal_base UniMatchNoRed ls%match_goal_with)
     (at level 90, ls at level 91) : tactic_scope.
 
+  (* Note that unlike the monadic ;; notation, this one is left associative.
+  This is needed so that we can nest tactics accordingly, for example:
+
+    split &> idtac &> [idtac; idtac] &> [idtac; idtac]
+
+  *)
+  Notation "t1 '&>' ts" :=
+    (seq t1 ts) (at level 41, left associativity) : tactic_scope.
+
   Notation "t1 '|1>' t2" :=
-    (tactic_selector t1 (S.nth 0 t2))
+    (t1 &> S.nth 0 t2)
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|2>' t2" :=
-    (tactic_selector t1 (S.nth 1 t2))
+    (t1 &> S.nth 1 t2)
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|3>' t2" :=
-    (tactic_selector t1 (S.nth 2 t2))
+    (t1 &> S.nth 2 t2)
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|4>' t2" :=
-    (tactic_selector t1 (S.nth 3 t2))
+    (t1 &> S.nth 3 t2)
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|5>' t2" :=
-    (tactic_selector t1 (S.nth 4 t2))
+    (t1 &> S.nth 4 t2)
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|6>' t2" :=
-    (tactic_selector t1 (S.nth 5 t2))
+    (t1 &> S.nth 5 t2)
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
 
   Notation "t1 'l>' t2" :=
