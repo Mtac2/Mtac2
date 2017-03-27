@@ -18,7 +18,7 @@ module MetaCoqRun = struct
         let sigma = Evarconv.the_conv_x_leq env concl (List.hd args) sigma in
         (false, sigma, c)
       with Evarconv.UnableToUnify(_,_) -> CErrors.error "Different types"
-    else if Term.isProd ty then
+    else if (* Term.isProd ty *) true then
       (* FIXME: we only check it is a product. we don't want to call full unification for this. *)
       let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
       (true, sigma, Term.mkApp(c, [|goal|]))
