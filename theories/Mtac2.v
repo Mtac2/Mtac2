@@ -541,9 +541,6 @@ Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
     end
   ) (Dyn c).
 
-Notation "t 'mwhere' m := u" :=
-  (elem (ltac:(mrun (v <- mwith t m u; ret v)))) (at level 0) : M_scope.
-
 Definition type_of {A} (x : A) : Type := A.
 Definition type_inside {A} (x : t A) : Type := A.
 
@@ -727,3 +724,6 @@ End M.
 Notation M := M.t.
 
 Import M.notations.
+
+Notation "t 'mwhere' m := u" :=
+  (elem (ltac:(mrun (v <- M.mwith t m u; M.ret v)%MC))) (at level 0).
