@@ -9,8 +9,6 @@ Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
 
-Local Set Universe Polymorphism.
-
 (** Exceptions *)
 Definition NoGoalsLeft : Exception. exact exception. Qed.
 Definition NotSameSize : Exception. exact exception. Qed.

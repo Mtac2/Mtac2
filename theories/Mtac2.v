@@ -10,11 +10,6 @@ Require Import NArith.BinNatDef.
 Require Import Lists.List.
 Import ListNotations.
 
-(* From MetaCoq Require Export Types. *)
-
-(* Set Universe Polymorphism. *)
-Unset Universe Minimization ToSet.
-
 Inductive Exception : Type := exception : Exception.
 
 Definition StuckTerm : Exception. exact exception. Qed.
@@ -67,7 +62,7 @@ Definition NotCumul {A B} (x: A) (y: B) : Exception. exact exception. Qed.
 Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
 Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
 
-Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
+Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
 
 Inductive RedFlags :=
@@ -93,7 +88,7 @@ Inductive Unification : Type :=
 Inductive Hyp : Type :=
 | ahyp : forall {A}, A -> option A -> Hyp.
 
-Polymorphic Record Case :=
+Record Case :=
     mkCase {
         case_ind : Type;
         case_val : case_ind;
@@ -118,14 +113,14 @@ Notation "'dreduce' ( l1 , .. , ln )" :=
   (at level 0).
 
 (** goal type *)
-Polymorphic Inductive goal :=
+Inductive goal :=
   | Goal : forall {A}, A -> goal
   | AHyp : forall {A}, option A -> (A -> goal) -> goal.
 
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
 we could make it part of the B, but then higher order unification will fail. *)
-Polymorphic Inductive pattern (M : Type -> Type) (A : Type) (B : A -> Type) (y : A) : Prop :=
+Inductive pattern (M : Type -> Type) (A : Type) (B : A -> Type) (y : A) : Prop :=
   | pbase : forall x : A, (y = x -> M (B x)) -> Unification -> pattern M A B y
   | ptele : forall {C}, (forall x : C, pattern M A B y) -> pattern M A B y.
 
@@ -307,8 +302,6 @@ Inductive t : Type -> Prop :=
 .
 
 Arguments t _%type.
-
-Local Set Universe Polymorphism.
 
 Definition Cevar (A : Type) (ctx : list Hyp) : t A := gen_evar A (Some ctx).
 Definition evar (A : Type) : t A := gen_evar A None.

@@ -11,7 +11,7 @@ all: check
 check: $(RESULTS)
 
 %.vo: %.v
-	@ ($(COQC) -I ../src -Q ../theories MetaCoq $< && echo "[OK] " $<) || echo "\033[0;31m[KO]\033[0m " $<
+	@ ($(COQC) -type-in-type -I ../src -Q ../theories MetaCoq $< && echo "[OK] " $<) || echo "\033[0;31m[KO]\033[0m " $<
 
 clean:
 	rm --force $(RESULTS) *.glob .*.aux
