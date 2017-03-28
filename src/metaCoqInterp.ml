@@ -6,18 +6,25 @@ module MetaCoqRun = struct
 
   open Proofview.Notations
 
-  (** Given a type concl and a term c, it checks that c has type:
-      - [M concl]: then it returns [c]
-      - [tactic]: then it returns [c (Goal concl evar)] *)
-  let pretypeT env sigma concl evar c =
+  let ifM env sigma concl ty c =
     let metaCoqType = Lazy.force Run.MetaCoqNames.mkT_lazy in
-    let ty = Retyping.get_type_of env sigma c in
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
     if Term.eq_constr_nounivs metaCoqType h && List.length args = 1 then
       try
         let sigma = Evarconv.the_conv_x_leq env concl (List.hd args) sigma in
-        (false, sigma, c)
+        (true, sigma)
       with Evarconv.UnableToUnify(_,_) -> CErrors.error "Different types"
+    else
+      (false, sigma)
+
+  (** Given a type concl and a term c, it checks that c has type:
+      - [M concl]: then it returns [c]
+      - [tactic]: then it returns [c (Goal concl evar)] *)
+  let pretypeT env sigma concl evar c =
+    let ty = Retyping.get_type_of env sigma c in
+    let b, sigma = ifM env sigma concl ty c in
+    if b then
+      (false, sigma, c)
     else if (* Term.isProd ty *) true then
       (* FIXME: we only check it is a product. we don't want to call full unification for this. *)
       let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
