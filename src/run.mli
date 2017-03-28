@@ -10,6 +10,8 @@ type data =
   | Val of elem
   | Err of elem
 
+val make_evar : evar_map -> env -> constr -> evar_map * constr (* used in metaCoqInterp *)
+
 val run : (env * evar_map) -> constr -> data
 
 module MetaCoqNames : sig

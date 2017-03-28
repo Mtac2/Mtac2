@@ -17,6 +17,16 @@ module MetaCoqRun = struct
     else
       (false, sigma)
 
+  let ifTactic env sigma ty c =
+    let (sigma, gtactic) = MCTactics.mkGTactic env sigma in
+    let sigma, evar = Run.make_evar sigma env Term.mkSet in
+    let gtactic = Term.mkApp(gtactic, [|evar|]) in
+    let open Evarsolve in
+    let res = Munify.unify_evar_conv Names.full_transparent_state env sigma Reduction.CONV gtactic ty in
+    match res with
+    | Success sigma -> (true, sigma)
+    | _ -> (false, sigma)
+
   (** Given a type concl and a term c, it checks that c has type:
       - [M concl]: then it returns [c]
       - [tactic]: then it returns [c (Goal concl evar)] *)
@@ -25,12 +35,13 @@ module MetaCoqRun = struct
     let b, sigma = ifM env sigma concl ty c in
     if b then
       (false, sigma, c)
-    else if (* Term.isProd ty *) true then
-      (* FIXME: we only check it is a product. we don't want to call full unification for this. *)
-      let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
-      (true, sigma, Term.mkApp(c, [|goal|]))
     else
-      CErrors.error "Not a Mtactic"
+      let b, sigma = ifTactic env sigma ty c in
+      if b then
+        let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
+        (true, sigma, Term.mkApp(c, [|goal|]))
+      else
+        CErrors.error "Not a Mtactic"
 
   let run env sigma concl evar c =
     let (istactic, sigma, t) = pretypeT env sigma concl evar c in
