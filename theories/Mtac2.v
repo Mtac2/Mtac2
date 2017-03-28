@@ -308,6 +308,8 @@ Inductive t : Type -> Prop :=
 
 Arguments t _%type.
 
+Local Set Universe Polymorphism.
+
 Definition Cevar (A : Type) (ctx : list Hyp) : t A := gen_evar A (Some ctx).
 Definition evar (A : Type) : t A := gen_evar A None.
 
@@ -349,7 +351,7 @@ End monad_notations.
 
 Import monad_notations.
 
-Polymorphic Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
+Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
   match p with
   | pbase x f u =>
     oeq <- unify x y u;
@@ -366,7 +368,7 @@ Polymorphic Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
   | @ptele _ _ _ _ C f => e <- evar C; open_pattern (f e)
   end.
 
-Polymorphic Fixpoint mmatch' {A P} (y : A) (ps : list (pattern t A P y)) : t (P y) :=
+Fixpoint mmatch' {A P} (y : A) (ps : list (pattern t A P y)) : t (P y) :=
   match ps with
   | [] => raise NoPatternMatches
   | p :: ps' =>
