@@ -105,6 +105,8 @@ module Goal = struct
               eog body
             else
               None
+        | 2 -> (* RemHyp *)
+            eog args.(2)
         | _ -> failwith "Should not happen"
       else
         CErrors.error "Not a goal"
