@@ -100,6 +100,9 @@ Definition try (t : tactic) : tactic := fun g=>
 Definition or {A} (t u : gtactic A) : gtactic A := fun g=>
   mtry t g with _ => u g end.
 
+Definition get_binder_name {A} (x : A) : gtactic string := fun g =>
+  s <- M.get_binder_name x; M.ret [(s,g)].
+
 (** [close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] to each of them. *)
 Definition close_goals {A B} (y : B) : list (A * goal) -> M (list (A * goal)) :=
@@ -111,6 +114,10 @@ Definition let_close_goals {A B} (y : B) : list (A * goal) -> M (list (A * goal)
   let t := rone_step y in (* to obtain x's definition *)
   M.map (fun '(x,g') => r <- M.abs_fun y g'; M.ret (x, @AHyp B (Some t) r)).
 
+(** [rem_hyp x l] "removes" hypothesis [x] from the list of goals [l]. *)
+Definition rem_hyp {A B} (x : B) (l: list (A * goal)) : M (list (A * goal)) :=
+  let v := dreduce (@List.map) (List.map (fun '(y,g) => (y, HypRem x g)) l) in M.ret v.
+
 (** Returns if a goal is open, i.e., a meta-variable. *)
 Fixpoint is_open (g : goal) : M bool :=
   match g with
@@ -120,6 +127,7 @@ Fixpoint is_open (g : goal) : M bool :=
     (* we get the name in order to avoid inserting existing names
       (nu will raise an exception otherwise) *)
     M.nu x None (fun x : C => is_open (f x))
+  | HypRem _ g => is_open g (* we don't care about the variable *)
   end.
 
 (** removes the goals that were solved *)
@@ -141,6 +149,8 @@ Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
       x <- M.fresh_binder_name f;
       M.nu x (Some t) (fun x : C =>
         open (f x) >>= let_close_goals x)
+    | HypRem x f =>
+      M.remove x (open f) >>= rem_hyp x
     end.
 
 Definition bind {A B} (t : gtactic A) (f : A -> gtactic B) : gtactic B := fun g =>
@@ -306,7 +316,7 @@ Definition cclear {A B} (x:A) (cont : gtactic B) : gtactic B := fun g=>
     M.ret (e, l));
   let (e, l) := r in
   exact e g;;
-  M.ret l.
+  rem_hyp x l.
 
 Definition clear {A} (x : A) : tactic := cclear x idtac.
 
@@ -368,18 +378,8 @@ Definition change (P : Type) : tactic := fun g =>
   exact e g;;
   M.ret [(tt, Goal e)].
 
-Definition change_hyp {P Q} (H : P) (newH: Q) : tactic := fun g =>
-  gT <- M.goal_type g;
-  n <- M.get_binder_name H;
-  f <- M.remove H (
-    M.nu n None (fun H' : Q =>
-      e <- M.evar gT;
-      a <- M.abs_fun H' e;
-      b <- M.abs_fun H' (Goal e);
-      M.ret (a, b)));
-  let (f, g') := f in
-  M.unify_or_fail (Goal (f newH)) g;;
-  M.ret [(tt, AHyp None g')].
+Definition change_hyp {P Q} (H : P) (newH: Q) : tactic :=
+  cclear H (bind (get_binder_name H) intro_simpl).
 
 Inductive goal_pattern (B : Type) :=
   | gbase : forall {A}, A -> gtactic B -> goal_pattern B
