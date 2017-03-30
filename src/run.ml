@@ -742,7 +742,20 @@ let env_without sigma env renv x =
   let nx = destVar x in
   let name_env = List.filter (fun decl -> get_id decl <> nx) name_env in
   let env = push_named_context name_env env in
-  env, build_hypotheses sigma env
+  env, build_hypotheses sigma env (* TODO: we should do something smarter here, rebuilding everything is costly *)
+
+let is_nu env x nus =
+  let open Context.Named.Declaration in
+  let env = named_context env in
+  let nx = destVar x in
+  let rec find env i =
+    let decl = List.hd env in
+    if get_id decl = nx then
+      i
+    else
+      find (List.tl env) (i+1)
+  in
+  find env 0 < nus
 
 let rec run' (env, renv, sigma, nus as ctxt) t =
   let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
@@ -881,16 +894,11 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
 
     | 17 -> (* remove *)
         let x, t = nth 2, nth 3 in
-        if isVar x || isRel x then
+        if isVar x then
           if check_dependencies env x t then
-            (* if it's a rel we need to update the indices in t, since there is one element less in the context *)
-            let t = if isRel x then Vars.liftn (-1) (destRel x) t else t in
+            let nus = if is_nu env x nus then nus-1 else nus in
             let env, (sigma, renv) = env_without sigma env renv x in
-            (* Note that if the recursive call raises an exception,
-               the exception can't contain nus, so there is no need
-               to lift the indices *)
-            run' (env, renv, sigma, nus) t >>= fun (sigma, v)->
-            return sigma (if isRel x then Vars.liftn (+1) (destRel x) v else v)
+            run' (env, renv, sigma, nus) t
           else
             fail sigma (E.mkCannotRemoveVar env x)
         else
