@@ -153,17 +153,17 @@ Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
       M.remove x (open f) >>= rem_hyp x
     end.
 
-Definition bind {A B} (t : gtactic A) (f : A -> gtactic B) : gtactic B := fun g =>
+Polymorphic Definition bind {A B} (t : gtactic A) (f : A -> gtactic B) : gtactic B := fun g =>
   gs <- t g;
   r <- M.map (fun '(x,g') => open_and_apply (f x) g') gs;
-  let res := dreduce (concat, @List.app) (concat r) in
+  let res := dreduce (@concat, @List.app) (concat r) in
   M.ret res.
 
-Class Seq (A B C : Type) :=
+Polymorphic Class Seq (A B C : Type) :=
   seq : gtactic A -> C -> gtactic B.
 Arguments seq {A B C _} _%tactic _%tactic.
 
-Instance seq_one {A B} : Seq A B (gtactic B) := fun t1 t2 => bind t1 (fun _ => t2).
+Polymorphic Instance seq_one {A B} : Seq A B (gtactic B) := fun t1 t2 => bind t1 (fun _ => t2).
 
 Fixpoint gmap {A} (tacs : list (gtactic A)) (gs : list goal) : M (list (list (A * goal))) :=
   match tacs, gs with
@@ -175,7 +175,7 @@ Fixpoint gmap {A} (tacs : list (gtactic A)) (gs : list goal) : M (list (list (A 
   | l, l' => M.raise NotSameSize
   end.
 
-Instance seq_list {A B} : Seq A B (list (gtactic B)) := fun t f g =>
+Polymorphic Instance seq_list {A B} : Seq A B (list (gtactic B)) := fun t f g =>
   gs <- t g;
   ls <- gmap f (map snd gs);
   let res := dreduce (List.concat, List.app) (concat ls) in
@@ -348,13 +348,13 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
   M.ret res.
 
 (** Destructs the n-th hypotheses in the goal (counting from 0) *)
-Definition destructn (n : nat) : tactic :=
+Polymorphic Definition destructn (n : nat) : tactic :=
   bind (introsn n) (fun _ g =>
     A <- M.evar Type;
     n <- M.fresh_name "tmp";
     @intro_base A _ n destruct g).
 
-Definition apply {T} (c : T) : tactic := fun g=>
+Polymorphic Definition apply {T} (c : T) : tactic := fun g=>
   match g with Goal eg =>
     (mfix1 app (d : dyn) : M (list (unit * goal)) :=
       let (_, el) := d in
@@ -371,14 +371,14 @@ Definition apply {T} (c : T) : tactic := fun g=>
   | _ => M.raise NotAGoal
   end.
 
-Definition change (P : Type) : tactic := fun g =>
+Polymorphic Definition change (P : Type) : tactic := fun g =>
   gT <- M.goal_type g;
   M.unify_or_fail P gT;;
   e <- M.evar P;
   exact e g;;
   M.ret [(tt, Goal e)].
 
-Definition change_hyp {P Q} (H : P) (newH: Q) : tactic :=
+Polymorphic Definition change_hyp {P Q} (H : P) (newH: Q) : tactic :=
   cclear H (bind (get_binder_name H) intro_simpl).
 
 Inductive goal_pattern (B : Type) :=
@@ -439,7 +439,7 @@ Definition ltac (t : string) (args : list dyn) : tactic := fun g =>
     let l' := dreduce (@List.map) (map (pair tt) l) in
     M.ret l'.
 
-Definition destruct_all (T : Type) : tactic := fun g=>
+Polymorphic Definition destruct_all (T : Type) : tactic := fun g=>
   l <- M.hyps;
   l <- M.filter (fun h : Hyp=>
     let (Th, _, _) := h in
@@ -461,7 +461,7 @@ Definition treduce (r : Reduction) : tactic := fun g=>
   | _ => M.failwith "It should never fail here"
   end.
 
-Definition typed_intro (T : Type) : tactic := fun g =>
+Polymorphic Definition typed_intro (T : Type) : tactic := fun g =>
   U <- M.goal_type g;
   mmatch U with
   | [? P:T->Type] forall x:T, P x =>
@@ -470,7 +470,7 @@ Definition typed_intro (T : Type) : tactic := fun g =>
   | _ => M.raise NotThatType
   end.
 
-Definition typed_intros (T : Type) : tactic := fun g =>
+Polymorphic Definition typed_intros (T : Type) : tactic := fun g =>
   (mfix1 f (g : goal) : M _ :=
     mtry bind (typed_intro T) (fun _ => f) g with
     | NotThatType => idtac g
@@ -675,13 +675,13 @@ Definition unfold {A} (x : A) : tactic := fun g =>
 Definition unfold_in {A B} (x : A) (h : B) : tactic :=
   reduce_in (RedStrong [RedBeta; RedMatch; RedFix; RedDeltaOnly [Dyn x]]) h.
 
-Fixpoint intros_simpl (l : list string) : tactic :=
+Polymorphic Fixpoint intros_simpl (l : list string) : tactic :=
   match l with
   | [] => idtac
   | n :: l => bind (intro_simpl n) (fun _ => intros_simpl l)
   end.
 
-Fixpoint name_pattern (l : list (list string)) : list tactic :=
+Polymorphic Fixpoint name_pattern (l : list (list string)) : list tactic :=
   match l with
   | [] => []
   | ns :: l => intros_simpl ns :: name_pattern l
@@ -690,12 +690,12 @@ Fixpoint name_pattern (l : list (list string)) : list tactic :=
 (** Type for goal manipulation primitives *)
 Definition selector A := list (A * goal) -> M (list (A * goal)).
 
-Instance tactic_selector A : Seq A A (selector A) := fun t s g =>
+Polymorphic Instance tactic_selector A : Seq A A (selector A) := fun t s g =>
   l <- t g;
   filter_goals l >>= s.
 
 Module S.
-  Definition nth {A} (n : nat) (t : gtactic A) : selector A := fun l =>
+  Polymorphic Definition nth {A} (n : nat) (t : gtactic A) : selector A := fun l =>
     let (l1, l2) := dreduce (@nsplit) (nsplit n l) in
     match hd_error l2 with
     | None => M.raise NoGoalsLeft
@@ -705,13 +705,13 @@ Module S.
       M.ret res
     end.
 
-  Definition last {A} (t : gtactic A) : selector A := fun l =>
+  Polymorphic Definition last {A} (t : gtactic A) : selector A := fun l =>
     let n := dreduce (pred, List.length) (pred (List.length l)) in
     nth n t l.
 
-  Definition first {A} (t : gtactic A) : selector A := nth 0 t.
+  Polymorphic Definition first {A} (t : gtactic A) : selector A := nth 0 t.
 
-  Definition rev {A} : selector A := fun l =>
+  Polymorphic Definition rev {A} : selector A := fun l =>
     let res := dreduce (rev', rev_append, app) (rev' l) in M.ret res.
 End S.
 
@@ -873,19 +873,19 @@ End notations.
 Import notations.
 
 (* Some derived tactics *)
-Definition apply_in {P Q} (c : P -> Q) (H : P) : tactic :=
+Polymorphic Definition apply_in {P Q} (c : P -> Q) (H : P) : tactic :=
   change_hyp H (c H).
 
-Definition transitivity {B} (y : B) : tactic :=
+Polymorphic Definition transitivity {B} (y : B) : tactic :=
   apply (fun x => @eq_trans B x y).
 
-Definition symmetry : tactic :=
+Polymorphic Definition symmetry : tactic :=
   apply eq_sym.
 
-Definition exfalso : tactic :=
+Polymorphic Definition exfalso : tactic :=
   apply False_ind.
 
-Definition constructor (n : nat) : tactic :=
+Polymorphic Definition constructor (n : nat) : tactic :=
   A <- goal_type;
   match n with
   | 0 => M.raise ConstructorsStartsFrom1
@@ -897,7 +897,7 @@ Definition constructor (n : nat) : tactic :=
     end
   end.
 
-Definition split : tactic :=
+Polymorphic Definition split : tactic :=
   A <- goal_type;
   l <- M.constrs A;
   match snd l with
@@ -905,7 +905,7 @@ Definition split : tactic :=
   | _ => raise Not1Constructor
   end.
 
-Definition left : tactic :=
+Polymorphic Definition left : tactic :=
   A <- goal_type;
   l <- M.constrs A;
   match snd l with
@@ -913,7 +913,7 @@ Definition left : tactic :=
   | _ => raise Not2Constructor
   end.
 
-Definition right : tactic :=
+Polymorphic Definition right : tactic :=
   A <- goal_type;
   l <- M.constrs A;
   match snd l with
@@ -921,18 +921,18 @@ Definition right : tactic :=
   | _ => raise Not2Constructor
   end.
 
-Definition assumption : tactic :=
+Polymorphic Definition assumption : tactic :=
   A <- goal_type;
   match_goal with [[ x : A |- A ]] => exact x end.
 
 (** Given a type [T] it searches for a hypothesis with that type and
     executes the [cont]inuation on it.  *)
-Definition select (T : Type) (cont : T -> tactic) : tactic :=
+Polymorphic Definition select (T : Type) (cont : T -> tactic) : tactic :=
   A <- goal_type;
   match_goal with [[ x : T |- A ]] => cont x end.
 
 (** generalize with clear *)
-Definition move_back {A} (x : A) (cont : tactic) : tactic :=
+Polymorphic Definition move_back {A} (x : A) (cont : tactic) : tactic :=
   generalize x ;; cclear x cont.
 End T.
 
