@@ -33,7 +33,7 @@ Definition NotThatType : Exception. exact exception. Qed.
 Definition NoProgress : Exception. constructor. Qed.
 
 (** The type for tactics *)
-Definition gtactic (A : Type) := goal -> M (list (A * goal)).
+Definition gtactic (A : Type) : Type := goal -> M (list (A * goal)).
 Notation tactic := (gtactic unit).
 
 Delimit Scope tactic_scope with tactic.
