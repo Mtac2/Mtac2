@@ -39,18 +39,6 @@ Inductive goal :=
 (* Top.11 Top.13 Top.15 |= Top.13 <= Coq.Init.Datatypes.13 (the univ from option)
                             *)
 
-(** THE definition of MetaCoq *)
-Set Printing Universes.
-Unset Printing Notations.
-
-Module M.
-Inductive t : Type -> Prop :=
-| ret : forall {A : Type}, A -> t A
-.
-(* Top.17 Top.18 |= Top.18 <= Top.17
-                     *)
-Arguments t _%type.
-
 (** Convertion functions from [dyn] to [goal]. *)
 Definition dyn_to_goal (d : dyn) : goal :=
   match d with
@@ -58,9 +46,6 @@ Definition dyn_to_goal (d : dyn) : goal :=
   end.
 (*  |= Top.2 <= Top.11
         *)
-End M.
-
-Notation M := M.t.
 
 Set Use Unicoq.
 Set Printing Universes.
