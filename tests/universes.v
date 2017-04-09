@@ -32,12 +32,9 @@ Inductive Reduction :=
 Definition reduce (r : Reduction) {A} (x : A) := x.
 
 (** goal type *)
-Inductive goal :=
+Inductive goal : Type (*@{max(Set, Top.11+1, Top.13+1)} *) :=
   | Goal : forall {A}, A -> goal
-  | AHyp : forall {A}, option A -> (A -> goal) -> goal
   | HypRem : forall {A}, A -> goal -> goal.
-(* Top.11 Top.13 Top.15 |= Top.13 <= Coq.Init.Datatypes.13 (the univ from option)
-                            *)
 
 (** Convertion functions from [dyn] to [goal]. *)
 Definition dyn_to_goal (d : dyn) : goal :=
@@ -51,6 +48,11 @@ Set Use Unicoq.
 Set Printing Universes.
 Set Unicoq Debug.
 
-(* Cannot enforce Top.11 < Top.25 because Top.25 <= Coq.Lists.List.167 (the type of elements in map) < Top.2 <= Top.11 *)
-Definition rem_hyp {A B} (x : B) (l: list (A * goal)) : (list (A * goal)) :=
+(* Cannot enforce Top.11 < Top.18 because Top.18 <= Coq.Lists.List.167 < Top.2 <= Top.11 *)
+Definition rem_hyp (A : Prop) (B : Type) (x : B) (l: list (A * goal)) : (list (A * goal)) :=
   reduce (RedStrong [RedDeltaOnly [Dyn (@List.map)]]) (List.map (fun '(y,g) => (y, HypRem x g)) l).
+(* This is what I think is happening:
+   Dyn @List.map is forcing List.167 < Top.2.
+   dyn_to_goal is forcing Top.2 <= Top.11
+   Top.11 < Top.18 is (I think) the index of HypRem and the result list goal
+   Top.18 <= List.167 because that's what the resulting list is *)

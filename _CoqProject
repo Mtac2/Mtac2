@@ -14,7 +14,7 @@ src/metaCoqTactic.ml4
 src/MetaCoqPlugin.mllib
 theories/Utils.v
 theories/Mtac2.v
-theories/Tactics.v
-theories/ImportedTactics.v
-theories/DepDestruct.v
-theories/MetaCoq.v
+#theories/Tactics.v
+#theories/ImportedTactics.v
+#theories/DepDestruct.v
+#theories/MetaCoq.v
