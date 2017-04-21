@@ -1,4 +1,7 @@
 (* Need to load Unicoq to get the module dependency right *)
+
+Set Unicoq LaTex File "debug.tex".
+
 Declare ML Module "unicoq".
 (** Load library "MetaCoqPlugin.cma". *)
 Declare ML Module "MetaCoqPlugin".
@@ -8,25 +11,19 @@ Import ListNotations.
 
 Set Printing Universes.
 
-Record dyn := Dyn { type : Type; elem :> type }.
+Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
+Check Dyn.
+
 (* Top.2 |=  *)
 Arguments Dyn {_} _.
 
 Inductive RedFlags :=
-| RedBeta | RedDelta | RedMatch | RedFix | RedZeta
-| RedDeltaC | RedDeltaX
-| RedDeltaOnly : list dyn -> RedFlags
-| RedDeltaBut : list dyn -> RedFlags.
+| RedDeltaOnly : list dyn -> RedFlags.
 (*  |= Top.2 < Coq.Init.Datatypes.44 (univ. from list)
         *)
 
 Inductive Reduction :=
-| RedNone
-| RedSimpl
-| RedOneStep
-| RedWhd : list RedFlags -> Reduction
-| RedStrong : list RedFlags -> Reduction
-| RedVmCompute.
+| RedStrong : list RedFlags -> Reduction.
 
 (* Reduction primitive. It throws [NotAList] if the list of flags is not a list.  *)
 Definition reduce (r : Reduction) {A} (x : A) := x.
@@ -48,9 +45,23 @@ Set Use Unicoq.
 Set Printing Universes.
 Set Unicoq Debug.
 
+Check List.map.
+
+Check fun (A : Prop) (B : Type) (x : B) (l: list (A * goal)) =>
+        List.map (fun (p : A * goal) =>
+                    let y := fst p in
+                    let g := snd p in
+                    (y, HypRem x g)) (l : list (A * goal)).
+
+
 (* Cannot enforce Top.11 < Top.18 because Top.18 <= Coq.Lists.List.167 < Top.2 <= Top.11 *)
 Definition rem_hyp (A : Prop) (B : Type) (x : B) (l: list (A * goal)) : (list (A * goal)) :=
-  reduce (RedStrong [RedDeltaOnly [Dyn (@List.map)]]) (List.map (fun '(y,g) => (y, HypRem x g)) l).
+  reduce (RedStrong [RedDeltaOnly [Dyn (@List.map)]]) (
+           List.map (fun p =>
+                       let y := fst p in
+                       let g := snd p in
+                       (y, HypRem x g)) (l : list (A * goal))
+         ).
 (* This is what I think is happening:
    Dyn @List.map is forcing List.167 < Top.2.
    dyn_to_goal is forcing Top.2 <= Top.11
