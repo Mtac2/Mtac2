@@ -7,10 +7,12 @@ Require Import MetaCoq.Utils.
 Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
-Require Import Lists.List.
 Import ListNotations.
 
-Inductive Exception : Type := exception : Exception.
+Set Universe Polymorphism.
+Unset Universe Minimization ToSet.
+
+Inductive Exception : Prop := exception : Exception.
 
 Definition StuckTerm : Exception. exact exception. Qed.
 
@@ -62,21 +64,23 @@ Definition NotCumul {A B} (x: A) (y: B) : Exception. exact exception. Qed.
 Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
 Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
 
-Record dyn := Dyn { type : Type; elem :> type }.
+Set Printing Universes.
+
+Record dyn : Type := Dyn { type : Type; elem : type }.
 Arguments Dyn {_} _.
 
 Inductive RedFlags :=
 | RedBeta | RedDelta | RedMatch | RedFix | RedZeta
 | RedDeltaC | RedDeltaX
-| RedDeltaOnly : list dyn -> RedFlags
-| RedDeltaBut : list dyn -> RedFlags.
+| RedDeltaOnly : plist dyn -> RedFlags
+| RedDeltaBut : plist dyn -> RedFlags.
 
 Inductive Reduction :=
 | RedNone
 | RedSimpl
 | RedOneStep
-| RedWhd : list RedFlags -> Reduction
-| RedStrong : list RedFlags -> Reduction
+| RedWhd : plist RedFlags -> Reduction
+| RedStrong : plist RedFlags -> Reduction
 | RedVmCompute.
 
 Inductive Unification : Type :=
@@ -85,15 +89,15 @@ Inductive Unification : Type :=
 | UniMatchNoRed : Unification
 | UniEvarconv : Unification.
 
-Inductive Hyp : Type :=
-| ahyp : forall {A}, A -> option A -> Hyp.
+Inductive Hyp : Prop :=
+| ahyp : forall {A}, A -> poption A -> Hyp.
 
-Record Case :=
+Record Case : Type :=
     mkCase {
         case_ind : Type;
         case_val : case_ind;
         case_return : dyn;
-        case_branches : list dyn
+        case_branches : plist dyn
         }.
 
 (* Reduction primitive. It throws [NotAList] if the list of flags is not a list.  *)
@@ -109,20 +113,20 @@ Notation rcbv := (reduce RedNF).
 Notation rone_step := (reduce RedOneStep).
 Notation "'dreduce' ( l1 , .. , ln )" :=
   (reduce (RedStrong [RedBeta; RedFix; RedMatch;
-           RedDeltaOnly (Dyn (@l1) :: .. (Dyn (@ln) :: nil) ..)]))
+           RedDeltaOnly (Dyn (@l1) :: .. (Dyn (@ln) :: pnil) ..)]))
   (at level 0).
 
 (** goal type *)
-Inductive goal :=
+Inductive goal : Prop :=
   | Goal : forall {A}, A -> goal
-  | AHyp : forall {A}, option A -> (A -> goal) -> goal
+  | AHyp : forall {A}, poption A -> (A -> goal) -> goal
   | HypRem : forall {A}, A -> goal -> goal.
 
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
 we could make it part of the B, but then higher order unification will fail. *)
 Inductive pattern (M : Type -> Type) (A : Type) (B : A -> Type) (y : A) : Prop :=
-  | pbase : forall x : A, (y = x -> M (B x)) -> Unification -> pattern M A B y
+  | pbase : forall x : A, (y p= x -> M (B x)) -> Unification -> pattern M A B y
   | ptele : forall {C}, (forall x : C, pattern M A B y) -> pattern M A B y.
 
 Arguments pbase {M A B y} _ _ _.
@@ -150,10 +154,10 @@ Notation "p '=u>' [ H ] b" := (pbase p%core (fun H => b%core) UniCoq)
 Delimit Scope pattern_scope with pattern.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
-  ((@cons (pattern _ _ _ _) p1%pattern (.. (@cons (pattern _ _ _ _) pn%pattern nil) ..)))
+  ((@pcons (pattern _ _ _ _) p1%pattern (.. (@pcons (pattern _ _ _ _) pn%pattern pnil) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_pattern_scope.
 Notation "'with' p1 | .. | pn 'end'" :=
-  ((@cons (pattern _ _ _ _) p1%pattern (.. (@cons (pattern _ _ _ _) pn%pattern nil) ..)))
+  ((@pcons (pattern _ _ _ _) p1%pattern (.. (@pcons (pattern _ _ _ _) pn%pattern pnil) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_pattern_scope.
 
 Delimit Scope with_pattern_scope with with_pattern.
@@ -202,7 +206,7 @@ Inductive t : Type -> Prop :=
    [NameExistsInContext] if the name "x" is in the context, or
    [VarAppearsInValue] if executing [f x] results in a term containing variable
    [x]. *)
-| nu : forall {A : Type} {B : Type}, string -> option A -> (A -> t B) -> t B
+| nu : forall {A : Type} {B : Type}, string -> poption A -> (A -> t B) -> t B
 
 (** [abs_fun x e] abstracts variable [x] from [e]. It raises [NotAVar[] if [x]
     is not a variable, or [AbsDependencyError] if [e] or its type [P] depends on
@@ -252,7 +256,7 @@ Inductive t : Type -> Prop :=
     something that is not a variable, it raises [NotAVar]. If it contains duplicated
     occurrences of a variable, it raises a [DuplicatedVariable].
 *)
-| gen_evar : forall (A : Type), option (list Hyp) -> t A
+| gen_evar : forall (A : Type), poption (plist Hyp) -> t A
 
 (** [is_evar e] returns if [e] is a meta-variable. *)
 | is_evar : forall {A : Type}, A -> t bool
@@ -271,26 +275,26 @@ Inductive t : Type -> Prop :=
 | pretty_print : forall {A : Type}, A -> t string
 
 (** [hyps] returns the list of hypotheses. *)
-| hyps : t (list Hyp)
+| hyps : t (plist Hyp)
 
 | destcase : forall {A : Type} (a : A), t (Case)
 
 (** Given an inductive type A, applied to all its parameters (but not *)
 (*     necessarily indices), it returns the type applied to exactly the *)
 (*     parameters, and a list of constructors (applied to the parameters). *)
-| constrs : forall {A : Type} (a : A), t (prod dyn (list dyn))
+| constrs : forall {A : Type} (a : A), t (pprod dyn (plist dyn))
 | makecase : forall (C : Case), t dyn
 
 (** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
     It uses convertibility of universes, meaning that it fails if [x]
     is [Prop] and [y] is [Type]. If they are both types, it will
     try to equate its leveles. *)
-| unify {A} (x y : A) : Unification -> t (option (x = y))
+| unify {A} (x y : A) : Unification -> t (poption (x p= y))
 
 (** [munify_univ A B r] uses reduction strategy [r] to equate universes
     [A] and [B].  It uses cumulativity of universes, e.g., it succeeds if
     [x] is [Prop] and [y] is [Type]. *)
-| unify_univ (A B : Type) : Unification -> t (option (A -> B))
+| unify_univ (A B : Type) : Unification -> t (poption (A -> B))
 
 (** [get_reference s] returns the constant that is reference by s. *)
 | get_reference : string -> t dyn
@@ -298,14 +302,14 @@ Inductive t : Type -> Prop :=
 (** [get_var s] returns the var named after s. *)
 | get_var : string -> t dyn
 
-| call_ltac : forall {A : Type}, string -> list dyn -> t (prod A (list goal))
+| call_ltac : forall {A : Type}, string -> plist dyn -> t (pprod A (plist goal))
 | list_ltac : t unit
 .
 
 Arguments t _%type.
 
-Definition Cevar (A : Type) (ctx : list Hyp) : t A := gen_evar A (Some ctx).
-Definition evar (A : Type) : t A := gen_evar A None.
+Definition Cevar (A : Type) (ctx : plist Hyp) : t A := gen_evar A (PSome ctx).
+Definition evar (A : Type) : t A := gen_evar A PNone.
 
 Definition failwith {A} (s : string) : t A := raise (Failure s).
 
@@ -350,19 +354,19 @@ Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
   | pbase x f u =>
     oeq <- unify x y u;
     match oeq return t (P y) with
-    | Some eq =>
+    | PSome eq =>
       (* eq has type x = t, but for the pattern we need t = x.
          we still want to provide eq_refl though, so we reduce it *)
-      let h := reduce (RedStrong [RedBeta;RedDelta;RedMatch]) (eq_sym eq) in
-      let 'eq_refl := eq in
+      let h := reduce (RedStrong [RedBeta;RedDelta;RedMatch]) (peq_sym eq) in
+      let 'peq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
       let b := reduce (RedStrong [RedBeta]) (f h) in b
-    | None => raise DoesNotMatch
+    | PNone => raise DoesNotMatch
     end
   | @ptele _ _ _ _ C f => e <- evar C; open_pattern (f e)
   end.
 
-Fixpoint mmatch' {A P} (y : A) (ps : list (pattern t A P y)) : t (P y) :=
+Fixpoint mmatch' {A P} (y : A) (ps : plist (pattern t A P y)) : t (P y) :=
   match ps with
   | [] => raise NoPatternMatches
   | p :: ps' =>
@@ -428,7 +432,7 @@ Module notations.
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
       (@mmatch' _ (fun _ => _) e
-                   (app ls%with_pattern [([? x] x => raise x)%pattern]))))
+                   (papp ls%with_pattern [([? x] x => raise x)%pattern]))))
       (at level 82, a at level 100, ls at level 91, only parsing) : M_scope.
 End notations.
 
@@ -436,13 +440,13 @@ Import notations.
 
 (* Utilities for lists *)
 Definition map {A B} (f : A -> t B) :=
-  mfix1 rec (l : list A) : M (list B) :=
+  mfix1 rec (l : plist A) : M (plist B) :=
     match l with
     | [] => ret []
     | x :: xs => x <- f x; xs <- rec xs; ret (x :: xs)
     end.
 
-Fixpoint mapi' (n : nat) {A B} (f : nat -> A -> t B) (l: list A) : t (list B) :=
+Fixpoint mapi' (n : nat) {A B} (f : nat -> A -> t B) (l: plist A) : t (plist B) :=
   match l with
   | [] => ret []
   | x :: xs =>
@@ -454,7 +458,7 @@ Fixpoint mapi' (n : nat) {A B} (f : nat -> A -> t B) (l: list A) : t (list B) :=
 Definition mapi := @mapi' 0.
 Arguments mapi {_ _} _ _.
 
-Definition filter {A} (b : A -> t bool) : list A -> t (list A) :=
+Definition filter {A} (b : A -> t bool) : plist A -> t (plist A) :=
   fix f l :=
     match l with
     | [] => ret []
@@ -462,34 +466,34 @@ Definition filter {A} (b : A -> t bool) : list A -> t (list A) :=
                  if bx then ret (x :: r) else ret r
     end.
 
-Definition hd {A} (l : list A) : t A :=
+Definition hd {A} (l : plist A) : t A :=
   match l with
   | a :: _ => ret a
   | _ => raise EmptyList
   end.
 
-Fixpoint last {A} (l : list A) : t A :=
+Fixpoint last {A} (l : plist A) : t A :=
   match l with
   | [a] => ret a
   | _ :: s => last s
   | _ => raise EmptyList
   end.
 
-Definition fold_right {A B} (f : B -> A -> t A) (x : A) : list B -> t A :=
+Definition fold_right {A B} (f : B -> A -> t A) (x : A) : plist B -> t A :=
   fix loop l :=
     match l with
     | [] => ret x
     | x :: xs => r <- loop xs; f x r
     end.
 
-Definition fold_left {A B} (f : A -> B -> t A) : list B -> A -> t A :=
+Definition fold_left {A B} (f : A -> B -> t A) : plist B -> A -> t A :=
   fix loop l (a : A) :=
     match l with
     | [] => ret a
     | b :: bs => r <- f a b; loop bs r
     end.
 
-Definition index_of {A} (f : A -> t bool) (l : list A) : t (option nat) :=
+Definition index_of {A} (f : A -> t bool) (l : plist A) : t (option nat) :=
   ir <- fold_left (fun (ir : (nat * option nat)) x =>
     let (i, r) := ir in
     match r with
@@ -500,14 +504,14 @@ Definition index_of {A} (f : A -> t bool) (l : list A) : t (option nat) :=
   let (_, r) := ir in
   ret r.
 
-Fixpoint nth {A} (n : nat) (l : list A) : t A :=
+Fixpoint nth {A} (n : nat) (l : plist A) : t A :=
   match n, l with
   | 0, a :: _ => ret a
   | S n, _ :: s => nth n s
   | _, _ => raise NotThatManyElements
   end.
 
-Definition iterate {A} (f : A -> t unit) : list A -> t unit :=
+Definition iterate {A} (f : A -> t unit) : plist A -> t unit :=
   fix loop l :=
     match l with
     | [] => ret tt
@@ -525,8 +529,8 @@ Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
       if oeq then
         oeq' <- unify B T1 UniCoq;
         match oeq' with
-        | Some eq' =>
-          let v' := reduce (RedWhd [RedMatch]) match eq' as x in _ = x with eq_refl=> v end in
+        | PSome eq' =>
+          let v' := reduce (RedWhd [RedMatch]) match eq' as x in _ p= x with peq_refl=> v end in
           ret (Dyn (f v'))
         | _ => raise (WrongType T1)
         end
@@ -543,20 +547,20 @@ Definition type_inside {A} (x : t A) : Type := A.
 Definition unify_cumul {A B} (x: A) (y: B) (u : Unification) : t bool :=
   of <- unify_univ A B u;
   match of with
-  | Some f =>
+  | PSome f =>
     let fx := reduce RedOneStep (f x) in
     oeq <- unify fx y u;
-    match oeq with Some _ => ret true | None => ret false end
-  | None => ret false
+    match oeq with PSome _ => ret true | PNone => ret false end
+  | PNone => ret false
   end.
 
 (** Unifies [x] with [y] and raises [NotUnifiable] if it they
     are not unifiable. *)
-Definition unify_or_fail {A} (x y : A) : t (x = y) :=
+Definition unify_or_fail {A} (x y : A) : t (x p= y) :=
   oeq <- unify x y UniCoq;
   match oeq with
-  | None => raise (NotUnifiable x y)
-  | Some eq => ret eq
+  | PNone => raise (NotUnifiable x y)
+  | PSome eq => ret eq
   end.
 
 (** Unifies [x] with [y] using cumulativity and raises [NotCumul] if it they
@@ -567,25 +571,25 @@ Definition cumul_or_fail {A B} (x: A) (y: B) : t unit :=
 
 Definition names_of_hyp : t (list string) :=
   env <- hyps;
-  List.fold_left (fun (ns : t (list string)) (h:Hyp)=>
+  pfold_left (fun (ns : t (list string)) (h:Hyp)=>
     let (_, var, _) := h in
     n <- get_binder_name var;
-    r <- ns; ret (n :: r)) env (ret []).
+    r <- ns; ret (cons n r)) env (ret nil).
 
-Definition hyps_except {A} (x : A) : t (list Hyp) :=
+Definition hyps_except {A} (x : A) : t (plist Hyp) :=
   l <- M.hyps;
-  filter (fun y =>
-    mmatch y with
-    | [? b] ahyp x b => M.ret false
+  M.filter (fun y =>
+    mmatch y return M bool with
+    | [? b] ahyp x b => M.ret false : t bool
     | _ => ret true
     end) l.
 
-Definition find_hyp_index {A} (x : A) : t(option nat) :=
+Definition find_hyp_index {A} (x : A) : t (option nat) :=
   l <- M.hyps;
   index_of (fun y =>
     mmatch y with
     | [? b] ahyp x b => M.ret true
-    | _ => ret false
+    | _ => M.ret false
     end) l.
 
 (** given a string s it appends a marker to avoid collition with user
@@ -597,7 +601,7 @@ Definition anonymize (s : string) : t string :=
 Definition fresh_name (name: string) : t string :=
   names <- names_of_hyp;
   let find name : t bool :=
-    let res := reduce RedNF (find (fun n => dec_bool (string_dec name n)) names) in
+    let res := reduce RedNF (List.find (fun n => dec_bool (string_dec name n)) names) in
     match res with None => ret false | _ => ret true end
   in
   (mfix1 f (name: string) : M string :=
@@ -607,12 +611,12 @@ Definition fresh_name (name: string) : t string :=
      else ret name) name.
 
 Definition fresh_binder_name {A} (x : A) : t string :=
-  name <- mtry get_binder_name x with WrongTerm => ret "x"%string end;
+  name <- mtry get_binder_name x with WrongTerm => M.ret "x"%string end;
   fresh_name name.
 
 Definition unfold_projection {A} (y : A) : t A :=
   let x := rone_step y in
-  let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in ret x.
+  let x := reduce (RedWhd (RedBeta::RedMatch::pnil)) x in ret x.
 
 (** [coerce x] coreces element [x] of type [A] into
     an element of type [B], assuming [A] and [B] are
@@ -620,7 +624,7 @@ Definition unfold_projection {A} (y : A) : t A :=
 Definition coerce {A B : Type} (x : A) : t B :=
   oH <- unify A B UniCoq;
   match oH with
-  | Some H => match H with eq_refl => ret x end
+  | PSome H => match H with peq_refl => ret x end
   | _ => raise CantCoerce
   end.
 
@@ -662,15 +666,15 @@ Definition print_hyp (a : Hyp) : t unit :=
   sA <- pretty_print A;
   sx <- pretty_print x;
   match ot with
-  | Some t =>
+  | PSome t =>
     st <- pretty_print t;
     M.print (sx ++ " := " ++ st ++ " : " ++ sA)
-  | None => print (sx ++ " : " ++ sA)
+  | PNone => print (sx ++ " : " ++ sA)
   end.
 
 Definition print_hyps : t unit :=
   l <- hyps;
-  let l := rev' l in
+  let l := prev' l in
   iterate print_hyp l.
 
 Definition print_goal (g : goal) : t unit :=
@@ -691,30 +695,18 @@ Definition print_goal (g : goal) : t unit :=
     arguments. For instance, [decompose (3 + 3)] returns
     [(Dyn add, [Dyn 3; Dyn 3])] *)
 Definition decompose {A} (x : A) :=
-  (mfix2 f (d : dyn) (args: list dyn) : M (dyn * list dyn) :=
+  (mfix2 f (d : dyn) (args: plist dyn) : M (dyn * plist dyn) :=
     mmatch d with
     | [? A B (t1: A -> B) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :: args)
     | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :: args)
     | _ => ret (d, args)
     end) (Dyn x) [].
 
-(** [instantiate x t] tries to instantiate meta-variable [x] with [t].
-    It fails with [NotAnEvar] if [x] is not a meta-variable (applied to a spine), or
-    [CantInstantiate] if it fails to find a suitable instantiation. [t] is beta-reduced
-    to avoid false dependencies. *)
-Definition instantiate {A} (x y : A) : t unit :=
-  k <- decompose x;
-  let (h, _) := k in
-  let h := rcbv h.(elem) in
-  b <- is_evar h;
-  let t := reduce (RedWhd [RedBeta]) t in
-  if b then
-    r <- unify x y UniEvarconv;
-    match r with
-    | Some _ => M.ret tt
-    | _ => raise (CantInstantiate x y)
-    end
-  else raise (NotAnEvar h).
+Definition elem (d : dyn) : t Type :=
+  mmatch d with
+  | [? T t] @Dyn T t => ret T
+  end.
+
 End M.
 
 Notation M := M.t.
@@ -722,4 +714,4 @@ Notation M := M.t.
 Import M.notations.
 
 Notation "t 'mwhere' m := u" :=
-  (elem (ltac:(mrun (v <- M.mwith t m u; M.ret v)%MC))) (at level 0).
+  (ltac:(mrun (v <- M.mwith t m u; M.elem v)%MC)) (at level 0).

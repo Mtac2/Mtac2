@@ -1,13 +1,17 @@
 Require Import Strings.String.
 From MetaCoq Require Export Mtac2.
 Require Import MetaCoq.Utils.
-Require Import Lists.List.
+(* Require Import Lists.List. *)
 Import M.notations.
 Import ListNotations.
 
 Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
+
+Set Universe Polymorphism.
+Unset Universe Minimization ToSet.
+Set Printing Universes.
 
 (** Exceptions *)
 Definition NoGoalsLeft : Exception. exact exception. Qed.
@@ -33,7 +37,7 @@ Definition NotThatType : Exception. exact exception. Qed.
 Definition NoProgress : Exception. constructor. Qed.
 
 (** The type for tactics *)
-Definition gtactic (A : Type) := goal -> M (list (A * goal)).
+Definition gtactic (A : Type) := goal -> M (plist (A * goal)).
 Notation tactic := (gtactic unit).
 
 Delimit Scope tactic_scope with tactic.
@@ -52,25 +56,25 @@ Definition mtry' {A} (t : gtactic A)
 Definition raise {A} (e : Exception) : gtactic A := M.raise e.
 
 Definition fix0 (B : Type) : (gtactic B -> gtactic B) -> gtactic B :=
-  @M.fix1 goal (fun _ => list (B * goal)).
+  @M.fix1 goal (fun _ => plist (B * goal)).
 
 Definition fix1 {A} (B : A -> Type) :
     ((forall x : A, gtactic (B x)) -> (forall x : A, gtactic (B x))) ->
     forall x : A, gtactic (B x) :=
-  @M.fix2 A (fun _ => goal) (fun x _ => list (B x * goal)).
+  @M.fix2 A (fun _ => goal) (fun x _ => plist (B x * goal)).
 
 Definition fix2 {A1} {A2 : A1 -> Type} (B : forall a1 : A1, A2 a1 -> Type) :
     ((forall (x1 : A1) (x2 : A2 x1), gtactic (B x1 x2)) ->
       forall (x1 : A1) (x2 : A2 x1), gtactic (B x1 x2)) ->
     forall (x1 : A1) (x2 : A2 x1), gtactic (B x1 x2) :=
-  @M.fix3 A1 A2 (fun _ _ => goal) (fun x y _ => list (B x y * goal)).
+  @M.fix3 A1 A2 (fun _ _ => goal) (fun x y _ => plist (B x y * goal)).
 
 Definition fix3 {A1} {A2 : A1 -> Type} {A3 : forall a1 : A1, A2 a1 -> Type}
   (B : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type) :
     ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), gtactic (B x1 x2 x3)) ->
       forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), gtactic (B x1 x2 x3)) ->
     forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), gtactic (B x1 x2 x3) :=
-  @M.fix4 A1 A2 A3 (fun _ _ _ => goal) (fun x y z _ => list (B x y z * goal)).
+  @M.fix4 A1 A2 A3 (fun _ _ _ => goal) (fun x y z _ => plist (B x y z * goal)).
 
 Definition fix4 {A1} {A2 : A1 -> Type} {A3 : forall a1 : A1, A2 a1 -> Type}
     {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type}
@@ -78,18 +82,18 @@ Definition fix4 {A1} {A2 : A1 -> Type} {A3 : forall a1 : A1, A2 a1 -> Type}
     ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), gtactic (B x1 x2 x3 x4)) ->
       forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), gtactic (B x1 x2 x3 x4)) ->
     forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), gtactic (B x1 x2 x3 x4) :=
-  @M.fix5 A1 A2 A3 A4 (fun _ _ _ _ => goal) (fun x y z z' _ => list (B x y z z' * goal)).
+  @M.fix5 A1 A2 A3 A4 (fun _ _ _ _ => goal) (fun x y z z' _ => plist (B x y z z' * goal)).
 
 Fixpoint pattern_map {A} {B : A -> Type} (g : goal) (y : A)
-    (p : pattern gtactic A B y) : pattern M A (fun y => list (B y * goal)) y :=
+    (p : pattern gtactic A B y) : pattern M A (fun y => plist (B y * goal)) y :=
   match p with
   | pbase x f r => pbase x (fun Heq => f Heq g) r
   | ptele f => ptele (fun x => pattern_map g y (f x))
   end.
 
 Definition mmatch' {A P} (y : A)
-    (ps : list (pattern gtactic A P y)) : gtactic (P y) := fun g =>
-  M.mmatch' y (map (pattern_map g y) ps).
+    (ps : plist (pattern gtactic A P y)) : gtactic (P y) := fun g =>
+  M.mmatch' y (pmap (pattern_map g y) ps).
 
 Definition ret {A} (x : A) : gtactic A := fun g => M.ret [(x,g)].
 Definition idtac : tactic := ret tt.
@@ -105,18 +109,18 @@ Definition get_binder_name {A} (x : A) : gtactic string := fun g =>
 
 (** [close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] to each of them. *)
-Definition close_goals {A B} (y : B) : list (A * goal) -> M (list (A * goal)) :=
-  M.map (fun '(x,g') => r <- M.abs_fun y g'; M.ret (x, @AHyp B None r)).
+Definition close_goals {A B} (y : B) : plist (A * goal) -> M (plist (A * goal)) :=
+  M.map (fun '(x,g') => r <- M.abs_fun y g'; M.ret (x, @AHyp B PNone r)).
 
 (** [let_close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] with its definition to each of them (it assumes it is defined). *)
-Definition let_close_goals {A B} (y : B) : list (A * goal) -> M (list (A * goal)) :=
+Definition let_close_goals {A B} (y : B) : plist (A * goal) -> M (plist (A * goal)) :=
   let t := rone_step y in (* to obtain x's definition *)
-  M.map (fun '(x,g') => r <- M.abs_fun y g'; M.ret (x, @AHyp B (Some t) r)).
+  M.map (fun '(x,g') => r <- M.abs_fun y g'; M.ret (x, @AHyp B (PSome t) r)).
 
 (** [rem_hyp x l] "removes" hypothesis [x] from the list of goals [l]. *)
-Definition rem_hyp {A B} (x : B) (l: list (A * goal)) : M (list (A * goal)) :=
-  let v := dreduce (@List.map) (List.map (fun '(y,g) => (y, HypRem x g)) l) in M.ret v.
+Definition rem_hyp {A B} (x : B) (l: plist (A * goal)) : M (plist (A * goal)) :=
+  let v := dreduce (@pmap) (pmap (fun '(y,g) => (y, HypRem x g)) l) in M.ret v.
 
 (** Returns if a goal is open, i.e., a meta-variable. *)
 Fixpoint is_open (g : goal) : M bool :=
@@ -126,12 +130,12 @@ Fixpoint is_open (g : goal) : M bool :=
     x <- M.fresh_binder_name f;
     (* we get the name in order to avoid inserting existing names
       (nu will raise an exception otherwise) *)
-    M.nu x None (fun x : C => is_open (f x))
+    M.nu x PNone (fun x : C => is_open (f x))
   | HypRem _ g => is_open g (* we don't care about the variable *)
   end.
 
 (** removes the goals that were solved *)
-Definition filter_goals {A} : list (A * goal) -> M (list (A * goal)) :=
+Definition filter_goals {A} : plist (A * goal) -> M (plist (A * goal)) :=
   M.filter (fun '(x,g) => is_open g).
 
 (** [open_and_apply t] is a tactic that "opens" the current goal
@@ -141,13 +145,13 @@ Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
   fix open g :=
     match g return M _ with
     | Goal _ => t g
-    | @AHyp C None f =>
+    | @AHyp C PNone f =>
       x <- M.fresh_binder_name f;
-      M.nu x None (fun x : C =>
+      M.nu x PNone (fun x : C =>
         open (f x) >>= close_goals x)
-    | @AHyp C (Some t) f =>
+    | @AHyp C (PSome t) f =>
       x <- M.fresh_binder_name f;
-      M.nu x (Some t) (fun x : C =>
+      M.nu x (PSome t) (fun x : C =>
         open (f x) >>= let_close_goals x)
     | HypRem x f =>
       M.remove x (open f) >>= rem_hyp x
@@ -156,7 +160,7 @@ Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
 Definition bind {A B} (t : gtactic A) (f : A -> gtactic B) : gtactic B := fun g =>
   gs <- t g;
   r <- M.map (fun '(x,g') => open_and_apply (f x) g') gs;
-  let res := dreduce (concat, @List.app) (concat r) in
+  let res := dreduce (@pconcat, @papp) (pconcat r) in
   M.ret res.
 
 Class Seq (A B C : Type) :=
@@ -165,7 +169,7 @@ Arguments seq {A B C _} _%tactic _%tactic.
 
 Instance seq_one {A B} : Seq A B (gtactic B) := fun t1 t2 => bind t1 (fun _ => t2).
 
-Fixpoint gmap {A} (tacs : list (gtactic A)) (gs : list goal) : M (list (list (A * goal))) :=
+Fixpoint gmap {A} (tacs : plist (gtactic A)) (gs : plist goal) : M (plist (plist (A * goal))) :=
   match tacs, gs with
   | [], [] => M.ret []
   | tac :: tacs', g :: gs' =>
@@ -175,10 +179,10 @@ Fixpoint gmap {A} (tacs : list (gtactic A)) (gs : list goal) : M (list (list (A 
   | l, l' => M.raise NotSameSize
   end.
 
-Instance seq_list {A B} : Seq A B (list (gtactic B)) := fun t f g =>
+Instance seq_list {A B} : Seq A B (plist (gtactic B)) := fun t f g =>
   gs <- t g;
-  ls <- gmap f (map snd gs);
-  let res := dreduce (List.concat, List.app) (concat ls) in
+  ls <- gmap f (pmap psnd gs);
+  let res := dreduce (@pconcat, @papp) (pconcat ls) in
   M.ret res.
 
 Definition exact {A} (x:A) : tactic := fun g =>
@@ -197,15 +201,15 @@ Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := f
   | [? B (def: B) P e] @Goal (let x := def in P x) e =n>
     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
     eqBA <- M.unify_or_fail B A;
-    M.nu var (Some def) (fun x=>
+    M.nu var (PSome def) (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- M.evar Px;
       nG <- M.abs_let (P:=P) x def e';
       exact nG g;;
-      let x := reduce (RedWhd [RedMatch]) (match eqBA with eq_refl => x end) in
+      let x := reduce (RedWhd [RedMatch]) (match eqBA with peq_refl => x end) in
       t x (Goal e') >>= let_close_goals x)
   | [? P e] @Goal (forall x:A, P x) e =u>
-    M.nu var None (fun x=>
+    M.nu var PNone (fun x=>
       let Px := reduce (RedWhd [RedBeta]) (P x) in
       e' <- M.evar Px;
       nG <- M.abs_fun (P:=P) x e';
@@ -229,13 +233,14 @@ Definition intro_anonymous {A} (T : A) (f : string -> M string) (g : goal) : M g
   axn <- M.anonymize name;
   axn <- f axn;
   res <- intro_simpl axn g >>= M.hd;
-  M.ret (snd res).
+  M.ret (psnd res).
 
 (** Introduces all hypotheses. Does not fail if there are 0. *)
+Set Printing All.
 Definition intros_all : tactic :=
-  mfix1 f (g : goal) : M (list (unit * goal)) :=
+  mfix1 f (g : goal) : M (plist (unit * goal)) :=
     open_and_apply (fun g =>
-      match g return M (list (unit * goal)) with
+      match g return M (plist (unit * goal)) with
       | @Goal T e =>
         mtry intro_anonymous T M.ret g >>= f with
         | WrongTerm => M.ret [(tt,g)]
@@ -248,7 +253,7 @@ Definition intros_all : tactic :=
 (** Introduces up to n binders. Throws [NotAProduct] if there
     aren't enough products in the goal.  *)
 Definition introsn : nat -> tactic :=
-  mfix2 f (n : nat) (g : goal) : M (list (unit * goal)) :=
+  mfix2 f (n : nat) (g : goal) : M (plist (unit * goal)) :=
     open_and_apply (fun g =>
       match n, g with
       | 0, g => M.ret [(tt,g)]
@@ -281,12 +286,12 @@ Definition copy_ctx {A} (B : A -> Type) : dyn -> M Type :=
       M.ret Bc
     | [? C (D : C -> Type) (c : forall y:C, D y)] Dyn c =>
       n <- M.fresh_binder_name c;
-      M.nu n None (fun y=>
+      M.nu n PNone (fun y=>
         r <- rec (Dyn (c y));
         M.abs_prod y r)
     | [? C D (c : C->D)] Dyn c =>
       n <- M.fresh_binder_name c;
-      M.nu n None (fun y=>
+      M.nu n PNone (fun y=>
         r <- rec (Dyn (c y));
         M.abs_prod y r)
     | _ => M.print_term A;; M.raise (SomethingNotRight d)
@@ -334,14 +339,10 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
        (forall x, ... y, P (c x .. y)) *)
     t' <- copy_ctx P d;
     e <- M.Cevar t' ctx;
-    M.ret {| elem := e |}) (snd l);
-  let c := {| case_ind := A;
-              case_val := n;
-              case_return := {| elem := P |};
-              case_branches := l
-           |} in
+    M.ret (Dyn e)) (snd l);
+  let c := mkCase A n (Dyn P) l in
   case <- M.makecase c;
-  case <- M.unfold_projection (elem case);
+  case <- M.elem case;
   exact case g;;
   let res := dreduce (map, M.dyn_to_goal)
                      (map (fun d => (tt, M.dyn_to_goal d)) l) in
@@ -356,10 +357,10 @@ Definition destructn (n : nat) : tactic :=
 
 Definition apply {T} (c : T) : tactic := fun g=>
   match g with Goal eg =>
-    (mfix1 app (d : dyn) : M (list (unit * goal)) :=
+    (mfix1 app (d : dyn) : M (plist (unit * goal)) :=
       let (_, el) := d in
       mif M.unify_cumul el eg UniCoq then M.ret [] else
-        mmatch d return M (list (unit * goal)) with
+        mmatch d return M (plist (unit * goal)) with
         | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- M.evar T1;
           r <- app (Dyn (f e));
@@ -390,7 +391,7 @@ Arguments gtele {B C} _.
 Arguments gtele_evar {B C} _.
 
 Fixpoint match_goal_pattern' {B}
-    (u : Unification) (p : goal_pattern B) : list Hyp -> list Hyp -> gtactic B :=
+    (u : Unification) (p : goal_pattern B) : plist Hyp -> plist Hyp -> gtactic B :=
   fix go l1 l2 g :=
   match p, l2 with
   | gbase P t, _ =>
@@ -402,7 +403,7 @@ Fixpoint match_goal_pattern' {B}
     match oeqCA with
     | Some eqCA =>
       let a' := rcbv match eq_sym eqCA with eq_refl => a end in
-      mtry match_goal_pattern' u (f a') [] (List.rev_append l1 l2')%list g
+      mtry match_goal_pattern' u (f a') [] (Plist.rev_append l1 l2')%list g
       with DoesNotMatchGoal =>
         go (ahyp a d :: l1) l2' g
       end
@@ -415,10 +416,10 @@ Fixpoint match_goal_pattern' {B}
 
 Definition match_goal_pattern {B} (u : Unification)
     (p : goal_pattern B) : gtactic B := fun g=>
-  r <- M.hyps; match_goal_pattern' u p [] (List.rev' r) g.
+  r <- M.hyps; match_goal_pattern' u p [] (Plist.rev' r) g.
 
 Fixpoint match_goal_base {B} (u : Unification)
-    (ps : list (goal_pattern B)) : gtactic B := fun g =>
+    (ps : plist (goal_pattern B)) : gtactic B := fun g =>
   match ps with
   | [] => M.raise NoPatternMatchesGoal
   | p :: ps' =>
@@ -426,7 +427,7 @@ Fixpoint match_goal_base {B} (u : Unification)
     with DoesNotMatchGoal => match_goal_base u ps' g end
   end.
 
-Definition ltac (t : string) (args : list dyn) : tactic := fun g =>
+Definition ltac (t : string) (args : plist dyn) : tactic := fun g =>
   d <- M.goal_to_dyn g;
   let (ty, el) := d in
   v <- @M.call_ltac ty t args;
@@ -436,7 +437,7 @@ Definition ltac (t : string) (args : list dyn) : tactic := fun g =>
   if b then
     M.ret [(tt, Goal v)] (* it wasn't solved *)
   else
-    let l' := dreduce (@List.map) (map (pair tt) l) in
+    let l' := dreduce (@Plist.map) (map (pair tt) l) in
     M.ret l'.
 
 Definition destruct_all (T : Type) : tactic := fun g=>
@@ -445,7 +446,7 @@ Definition destruct_all (T : Type) : tactic := fun g=>
     let (Th, _, _) := h in
     r <- M.unify Th T UniCoq;
     M.ret (option_to_bool r)) l;
-  (fix f (l : list Hyp) : tactic :=
+  (fix f (l : plist Hyp) : tactic :=
     match l with
     | [] => idtac
     | ahyp x _ :: l => bind (destruct x) (fun _ => f l)
@@ -681,7 +682,7 @@ Fixpoint intros_simpl (l : list string) : tactic :=
   | n :: l => bind (intro_simpl n) (fun _ => intros_simpl l)
   end.
 
-Fixpoint name_pattern (l : list (list string)) : list tactic :=
+Fixpoint name_pattern (l : list (list string)) : plist tactic :=
   match l with
   | [] => []
   | ns :: l => intros_simpl ns :: name_pattern l
