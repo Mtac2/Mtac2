@@ -1,36 +1,20 @@
 Require Import Lists.List.
 Import ListNotations.
 
-Definition dec_bool {P} (x : {P}+{~P}) : bool :=
+Polymorphic Definition dec_bool {P} (x : {P}+{~P}) : bool :=
   match x with
   | left _ => true
   | _ => false
-  end.
-
-Definition option_to_bool {A} (ox : option A) : bool :=
-  match ox with Some _ => true | _ => false end.
-
-Definition is_empty {A} (l: list A) : bool :=
-  match l with [] => true | _ => false end.
-
-Fixpoint but_last {A} (l : list A) : list A :=
-  match l with
-  | [] => []
-  | [a] => []
-  | a :: ls => a :: but_last ls
-  end.
-
-Fixpoint nsplit {A} (n : nat) (l : list A) : list A * list A :=
-  match n, l with
-  | 0, l => ([], l)
-  | S n', x :: l' => let (l1, l2) := nsplit n' l' in (x :: l1, l2)
-  | _, _ => ([], [])
   end.
 
 Polymorphic Inductive poption (A : Type) : Type := PSome : A -> poption A | PNone : poption A.
 
 Arguments PSome {_} _.
 Arguments PNone {_}.
+
+Polymorphic Definition option_to_bool {A} (ox : poption A) : bool :=
+  match ox with PSome _ => true | _ => false end.
+
 
 Polymorphic Inductive plist (A : Type) : Type := pnil : plist A | pcons : A -> plist A -> plist A.
 
@@ -77,6 +61,23 @@ Section Map.
       | x :: l0 => papp x (pconcat l0)
      end.
 
+Polymorphic Definition is_empty {A} (l: plist A) : bool :=
+  match l with [] => true | _ => false end.
+
+Polymorphic Fixpoint but_last {A} (l : plist A) : plist A :=
+  match l with
+  | [] => []
+  | [a] => []
+  | a :: ls => a :: but_last ls
+  end.
+
+Polymorphic Fixpoint nsplit {A} (n : nat) (l : plist A) : plist A * plist A :=
+  match n, l with
+  | 0, l => ([], l)
+  | S n', x :: l' => let (l1, l2) := nsplit n' l' in (x :: l1, l2)
+  | _, _ => ([], [])
+  end.
+
 End Map.
 
 Polymorphic Definition pfold_left :=
@@ -104,6 +105,7 @@ fix prev_append (l l' : plist A) {struct l} : plist A :=
   end.
 
 Polymorphic Definition prev' := fun {A : Type} (l : plist A) => prev_append l pnil.
+
 
 Polymorphic Inductive peq (A : Type) (x : A) : A -> Prop := peq_refl : peq _ x x.
 
