@@ -819,7 +819,7 @@ Definition is_prop_or_type (d: dyn) : M bool :=
 
 Require Import Bool.Bool.
 
-Definition map_term (f : forall d:dyn, M d.(type)) :=
+Program Definition map_term (f : forall d:dyn, M d.(type)) :=
   mfix1 rec (d : dyn) : M d.(type) :=
     let (ty, el) := d in
     mmatch d as d return M d.(type) with
@@ -840,7 +840,7 @@ Definition map_term (f : forall d:dyn, M d.(type)) :=
     | [? d'] d' =n> f d'
     end.
 
-Definition unfold_slow {A} (x: A) : tactic := fun g=>
+Program Definition unfold_slow {A} (x: A) : tactic := fun g=>
   let def := rone_step x in
   gT <- goal_type g;
   gT' <- map_term (fun d=>
