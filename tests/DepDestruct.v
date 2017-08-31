@@ -1,11 +1,13 @@
 From MetaCoq
-Require Export MetaCoq DepDestruct.
+Require Import Datatypes List MetaCoq DepDestruct.
 Import T.
+Import MetaCoq.List.ListNotations.
+Module MCL := MetaCoq.Logic.
 
 Goal forall n, 0 <= n.
 MProof.
-  intros n.
-  new_destruct n.
+intros n.
+new_destruct n.
 Abort.
 
 Section Bugs.
@@ -61,8 +63,8 @@ Goal forall P b, reflect P b -> P <-> b = true.
 MProof.
   intros P b r.
   new_destruct r.
-  - intro xP &> split &> [reflexivity; intros &> assumption].
-  - intro nxP &> split &> [intros &> contradiction; intros &> discriminate].
+  - intro xP &> split &> [mc:reflexivity; intros &> assumption].
+  - intro nxP &> split &> [mc:intros &> contradiction; intros &> discriminate].
 Qed.
 
   Example reflect_reflect P : ITele (SType) := iTele (fun b=>@iBase SType (reflect P b)).
@@ -150,13 +152,13 @@ Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
   | S n' =>
     mmatch A as A' return M A' with
     | [? B (fty : B -> Type)] forall x, fty x => [H]
-      let t' := reduce RedSimpl match H in _ = P return P with eq_refl => t end in (* we need to reduce this *)
+      let t' := reduce RedSimpl match H in MCL.eq _ P return P with MCL.eq_refl => t end in (* we need to reduce this *)
       name <- M.fresh_name "A";
       M.nu name None (fun x=>
         r <- unfold_funs (t' x) n';
         abs x r)
     | [? A'] A' => [H]
-      match H in _ = P return M P with eq_refl => M.ret t end
+      match H in MCL.eq _ P return M P with MCL.eq_refl => M.ret t end
     end
   end%MC.
 
@@ -167,7 +169,7 @@ MProof.
   mpose (rG := abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r).
   simpl.
   assert (T : get_type_of_branch rG (reflect_RTrue P)).
-  { simpl. cintros x {- split&> [cintros xP {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
+  { simpl. cintros x {- split&> [mc:cintros xP {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
   assert (F : get_type_of_branch rG (reflect_RFalse P)).
   { simpl. intros. split. intros. select (~ _) (fun a=>select P (fun x=>exact (match a x with end))). intros;; discriminate. }
   mpose (return_type := unfold_funs (RTele_Fun rG) 5).
@@ -195,7 +197,7 @@ End ExampleReflect.
 
 Module VectorExample.
 Require Import Vector.
-Goal forall n (v : t nat n), n = length (to_list v).
+Goal forall n (v : t nat n), n = Coq.Lists.List.length (to_list v).
 Proof.
   pose (it := iTele (fun n => @iBase (SType) (t nat n))).
   pose (vnil := ((@cBase SType _ (aTele 0 aBase) (nil nat))) : CTele it).
@@ -203,7 +205,7 @@ Proof.
   fix f 2.
   intros n v.
   pose (a := (aTele n (aBase)) : ATele it).
-  pose (rt := M.eval (abstract_goal (rsort := SProp) a (n = length (to_list v)) v)).
+  pose (rt := M.eval (abstract_goal (rsort := SProp) a (n = Coq.Lists.List.length (to_list v)) v)).
   simpl in vcons, rt.
   assert (N : get_type_of_branch rt vnil).
   { now auto. }
@@ -213,7 +215,7 @@ Proof.
           M.makecase {|
               case_val := v;
               case_return := Dyn (RTele_Fun rt);
-              case_branches := Dyn N :: Dyn C :: List.nil
+              case_branches := [mc:Dyn N; Dyn C]
             |}
        ).
   simpl RTele_Fun in mc.
