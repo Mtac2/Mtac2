@@ -61,6 +61,13 @@ end
 
 open MetaCoqNames
 
+module RedList = GenericList (struct
+    let nilname = metaCoq_module_name ^ ".rlnil"
+    let consname = metaCoq_module_name ^ ".rlcons"
+    let typename = metaCoq_module_name ^ ".rllist"
+  end)
+
+
 module Goal = struct
 
   let mkgoal = mkUConstr "goal"
@@ -243,7 +250,7 @@ module ReductionStrategy = struct
 
   let get_flags (env, _ as ctx) flags =
     (* we assume flags have the right type and are in nf *)
-    let flags = CoqList.from_coq ctx flags in
+    let flags = RedList.from_coq ctx flags in
     List.fold_right (fun f reds->
       if isConstruct f then
         let ci = get_constructor_pos f in
@@ -266,7 +273,7 @@ module ReductionStrategy = struct
               red_add_transparent reds
                 (Conv_oracle.get_transp_state (Environ.oracle env)),
               red_sub in
-          let ids = CoqList.from_coq_conv ctx get_elem args.(0) in
+          let ids = RedList.from_coq_conv ctx get_elem args.(0) in
           List.fold_right (fun e reds->
             if isVar e then
               func reds (fVAR (destVar e))
@@ -746,7 +753,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
       try
         let b = reduce sigma env (Array.get args' 0) (Array.get args' 2) in
         run' ctxt (Term.mkApp (Vars.subst1 b t, args))
-      with CoqList.NotAList l ->
+      with RedList.NotAList l ->
         fail sigma (E.mkNotAList ())
     else
       run' ctxt (Term.mkApp (Vars.subst1 b t, args))

@@ -3,12 +3,11 @@ Declare ML Module "unicoq".
 (** Load library "MetaCoqPlugin.cma". *)
 Declare ML Module "MetaCoqPlugin".
 
-Require Import MetaCoq.Utils.
+From MetaCoq Require Import Logic Datatypes List Utils.
 Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
-Require Import Lists.List.
-Import ListNotations.
+Import MetaCoq.List.ListNotations.
 
 (* From MetaCoq Require Export Types. *)
 
@@ -70,18 +69,26 @@ Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
 Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
 
+Inductive redlist A := rlnil | rlcons : A -> redlist A -> redlist A.
+
+Arguments rlnil {_}.
+Arguments rlcons {_} _ _.
+
+Notation "[]rl" := rlnil.
+Notation "[rl: x ; .. ; y ]" := (rlcons x (.. (rlcons y rlnil) ..)).
+
 Inductive RedFlags :=
 | RedBeta | RedDelta | RedMatch | RedFix | RedZeta
 | RedDeltaC | RedDeltaX
-| RedDeltaOnly : list dyn -> RedFlags
-| RedDeltaBut : list dyn -> RedFlags.
+| RedDeltaOnly : redlist dyn -> RedFlags
+| RedDeltaBut : redlist dyn -> RedFlags.
 
 Inductive Reduction :=
 | RedNone
 | RedSimpl
 | RedOneStep
-| RedWhd : list RedFlags -> Reduction
-| RedStrong : list RedFlags -> Reduction
+| RedWhd : redlist RedFlags -> Reduction
+| RedStrong : redlist RedFlags -> Reduction
 | RedVmCompute.
 
 Inductive Unification : Type :=
@@ -93,7 +100,7 @@ Inductive Unification : Type :=
 Inductive Hyp : Type :=
 | ahyp : forall {A}, A -> option A -> Hyp.
 
-Polymorphic Record Case :=
+Record Case :=
     mkCase {
         case_ind : Type;
         case_val : case_ind;
@@ -104,7 +111,7 @@ Polymorphic Record Case :=
 (* Reduction primitive. It throws [NotAList] if the list of flags is not a list.  *)
 Definition reduce (r : Reduction) {A} (x : A) := x.
 
-Notation RedAll := ([RedBeta;RedDelta;RedZeta;RedMatch;RedFix]).
+Notation RedAll := ([rl:RedBeta;RedDelta;RedZeta;RedMatch;RedFix]).
 Notation RedNF := (RedStrong RedAll).
 Notation RedHNF := (RedWhd RedAll).
 
@@ -113,19 +120,19 @@ Notation rhnf := (reduce RedHNF).
 Notation rcbv := (reduce RedNF).
 Notation rone_step := (reduce RedOneStep).
 Notation "'dreduce' ( l1 , .. , ln )" :=
-  (reduce (RedStrong [RedBeta; RedFix; RedMatch;
-           RedDeltaOnly (Dyn (@l1) :: .. (Dyn (@ln) :: nil) ..)]))
+  (reduce (RedStrong [rl:RedBeta; RedFix; RedMatch;
+           RedDeltaOnly (rlcons (Dyn (@l1)) ( .. (rlcons (Dyn (@ln)) rlnil) ..))]))
   (at level 0).
 
 (** goal type *)
-Polymorphic Inductive goal :=
+Inductive goal :=
   | Goal : forall {A}, A -> goal
   | AHyp : forall {A}, option A -> (A -> goal) -> goal.
 
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
 we could make it part of the B, but then higher order unification will fail. *)
-Polymorphic Inductive pattern (M : Type -> Type) (A : Type) (B : A -> Type) (y : A) : Prop :=
+Inductive pattern (M : Type -> Type) (A : Type) (B : A -> Type) (y : A) : Prop :=
   | pbase : forall x : A, (y = x -> M (B x)) -> Unification -> pattern M A B y
   | ptele : forall {C}, (forall x : C, pattern M A B y) -> pattern M A B y.
 
@@ -308,8 +315,6 @@ Inductive t : Type -> Prop :=
 
 Arguments t _%type.
 
-Local Set Universe Polymorphism.
-
 Definition Cevar (A : Type) (ctx : list Hyp) : t A := gen_evar A (Some ctx).
 Definition evar (A : Type) : t A := gen_evar A None.
 
@@ -359,10 +364,10 @@ Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
     | Some eq =>
       (* eq has type x = t, but for the pattern we need t = x.
          we still want to provide eq_refl though, so we reduce it *)
-      let h := reduce (RedStrong [RedBeta;RedDelta;RedMatch]) (eq_sym eq) in
+      let h := reduce (RedStrong [rl:RedBeta;RedDelta;RedMatch]) (eq_sym eq) in
       let 'eq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
-      let b := reduce (RedStrong [RedBeta]) (f h) in b
+      let b := reduce (RedStrong [rl:RedBeta]) (f h) in b
     | None => raise DoesNotMatch
     end
   | @ptele _ _ _ _ C f => e <- evar C; open_pattern (f e)
@@ -532,7 +537,7 @@ Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
         oeq' <- unify B T1 UniCoq;
         match oeq' with
         | Some eq' =>
-          let v' := reduce (RedWhd [RedMatch]) match eq' as x in _ = x with eq_refl=> v end in
+          let v' := reduce (RedWhd [rl:RedMatch]) match eq' as x in _ = x with eq_refl=> v end in
           ret (Dyn (f v'))
         | _ => raise (WrongType T1)
         end
@@ -571,9 +576,9 @@ Definition cumul_or_fail {A B} (x: A) (y: B) : t unit :=
   b <- unify_cumul x y UniCoq;
   if b then ret tt else raise (NotCumul x y).
 
-Definition names_of_hyp : t (list string) :=
+Program Definition names_of_hyp : t (list string) :=
   env <- hyps;
-  List.fold_left (fun (ns : t (list string)) (h:Hyp)=>
+  MetaCoq.List.fold_left (fun (ns : t (list string)) (h:Hyp)=>
     let (_, var, _) := h in
     n <- get_binder_name var;
     r <- ns; ret (n :: r)) env (ret []).
@@ -618,7 +623,7 @@ Definition fresh_binder_name {A} (x : A) : t string :=
 
 Definition unfold_projection {A} (y : A) : t A :=
   let x := rone_step y in
-  let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in ret x.
+  let x := reduce (RedWhd [rl:RedBeta;RedMatch]) x in ret x.
 
 (** [coerce x] coreces element [x] of type [A] into
     an element of type [B], assuming [A] and [B] are
@@ -713,7 +718,7 @@ Definition instantiate {A} (x y : A) : t unit :=
   let (h, _) := k in
   let h := rcbv h.(elem) in
   b <- is_evar h;
-  let t := reduce (RedWhd [RedBeta]) t in
+  let t := reduce (RedWhd [rl:RedBeta]) t in
   if b then
     r <- unify x y UniEvarconv;
     match r with

@@ -87,12 +87,35 @@ module CoqOption = struct
     | Some t -> mkSome ty t
 end
 
-module CoqList = struct
+module type ListParams = sig
+  val nilname : string
+  val consname : string
+  val typename : string
+end
+
+module type LIST = sig
+  val mkNil : types -> constr
+  val mkCons : types -> constr -> constr -> constr
+  val mkType : types -> types
+
+  exception NotAList of constr
+
+  val from_coq : (Environ.env * Evd.evar_map) -> constr -> constr list
+
+  (** Allows skipping an element in the conversion *)
+  exception Skip
+  val from_coq_conv : (Environ.env * Evd.evar_map) -> (constr -> 'a) -> constr -> 'a list
+
+  val to_coq : types -> ('a -> constr) -> 'a list -> constr
+  val pto_coq : types -> ('a -> Evd.evar_map -> Evd.evar_map * constr) -> 'a list -> Evd.evar_map -> Evd.evar_map * constr
+end
+
+module GenericList (LP : ListParams) = struct
   open ConstrBuilder
 
-  let listBuilder = from_string "Coq.Init.Datatypes.list"
-  let nilBuilder  = from_string "Coq.Init.Datatypes.nil"
-  let consBuilder = from_string "Coq.Init.Datatypes.cons"
+  let listBuilder = from_string LP.typename
+  let nilBuilder  = from_string LP.nilname
+  let consBuilder = from_string LP.consname
 
   let mkType ty = build_app listBuilder [|ty|]
   let mkNil ty = build_app nilBuilder [|ty|]
@@ -129,6 +152,12 @@ module CoqList = struct
       let sigma, c = f e sigma in
       sigma, mkCons ty c l) l (sigma, mkNil ty)
 end
+
+module CoqList = GenericList (struct
+    let nilname = "Coq.Init.Datatypes.nil"
+    let consname = "Coq.Init.Datatypes.cons"
+    let typename = "Coq.Init.Datatypes.list"
+  end)
 
 module CoqEq = struct
   open ConstrBuilder

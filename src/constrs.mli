@@ -44,7 +44,13 @@ module CoqString : sig
   val to_coq : string -> constr
 end
 
-module CoqList : sig
+module type ListParams = sig
+  val nilname : string
+  val consname : string
+  val typename : string
+end
+
+module type LIST = sig
   val mkNil : types -> constr
   val mkCons : types -> constr -> constr -> constr
   val mkType : types -> types
@@ -60,6 +66,10 @@ module CoqList : sig
   val to_coq : types -> ('a -> constr) -> 'a list -> constr
   val pto_coq : types -> ('a -> Evd.evar_map -> Evd.evar_map * constr) -> 'a list -> Evd.evar_map -> Evd.evar_map * constr
 end
+
+module GenericList : functor (LP : ListParams) -> LIST
+
+module CoqList : LIST
 
 module CoqOption : sig
   val mkNone : types -> constr

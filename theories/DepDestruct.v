@@ -14,7 +14,7 @@ Definition abs {A} {P} (x:A) (t:P x) :=
   (* abs_fun y t. *)
   M.abs_fun x t.
 
-Notation redMatch := (reduce (RedWhd [RedMatch])).
+Notation redMatch := (reduce (RedWhd [rl:RedMatch])).
 
 (** [match_eq E P A] takes an equality of [T = S] and an element [A]
     of type [T], and returns [A] casted to [P S], but without any match
@@ -174,7 +174,7 @@ Polymorphic Fixpoint RTele_Fun {isort} {it : ITele isort} {rsort} (rt : RTele rs
   | rTele rt => fun t => (RTele_Fun (rt t))
   end.
 
-Notation reduce_novars := (reduce (RedStrong [RedBeta;RedMatch;RedFix;RedDeltaC;RedZeta])).
+Notation reduce_novars := (reduce (RedStrong [rl:RedBeta;RedMatch;RedFix;RedDeltaC;RedZeta])).
 
 (* We need to handle Prop (maybe) *)
 Polymorphic Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (args : ATele it) (G : stype_of rsort) :

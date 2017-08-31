@@ -53,19 +53,19 @@ Print is_not_breaking_letins.
 
 Example reduce_beta : unit.
 MProof.
-let x := reduce (RedWhd (RedBeta::nil)) (id ((fun x=>x) tt)) in
+let x := reduce (RedWhd [rl:RedBeta]) (id ((fun x=>x) tt)) in
 assert_eq x (id ((fun x=>x) tt)).
 Qed.
 
 Example reduce_beta2 : unit.
 MProof.
-let x := reduce (RedWhd (RedBeta::nil)) ((fun x=>x) (fun x=>x) tt) in
+let x := reduce (RedWhd [rl:RedBeta]) ((fun x=>x) (fun x=>x) tt) in
 assert_eq x tt.
 Qed.
 
 Example reduce_BetaDeltaIota : unit.
 MProof.
-let x := reduce (RedWhd (RedBeta::RedDelta::RedMatch::nil)) (elem (Dyn (let t := tt in t))) in
+let x := reduce (RedWhd [RedBeta;RedDelta;RedMatch]) (elem (Dyn (let t := tt in t))) in
 assert_eq x (let t := tt in t).
 Qed.
 
@@ -74,32 +74,32 @@ Section ASection.
 
 Example reduce_BetaDeltaIotaP : unit.
 MProof.
-let x := reduce (RedWhd (RedBeta::RedDelta::RedMatch::nil)) (elem (Dyn (fst (p, tt)))) in
+let x := reduce (RedWhd [RedBeta;RedDelta;RedMatch]) (elem (Dyn (fst (p, tt)))) in
 assert_eq x 0.
 Qed.
 
 Example reduce_OneStepDyn : nat.
 MProof.
 let x := rone_step (elem (Dyn p)) in
-let x := reduce (RedWhd (RedBeta::RedMatch::nil)) x in M.ret x.
+let x := reduce (RedWhd [rl:RedBeta;RedMatch]) x in M.ret x.
 Qed.
 
 Example reduce_deltac : unit.
 MProof.
-let x := reduce (RedWhd (RedBeta::RedMatch::RedDeltaC::nil)) (elem (Dyn (fst (p, tt)))) in
+let x := reduce (RedWhd [rl:RedBeta;RedMatch;RedDeltaC]) (elem (Dyn (fst (p, tt)))) in
 assert_eq x p.
 Qed.
 
 Example reduce_deltax : unit.
 MProof.
-let x := reduce (RedStrong (RedBeta::RedMatch::RedDeltaX::nil)) (elem (Dyn (fst (p, tt)))) in
+let x := reduce (RedStrong [rl:RedBeta;RedMatch;RedDeltaX]) (elem (Dyn (fst (p, tt)))) in
 assert_eq x (elem (Dyn (fst (0, tt)))).
 Qed.
 
 Definition test_opaque : nat. exact 0. Qed.
 Example reduce_deltac_opaque : unit.
 MProof.
-let x := reduce (RedWhd (RedBeta::RedMatch::RedDeltaC::nil)) (elem (Dyn (fst (test_opaque, tt)))) in
+let x := reduce (RedWhd [rl:RedBeta;RedMatch;RedDeltaC]) (elem (Dyn (fst (test_opaque, tt)))) in
 assert_eq x test_opaque.
 Qed.
 

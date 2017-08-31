@@ -1,15 +1,14 @@
 Require Import Strings.String.
 From MetaCoq Require Export Mtac2.
-Require Import MetaCoq.Utils.
-Require Import Lists.List.
+From MetaCoq Require Import Logic Datatypes List Utils.
 Import M.notations.
-Import ListNotations.
+Import MetaCoq.List.ListNotations.
 
 Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
 
-Local Set Universe Polymorphism.
+(* Local Set Universe Polymorphism. *)
 
 (** Exceptions *)
 Definition NoGoalsLeft : Exception. exact exception. Qed.
@@ -190,15 +189,15 @@ Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := f
     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
     eqBA <- M.unify_or_fail B A;
     M.nu var (Some def) (fun x=>
-      let Px := reduce (RedWhd [RedBeta]) (P x) in
+      let Px := reduce (RedWhd [rl:RedBeta]) (P x) in
       e' <- M.evar Px;
       nG <- M.abs_let (P:=P) x def e';
       exact nG g;;
-      let x := reduce (RedWhd [RedMatch]) (match eqBA with eq_refl => x end) in
+      let x := reduce (RedWhd [rl:RedMatch]) (match eqBA with eq_refl => x end) in
       t x (Goal e') >>= let_close_goals x)
   | [? P e] @Goal (forall x:A, P x) e =u>
     M.nu var None (fun x=>
-      let Px := reduce (RedWhd [RedBeta]) (P x) in
+      let Px := reduce (RedWhd [rl:RedBeta]) (P x) in
       e' <- M.evar Px;
       nG <- M.abs_fun (P:=P) x e';
       exact nG g;;
@@ -269,7 +268,7 @@ Definition copy_ctx {A} (B : A -> Type) : dyn -> M Type :=
   mfix1 rec (d : dyn) : M Type :=
     mmatch d with
     | [? c : A] Dyn c =>
-      let Bc := reduce (RedWhd [RedBeta]) (B c) in
+      let Bc := reduce (RedWhd [rl:RedBeta]) (B c) in
       M.ret Bc
     | [? C (D : C -> Type) (c : forall y:C, D y)] Dyn c =>
       n <- M.fresh_binder_name c;
@@ -675,7 +674,7 @@ Definition unfold {A} (x : A) : tactic := fun g =>
   M.ret [(tt, Goal ng)].
 
 Definition unfold_in {A B} (x : A) (h : B) : tactic :=
-  reduce_in (RedStrong [RedBeta; RedMatch; RedFix; RedDeltaOnly [Dyn x]]) h.
+  reduce_in (RedStrong [rl:RedBeta; RedMatch; RedFix; RedDeltaOnly [rl:Dyn x]]) h.
 
 Fixpoint intros_simpl (l : list string) : tactic :=
   match l with
