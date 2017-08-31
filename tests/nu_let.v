@@ -1,11 +1,12 @@
-From MetaCoq Require Import MetaCoq.
+From MetaCoq Require Import Datatypes MetaCoq.
 Require Import Bool.Bool.
+Import MetaCoq.List.ListNotations.
 
 Example hyp_well_formed : True.
 MProof.
   (\nu x := I,
    l <- M.hyps;
-   oeq <- M.unify l [ahyp x (Some I)] UniCoq;
+   oeq <- M.unify l [mc:ahyp x (Some I)]%list UniCoq;
    match oeq with
    | None => M.raise exception
    | _ => M.ret I

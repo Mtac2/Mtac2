@@ -375,7 +375,7 @@ Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
 
 Fixpoint mmatch' {A P} (y : A) (ps : list (pattern t A P y)) : t (P y) :=
   match ps with
-  | [] => raise NoPatternMatches
+  | [mc:] => raise NoPatternMatches
   | p :: ps' =>
     mtry' (open_pattern p) (fun e =>
       mif unify e DoesNotMatch UniMatchNoRed then mmatch' y ps' else raise e)
@@ -439,7 +439,7 @@ Module notations.
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
       (@mmatch' _ (fun _ => _) e
-                   (app ls%with_pattern [([? x] x => raise x)%pattern]))))
+                   (app ls%with_pattern [mc:([? x] x => raise x)%pattern]))))
       (at level 82, a at level 100, ls at level 91, only parsing) : M_scope.
 End notations.
 
@@ -449,13 +449,13 @@ Import notations.
 Definition map {A B} (f : A -> t B) :=
   mfix1 rec (l : list A) : M (list B) :=
     match l with
-    | [] => ret []
+    | [mc:] => ret [mc:]
     | x :: xs => x <- f x; xs <- rec xs; ret (x :: xs)
     end.
 
 Fixpoint mapi' (n : nat) {A B} (f : nat -> A -> t B) (l: list A) : t (list B) :=
   match l with
-  | [] => ret []
+  | [mc:] => ret [mc:]
   | x :: xs =>
     el <- f n x;
     xs' <- mapi' (S n) f xs;
@@ -468,7 +468,7 @@ Arguments mapi {_ _} _ _.
 Definition filter {A} (b : A -> t bool) : list A -> t (list A) :=
   fix f l :=
     match l with
-    | [] => ret []
+    | [mc:] => ret [mc:]
     | x :: xs => bx <- b x; r <- f xs;
                  if bx then ret (x :: r) else ret r
     end.
@@ -481,7 +481,7 @@ Definition hd {A} (l : list A) : t A :=
 
 Fixpoint last {A} (l : list A) : t A :=
   match l with
-  | [a] => ret a
+  | [mc:a] => ret a
   | _ :: s => last s
   | _ => raise EmptyList
   end.
@@ -489,14 +489,14 @@ Fixpoint last {A} (l : list A) : t A :=
 Definition fold_right {A B} (f : B -> A -> t A) (x : A) : list B -> t A :=
   fix loop l :=
     match l with
-    | [] => ret x
+    | [mc:] => ret x
     | x :: xs => r <- loop xs; f x r
     end.
 
 Definition fold_left {A B} (f : A -> B -> t A) : list B -> A -> t A :=
   fix loop l (a : A) :=
     match l with
-    | [] => ret a
+    | [mc:] => ret a
     | b :: bs => r <- f a b; loop bs r
     end.
 
@@ -521,7 +521,7 @@ Fixpoint nth {A} (n : nat) (l : list A) : t A :=
 Definition iterate {A} (f : A -> t unit) : list A -> t unit :=
   fix loop l :=
     match l with
-    | [] => ret tt
+    | [mc:] => ret tt
     | b :: bs => f b;; loop bs
     end.
 
@@ -581,7 +581,7 @@ Program Definition names_of_hyp : t (list string) :=
   MetaCoq.List.fold_left (fun (ns : t (list string)) (h:Hyp)=>
     let (_, var, _) := h in
     n <- get_binder_name var;
-    r <- ns; ret (n :: r)) env (ret []).
+    r <- ns; ret (n :: r)) env (ret [mc:]).
 
 Definition hyps_except {A} (x : A) : t (list Hyp) :=
   l <- M.hyps;
@@ -707,7 +707,7 @@ Definition decompose {A} (x : A) :=
     | [? A B (t1: A -> B) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :: args)
     | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :: args)
     | _ => ret (d, args)
-    end) (Dyn x) [].
+    end) (Dyn x) [mc:].
 
 (** [instantiate x t] tries to instantiate meta-variable [x] with [t].
     It fails with [NotAnEvar] if [x] is not a meta-variable (applied to a spine), or

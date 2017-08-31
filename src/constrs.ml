@@ -62,9 +62,9 @@ end
 module CoqOption = struct
   open ConstrBuilder
 
-  let optionBuilder = from_string "Coq.Init.Datatypes.option"
-  let noneBuilder = from_string "Coq.Init.Datatypes.None"
-  let someBuilder = from_string "Coq.Init.Datatypes.Some"
+  let optionBuilder = from_string "MetaCoq.Datatypes.option"
+  let noneBuilder = from_string "MetaCoq.Datatypes.None"
+  let someBuilder = from_string "MetaCoq.Datatypes.Some"
 
   let mkType ty = build_app optionBuilder [|ty|]
   let mkNone ty = build_app noneBuilder [|ty|]
@@ -154,16 +154,16 @@ module GenericList (LP : ListParams) = struct
 end
 
 module CoqList = GenericList (struct
-    let nilname = "Coq.Init.Datatypes.nil"
-    let consname = "Coq.Init.Datatypes.cons"
-    let typename = "Coq.Init.Datatypes.list"
+    let nilname = "MetaCoq.Datatypes.nil"
+    let consname = "MetaCoq.Datatypes.cons"
+    let typename = "MetaCoq.Datatypes.list"
   end)
 
 module CoqEq = struct
   open ConstrBuilder
 
-  let eqBuilder = from_string "Coq.Init.Logic.eq"
-  let eqReflBuilder = from_string "Coq.Init.Logic.eq_refl"
+  let eqBuilder = from_string "MetaCoq.Logic.eq"
+  let eqReflBuilder = from_string "MetaCoq.Logic.eq_refl"
 
   let mkType a x y = build_app eqBuilder [|a;x;y|]
   let mkEqRefl a x = build_app eqReflBuilder [|a;x|]
@@ -172,7 +172,7 @@ end
 module CoqSigT = struct
   open ConstrBuilder
 
-  let existTBuilder = from_string "Coq.Init.Specif.existT"
+  let existTBuilder = from_string "MetaCoq.Specif.existT"
 
   let mkAppExistT a p x px = build_app existTBuilder [|a; p; x; px|]
 end
@@ -379,7 +379,7 @@ end
 module CoqPair = struct
   open ConstrBuilder
 
-  let pairBuilder = from_string "Coq.Init.Datatypes.pair"
+  let pairBuilder = from_string "MetaCoq.Datatypes.pair"
 
   let mkPair tya tyb a b = build_app pairBuilder [|tya;tyb;a;b|]
 

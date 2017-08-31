@@ -1,6 +1,7 @@
 Require Import Bool.Bool.
 Require Import MetaCoq.MetaCoq.
 Import T.
+Import MetaCoq.List.ListNotations.
 
 Goal True.
 MProof.
@@ -29,12 +30,12 @@ Qed.
 Goal forall b : bool, b = b.
 MProof.
   intro b.
-  - destruct b &> [reflexivity; reflexivity].
+  - destruct b &> [mc:reflexivity; reflexivity]%list.
 Qed.
 
 Goal forall b1 : bool, b1 = b1.
 MProof.
-  intro b1 &> [reflexivity].
+  intro b1 &> [mc:reflexivity]%list.
 Qed.
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
@@ -90,7 +91,7 @@ MProof.
 Qed.
 
 Require Import Coq.omega.Omega.
-Definition omega := ltac "Coq.omega.Omega.omega" nil.
+Definition omega := ltac "Coq.omega.Omega.omega" MetaCoq.Datatypes.nil.
 
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.
@@ -146,8 +147,8 @@ Definition transitivity := "Coq.Init.Notations.transitivity".
 Lemma test6 : forall (x y z : Prop), x = y -> y = z -> x = z.
 MProof.
   intros x y z H G.
-  ltac transitivity [Dyn y].
-  ltac "Coq.Init.Notations.revgoals" nil.
+  ltac transitivity [mc:Dyn y].
+  ltac "Coq.Init.Notations.revgoals" MetaCoq.List.nil.
   exact H.
   exact G.
 Qed.
@@ -313,7 +314,7 @@ Abort.
 
 Goal forall x : Prop, x = x.
 MProof.
-  ltac "Coq.Init.Notations.auto" nil.
+  ltac "Coq.Init.Notations.auto" MetaCoq.List.nil.
 Qed.
 
 (** intros_all test *)
@@ -391,7 +392,7 @@ Example intros_def': let x := 0 in forall y, x <= y.
 MProof.
   intros x y.
   Ltac ind x :=induction x.
-  ltac "mctacticstests.ind" [Dyn y];; apply le_0_n.
+  ltac "mctacticstests.ind" [mc:Dyn y];; apply le_0_n.
 Qed.
 
 Example test_unfold : id 0 = 0.

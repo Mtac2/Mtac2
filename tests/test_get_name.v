@@ -1,4 +1,4 @@
-Require Import MetaCoq.MetaCoq.
+Require Import MetaCoq.Datatypes MetaCoq.MetaCoq.
 
 Goal True.
 MProof.

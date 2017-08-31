@@ -1,4 +1,4 @@
-Require Import MetaCoq.MetaCoq.
+From MetaCoq Require Import Logic Datatypes MetaCoq.
 
 Require Import Bool.Bool.
 Import T.

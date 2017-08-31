@@ -1,5 +1,6 @@
-Require Import MetaCoq.MetaCoq.
+From MetaCoq Require Import Datatypes List MetaCoq.
 Import T.
+Import MetaCoq.List.ListNotations.
 
 (** Obtains the list of constructors of a type I from a type of the
    form A1 -> ... -> An -> I *)
@@ -9,7 +10,7 @@ Definition get_constrs :=
     | [? A B] A -> B => fill B
     | [? A (P:A->Type)] forall x:A, P x =>
       name <- M.fresh_binder_name T;
-      M.nu name None (fun x=>
+      M.nu name MetaCoq.Datatypes.None (fun x=>
         fill (P x)
       )
     | _ =>
@@ -49,8 +50,8 @@ Definition elim0 : tactic :=
   A <- M.evar Type;
   intro_base m (fun x:A=>elim x).
 
-Definition rrewrite {A} (x: A) := trewrite RightRewrite [Dyn x].
-Definition lrewrite {A} (x: A) := trewrite LeftRewrite [Dyn x].
+Definition rrewrite {A} (x: A) := trewrite RightRewrite [mc:Dyn x]%list.
+Definition lrewrite {A} (x: A) := trewrite LeftRewrite [mc:Dyn x]%list.
 
 Goal forall n, n + 0 = n.
 MProof.
@@ -197,10 +198,10 @@ Require Import Strings.String.
 
 Definition remember {A} (x:A) (def eq : string) : tactic :=
   cpose_base def x (fun y:A=>
-    cassert_base eq (fun H: y = x =>lrewrite H) &> [reflexivity; idtac]).
+    cassert_base eq (fun H: y = x =>lrewrite H) &> [mc:reflexivity; idtac]).
 
 Ltac ind H := induction H.
-Definition induction {A} (x:A) := ltac "ConstrSelector.ind" [Dyn x].
+Definition induction {A} (x:A) := ltac "ConstrSelector.ind" [mc:Dyn x].
 
 Lemma WHILE_true_nonterm : forall b c st st',
      bequiv b BTrue ->

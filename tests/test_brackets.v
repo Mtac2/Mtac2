@@ -22,12 +22,12 @@ MProof.
 Qed.
 
 Require Import MetaCoq.ImportedTactics.
-Require Import Lists.List.
+Require Import MetaCoq.List.
 Import ListNotations.
 
 Theorem plus_n_O : forall n:nat, n = n + 0.
 MProof.
-  intros n. induction n asp [ []; ["n'"; "IHn'"]].
+  intros n. induction n asp [mc: [mc:]; [mc:"n'"; "IHn'"]].
   - (* n = 0 *) reflexivity.
   - (* n = S n' *) simpl. rewrite <- IHn'.
   reflexivity.

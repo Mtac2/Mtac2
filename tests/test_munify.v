@@ -1,4 +1,4 @@
-Require Import MetaCoq.MetaCoq.
+Require Import MetaCoq.Logic MetaCoq.Datatypes MetaCoq.MetaCoq.
 
 Definition test {A} (o : M (option A)) : M _ :=
   o <- o;

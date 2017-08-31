@@ -1,4 +1,4 @@
-From MetaCoq Require Import MetaCoq.
+From MetaCoq Require Import Datatypes MetaCoq.
 
 Require Import Lists.List.
 Import ListNotations.
@@ -65,7 +65,7 @@ Qed.
 
 Example reduce_BetaDeltaIota : unit.
 MProof.
-let x := reduce (RedWhd [RedBeta;RedDelta;RedMatch]) (elem (Dyn (let t := tt in t))) in
+let x := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (elem (Dyn (let t := tt in t))) in
 assert_eq x (let t := tt in t).
 Qed.
 
@@ -74,7 +74,7 @@ Section ASection.
 
 Example reduce_BetaDeltaIotaP : unit.
 MProof.
-let x := reduce (RedWhd [RedBeta;RedDelta;RedMatch]) (elem (Dyn (fst (p, tt)))) in
+let x := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (elem (Dyn (fst (p, tt)))) in
 assert_eq x 0.
 Qed.
 
@@ -109,7 +109,7 @@ Example reduction_only : unit.
 MProof.
   (e <- M.evar unit;
   n <- M.evar nat;
-  let x := reduce (RedStrong [RedDeltaOnly [Dyn (@id)]])
+  let x := reduce (RedStrong [rl:RedDeltaOnly [rl:Dyn (@id)]])
     (id ((fun x:nat=>x) n)) in
   assert_eq x ((fun A (x:A)=>x) nat ((fun x:nat=>x) n)))%MC.
   M.ret tt.
@@ -126,7 +126,7 @@ MProof.
     assert_eq x ((fun A (x:A)=>x) nat ((fun x=>x) (n + 0))))%MC.
   (e <- M.evar unit;
   n <- M.evar nat;
-  let x := reduce (RedStrong [RedBeta; RedDeltaOnly [Dyn (@id)]])
+  let x := reduce (RedStrong [rl:RedBeta; RedDeltaOnly [rl:Dyn (@id)]])
     (id ((fun x=>x)) (n+0)) in
   M.ret tt)%MC.
   M.ret tt.
@@ -136,7 +136,7 @@ Example reduction_but : unit.
 MProof.
   (e <- M.evar unit;
   n <- M.evar nat;
-  let x := reduce (RedStrong [RedBeta;RedMatch;RedFix;RedDeltaBut [Dyn (@id)]])
+  let x := reduce (RedStrong [rl:RedBeta;RedMatch;RedFix;RedDeltaBut [rl:Dyn (@id)]])
     (id (fun x=>x) ((fun x=>x) (0 + n))) in
   assert_eq x (id (fun x=>x) n))%MC.
   M.ret tt. M.ret 0.

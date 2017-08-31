@@ -25,10 +25,9 @@ Open Scope list_scope.
 (** Standard notations for lists.
 In a special module to avoid conflicts. *)
 Module ListNotations.
-Notation "[ ]" := nil (format "[ ]") : list_scope.
-Notation "[ x ]" := (cons x nil) : list_scope.
-Notation "[ x ; y ; .. ; z ]" :=  (cons x (cons y .. (cons z nil) ..)) : list_scope.
-Notation "[ x ; .. ; y ]" := (cons x .. (cons y nil) ..) (compat "8.4") : list_scope.
+Notation "[mc: ]" := nil (format "[mc: ]") : list_scope.
+Notation "[mc: x ]" := (cons x nil) : list_scope.
+Notation "[mc: x ; y ; .. ; z ]" :=  (cons x (cons y .. (cons z nil) ..)) : list_scope.
 End ListNotations.
 
 Import ListNotations.
@@ -41,26 +40,26 @@ Section Lists.
 
   Definition hd (default:A) (l:list A) :=
     match l with
-      | [] => default
+      | [mc:] => default
       | x :: _ => x
     end.
 
   Definition hd_error (l:list A) :=
     match l with
-      | [] => None
+      | [mc:] => None
       | x :: _ => Some x
     end.
 
   Definition tl (l:list A) :=
     match l with
-      | [] => nil
+      | [mc:] => nil
       | a :: m => m
     end.
 
   (** The [In] predicate *)
   Fixpoint In (a:A) (l:list A) : Prop :=
     match l with
-      | [] => False
+      | [mc:] => False
       | b :: m => b = a \/ In a m
     end.
 
@@ -74,7 +73,7 @@ Section Facts.
   (** *** Generic facts *)
 
   (** Discrimination *)
-  Theorem nil_cons : forall (x:A) (l:list A), [] <> x :: l.
+  Theorem nil_cons : forall (x:A) (l:list A), [mc:] <> x :: l.
   Proof.
     intros; discriminate.
   Qed.
@@ -82,7 +81,7 @@ Section Facts.
 
   (** Destruction *)
 
-  Theorem destruct_list : forall l : list A, {x:A & {tl:list A | l = x::tl}}+{l = []}.
+  Theorem destruct_list : forall l : list A, {x:A & {tl:list A | l = x::tl}}+{l = [mc:]}.
   Proof.
     induction l as [|a tail].
     right; reflexivity.
@@ -102,7 +101,7 @@ Section Facts.
   Proof. unfold hd_error. destruct l; now discriminate. Qed.
 
   Theorem length_zero_iff_nil (l : list A):
-    length l = 0 <-> l=[].
+    length l = 0 <-> l=[mc:].
   Proof.
     split; [now destruct l | now intros ->].
   Qed.
@@ -143,7 +142,7 @@ Section Facts.
     simpl. intuition.
   Qed.
 
-  Theorem in_nil : forall a:A, ~ In a [].
+  Theorem in_nil : forall a:A, ~ In a [mc:].
   Proof.
     unfold not; intros a H; inversion_clear H.
   Qed.
@@ -152,7 +151,7 @@ Section Facts.
   Proof.
   induction l; simpl; destruct 1.
   subst a; auto.
-  exists [], l; auto.
+  exists [mc:], l; auto.
   destruct (IHl H) as (l1,(l2,H0)).
   exists (a::l1), l2; simpl. apply f_equal. auto.
   Qed.
@@ -181,7 +180,7 @@ Section Facts.
   (**************************)
 
   (** Discrimination *)
-  Theorem app_cons_not_nil : forall (x y:list A) (a:A), [] <> x ++ a :: y.
+  Theorem app_cons_not_nil : forall (x y:list A) (a:A), [mc:] <> x ++ a :: y.
   Proof.
     unfold not.
     destruct x as [| a l]; simpl; intros.
@@ -191,19 +190,19 @@ Section Facts.
 
 
   (** Concat with [nil] *)
-  Theorem app_nil_l : forall l:list A, [] ++ l = l.
+  Theorem app_nil_l : forall l:list A, [mc:] ++ l = l.
   Proof.
     reflexivity.
   Qed.
 
-  Theorem app_nil_r : forall l:list A, l ++ [] = l.
+  Theorem app_nil_r : forall l:list A, l ++ [mc:] = l.
   Proof.
     induction l; simpl; f_equal; auto.
   Qed.
 
   (* begin hide *)
   (* Deprecated *)
-  Theorem app_nil_end : forall (l:list A), l = l ++ [].
+  Theorem app_nil_end : forall (l:list A), l = l ++ [mc:].
   Proof. symmetry; apply app_nil_r. Qed.
   (* end hide *)
 
@@ -230,7 +229,7 @@ Section Facts.
 
   (** Facts deduced from the result of a concatenation *)
 
-  Theorem app_eq_nil : forall l l':list A, l ++ l' = [] -> l = [] /\ l' = [].
+  Theorem app_eq_nil : forall l l':list A, l ++ l' = [mc:] -> l = [mc:] /\ l' = [mc:].
   Proof.
     destruct l as [| x l]; destruct l' as [| y l']; simpl; auto.
     intro; discriminate.
@@ -239,7 +238,7 @@ Section Facts.
 
   Theorem app_eq_unit :
     forall (x y:list A) (a:A),
-      x ++ y = [a] -> x = [] /\ y = [a] \/ x = [a] /\ y = [].
+      x ++ y = [mc:a] -> x = [mc:] /\ y = [mc:a] \/ x = [mc:a] /\ y = [mc:].
   Proof.
     destruct x as [| a l]; [ destruct y as [| a l] | destruct y as [| a0 l0] ];
       simpl.
@@ -251,12 +250,12 @@ Section Facts.
     rewrite -> E; auto.
     intros.
     injection H as H H0.
-    assert ([] = l ++ a0 :: l0) by auto.
+    assert ([mc:] = l ++ a0 :: l0) by auto.
     apply app_cons_not_nil in H1 as [].
   Qed.
 
   Lemma app_inj_tail :
-    forall (x y:list A) (a b:A), x ++ [a] = y ++ [b] -> x = y /\ a = b.
+    forall (x y:list A) (a b:A), x ++ [mc:a] = y ++ [mc:b] -> x = y /\ a = b.
   Proof.
     induction x as [| x l IHl];
       [ destruct y as [| a l] | destruct y as [| a l0] ];
@@ -269,7 +268,7 @@ Section Facts.
       apply app_cons_not_nil in H0 as [].
     - intros a b H.
       injection H as H1 H0.
-      assert ([] = l ++ [a]) by auto.
+      assert ([mc:] = l ++ [mc:a]) by auto.
       apply app_cons_not_nil in H as [].
     - intros a0 b H.
       injection H as <- H0.
@@ -365,7 +364,7 @@ Section Elts.
     match n, l with
       | O, x :: l' => x
       | O, other => default
-      | S m, [] => default
+      | S m, [mc:] => default
       | S m, x :: t => nth m t default
     end.
 
@@ -373,7 +372,7 @@ Section Elts.
     match n, l with
       | O, x :: l' => true
       | O, other => false
-      | S m, [] => false
+      | S m, [mc:] => false
       | S m, x :: t => nth_ok m t default
     end.
 
@@ -548,7 +547,7 @@ Section Elts.
 
   Fixpoint remove (x : A) (l : list A) : list A :=
     match l with
-      | [] => []
+      | [mc:] => [mc:]
       | y::tl => if (eq_dec x y) then remove x tl else y::(remove x tl)
     end.
 
@@ -571,8 +570,8 @@ Section Elts.
 
   Fixpoint last (l:list A) (d:A) : A :=
   match l with
-    | [] => d
-    | [a] => a
+    | [mc:] => d
+    | [mc:a] => a
     | a :: l => last l d
   end.
 
@@ -580,13 +579,13 @@ Section Elts.
 
   Fixpoint removelast (l:list A) : list A :=
     match l with
-      | [] =>  []
-      | [a] => []
+      | [mc:] =>  [mc:]
+      | [mc:a] => [mc:]
       | a :: l => a :: removelast l
     end.
 
   Lemma app_removelast_last :
-    forall l d, l <> [] -> l = removelast l ++ [last l d].
+    forall l d, l <> [mc:] -> l = removelast l ++ [mc:last l d].
   Proof.
     induction l.
     destruct 1; auto.
@@ -596,25 +595,25 @@ Section Elts.
   Qed.
 
   Lemma exists_last :
-    forall l, l <> [] -> { l' : (list A) & { a : A | l = l' ++ [a]}}.
+    forall l, l <> [mc:] -> { l' : (list A) & { a : A | l = l' ++ [mc:a]}}.
   Proof.
     induction l.
     destruct 1; auto.
     intros _.
     destruct l.
-    exists [], a; auto.
+    exists [mc:], a; auto.
     destruct IHl as [l' (a',H)]; try discriminate.
     rewrite H.
     exists (a::l'), a'; auto.
   Qed.
 
   Lemma removelast_app :
-    forall l l', l' <> [] -> removelast (l++l') = l ++ removelast l'.
+    forall l l', l' <> [mc:] -> removelast (l++l') = l ++ removelast l'.
   Proof.
     induction l.
     simpl; auto.
     simpl; intros.
-    assert (l++l' <> []).
+    assert (l++l' <> [mc:]).
     destruct l.
     simpl; auto.
     simpl; discriminate.
@@ -629,7 +628,7 @@ Section Elts.
 
   Fixpoint count_occ (l : list A) (x : A) : nat :=
     match l with
-      | [] => 0
+      | [mc:] => 0
       | y :: tl =>
         let n := count_occ tl x in
         if eq_dec y x then S n else n
@@ -648,13 +647,13 @@ Section Elts.
     rewrite count_occ_In. unfold gt. now rewrite Nat.nlt_ge, Nat.le_0_r.
   Qed.
 
-  Lemma count_occ_nil x : count_occ [] x = 0.
+  Lemma count_occ_nil x : count_occ [mc:] x = 0.
   Proof.
     reflexivity.
   Qed.
 
   Theorem count_occ_inv_nil l :
-    (forall x:A, count_occ l x = 0) <-> l = [].
+    (forall x:A, count_occ l x = 0) <-> l = [mc:].
   Proof.
     split.
     - induction l as [|x l]; trivial.
@@ -691,8 +690,8 @@ Section ListOps.
 
   Fixpoint rev (l:list A) : list A :=
     match l with
-      | [] => []
-      | x :: l' => rev l' ++ [x]
+      | [mc:] => [mc:]
+      | x :: l' => rev l' ++ [mc:x]
     end.
 
   Lemma rev_app_distr : forall x y:list A, rev (x ++ y) = rev y ++ rev x.
@@ -711,10 +710,10 @@ Section ListOps.
     rewrite app_assoc; trivial.
   Qed.
 
-  Remark rev_unit : forall (l:list A) (a:A), rev (l ++ [a]) = a :: rev l.
+  Remark rev_unit : forall (l:list A) (a:A), rev (l ++ [mc:a]) = a :: rev l.
   Proof.
     intros.
-    apply (rev_app_distr l [a]); simpl; auto.
+    apply (rev_app_distr l [mc:a]); simpl; auto.
   Qed.
 
   Lemma rev_involutive : forall l:list A, rev (rev l) = l.
@@ -779,11 +778,11 @@ Section ListOps.
 
   Fixpoint rev_append (l l': list A) : list A :=
     match l with
-      | [] => l'
+      | [mc:] => l'
       | a::l => rev_append l (a::l')
     end.
 
-  Definition rev' l : list A := rev_append l [].
+  Definition rev' l : list A := rev_append l [mc:].
 
   Lemma rev_append_rev : forall l l', rev_append l l' = rev l ++ l'.
   Proof.
@@ -791,7 +790,7 @@ Section ListOps.
     rewrite <- app_assoc; firstorder.
   Qed.
 
-  Lemma rev_alt : forall l, rev l = rev_append l [].
+  Lemma rev_alt : forall l, rev l = rev_append l [mc:].
   Proof.
     intros; rewrite rev_append_rev.
     rewrite app_nil_r; trivial.
@@ -806,7 +805,7 @@ Section ListOps.
 
     Lemma rev_list_ind :
       forall P:list A-> Prop,
-	P [] ->
+	P [mc:] ->
 	(forall (a:A) (l:list A), P (rev l) -> P (rev (a :: l))) ->
 	forall l:list A, P (rev l).
     Proof.
@@ -815,8 +814,8 @@ Section ListOps.
 
     Theorem rev_ind :
       forall P:list A -> Prop,
-	P [] ->
-	(forall (x:A) (l:list A), P l -> P (l ++ [x])) -> forall l:list A, P l.
+	P [mc:] ->
+	(forall (x:A) (l:list A), P l -> P (l ++ [mc:x])) -> forall l:list A, P l.
     Proof.
       intros.
       generalize (rev_involutive l).
@@ -884,7 +883,7 @@ Section Map.
 
   Fixpoint map (l:list A) : list B :=
     match l with
-      | [] => []
+      | [mc:] => [mc:]
       | a :: t => (f a) :: (map t)
     end.
 
@@ -935,7 +934,7 @@ Section Map.
     rewrite IHl; auto.
   Qed.
 
-  Lemma map_eq_nil : forall l, map l = [] -> l = [].
+  Lemma map_eq_nil : forall l, map l = [mc:] -> l = [mc:].
   Proof.
     destruct l; simpl; reflexivity || discriminate.
   Qed.
@@ -1278,7 +1277,7 @@ End Fold_Right_Recursor.
   Qed.
 
   Theorem partition_inv_nil (l : list A):
-    partition l = ([], []) <-> l = [].
+    partition l = ([mc:], [mc:]) <-> l = [mc:].
   Proof.
     split.
     - destruct l as [|a l'].
@@ -1314,7 +1313,7 @@ End Fold_Right_Recursor.
 
     Fixpoint split (l:list (A*B)) : list A * list B :=
       match l with
-	| [] => ([], [])
+	| [mc:] => ([mc:], [mc:])
 	| (x,y) :: tl => let (left,right) := split tl in (x::left, y::right)
       end.
 
@@ -1634,7 +1633,7 @@ Section Cutting.
 	       end
     end.
 
-  Lemma firstn_nil n: firstn n [] = [].
+  Lemma firstn_nil n: firstn n [mc:] = [mc:].
   Proof. induction n; now simpl. Qed.
 
   Lemma firstn_cons n a l: firstn (S n) (a::l) = a :: (firstn n l).
@@ -1652,7 +1651,7 @@ Section Cutting.
       * simpl. intro H. apply Peano.le_S_n in H. f_equal. apply iHk, H.
   Qed.
 
-  Lemma firstn_O l: firstn 0 l = [].
+  Lemma firstn_O l: firstn 0 l = [mc:].
   Proof. now simpl. Qed.
 
   Lemma firstn_le_length n: forall l:list A, length (firstn n l) <= n.
@@ -1876,7 +1875,7 @@ Section ReDun.
 
   Fixpoint nodup (l : list A) : list A :=
     match l with
-      | [] => []
+      | [mc:] => [mc:]
       | x::xs => if in_dec decA x xs then nodup xs else x::(nodup xs)
     end.
 
@@ -2139,7 +2138,7 @@ Section Exists_Forall.
     Qed.
 
     Lemma Forall_rect : forall (Q : list A -> Type),
-      Q [] -> (forall b l, P b -> Q (b :: l)) -> forall l, Forall l -> Q l.
+      Q [mc:] -> (forall b l, P b -> Q (b :: l)) -> forall l, Forall l -> Q l.
     Proof.
       intros Q H H'; induction l; intro; [|eapply H', Forall_inv]; eassumption.
     Qed.
@@ -2210,13 +2209,13 @@ Section Forall2.
   Variable R : A -> B -> Prop.
 
   Inductive Forall2 : list A -> list B -> Prop :=
-    | Forall2_nil : Forall2 [] []
+    | Forall2_nil : Forall2 [mc:] [mc:]
     | Forall2_cons : forall x y l l',
       R x y -> Forall2 l l' -> Forall2 (x::l) (y::l').
 
   Hint Constructors Forall2.
 
-  Theorem Forall2_refl : Forall2 [] [].
+  Theorem Forall2_refl : Forall2 [mc:] [mc:].
   Proof. intros; apply Forall2_nil. Qed.
 
   Theorem Forall2_app_inv_l : forall l1 l2 l',
@@ -2224,7 +2223,7 @@ Section Forall2.
     exists l1' l2', Forall2 l1 l1' /\ Forall2 l2 l2' /\ l' = l1' ++ l2'.
   Proof.
     induction l1; intros.
-      exists [], l'; auto.
+      exists [mc:], l'; auto.
       simpl in H; inversion H; subst; clear H.
       apply IHl1 in H4 as (l1' & l2' & Hl1 & Hl2 & ->).
       exists (y::l1'), l2'; simpl; auto.
@@ -2235,7 +2234,7 @@ Section Forall2.
     exists l1 l2, Forall2 l1 l1' /\ Forall2 l2 l2' /\ l = l1 ++ l2.
   Proof.
     induction l1'; intros.
-      exists [], l; auto.
+      exists [mc:], l; auto.
       simpl in H; inversion H; subst; clear H.
       apply IHl1' in H4 as (l1 & l2 & Hl1 & Hl2 & ->).
       exists (x::l1), l2; simpl; auto.
@@ -2374,7 +2373,7 @@ Section Repeat.
   Variable A : Type.
   Fixpoint repeat (x : A) (n: nat ) :=
     match n with
-      | O => []
+      | O => [mc:]
       | S k => x::(repeat x k)
     end.
 

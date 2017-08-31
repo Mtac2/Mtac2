@@ -1,6 +1,8 @@
 Require Import MetaCoq.MetaCoq.
 Import T.
 Require Import Bool.Bool.
+Require Import Lists.List.
+Import MetaCoq.List.ListNotations.
 
 (** This file contains several examples showing the different
     tactics in MetaCoq. Many are taken from SF. *)
@@ -27,7 +29,7 @@ Qed.
 Theorem tl_length_pred : forall l: list nat,
   pred (length l) = length (tl l).
 MProof.
-  destructn 0 asp [ [] ; ["n"; "l'"] ].
+  destructn 0 asp ([mc: [mc:] ; [mc:"n"; "l'"] ])%list.
   - (* l = nil *)
     reflexivity.
   - (* l = cons n l' *)
@@ -107,17 +109,17 @@ Ltac apply_one_of l :=
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 Proof.
   intros.
-  repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
+  repeat (apply_one_of (Dyn in_eq :: Dyn in_cons :: nil)).
 Qed.
 
 Definition apply_one_of l : tactic :=
-  fold_left (fun a b=>a or (apply (elem b))) l (raise exception).
+  MetaCoq.List.fold_left (fun a b=>a or (apply (elem b))) l (raise exception).
 
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 MProof.
-  Time intros;; repeat (apply_one_of [Dyn in_eq; Dyn in_cons]).
+  Time intros;; T.repeat (apply_one_of [mc:Dyn in_eq; Dyn in_cons]).
 Qed.
-
+Import Coq.Lists.List.ListNotations.
 Example trans_eq_example' : forall (a b c d e f : nat),
      [a;b] = [c;d] ->
      [c;d] = [e;f] ->
