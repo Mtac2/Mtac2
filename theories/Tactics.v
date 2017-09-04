@@ -544,12 +544,35 @@ Definition right : tactic := fun g=>
   end.
 
 Inductive goal_pattern : Type :=
-| gbase : forall {A}, A -> tactic -> goal_pattern
+| gbase : Type -> tactic -> goal_pattern
+| gbase_context : forall {A}, A -> ((A -> Type) -> tactic) -> goal_pattern
 | gtele : forall {C}, (C -> goal_pattern) -> goal_pattern
 | gtele_evar : forall {C}, (C -> goal_pattern) -> goal_pattern.
 
 Definition DoesNotMatchGoal : Exception. exact exception. Qed.
 Definition NoPatternMatchesGoal : Exception. exact exception. Qed.
+
+Definition match_goal_context
+    {A} (x : A) : forall {B}, B -> ((A -> B) -> tactic) -> tactic :=
+  mfix4 go (B : Type) (y : B) (t : (A -> B) -> tactic) (g : goal) : M (list goal) :=
+  let recur := fun {B} (y : B) (t : (A -> B) -> tactic) =>
+    mmatch y with
+    | [? A' (h : A' -> B) z] h z =n>
+      mtry go _ z (fun C => t (fun a => h (C a))) g with
+      | DoesNotMatchGoal => go _ h (fun C => t (fun a => C a z)) g
+      end
+    | _ => raise DoesNotMatchGoal
+    end in
+  oeqAB <- munify B A UniMatchNoRed;
+  match oeqAB with
+  | Some eqAB =>
+    let 'eq_refl := eq_sym eqAB in fun (y : A) t =>
+    mif munify_cumul x y UniMatchNoRed then
+      let term := reduce (RedStrong [RedBeta]) (t (fun a => a) g) in
+      term
+    else recur y t
+  | None => recur
+  end y t.
 
 Fixpoint match_goal_pattern'
     (u : Unification) (p : goal_pattern) : list Hyp -> list Hyp -> tactic :=
@@ -559,6 +582,9 @@ Fixpoint match_goal_pattern'
     gT <- goal_type g;
     mif munify_cumul P gT u then t g
     else raise DoesNotMatchGoal
+  | gbase_context x t, _ =>
+    gT <- goal_type g;
+    match_goal_context x gT t g
   | @gtele C f, (@ahyp A a d :: l2') =>
     oeqCA <- munify C A u;
     match oeqCA with
@@ -973,20 +999,32 @@ Notation "t 'asp' n" := (tactic_tactics t (name_pattern n)) (at level 40).
 Notation "[[ |- ps ] ] => t" :=
   (gbase ps t)
   (at level 202, ps at next level) : match_goal_pattern_scope.
-
 Notation "[[? a .. b | x .. y |- ps ] ] => t" :=
   (gtele_evar (fun a => .. (gtele_evar (fun b =>
      gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))).. ))
   (at level 202, a binder, b binder,
    x binder, y binder, ps at next level) : match_goal_pattern_scope.
-
 Notation "[[? a .. b |- ps ] ] => t" :=
   (gtele_evar (fun a => .. (gtele_evar (fun b => gbase ps t)).. ))
   (at level 202, a binder, b binder, ps at next level) : match_goal_pattern_scope.
-
 Notation "[[ x .. y |- ps ] ] => t" :=
   (gtele (fun x=> .. (gtele (fun y=>gbase ps t)).. ))
   (at level 202, x binder, y binder, ps at next level) : match_goal_pattern_scope.
+
+Notation "[[ |- 'context' C [ ps ] ] ] => t" :=
+  (gbase_context ps (fun C => t))
+  (at level 202, C at level 0, ps at next level) : match_goal_pattern_scope.
+Notation "[[? a .. b | x .. y |- 'context' C [ ps ] ] ] => t" :=
+  (gtele_evar (fun a => .. (gtele_evar (fun b =>
+     gtele (fun x=> .. (gtele (fun y => gbase_context ps (fun C => t))).. ))).. ))
+  (at level 202, a binder, b binder,
+   x binder, y binder, C at level 0, ps at next level) : match_goal_pattern_scope.
+Notation "[[? a .. b |- 'context' C [ ps ] ] ] => t" :=
+  (gtele_evar (fun a => .. (gtele_evar (fun b => gbase_context ps (fun C => t))).. ))
+  (at level 202, a binder, b binder, C at level 0, ps at next level) : match_goal_pattern_scope.
+Notation "[[ x .. y |- 'context' C [ ps ] ] ] => t" :=
+  (gtele (fun x=> .. (gtele (fun y => gbase_context ps (fun C => t))).. ))
+  (at level 202, x binder, y binder, C at level 0, ps at next level) : match_goal_pattern_scope.
 
 Delimit Scope match_goal_pattern_scope with match_goal_pattern.
 
