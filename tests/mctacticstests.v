@@ -91,7 +91,7 @@ MProof.
 Qed.
 
 Require Import Coq.omega.Omega.
-Definition omega := ltac "Coq.omega.Omega.omega" MetaCoq.Datatypes.nil.
+Definition omega := ltac "Coq.omega.Omega.omega" Coq.Init.Datatypes.nil.
 
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.

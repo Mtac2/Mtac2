@@ -10,7 +10,7 @@ Definition get_constrs :=
     | [? A B] A -> B => fill B
     | [? A (P:A->Type)] forall x:A, P x =>
       name <- M.fresh_binder_name T;
-      M.nu name MetaCoq.Datatypes.None (fun x=>
+      M.nu name Coq.Init.Datatypes.None (fun x=>
         fill (P x)
       )
     | _ =>
