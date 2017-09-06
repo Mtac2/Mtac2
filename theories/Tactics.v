@@ -967,13 +967,20 @@ Definition assumption : tactic :=
 
 (** Given a type [T] it searches for a hypothesis with that type and
     executes the [cont]inuation on it.  *)
-Definition select (T : Type) (cont : T -> tactic) : tactic :=
+Definition select {B} (T : Type) (cont : T -> gtactic B) : gtactic B :=
   A <- goal_type;
   match_goal with [[ x : T |- A ]] => cont x end.
 
 (** generalize with clear *)
 Definition move_back {A} (x : A) (cont : tactic) : tactic :=
   generalize x ;; cclear x cont.
+
+Definition first {B} : list (gtactic B) -> gtactic B :=
+  fix go l : gtactic B :=
+    match l with
+    | nil => T.raise NoProgress
+    | (x :: xs) => x or go xs
+    end.
 End T.
 
 Coercion T.of_M : M >-> gtactic.
