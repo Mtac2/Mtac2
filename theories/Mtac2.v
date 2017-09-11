@@ -216,7 +216,7 @@ Inductive t : Type -> Prop :=
    [x]. *)
 | nu : forall {A : Type} {B : Type}, string -> option A -> (A -> t B) -> t B
 
-(** [abs_fun x e] abstracts variable [x] from [e]. It raises [NotAVar[] if [x]
+(** [abs_fun x e] abstracts variable [x] from [e]. It raises [NotAVar] if [x]
     is not a variable, or [AbsDependencyError] if [e] or its type [P] depends on
     a variable also depending on [x]. *)
 | abs_fun : forall {A : Type} {P : A -> Type} (x : A), P x -> t (forall x, P x)
@@ -249,7 +249,7 @@ Inductive t : Type -> Prop :=
     [CannotRemoveVar "x"] if [t] or the environment depends on [x]. *)
 | remove : forall {A : Type} {B : Type}, A -> t B -> t B
 
-(** [evar A ohyps] creates a meta-variable with type [A] and,
+(** [gen_evar A ohyps] creates a meta-variable with type [A] and,
     optionally, in the context resulting from [ohyp].
 
     It might raise [HypMissesDependency] if some variable in [ohyp]
