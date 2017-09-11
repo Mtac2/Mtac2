@@ -42,3 +42,12 @@ MProof.
   with RefNotFound "H" => T.apply myle0n
   end.
 Qed.
+
+Goal forall x, 0 <= x.
+MProof.
+  H <- M.get_reference "Peano.le_0_n";
+  T.exact H.(elem).
+Fail Qed.
+(* it rightfully complains that the universe in elem is not compatible with the one from H.
+   This is why it should be destroyed as done previously. *)
+Abort.
