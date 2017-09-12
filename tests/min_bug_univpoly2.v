@@ -5,6 +5,7 @@
 Axiom proof_admitted : False.
 Tactic Notation "admit" := abstract case proof_admitted.
 
+(* commenting this makes it work *)
 Set Universe Polymorphism.
 
 Inductive list (A : Type) : Type :=
@@ -65,7 +66,7 @@ Notation M := t.
 Definition gtactic (A : Type) := goal -> M (list (A * goal)).
 Notation tactic := (gtactic unit).
 
-Definition exact {A} (x:A) : tactic := fun g =>
+Fail Definition exact {A} (x:A) : tactic := fun g =>
   match g with
   | Goal g => cumul_or_fail x g;; ret [m:]
   end.

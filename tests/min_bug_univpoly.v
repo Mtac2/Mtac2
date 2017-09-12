@@ -3,7 +3,9 @@
 (* coqc version 8.6.1 (August 2017) compiled on Aug 8 2017 15:55:58 with OCaml 4.02.3
    coqtop version blackbox:/home/janno/.opam/ra-gps/build/coq.8.6.dev,master (6dbffe1db990966321ce47fede1840252dc67688) *)
 
+(* commenting this makes it work *)
 Set Universe Polymorphism.
+
 Unset Universe Minimization ToSet.
 Module Export AdmitTactic.
 Module Import LocalFalse.
@@ -474,29 +476,11 @@ Definition exact {A} (x:A) : tactic := fun g =>
   | _ => raise NotAGoal
   end.
 
-Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := fun g =>
+Fail Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := fun g =>
   mmatch g with
-  (* | [? B (def: B) P e] @Goal (let x := def in P x) e =n> *)
-  (*   eqBA <- unify_or_fail B A; *)
-  (*   nu var (Some def) (fun x=> *)
-  (*     let Px := reduce (RedWhd [rl:RedBeta]) (P x) in *)
-  (*     e' <- evar Px; *)
-  (*     nG <- abs_let (P:=P) x def e'; *)
-  (*     exact nG g;; *)
-  (*     let x := reduce (RedWhd [rl:RedMatch]) (match eqBA with eq_refl => x end) in *)
-  (*     t x (Goal e') >>= let_close_goals x) *)
   | [? P e] @Goal (forall x:A, P x) e =u>
     @nu nat _ var None (fun x=>
-      (* let Px := reduce (RedWhd [rl:RedBeta]) (P x) in *)
-      (* e' <- evar Px; *)
-      (* nG <- abs_fun (P:=P) x e'; *)
                           exact nat g;;
-(* (((fun A (x:A) (g : goal) => *)
-(*   match g with *)
-(*   | Goal g => cumul_or_fail x g;; ret [m:] *)
-(*   | _ => raise NotAGoal *)
-(*   end) : forall A : Type, A -> tactic) _ nat g);; *)
-                                raise exception)
-      (* t x (Goal e') >>= close_goals x) *)
+                               raise exception)
     | _ => raise NotAProduct
   end.
