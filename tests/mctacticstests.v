@@ -30,12 +30,12 @@ Qed.
 Goal forall b : bool, b = b.
 MProof.
   intro b.
-  - destruct b &> [mc:reflexivity; reflexivity]%list.
+  - destruct b &> [m:reflexivity| reflexivity]%list.
 Qed.
 
 Goal forall b1 : bool, b1 = b1.
 MProof.
-  intro b1 &> [mc:reflexivity]%list.
+  intro b1 &> [m:reflexivity]%list.
 Qed.
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.
@@ -147,7 +147,7 @@ Definition transitivity := "Coq.Init.Notations.transitivity".
 Lemma test6 : forall (x y z : Prop), x = y -> y = z -> x = z.
 MProof.
   intros x y z H G.
-  ltac transitivity [mc:Dyn y].
+  ltac transitivity [m:Dyn y].
   ltac "Coq.Init.Notations.revgoals" MetaCoq.List.nil.
   exact H.
   exact G.
@@ -392,7 +392,7 @@ Example intros_def': let x := 0 in forall y, x <= y.
 MProof.
   intros x y.
   Ltac ind x :=induction x.
-  ltac "mctacticstests.ind" [mc:Dyn y];; apply le_0_n.
+  ltac "mctacticstests.ind" [m:Dyn y];; apply le_0_n.
 Qed.
 
 Example test_unfold : id 0 = 0.

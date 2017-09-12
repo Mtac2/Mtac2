@@ -214,12 +214,12 @@ Fixpoint get_type_of_branch {isort} {rsort} {it : ITele isort} (rt : RTele rsort
 Definition NotEnoughArguments : Exception. exact exception. Qed.
 Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
     match max with
-    | 0 => fun _ => M.ret [mc:]
+    | 0 => fun _ => M.ret [m:]
     | S max => fun d=>
       mmatch d with
       | [? T Q (t : T) (f : T -> Q)] Dyn (f t) =>
          r <- args_of_max max (Dyn f);
-         M.ret (app r [mc:Dyn t])
+         M.ret (app r [m:Dyn t])
       | _ =>
         T <- M.evar Type;
         P <- M.evar (T -> Type);
@@ -238,7 +238,7 @@ Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
     it returns the [ATele] describing the applied version of [it] with [al]. *)
 Program Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn) {struct al} : M (ATele it) :=
     match it as it', al return M (ATele it') with
-    | iBase T, [mc:] => M.ret (@aBase _ T)
+    | iBase T, [m:] => M.ret (@aBase _ T)
     | iTele f, t_dyn :: al =>
       (* We coerce the type of the element in [t_dyn] to match that expected by f *)
       t <- M.coerce (elem t_dyn);

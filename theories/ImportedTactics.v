@@ -30,7 +30,7 @@ Ltac tauto' := tauto.
 Definition tauto : tactic := T.ltac (qualify "tauto'") nil.
 
 Ltac unfold x := unfold x.
-Definition unfold {A} (x: A) := T.ltac (qualify "unfold") [mc:Dyn x].
+Definition unfold {A} (x: A) := T.ltac (qualify "unfold") [m:Dyn x].
 
 Ltac rrewrite1 a := rewrite a.
 Ltac rrewrite2 a b := rewrite a, b.
@@ -40,12 +40,12 @@ Ltac rrewrite5 a b c d e := rewrite a, b, c, d, e.
 
 Definition compute_terminator {A} (l: list A) : M string :=
   match l with
-  | [mc:] => M.failwith "At least one required"
-  | [mc:_] => M.ret "1"
-  | [mc:_;_] => M.ret "2"
-  | [mc:_;_;_] => M.ret "3"
-  | [mc:_;_;_;_] => M.ret "4"
-  | [mc:_;_;_;_;_] => M.ret "5"
+  | [m:] => M.failwith "At least one required"
+  | [m:_ & [m:]] => M.ret "1"
+  | [m: _ & [m:_]] => M.ret "2"
+  | [m:_ & [m:_ & [m:_]]] => M.ret "3"
+  | [m:_ & [m:_ & [m:_ & [m:_]]]] => M.ret "4"
+  | [m:_ & [m:_ & [m:_ & [m:_ & [m:_]]]]] => M.ret "5"
   | _ => M.failwith "Unsupported"
   end%string.
 
@@ -80,12 +80,12 @@ Definition elim {A} (x:A) : tactic :=
 Notation induction := elim.
 
 Definition injection {A} (x: A) : tactic :=
-  T.ltac ("Coq.Init.Notations.injection") [mc:Dyn x].
+  T.ltac ("Coq.Init.Notations.injection") [m:Dyn x].
 
 Ltac inversion H := inversion H.
 Definition inversion {A} (x: A) : tactic :=
-  T.ltac (qualify "inversion") [mc:Dyn x].
+  T.ltac (qualify "inversion") [m:Dyn x].
 
 Ltac typeclasses_eauto := typeclasses eauto.
 Definition typeclasses_eauto : tactic :=
-  T.ltac (qualify "typeclasses_eauto") [mc:].
+  T.ltac (qualify "typeclasses_eauto") [m:].

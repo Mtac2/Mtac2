@@ -230,9 +230,8 @@ Definition app (A : Type) : list A -> list A -> list A :=
   end.
 
 Infix "++" := app (right associativity, at level 60) : list_scope.
-Notation "[mc: ]" := nil (format "[mc: ]") : list_scope.
-Notation "[mc: x ]" := (cons x nil) : list_scope.
-
+Notation "[m: ]" := nil (format "[m: ]") : list_scope.
+Notation "[m: x ]" := (cons x nil) : list_scope.
 
 Import Strings.String.
 Import NArith.BinNat.
@@ -420,7 +419,7 @@ Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
 
 Fixpoint mmatch' {A P} (y : A) (ps : list (pattern t A P y)) : t (P y) :=
   match ps with
-  | [mc:] => raise NoPatternMatches
+  | [m:] => raise NoPatternMatches
   | p :: ps' =>
     mtry' (open_pattern p) (fun e =>
       mif unify e DoesNotMatch UniMatchNoRed then mmatch' y ps' else raise e)
@@ -471,7 +470,7 @@ Notation tactic := (gtactic unit).
 
 Definition exact {A} (x:A) : tactic := fun g =>
   match g with
-  | Goal g => cumul_or_fail x g;; ret [mc:]
+  | Goal g => cumul_or_fail x g;; ret [m:]
   | _ => raise NotAGoal
   end.
 
@@ -494,7 +493,7 @@ Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := f
                           exact nat g;;
 (* (((fun A (x:A) (g : goal) => *)
 (*   match g with *)
-(*   | Goal g => cumul_or_fail x g;; ret [mc:] *)
+(*   | Goal g => cumul_or_fail x g;; ret [m:] *)
 (*   | _ => raise NotAGoal *)
 (*   end) : forall A : Type, A -> tactic) _ nat g);; *)
                                 raise exception)
