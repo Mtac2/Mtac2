@@ -63,8 +63,8 @@ Goal forall P b, reflect P b -> P <-> b = true.
 MProof.
   intros P b r.
   new_destruct r.
-  - intro xP &> split &> [mc:reflexivity; intros &> assumption].
-  - intro nxP &> split &> [mc:intros &> contradiction; intros &> discriminate].
+  - intro xP &> split &> [m:reflexivity | intros &> assumption].
+  - intro nxP &> split &> [m:intros &> contradiction | intros &> discriminate].
 Qed.
 
   Example reflect_reflect P : ITele (SType) := iTele (fun b=>@iBase SType (reflect P b)).
@@ -169,7 +169,7 @@ MProof.
   mpose (rG := abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r).
   simpl.
   assert (T : get_type_of_branch rG (reflect_RTrue P)).
-  { simpl. cintros x {- split&> [mc:cintros xP {- reflexivity -}; cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
+  { simpl. cintros x {- split&> [m:cintros xP {- reflexivity -} | cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
   assert (F : get_type_of_branch rG (reflect_RFalse P)).
   { simpl. intros. split. intros. select (~ _) (fun a=>select P (fun x=>exact (match a x with end))). intros;; discriminate. }
   mpose (return_type := unfold_funs (RTele_Fun rG) 5).
@@ -215,7 +215,7 @@ Proof.
           M.makecase {|
               case_val := v;
               case_return := Dyn (RTele_Fun rt);
-              case_branches := [mc:Dyn N; Dyn C]
+              case_branches := [m:Dyn N | Dyn C]
             |}
        ).
   simpl RTele_Fun in mc.

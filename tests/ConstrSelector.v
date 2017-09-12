@@ -50,8 +50,8 @@ Definition elim0 : tactic :=
   A <- M.evar Type;
   intro_base m (fun x:A=>elim x).
 
-Definition rrewrite {A} (x: A) := trewrite RightRewrite [mc:Dyn x]%list.
-Definition lrewrite {A} (x: A) := trewrite LeftRewrite [mc:Dyn x]%list.
+Definition rrewrite {A} (x: A) := trewrite RightRewrite [m:Dyn x]%list.
+Definition lrewrite {A} (x: A) := trewrite LeftRewrite [m:Dyn x]%list.
 
 Goal forall n, n + 0 = n.
 MProof.
@@ -198,10 +198,10 @@ Require Import Strings.String.
 
 Definition remember {A} (x:A) (def eq : string) : tactic :=
   cpose_base def x (fun y:A=>
-    cassert_base eq (fun H: y = x =>lrewrite H) &> [mc:reflexivity; idtac]).
+    cassert_base eq (fun H: y = x =>lrewrite H) &> [m:reflexivity | idtac]).
 
 Ltac ind H := induction H.
-Definition induction {A} (x:A) := ltac "ConstrSelector.ind" [mc:Dyn x].
+Definition induction {A} (x:A) := ltac "ConstrSelector.ind" [m:Dyn x].
 
 Lemma WHILE_true_nonterm : forall b c st st',
      bequiv b BTrue ->

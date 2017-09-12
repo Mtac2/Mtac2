@@ -29,7 +29,7 @@ Qed.
 Theorem tl_length_pred : forall l: list nat,
   pred (length l) = length (tl l).
 MProof.
-  destructn 0 asp ([mc: [mc:] ; [mc:"n"; "l'"] ])%list.
+  destructn 0 asp ([m: [m:] | [m:"n"| "l'"] ])%list.
   - (* l = nil *)
     reflexivity.
   - (* l = cons n l' *)
@@ -117,7 +117,7 @@ Definition apply_one_of l : tactic :=
 
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 MProof.
-  Time intros;; T.repeat (apply_one_of [mc:Dyn in_eq; Dyn in_cons]).
+  Time intros;; T.repeat (apply_one_of [m:Dyn in_eq| Dyn in_cons]).
 Qed.
 Import Coq.Lists.List.ListNotations.
 Example trans_eq_example' : forall (a b c d e f : nat),

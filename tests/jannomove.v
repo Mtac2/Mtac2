@@ -53,7 +53,7 @@ Definition done : tactic :=
 
 Fixpoint mmap_plist (f: LIP -> tactic) (l: list LIP) : list tactic :=
   match l with
-  | nil => [mc:]
+  | nil => [m:]
   | cons a l' => f a :: mmap_plist f l'
   end.
 
@@ -70,7 +70,7 @@ Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
     l <- M.hyps;
     h <- M.hd l;
     let (_, var, _) := h : Hyp in
-    trewrite d [mc:Dyn var];;
+    trewrite d [m:Dyn var];;
     T.clear var
   | Done => done
   | Simpl => simpl

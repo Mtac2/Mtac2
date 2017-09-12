@@ -8,12 +8,12 @@ Ltac induction n := induction n.
 
 Definition qualify s := String.append "ltac." s.
 
-Definition induction {A} (n:A) : tactic := ltac (qualify "induction") [mc:Dyn n].
+Definition induction {A} (n:A) : tactic := ltac (qualify "induction") [m:Dyn n].
 
 Goal forall n:nat, 0 <= n.
 MProof.
   intros n.
-  induction n &> [mc:apply le_n; apply le_S;; assumption].
+  induction n &> [m:apply le_n| apply le_S;; assumption].
 Qed.
 
 
@@ -26,7 +26,7 @@ MProof.
    match r with
    | ((_,Goal _) :: _) => M.ret r
    | _ => M.raise exception
-   end) &> [mc:apply le_n; apply le_S;; assumption].
+   end) &> [m:apply le_n| apply le_S;; assumption].
 Qed.
 
 Ltac myapply H := apply H.
@@ -39,21 +39,21 @@ Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
   intros P Q f x.
   apply f.
-  ltac remove [mc:Dyn f].
+  ltac remove [m:Dyn f].
   exact x.
 Qed.
 
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
   intros P Q f x.
-  select (_->_) (fun g=>ltac apply' [mc:Dyn g]) ;; assumption.
+  select (_->_) (fun g=>ltac apply' [m:Dyn g]) ;; assumption.
 Qed.
 
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
   intros P Q.
   cintros f x {-
-    ltac apply' [mc:Dyn f] ;; ltac apply' [mc:Dyn x]
+    ltac apply' [m:Dyn f] ;; ltac apply' [m:Dyn x]
   -}.
 Qed.
 
@@ -63,6 +63,6 @@ Require Import Coq.Init.Logic.
 Goal forall n m,  S n = S m -> n = m.
 MProof.
   intros n m H.
-  ltac (qualify "injection") [mc:Dyn H].
+  ltac (qualify "injection") [m:Dyn H].
   trivial.
 Qed.

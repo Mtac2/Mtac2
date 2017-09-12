@@ -14,7 +14,7 @@ Inductive list (A : Type) : Type :=
 Arguments nil {A}.
 
 Local Open Scope list_scope.
-Notation "[mc: ]" := nil (format "[mc: ]") : list_scope.
+Notation "[m: ]" := nil (format "[m: ]") : list_scope.
 
 Inductive option A := Some : A -> option A | None.
 Arguments Some {A} _.
@@ -67,5 +67,5 @@ Notation tactic := (gtactic unit).
 
 Definition exact {A} (x:A) : tactic := fun g =>
   match g with
-  | Goal g => cumul_or_fail x g;; ret [mc:]
+  | Goal g => cumul_or_fail x g;; ret [m:]
   end.

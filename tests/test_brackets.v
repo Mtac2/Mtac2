@@ -27,7 +27,7 @@ Import ListNotations.
 
 Theorem plus_n_O : forall n:nat, n = n + 0.
 MProof.
-  intros n. induction n asp [mc: [mc:]; [mc:"n'"; "IHn'"]].
+  intros n. induction n asp [m: [m:] | [m:"n'" | "IHn'"]].
   - (* n = 0 *) reflexivity.
   - (* n = S n' *) simpl. rewrite <- IHn'.
   reflexivity.
