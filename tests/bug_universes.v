@@ -1,4 +1,4 @@
-From MetaCoq Require Import MetaCoq.
+From Mtac2 Require Import Mtac2.
 
 Set Printing Universes.
 

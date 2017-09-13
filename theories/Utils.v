@@ -1,5 +1,5 @@
-From MetaCoq Require Import Datatypes List.
-Import MetaCoq.List.ListNotations.
+From Mtac2 Require Import Datatypes List.
+Import Mtac2.List.ListNotations.
 
 Definition dec_bool {P} (x : {P}+{~P}) : bool :=
   match x with

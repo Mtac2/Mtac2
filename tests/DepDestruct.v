@@ -1,8 +1,7 @@
-From MetaCoq
-Require Import Datatypes List MetaCoq DepDestruct.
+From Mtac2
+Require Import Datatypes List Mtac2 DepDestruct.
 Import T.
-Import MetaCoq.List.ListNotations.
-Module MCL := MetaCoq.Logic.
+Import Mtac2.List.ListNotations.
 
 Goal forall n, 0 <= n.
 MProof.
@@ -152,13 +151,13 @@ Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
   | S n' =>
     mmatch A as A' return M A' with
     | [? B (fty : B -> Type)] forall x, fty x => [H]
-      let t' := reduce RedSimpl match H in MCL.eq _ P return P with MCL.eq_refl => t end in (* we need to reduce this *)
+      let t' := reduce RedSimpl match H in eq _ P return P with eq_refl => t end in (* we need to reduce this *)
       name <- M.fresh_name "A";
       M.nu name None (fun x=>
         r <- unfold_funs (t' x) n';
         abs x r)
     | [? A'] A' => [H]
-      match H in MCL.eq _ P return M P with MCL.eq_refl => M.ret t end
+      match H in eq _ P return M P with eq_refl => M.ret t end
     end
   end%MC.
 

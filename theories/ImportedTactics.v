@@ -1,12 +1,12 @@
-From MetaCoq Require Import Mtac2 Tactics.
+From Mtac2 Require Import Base Tactics.
 Import M.notations.
 Import T.notations.
 
 Require Import Strings.String.
-Require Import MetaCoq.List.
-Import MetaCoq.List.ListNotations.
+Require Import Mtac2.List.
+Import Mtac2.List.ListNotations.
 
-Definition qualify s := String.append "MetaCoq.ImportedTactics." s.
+Definition qualify s := String.append "Mtac2.ImportedTactics." s.
 
 Ltac trivial := trivial.
 Definition trivial : tactic := T.ltac (qualify "trivial") nil.

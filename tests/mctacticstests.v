@@ -1,7 +1,7 @@
 Require Import Bool.Bool.
-Require Import MetaCoq.MetaCoq.
+Require Import Mtac2.Mtac2.
 Import T.
-Import MetaCoq.List.ListNotations.
+Import Mtac2.List.ListNotations.
 
 Goal True.
 MProof.
@@ -91,7 +91,7 @@ MProof.
 Qed.
 
 Require Import Coq.omega.Omega.
-Definition omega := ltac "Coq.omega.Omega.omega" MetaCoq.Datatypes.nil.
+Definition omega := ltac "Coq.omega.Omega.omega" Datatypes.nil.
 
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.
@@ -148,7 +148,7 @@ Lemma test6 : forall (x y z : Prop), x = y -> y = z -> x = z.
 MProof.
   intros x y z H G.
   ltac transitivity [m:Dyn y].
-  ltac "Coq.Init.Notations.revgoals" MetaCoq.List.nil.
+  ltac "Coq.Init.Notations.revgoals" Mtac2.List.nil.
   exact H.
   exact G.
 Qed.
@@ -314,7 +314,7 @@ Abort.
 
 Goal forall x : Prop, x = x.
 MProof.
-  ltac "Coq.Init.Notations.auto" MetaCoq.List.nil.
+  ltac "Coq.Init.Notations.auto" Mtac2.List.nil.
 Qed.
 
 (** intros_all test *)
@@ -353,7 +353,7 @@ MProof.
   exact I.
 Qed.
 
-Require Import MetaCoq.ImportedTactics.
+Require Import Mtac2.ImportedTactics.
 
 Goal forall x:nat, x = x.
 MProof.
@@ -367,7 +367,7 @@ MProof.
   trivial;; intros;; contradiction.
 Qed.
 
-Require Import MetaCoq.ImportedTactics.
+Require Import Mtac2.ImportedTactics.
 
 Example ex_destr_not_var (b c: bool) : (if b && c then c else c) = c.
 MProof.

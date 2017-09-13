@@ -1,5 +1,5 @@
-From MetaCoq Require Import MetaCoq Datatypes.
-Import MetaCoq.List.ListNotations.
+From Mtac2 Require Import List Mtac2.
+Import Mtac2.List.ListNotations.
 
 Inductive IPB := .
 
@@ -54,7 +54,7 @@ Definition done : tactic :=
 Fixpoint mmap_plist (f: LIP -> tactic) (l: list LIP) : list tactic :=
   match l with
   | nil => [m:]
-  | cons a l' => f a :: mmap_plist f l'
+  | cons a l' => [m: f a & mmap_plist f l']
   end.
 
 Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=

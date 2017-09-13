@@ -1,4 +1,4 @@
-From MetaCoq Require Import MetaCoq.
+From Mtac2 Require Import Mtac2.
 
 Definition ex1 := fun x:nat=>ltac:(mrun (M.ret x)).
 

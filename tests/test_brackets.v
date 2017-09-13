@@ -1,4 +1,4 @@
-Require Import MetaCoq.MetaCoq.
+Require Import Mtac2.Mtac2.
 Import T.
 
 Theorem andb3_exchange :
@@ -21,8 +21,8 @@ MProof.
       * reflexivity. }
 Qed.
 
-Require Import MetaCoq.ImportedTactics.
-Require Import MetaCoq.List.
+Require Import Mtac2.ImportedTactics.
+Require Import Mtac2.List.
 Import ListNotations.
 
 Theorem plus_n_O : forall n:nat, n = n + 0.

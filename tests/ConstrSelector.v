@@ -1,6 +1,6 @@
-From MetaCoq Require Import Datatypes List MetaCoq.
+From Mtac2 Require Import Datatypes List Mtac2.
 Import T.
-Import MetaCoq.List.ListNotations.
+Import Mtac2.List.ListNotations.
 
 (** Obtains the list of constructors of a type I from a type of the
    form A1 -> ... -> An -> I *)
@@ -10,7 +10,7 @@ Definition get_constrs :=
     | [? A B] A -> B => fill B
     | [? A (P:A->Type)] forall x:A, P x =>
       name <- M.fresh_binder_name T;
-      M.nu name MetaCoq.Datatypes.None (fun x=>
+      M.nu name None (fun x=>
         fill (P x)
       )
     | _ =>

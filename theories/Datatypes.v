@@ -9,87 +9,87 @@
 Set Implicit Arguments.
 
 Require Import Notations.
-Require Import Logic.
-Declare ML Module "nat_syntax_plugin".
+(* Require Import Logic. *)
+(* Declare ML Module "nat_syntax_plugin". *)
 
-(********************************************************************)
-(** * Container datatypes *)
+(* (********************************************************************) *)
+(* (** * Container datatypes *) *)
 
-(* Set Universe Polymorphism. *)
+(* (* Set Universe Polymorphism. *) *)
 
-(** [option A] is the extension of [A] with an extra element [None] *)
+(* (** [option A] is the extension of [A] with an extra element [None] *) *)
 
-Inductive option (A:Type) : Type :=
-  | Some : A -> option A
-  | None : option A.
+(* Inductive option (A:Type) : Type := *)
+(*   | Some : A -> option A *)
+(*   | None : option A. *)
 
-Arguments Some {A} a.
-Arguments None {A}.
+(* Arguments Some {A} a. *)
+(* Arguments None {A}. *)
 
-Definition option_map (A B:Type) (f:A->B) (o : option A) : option B :=
-  match o with
-    | Some a => @Some B (f a)
-    | None => @None B
-  end.
+(* Definition option_map (A B:Type) (f:A->B) (o : option A) : option B := *)
+(*   match o with *)
+(*     | Some a => @Some B (f a) *)
+(*     | None => @None B *)
+(*   end. *)
 
-(** [sum A B], written [A + B], is the disjoint sum of [A] and [B] *)
+(* (** [sum A B], written [A + B], is the disjoint sum of [A] and [B] *) *)
 
-Inductive sum (A B:Type) : Type :=
-  | inl : A -> sum A B
-  | inr : B -> sum A B.
+(* Inductive sum (A B:Type) : Type := *)
+(*   | inl : A -> sum A B *)
+(*   | inr : B -> sum A B. *)
 
-Notation "x + y" := (sum x y) : type_scope.
+(* Notation "x + y" := (sum x y) : type_scope. *)
 
-Arguments inl {A B} _ , [A] B _.
-Arguments inr {A B} _ , A [B] _.
+(* Arguments inl {A B} _ , [A] B _. *)
+(* Arguments inr {A B} _ , A [B] _. *)
 
-(** [prod A B], written [A * B], is the product of [A] and [B];
-    the pair [pair A B a b] of [a] and [b] is abbreviated [(a,b)] *)
+(* (** [prod A B], written [A * B], is the product of [A] and [B]; *)
+(*     the pair [pair A B a b] of [a] and [b] is abbreviated [(a,b)] *) *)
 
-Inductive prod (A B:Type) : Type :=
-  pair : A -> B -> prod A B.
+(* Inductive prod (A B:Type) : Type := *)
+(*   pair : A -> B -> prod A B. *)
 
-Add Printing Let prod.
+(* Add Printing Let prod. *)
 
-Notation "x * y" := (prod x y) : type_scope.
-Notation "( x , y , .. , z )" := (pair .. (pair x y) .. z) : core_scope.
+(* Notation "x * y" := (prod x y) : type_scope. *)
+(* Notation "( x , y , .. , z )" := (pair .. (pair x y) .. z) : core_scope. *)
 
-Arguments pair {A B} _ _.
+(* Arguments pair {A B} _ _. *)
 
-Section projections.
-  Context {A : Type} {B : Type}.
+(* Section projections. *)
+(*   Context {A : Type} {B : Type}. *)
 
-  Definition fst (p:A * B) := match p with
-				| (x, y) => x
-                              end.
-  Definition snd (p:A * B) := match p with
-				| (x, y) => y
-                              end.
-End projections.
+(*   Definition fst (p:A * B) := match p with *)
+(* 				| (x, y) => x *)
+(*                               end. *)
+(*   Definition snd (p:A * B) := match p with *)
+(* 				| (x, y) => y *)
+(*                               end. *)
+(* End projections. *)
 
-Hint Resolve pair inl inr: core.
+(* Hint Resolve pair inl inr: core. *)
 
-Lemma surjective_pairing :
-  forall (A B:Type) (p:A * B), p = pair (fst p) (snd p).
-Proof.
-  destruct p; reflexivity.
-Qed.
+(* Lemma surjective_pairing : *)
+(*   forall (A B:Type) (p:A * B), p = pair (fst p) (snd p). *)
+(* Proof. *)
+(*   destruct p; reflexivity. *)
+(* Qed. *)
 
-Lemma injective_projections :
-  forall (A B:Type) (p1 p2:A * B),
-    fst p1 = fst p2 -> snd p1 = snd p2 -> p1 = p2.
-Proof.
-  destruct p1; destruct p2; simpl; intros Hfst Hsnd.
-  rewrite Hfst; rewrite Hsnd; reflexivity.
-Qed.
+(* Lemma injective_projections : *)
+(*   forall (A B:Type) (p1 p2:A * B), *)
+(*     fst p1 = fst p2 -> snd p1 = snd p2 -> p1 = p2. *)
+(* Proof. *)
+(*   destruct p1; destruct p2; simpl; intros Hfst Hsnd. *)
+(*   rewrite Hfst; rewrite Hsnd; reflexivity. *)
+(* Qed. *)
 
-Definition prod_uncurry (A B C:Type) (f:prod A B -> C)
-  (x:A) (y:B) : C := f (pair x y).
+(* Definition prod_uncurry (A B C:Type) (f:prod A B -> C) *)
+(*   (x:A) (y:B) : C := f (pair x y). *)
 
-Definition prod_curry (A B C:Type) (f:A -> B -> C)
-  (p:prod A B) : C := match p with
-                       | pair x y => f x y
-                       end.
+(* Definition prod_curry (A B C:Type) (f:A -> B -> C) *)
+(*   (p:prod A B) : C := match p with *)
+(*                        | pair x y => f x y *)
+(*                        end. *)
 
 (** Polymorphic lists and some operations *)
 

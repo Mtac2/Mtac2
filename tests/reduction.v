@@ -1,4 +1,4 @@
-From MetaCoq Require Import Datatypes MetaCoq.
+From Mtac2 Require Import Datatypes Mtac2.
 
 Require Import Lists.List.
 Import ListNotations.

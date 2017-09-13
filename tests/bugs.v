@@ -1,4 +1,4 @@
-From MetaCoq Require Import Logic Datatypes MetaCoq.
+From Mtac2 Require Import Logic Datatypes Mtac2.
 
 Require Import Bool.Bool.
 Import T.

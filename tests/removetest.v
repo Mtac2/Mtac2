@@ -1,4 +1,4 @@
-Require Import MetaCoq.MetaCoq.
+Require Import Mtac2.Mtac2.
 
 Example test_remove1 (x y z : nat) : x > y -> x > y.
 MProof.

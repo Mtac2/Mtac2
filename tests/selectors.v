@@ -1,4 +1,4 @@
-Require Import MetaCoq.MetaCoq.
+Require Import Mtac2.Mtac2.
 Import T.
 
 Example test_selector1 : forall n, n >= 0.

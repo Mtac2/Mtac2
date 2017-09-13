@@ -1,8 +1,8 @@
-Require Import MetaCoq.MetaCoq.
+Require Import Mtac2.Mtac2.
 Import T.
 Require Import Bool.Bool.
 Require Import Lists.List.
-Import MetaCoq.List.ListNotations.
+Import Mtac2.List.ListNotations.
 
 (** This file contains several examples showing the different
     tactics in MetaCoq. Many are taken from SF. *)
@@ -113,7 +113,7 @@ Proof.
 Qed.
 
 Definition apply_one_of l : tactic :=
-  MetaCoq.List.fold_left (fun a b=>a or (apply (elem b))) l (raise exception).
+  Mtac2.List.fold_left (fun a b=>a or (apply (elem b))) l (raise exception).
 
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 MProof.

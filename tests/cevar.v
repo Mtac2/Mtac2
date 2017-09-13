@@ -1,5 +1,5 @@
-From MetaCoq Require Import Logic List Datatypes MetaCoq.
-Import MetaCoq.List.ListNotations.
+From Mtac2 Require Import Mtac2.
+Import Mtac2.List.ListNotations.
 
 Example ex1 (x y: nat) (H: x>y) (z: nat) : True.
 MProof.

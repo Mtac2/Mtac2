@@ -8,7 +8,7 @@
 
 Require Setoid.
 Require Import PeanoNat Le Gt Minus Bool Lt.
-Require Import MetaCoq.Datatypes.
+Require Import Mtac2.Datatypes.
 
 Set Implicit Arguments.
 (* Set Universe Polymorphism. *)

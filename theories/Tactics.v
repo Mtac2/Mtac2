@@ -1,8 +1,8 @@
 Require Import Strings.String.
-From MetaCoq Require Export Mtac2.
-From MetaCoq Require Import Logic Datatypes List Utils.
+From Mtac2 Require Export Base.
+From Mtac2 Require Import Logic Datatypes List Utils.
 Import M.notations.
-Import MetaCoq.List.ListNotations.
+Import Mtac2.List.ListNotations.
 
 Require Import Strings.String.
 Require Import NArith.BinNat.
@@ -169,10 +169,10 @@ Instance seq_one {A B} : Seq A B (gtactic B) := fun t1 t2 => bind t1 (fun _ => t
 Fixpoint gmap {A} (tacs : list (gtactic A)) (gs : list goal) : M (list (list (A * goal))) :=
   match tacs, gs with
   | [m:], [m:] => M.ret [m:]
-  | tac :: tacs', g :: gs' =>
+  | [m: tac & tacs'], [m: g & gs'] =>
     fa <- open_and_apply tac g;
     rest <- gmap tacs' gs';
-    M.ret (fa :: rest)
+    M.ret [m: fa & rest]
   | l, l' => M.raise NotSameSize
   end.
 
@@ -364,7 +364,7 @@ Definition apply {T} (c : T) : tactic := fun g=>
         | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- M.evar T1;
           r <- app (Dyn (f e));
-          mif M.is_evar e then M.ret ((tt, Goal e) :: r) else M.ret r
+          mif M.is_evar e then M.ret [m: (tt, Goal e) & r] else M.ret r
         | _ =>
           gT <- M.goal_type g;
           M.raise (CantApply T gT)
@@ -425,16 +425,16 @@ Fixpoint match_goal_pattern' {B}
   | gbase_context x t, _ =>
     gT <- M.goal_type g;
     match_goal_context x gT t g
-  | @gtele _ C f, (@ahyp A a d :: l2') =>
+  | @gtele _ C f, [m: @ahyp A a d & l2'] =>
     oeqCA <- M.unify C A u;
     match oeqCA with
     | Some eqCA =>
       let a' := rcbv match eq_sym eqCA with eq_refl => a end in
       mtry match_goal_pattern' u (f a') [m:] (List.rev_append l1 l2')%list g
       with DoesNotMatchGoal =>
-        go (ahyp a d :: l1) l2' g
+        go [m: ahyp a d & l1] l2' g
       end
-    | None => go (ahyp a d :: l1) l2' g end
+    | None => go [m: ahyp a d & l1] l2' g end
   | @gtele_evar _ C f, _ =>
     e <- M.evar C;
     match_goal_pattern' u (f e) l1 l2 g
@@ -449,7 +449,7 @@ Fixpoint match_goal_base {B} (u : Unification)
     (ps : list (goal_pattern B)) : gtactic B := fun g =>
   match ps with
   | [m:] => M.raise NoPatternMatchesGoal
-  | p :: ps' =>
+  | [m: p & ps'] =>
     mtry match_goal_pattern u p g
     with DoesNotMatchGoal => match_goal_base u ps' g end
   end.

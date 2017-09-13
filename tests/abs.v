@@ -1,5 +1,5 @@
-From MetaCoq
-Require Export MetaCoq.
+From Mtac2
+Require Export Mtac2.
 
 Require Import Strings.String.
 

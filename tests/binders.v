@@ -1,4 +1,4 @@
-Require Import MetaCoq.Datatypes MetaCoq.MetaCoq.
+Require Import Mtac2.Datatypes Mtac2.Mtac2.
 
 Example nu_new_name_works : forall x:nat, 0 <= x.
 MProof.

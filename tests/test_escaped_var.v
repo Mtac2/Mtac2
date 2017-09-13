@@ -1,4 +1,4 @@
-Require Import MetaCoq.MetaCoq.
+Require Import Mtac2.Mtac2.
 
 Require Import Bool.Bool.
 Import M.notations.

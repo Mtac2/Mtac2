@@ -1,6 +1,6 @@
-From MetaCoq Require Import Datatypes MetaCoq.
+From Mtac2 Require Import Mtac2.
 Require Import Bool.Bool.
-Import MetaCoq.List.ListNotations.
+Import Mtac2.List.ListNotations.
 
 Example hyp_well_formed : True.
 MProof.

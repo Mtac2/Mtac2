@@ -1,5 +1,5 @@
-From MetaCoq Require Import Logic List Datatypes MetaCoq.
-Import MetaCoq.List.ListNotations.
+From Mtac2 Require Import Datatypes List Mtac2.
+Import Mtac2.List.ListNotations.
 Import T.
 
 Require Import Bool.Bool.

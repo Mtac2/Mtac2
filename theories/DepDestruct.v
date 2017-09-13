@@ -1,9 +1,9 @@
-From MetaCoq Require Import Logic Datatypes List Mtac2 Tactics ImportedTactics.
+From Mtac2 Require Import Logic Datatypes List Base Tactics ImportedTactics.
 Import M.notations.
 Import T.notations.
 
 Require Import Strings.String.
-Import MetaCoq.List.ListNotations.
+Import Mtac2.List.ListNotations.
 
 (** This is the [abs] from [MetaCoq] but first reducing the variable
     [x] (in case it is [id x] or some convertible term to a variable)
