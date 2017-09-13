@@ -77,12 +77,12 @@ Qed.
   Example reflect_args P b : ATele (reflect_reflect P) :=
     aTele b aBase.
 
-  Example bla P : RTele _ (reflect_reflect P) :=
-    Eval simpl in rTele (fun b=>rBase (rsort:=SProp) (fun _=>P <-> b = true)).
+  Example bla P : RTele SProp (reflect_reflect P) :=
+    Eval simpl in (fun b=>(fun _=>P <-> b = true)).
   Example bla_branch P := Eval simpl in get_type_of_branch (bla P) (reflect_RTrue P).
 
 
-  Example bla_RTele P b (r : reflect P b) :=
+  Example bla_RTele P b (r : reflect P b) : RTele _ _ :=
     Eval compute in M.eval (abstract_goal (rsort := SProp) (reflect_args P b) ((P <-> b = true)) r).
 
   Example bla_goals P b r : list dyn :=
@@ -101,7 +101,7 @@ Qed.
 
   Example reflect_app P b := Eval compute in ITele_App (reflect_args P b).
 
-  Example blaP_RTele P b r :=
+  Example blaP_RTele P b r : RTele _ _ :=
     Eval compute in M.eval (abstract_goal (rsort := SProp) (reflectP_args P b) ((P <-> b = true)) r).
 
   Example blaP_goals P b r : list dyn :=
@@ -124,8 +124,8 @@ Qed.
   Goal forall P b, reflect P b -> P <-> b = true.
   Proof.
     intros P b r.
-    pose (rG := M.eval (abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r)).
-    simpl in rG.
+    pose (rG := (M.eval (abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r)) : RTele _ _).
+    cbn delta -[RTele] in rG.
     assert (T : get_type_of_branch rG (reflect_RTrue P)).
     { now firstorder. }
     assert (F : get_type_of_branch rG (reflect_RFalse P)).
@@ -205,7 +205,8 @@ Proof.
   intros n v.
   pose (a := (aTele n (aBase)) : ATele it).
   pose (rt := M.eval (abstract_goal (rsort := SProp) a (n = Coq.Lists.List.length (to_list v)) v)).
-  simpl in vcons, rt.
+  simpl in vcons.
+  cbn beta iota zeta delta -[RTele] in rt.
   assert (N : get_type_of_branch rt vnil).
   { now auto. }
   assert (C : get_type_of_branch rt vcons).
@@ -217,7 +218,7 @@ Proof.
               case_branches := [m:Dyn N | Dyn C]
             |}
        ).
-  simpl RTele_Fun in mc.
+  unfold rt in mc. simpl RTele_Fun in mc.
   (* pose (ma := (match v as v' in t _ k return k = length (to_list v') with *)
   (*              | nil _ => N *)
   (*              | cons _ a k v => C a k v *)

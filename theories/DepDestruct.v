@@ -118,59 +118,72 @@ Arguments cBase {_ _%AT} _ _.
 Arguments cProd {_ _%type _} _.
 
 (** Represents the result type of a branch. *)
-Inductive RTele {isort} rsort : ITele isort -> Type :=
-| rBase : forall {T : stype_of isort}, (selem_of T -> stype_of rsort) -> RTele rsort (iBase T)
-| rTele : forall {T:Type} {f}, (forall (t : T), RTele rsort (f t)) -> RTele rsort (iTele f).
-Delimit Scope RTele_scope with RT.
-Bind Scope RTele_scope with RTele.
-Arguments RTele {_} _ _%IT.
-Arguments rBase {_ _ _} _.
-Arguments rTele {_ _ _%type _} _.
+(* Inductive RTele {isort} rsort : ITele isort -> Type := *)
+(* | rBase : forall {T : stype_of isort}, (selem_of T -> stype_of rsort) -> RTele rsort (iBase T) *)
+(* | rTele : forall {T:Type} {f}, (forall (t : T), RTele rsort (f t)) -> RTele rsort (iTele f). *)
+(* Delimit Scope RTele_scope with RT. *)
+(* Bind Scope RTele_scope with RTele. *)
+(* Arguments RTele {_} _ _%IT. *)
+(* Arguments rBase {_ _ _} _. *)
+(* Arguments rTele {_ _ _%type _} _. *)
 
-Fixpoint RTele_App {isort rsort} {it : ITele isort} (rt : RTele rsort it) : forall (a : ATele it), selem_of (ITele_App a) -> stype_of rsort :=
-  match rt in RTele _ it' return forall a' : ATele it', selem_of (ITele_App a') -> stype_of rsort
-  with
-  | @rBase _ _ T t =>
-    fun (a : ATele (iBase T)) =>
-      match a as a' in ATele it' return
-            match it' with
-            | iBase T' => (selem_of T' -> stype_of rsort) -> selem_of (ITele_App a') -> stype_of rsort
-            | iTele f => True
-            end
-      with
-      | aBase => fun f => f
-      | aTele _ _ => I
-      end t
-  | rTele r =>
-    let rec t := RTele_App (r t) in
-    fun (a : ATele (iTele _)) =>
-      match a as a' in ATele it' return
-            match it' with
-            | iBase _ => True
-            | @iTele _ T' f => (forall (t:T') (a:ATele (f t)), selem_of (ITele_App a) -> _) -> selem_of (ITele_App a') -> stype_of rsort
-            end
-      with
-      | aBase => I
-      | aTele v a => fun rec => rec v a
-      end rec
+(* Represent it as a function as its shape is completely determined by the given ITele *)
+Fixpoint RTele {isort} rsort (it : ITele isort) : Type :=
+  match it with
+  | iBase T => selem_of T -> stype_of rsort
+  | iTele f => forall t, RTele rsort (f t)
   end.
+
+Fixpoint RTele_App {isort rsort} {it : ITele isort} (a : ATele it) : RTele rsort it -> selem_of (ITele_App a) -> stype_of rsort :=
+  match a as a' in ATele it' return RTele rsort it' -> selem_of (ITele_App a') -> stype_of rsort with
+  | aBase => fun rt => rt
+  | aTele t a => fun rt => RTele_App a (rt t)
+  end.
+
+(* Fixpoint RTele_App {isort rsort} {it : ITele isort} (rt : RTele rsort it) : forall (a : ATele it), selem_of (ITele_App a) -> stype_of rsort := *)
+(*   match rt in RTele _ it' return forall a' : ATele it', selem_of (ITele_App a') -> stype_of rsort *)
+(*   with *)
+(*   | @rBase _ _ T t => *)
+(*     fun (a : ATele (iBase T)) => *)
+(*       match a as a' in ATele it' return *)
+(*             match it' with *)
+(*             | iBase T' => (selem_of T' -> stype_of rsort) -> selem_of (ITele_App a') -> stype_of rsort *)
+(*             | iTele f => True *)
+(*             end *)
+(*       with *)
+(*       | aBase => fun f => f *)
+(*       | aTele _ _ => I *)
+(*       end t *)
+(*   | rTele r => *)
+(*     let rec t := RTele_App (r t) in *)
+(*     fun (a : ATele (iTele _)) => *)
+(*       match a as a' in ATele it' return *)
+(*             match it' with *)
+(*             | iBase _ => True *)
+(*             | @iTele _ T' f => (forall (t:T') (a:ATele (f t)), selem_of (ITele_App a) -> _) -> selem_of (ITele_App a') -> stype_of rsort *)
+(*             end *)
+(*       with *)
+(*       | aBase => I *)
+(*       | aTele v a => fun rec => rec v a *)
+(*       end rec *)
+(*   end. *)
 
 (* rt_T_weird1 and rt_T_weird2 will be equal to
     rt_T_type1 and rt_T_type2.
     Again, Coq does not realize that. So we leave them in for now.
   *)
-Fixpoint RTele_Type {isort} {it : ITele isort} {rsort} (rt : RTele rsort it) : Type :=
-match rt with
-| @rBase _ _ s r =>
+Fixpoint RTele_Type {isort rsort} {it : ITele isort} : RTele rsort it -> Type :=
+match it with
+| iBase s => fun _ =>
   (forall (t : selem_of s), stype_of rsort)
-| rTele rt => forall t, RTele_Type (rt t)
+| iTele _ => fun rt => forall t, RTele_Type (rt t)
 end.
 
 (* No idea why we still need rt_F_max_weird. *)
-Fixpoint RTele_Fun {isort} {it : ITele isort} {rsort} (rt : RTele rsort it) : RTele_Type rt :=
-  match rt with
-  | rBase r => r
-  | rTele rt => fun t => (RTele_Fun (rt t))
+Fixpoint RTele_Fun {isort rsort} {it : ITele isort} : forall (rt : RTele rsort it), RTele_Type rt :=
+  match it with
+  | iBase _ => fun r => r
+  | iTele _ => fun rt t => (RTele_Fun (rt t))
   end.
 
 Notation reduce_novars := (reduce (RedStrong [rl:RedBeta;RedMatch;RedFix;RedDeltaC;RedZeta])).
@@ -178,27 +191,27 @@ Notation reduce_novars := (reduce (RedStrong [rl:RedBeta;RedMatch;RedFix;RedDelt
 (* We need to handle Prop (maybe) *)
 Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (args : ATele it) (G : stype_of rsort) :
   selem_of (ITele_App args) -> M (RTele rsort it) :=
-  match args with
-  | @aBase _ T => fun t =>
+  match args as a' in ATele it' return selem_of (ITele_App a') -> M (RTele rsort it') with
+  | @aBase _ T => fun t : selem_of T =>
     let t := reduce_novars t in
     b <- M.is_var t;
     if b then
       let Gty := reduce RedHNF (type_of G) in
       let T' := reduce RedHNF (type_of t) in
-      r <- @abs T' (fun _=>Gty) t G;
-      let r := reduce RedHNF (rBase r) in
+      r <- (@abs T' (fun _=>Gty) t G) : M (RTele _ (iBase _));
+      let r := reduce RedHNF (r) in
       M.ret r
     else
       M.failwith "Argument t should be a variable"
-  | @aTele _ _ f v args => fun t=>
+  | @aTele _ _ f v args => fun t : selem_of (ITele_App args) =>
       r <- abstract_goal args G t;
       let v := reduce_novars v in
       b <- M.is_var v;
       if b then
         let Gty := reduce RedHNF (fun v'=>RTele rsort (f v')) in
         let T' := reduce RedHNF (type_of v) in
-        r <- @abs T' Gty v r;
-        let r := reduce RedHNF (rTele r) in
+        r <- @abs T' Gty v r : M (RTele _ (iTele _));
+        let r := reduce RedHNF (r) in
         M.ret r
       else
         M.failwith "All indices need to be variables"
@@ -206,7 +219,7 @@ Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (args : ATele it) (G :
 
 Fixpoint get_type_of_branch {isort} {rsort} {it : ITele isort} (rt : RTele rsort it) (ct : CTele it) : stype_of rsort :=
   match ct with
-  | cBase a t => RTele_App rt a t
+  | cBase a t => RTele_App a rt t
   | cProd f => ForAll (fun t => get_type_of_branch rt (f t))
   end.
 
@@ -305,7 +318,7 @@ Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele)) :=
     | _ => M.failwith "Impossible ITele"
     end.
 
-Definition get_ind {A : Type} (n : A) :
+Definition get_ind (A : Type) :
   M (nat * sigT (fun s => (ITele s)) * list dyn) :=
   r <- M.constrs A;
   let (indP, constrs) := r in
@@ -321,7 +334,7 @@ Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) : M
   M.ret atele.
 
 Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
-    ind <- get_ind n;
+    ind <- get_ind A;
       let (nsortit, constrs) := ind in
       let (nindx, sortit) := nsortit in
       let (isort, it) := sortit in
