@@ -428,7 +428,7 @@ Module notations.
     (@mmatch' _ (fun _ => _) x ls%with_pattern)
     (at level 90, ls at level 91) : M_scope.
   Notation "'mmatch' x 'return' 'M' p ls" :=
-    (@mmatch' _ (fun x => p%type) x ls%with_pattern)
+    (@mmatch' _ (fun _ => p%type) x ls%with_pattern)
     (at level 90, ls at level 91) : M_scope.
   Notation "'mmatch' x 'as' y 'return' 'M' p ls" :=
     (@mmatch' _ (fun y => p%type) x ls%with_pattern)
