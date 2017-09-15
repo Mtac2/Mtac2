@@ -156,6 +156,11 @@ Notation "p '=u>' b" := (pbase p%core (fun _ => b%core) UniCoq)
 Notation "p '=u>' [ H ] b" := (pbase p%core (fun H => b%core) UniCoq)
   (no associativity, at level 201, H at next level) : pattern_scope.
 
+Notation "p '=c>' b" := (pbase p%core (fun _ => b%core) UniEvarconv)
+  (no associativity, at level 201) : pattern_scope.
+Notation "p '=c>' [ H ] b" := (pbase p%core (fun H => b%core) UniEvarconv)
+  (no associativity, at level 201, H at next level) : pattern_scope.
+
 Delimit Scope pattern_scope with pattern.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
@@ -309,6 +314,19 @@ Inductive t : Type -> Prop :=
 
 | call_ltac : forall {A : Type}, string -> list dyn -> t (prod A (list goal))
 | list_ltac : t unit
+
+(** [read_line] returns the string from stdin. *)
+| read_line : t string
+
+(** [break f t] calls [f] at each step of the computation of [t]. [f]
+    is expcted to return the term that receives as argument, or any
+    transformation of it. *)
+| break : (forall A, A -> t A) -> forall {A : Type}, A -> t unit
+
+(** [decompose x] decomposes value [x] into a head and a spine of
+    arguments. For instance, [decompose (3 + 3)] returns
+    [(Dyn add, [Dyn 3; Dyn 3])] *)
+| decompose : forall {A}, A -> t (prod dyn (list dyn))
 .
 
 Arguments t _%type.
@@ -463,6 +481,14 @@ Fixpoint mapi' (n : nat) {A B} (f : nat -> A -> t B) (l: list A) : t (list B) :=
 Definition mapi := @mapi' 0.
 Arguments mapi {_ _} _ _.
 
+Definition find {A} (b : A -> t bool) : list A -> t (option A) :=
+  fix f l :=
+    match l with
+    | [m:] => ret None
+    | [m: x & xs] => bx <- b x;
+                 if bx then ret (Some x) else f xs
+    end.
+
 Definition filter {A} (b : A -> t bool) : list A -> t (list A) :=
   fix f l :=
     match l with
@@ -606,7 +632,7 @@ Definition anonymize (s : string) : t string :=
 Definition fresh_name (name: string) : t string :=
   names <- names_of_hyp;
   let find name : t bool :=
-    let res := reduce RedNF (find (fun n => dec_bool (string_dec name n)) names) in
+    let res := reduce RedNF (Mtac2.List.find (fun n => dec_bool (string_dec name n)) names) in
     match res with Datatypes.None => ret false | _ => ret true end
   in
   (mfix1 f (name: string) : M string :=
@@ -695,17 +721,6 @@ Definition print_goal (g : goal) : t unit :=
   print sep;;
   print sg;;
   ret tt.
-
-(** [decompose x] decomposes value [x] into a head and a spine of
-    arguments. For instance, [decompose (3 + 3)] returns
-    [(Dyn add, [Dyn 3; Dyn 3])] *)
-Definition decompose {A} (x : A) :=
-  (mfix2 f (d : dyn) (args: list dyn) : M (dyn * list dyn) :=
-    mmatch d with
-    | [? A B (t1: A -> B) t2] Dyn (t1 t2) => f (Dyn t1) [m: Dyn t2 & args]
-    | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1) [m: Dyn t2 & args]
-    | _ => ret (d, args)
-    end) (Dyn x) [m:].
 
 (** [instantiate x t] tries to instantiate meta-variable [x] with [t].
     It fails with [NotAnEvar] if [x] is not a meta-variable (applied to a spine), or

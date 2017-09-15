@@ -325,6 +325,12 @@ module ReductionStrategy = struct
       (create_clos_infos ~evars (red_add beta fDELTA) env)
       (inject c)
 
+  let whd_betaiotazeta env sigma c =
+    let evars ev = safe_evar_value sigma ev in
+    whd_val
+      (create_clos_infos ~evars betaiotazeta env)
+      (inject c)
+
 end
 
 module RE = ReductionStrategy
@@ -713,7 +719,7 @@ let rec get_name (env, sigma) (t: constr) : constr option =
   | _ -> None
 
 (* return the reflected hash of a term *)
-let hash (env, _, sigma, nus) c size =
+let hash env sigma c size =
   let size = CoqN.from_coq (env, sigma) size in
   let h = Term.hash_constr c in
   CoqN.to_coq (Pervasives.abs (h mod size))
@@ -757,7 +763,16 @@ let is_nu env x nus =
   in
   find env 0 < nus
 
-let rec run' (env, renv, sigma, nus as ctxt) t =
+type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option}
+let rec run' ctxt t =
+  let sigma, env = ctxt.sigma, ctxt.env in
+  let d =
+    match ctxt.hook with
+    | Some f ->
+        let ty = Retyping.get_type_of env sigma t in
+        run' {ctxt with hook = None} (Term.mkApp (f, [|ty; t|]))
+    | None -> return sigma t in
+  d >>= fun (sigma, t) ->
   let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
   let nth = Array.get args in
   if Term.isLetIn h then
@@ -789,7 +804,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
     | 2 -> (* bind *)
         run' ctxt (nth 2) >>= fun (sigma', v) ->
         let t' = mkApp(nth 3, [|v|]) in
-        run' (env, renv, sigma', nus) t'
+        run' {ctxt with sigma = sigma'} t'
 
     | 3 -> (* try *)
         begin
@@ -797,14 +812,14 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
           | Val (sigma, v) -> return sigma v
           | Err (_, c) ->
               let t' = mkApp(nth 2, [|c|]) in
-              run' (env, renv, sigma, nus) t'
+              run' ctxt t'
         end
 
     | 4 -> (* raise *)
         (* we make sure the exception is a closed term: it does not depend on evars or nus *)
         let term = nf_evar sigma (nth 1) in
         let vars = collect_vars term in
-        let nuvars = Context.Named.to_vars (CList.firstn nus (named_context env)) in
+        let nuvars = Context.Named.to_vars (CList.firstn ctxt.nus (named_context env)) in
         let intersect = Id.Set.inter vars nuvars in
         let closed = Id.Set.is_empty intersect && Evar.Set.is_empty (Evarutil.undefined_evars_of_term sigma term) in
         if closed then
@@ -853,8 +868,8 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
           let fx = Term.mkApp(f, [|Term.mkVar name|]) in
           let ot = CoqOption.from_coq (env, sigma) ot in
           let env = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
-          let (sigma', renv) = Hypotheses.cons_hyp a (Term.mkVar name) ot renv sigma env in
-          match run' (env, renv, sigma', (nus+1)) fx with
+          let (sigma, renv) = Hypotheses.cons_hyp a (Term.mkVar name) ot ctxt.renv sigma env in
+          match run' {ctxt with env; renv; sigma; nus=(ctxt.nus+1)} fx with
           | Val (sigma', e) ->
               if occur_var env name e then
                 fail sigma (E.mkVarAppearsInValue ())
@@ -896,9 +911,9 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         let x, t = nth 2, nth 3 in
         if isVar x then
           if check_dependencies env x t then
-            let nus = if is_nu env x nus then nus-1 else nus in
-            let env, (sigma, renv) = env_without sigma env renv x in
-            run' (env, renv, sigma, nus) t
+            let nus = if is_nu env x ctxt.nus then ctxt.nus-1 else ctxt.nus in
+            let env, (sigma, renv) = env_without sigma env ctxt.renv x in
+            run' {ctxt with env; renv; sigma; nus} t
           else
             fail sigma (E.mkCannotRemoveVar env x)
         else
@@ -916,7 +931,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
           return sigma CoqBool.mkFalse
 
     | 20 -> (* hash *)
-        return sigma (hash ctxt (nth 1) (nth 2))
+        return sigma (hash env sigma (nth 1) (nth 2))
 
     | 21 -> (* solve_typeclasses *)
         let evd' = Typeclasses.resolve_typeclasses ~fail:false env sigma in
@@ -934,7 +949,7 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         return sigma (CoqString.to_coq s)
 
     | 24 -> (* hypotheses *)
-        return sigma renv
+        return sigma ctxt.renv
 
     | 25 -> (* dest case *)
         let t = nth 1 in
@@ -1051,11 +1066,26 @@ let rec run' (env, renv, sigma, nus as ctxt) t =
         KNmap.iter aux (Tacenv.ltac_entries ());
         return sigma CoqUnit.mkTT
 
+    | 34 -> (* read_line *)
+        return sigma (CoqString.to_coq (read_line ()))
+
+    | 35 -> (* break *)
+        run' {ctxt with hook=Some (nth 0)} (nth 2) >>= fun (sigma, _) ->
+        return sigma CoqUnit.mkTT
+
+    | 36 -> (* decompose *)
+        let (h, args) = decompose_app (nth 1) in
+        let sigma, dyn = mkdyn sigma env in
+        let listdyn = CoqList.mkType dyn in
+        let sigma, dh = mkDyn (Retyping.get_type_of env sigma h) h sigma env in
+        let sigma, args = CoqList.pto_coq dyn (fun t sigma->mkDyn (Retyping.get_type_of env sigma t) t sigma env) args sigma in
+        return sigma (CoqPair.mkPair dyn listdyn dh args)
+
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"
 
 
-and run_fix (env, renv, sigma, _ as ctxt) h a b s i f x =
+and run_fix ctxt h a b s i f x =
   let fixf = mkApp(h, Array.append a [|b;s;i;f|]) in
   let c = mkApp (f, Array.append [| fixf|] x) in
   run' ctxt c
@@ -1138,10 +1168,10 @@ let multi_subst_inv l c =
   substrec 0 c
 
 let run (env, sigma) t =
-  let subs, env' = db_to_named env in
+  let subs, env = db_to_named env in
   let t = multi_subst subs (nf_evar sigma t) in
-  let (sigma, renv) = build_hypotheses sigma env' in
-  match run' (env', renv, sigma, 0) t with
+  let (sigma, renv) = build_hypotheses sigma env in
+  match run' {env; renv; sigma; nus=0;hook=None} t with
   | Err (sigma', v) ->
       Err (sigma', multi_subst_inv subs (nf_evar sigma' v))
   | Val (sigma', v) ->

@@ -24,9 +24,9 @@ module Goal : sig
 end
 
 (** DEBUG **)
-val run' :
-  Environ.env * constr * Evd.evar_map * int ->
-  constr -> data
+
+type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option}
+val run' : ctxt -> constr -> data
 
 val multi_subst : (int * constr) list -> constr -> constr
 
