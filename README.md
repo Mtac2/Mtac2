@@ -1,4 +1,4 @@
-# MetaCoq
+# Mtac2
 
 A typed tactic language for Coq.
 
@@ -10,7 +10,7 @@ Distributed under the terms of the MIT License,
 see LICENSE for details.
 
 This archive is a plugin for Coq containing the new tactic language
-described in
+described in the outdated paper
 [The Next 700 Safe Tactic Languages](http://www.mpi-sws.org/~beta/#publications).
 
 
@@ -18,11 +18,11 @@ The archive has 3 subdirectories:
 * `src` contains the code of the plugin.
 
 * `theories` contains support Coq files for the plugin.
-  `MetaCoq.v` declares the plugin on the Coq side and imports all the
+  `Mtac2.v` declares the plugin on the Coq side and imports all the
   required theories.
 
-* `test-suite` just demonstrates a use of the plugin.
-  `Showcase.v` is at the moment a good place to start.
+* `test-suite` contains several tests, including some uses of the plugin.
+  `Showcase.v` is at the moment a place to start.
 
 Installation
 ============
@@ -48,6 +48,6 @@ Add ML Path "path_to_unicoq/src".
 ```
 # Usage
 
-Once installed, you can `Require Import MetaCoq.MetaCoq` to load the
+Once installed, you can `Require Import Mtac2.Mtac2` to load the
 plugin. The plugin defines a tactic `mrun t` to execute code `t` and a proof
-mode `MProof` where MetaCoq's tactic can be executed directly.
+mode `MProof` where Mtac2's tactic can be executed directly.
