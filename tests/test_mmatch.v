@@ -41,6 +41,8 @@ Import ListNotations.
 (** Testing the construction of mmatch *)
 Definition NotFound : Exception. exact exception. Qed.
 
+Require Import Init.Datatypes.
+Require Import Lists.List.
 Definition inlist A (x : A) : forall l : list A, M (In x l) :=
   mfix1 f (l : list A) : M (In x l) :=
   mmatch l with
@@ -56,7 +58,7 @@ Definition inlist A (x : A) : forall l : list A, M (In x l) :=
   | [? y s] (y :: s) => r <- f s; M.ret (in_cons y _ _ r)
   | _ => M.raise NotFound
   end.
-
+Import ListNotations.
 
 (** Testing the execution of mmatch *)
 Example testM (
@@ -93,7 +95,7 @@ Fail Definition test (t : nat)  :=
 
 (* We need the [return] clause *)
 Definition test_return (t : nat) : M (t = t) :=
-  mmatch t return M (t = t) with
+  mmatch t as x return M (x = x) with
   | 0 => M.ret (eq_refl 0)
   end.
 
