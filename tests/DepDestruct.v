@@ -69,25 +69,25 @@ Qed.
   Example reflect_reflect P : ITele (SType) := iTele (fun b=>@iBase SType (reflect P b)).
 
   Example reflect_RTrue P : CTele (reflect_reflect P) :=
-    (cProd (fun p=>@cBase SType _ (aTele _ (aBase)) (RTrue P p))).
+    (cProd (fun p : P=>@cBase _ (reflect_reflect _) (aTele true aBase) (RTrue P p))).
 
   Example reflect_RFalse P : CTele (reflect_reflect P) :=
-    (cProd (fun p=>@cBase SType _ (aTele _ (aBase)) (RFalse P p))).
+    (cProd (fun p=>@cBase _ (reflect_reflect _) (aTele _ (aBase)) (RFalse P p))).
 
   Example reflect_args P b : ATele (reflect_reflect P) :=
     aTele b aBase.
 
   Example bla P : RTele SProp (reflect_reflect P) :=
     Eval simpl in (fun b=>(fun _=>P <-> b = true)).
-  Example bla_branch P := Eval simpl in get_type_of_branch (bla P) (reflect_RTrue P).
+  Example bla_branch P := Eval simpl in branch_of_CTele (bla P) (reflect_RTrue P).
 
 
   Example bla_RTele P b (r : reflect P b) : RTele _ _ :=
-    Eval compute in M.eval (abstract_goal (rsort := SProp) (reflect_args P b) ((P <-> b = true)) r).
+    Eval compute in M.eval (abstract_goal (rsort := SProp) ((P <-> b = true)) (reflect_args P b) r).
 
   Example bla_goals P b r : list dyn :=
     Eval compute in
-      map (fun cs => Dyn (get_type_of_branch (rsort := SProp) (bla_RTele P b r) cs))
+      map (fun cs => Dyn (branch_of_CTele (rsort := SProp) (bla_RTele P b r) cs))
           (reflect_RTrue P :: reflect_RFalse P :: nil).
 
   Example reflectP_it : ITele _ :=
@@ -102,11 +102,11 @@ Qed.
   Example reflect_app P b := Eval compute in ITele_App (reflect_args P b).
 
   Example blaP_RTele P b r : RTele _ _ :=
-    Eval compute in M.eval (abstract_goal (rsort := SProp) (reflectP_args P b) ((P <-> b = true)) r).
+    Eval compute in M.eval (abstract_goal (rsort := SProp) ((P <-> b = true)) (reflectP_args P b) r).
 
   Example blaP_goals P b r : list dyn :=
     Eval compute in
-      map (fun cs => Dyn (get_type_of_branch (blaP_RTele P b r) cs))
+      map (fun cs => Dyn (branch_of_CTele (blaP_RTele P b r) cs))
           (reflectP_RFalse :: reflectP_RTrue :: nil).
 
   Goal True.
@@ -124,11 +124,11 @@ Qed.
   Goal forall P b, reflect P b -> P <-> b = true.
   Proof.
     intros P b r.
-    pose (rG := (M.eval (abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r)) : RTele _ _).
+    pose (rG := (M.eval (abstract_goal (rsort := SType) (P <-> b = true) (reflect_args P b) r)) : RTele _ _).
     cbn delta -[RTele] in rG.
-    assert (T : get_type_of_branch rG (reflect_RTrue P)).
+    assert (T : branch_of_CTele rG (reflect_RTrue P)).
     { now firstorder. }
-    assert (F : get_type_of_branch rG (reflect_RFalse P)).
+    assert (F : branch_of_CTele rG (reflect_RFalse P)).
     { compute. firstorder. now discriminate. }
     pose (mc :=
             M.makecase {|
@@ -165,11 +165,11 @@ Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
 Goal forall P b, reflect P b -> P <-> b = true.
 MProof.
   intros P b r.
-  mpose (rG := abstract_goal (rsort := SType) (reflect_args P b) (P <-> b = true) r).
+  mpose (rG := abstract_goal (rsort := SType) (P <-> b = true) (reflect_args P b)  r).
   simpl.
-  assert (T : get_type_of_branch rG (reflect_RTrue P)).
+  assert (T : branch_of_CTele rG (reflect_RTrue P)).
   { simpl. cintros x {- split&> [m:cintros xP {- reflexivity -} | cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
-  assert (F : get_type_of_branch rG (reflect_RFalse P)).
+  assert (F : branch_of_CTele rG (reflect_RFalse P)).
   { simpl. intros. split. intros. select (~ _) (fun a=>select P (fun x=>exact (match a x with end))). intros;; discriminate. }
   mpose (return_type := unfold_funs (RTele_Fun rG) 5).
   pose (mc :=
@@ -180,8 +180,8 @@ MProof.
             |}).
   let mc := reduce RedNF mc in r <- mc; pose (c := r).
   clear mc.
-  unfold_in (@get_type_of_branch) T. simpl_in T.
-  unfold_in (@get_type_of_branch) F. simpl_in F.
+  unfold_in (@branch_of_CTele) T. simpl_in T.
+  unfold_in (@branch_of_CTele) F. simpl_in F.
   clear return_type.
   (* TODO: figure out why `unfold` above doesn't work anymore. *)
   (* clear rG. *)
@@ -193,23 +193,23 @@ Abort.
 
 End ExampleReflect.
 
-
+Set Unicoq Try Solving Eqn.
 Module VectorExample.
 Require Import Vector.
 Goal forall n (v : t nat n), n = Coq.Lists.List.length (to_list v).
 Proof.
   pose (it := iTele (fun n => @iBase (SType) (t nat n))).
-  pose (vnil := ((@cBase SType _ (aTele 0 aBase) (nil nat))) : CTele it).
-  pose (vcons := (cProd (fun a => cProd (fun n => cProd (fun (v : t nat n) => (@cBase SType _ (aTele (S n) aBase) (cons _ a _ v)))))) : CTele it).
+  pose (vnil := ((@cBase SType it (aTele 0 aBase) (nil nat))) : CTele it).
+  pose (vcons := (cProd (fun a => cProd (fun n => cProd (fun (v : t nat n) => (@cBase SType it (aTele (S n) aBase) (cons _ a _ v)))))) : CTele it).
   fix f 2.
   intros n v.
   pose (a := (aTele n (aBase)) : ATele it).
-  pose (rt := M.eval (abstract_goal (rsort := SProp) a (n = Coq.Lists.List.length (to_list v)) v)).
+  pose (rt := M.eval (abstract_goal (rsort := SProp) (n = Coq.Lists.List.length (to_list v)) a v)).
   simpl in vcons.
   cbn beta iota zeta delta -[RTele] in rt.
-  assert (N : get_type_of_branch rt vnil).
+  assert (N : branch_of_CTele rt vnil).
   { now auto. }
-  assert (C : get_type_of_branch rt vcons).
+  assert (C : branch_of_CTele rt vcons).
   { intros x k v'. hnf. simpl. f_equal. exact (f _ _). }
   pose (mc :=
           M.makecase {|
