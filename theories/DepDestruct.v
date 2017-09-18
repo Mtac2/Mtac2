@@ -1,6 +1,5 @@
 From Mtac2 Require Import Logic Datatypes List Base Tactics ImportedTactics.
 Import M.notations.
-Import T.notations.
 
 Require Import Strings.String.
 Import Mtac2.List.ListNotations.
@@ -132,9 +131,12 @@ Arguments cProd {_ _%IT _%type} _.
 
 
 (** Represents a constructor of an inductive type where all arguments are non-dependent *)
-Notation NDCfold it := (fold_right (fun T b => T -> b) {a : ATele it & selem_of (ITele_App a)}).
+Notation NDCfold it := (fun l =>
+                        fold_right (fun T b => T * b)%type unit l -> {a : ATele it & selem_of (ITele_App a)}).
 Definition NDCTele {sort} (it : ITele sort) : Type :=
   { l : list Type & NDCfold it l }.
+
+Definition ndcBase {sort} {T : stype_of sort} (a : ATele (iBase T)) (t : selem_of T) : NDCTele (iBase T) := existT _ [m:] (fun _ => existT _ a t).
 
 (** Represents the result type of a branch. *)
 (* Inductive RTele {isort} rsort : ITele isort -> Type := *)
@@ -242,9 +244,9 @@ Fixpoint branch_of_CTele {isort} {rsort} {it : ITele isort} (rt : RTele rsort it
 
 Definition branch_of_NDCTele {isort} {rsort} {it : ITele isort} (rt : RTele rsort it) (ct : NDCTele it) : stype_of rsort :=
   (fix rec l :=
-     match l as l' return fold_right (fun T b => T -> b) { a : ATele it & selem_of (ITele_App a) } l' -> stype_of rsort with
-     | nil => fun '(existT _ a t) => RTele_App a rt t
-     | cons T l => fun f => ForAll (fun t : T => rec l (f t))
+     match l as l' return NDCfold it l' -> stype_of rsort with
+     | nil => fun f => let '(existT _ a t) := f tt in RTele_App a rt t
+     | cons T l => fun f => ForAll (fun t : T => rec l (fun x => f(t,x)))
      end) (projT1 ct) (projT2 ct).
 
 (* Get exactly `max` many arguments *)
@@ -321,14 +323,14 @@ Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A 
                       r <- rec (F b) (App f b);
                       let '(existT _ l F) := r in
                       r' <- (M.abs_fun b F) : M (B -> _);
-                      M.ret (existT (fold_right (fun T b => T -> b) _) (B::l) r')
+                      M.ret (existT (NDCfold _) (B::l) (fun '(b,x) => r' b x))
                     )
     | _ =>
         let A_red := reduce RedHNF A in (* why the reduction here? *)
         args <- args_of_max nindx (Dyn A_red);
         atele <- get_ATele it args;
         a' <- @M.coerce _ (selem_of (ITele_App (isort := isort) atele)) a ;
-        M.ret (existT _ nil (existT _ atele a'))
+        M.ret (existT _ nil (fun _ => existT _ atele a'))
 end.
 
 Definition get_NDCTele :=
@@ -387,6 +389,7 @@ Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) : M
   atele <- get_ATele it indlist : M (ATele it);
   M.ret atele.
 
+Import T.notations.
 Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
     ind <- get_ind A;
       let (nsortit, constrs) := ind in
