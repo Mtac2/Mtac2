@@ -802,7 +802,7 @@ Module notations.
                    (app ls%with_pattern [m:([? x] x => raise x)%pattern]))))
       (at level 82, a at level 100, ls at level 91, only parsing) : tactic_scope.
 
-  Notation "t 'or' u" := (or t u) (at level 50) : tactic_scope.
+  Notation "t || u" := (or t u) : tactic_scope.
 
   (* We need a fresh evar to be able to use intro with ;; *)
   Notation "'intro' x" :=
@@ -979,7 +979,7 @@ Definition first {B} : list (gtactic B) -> gtactic B :=
   fix go l : gtactic B :=
     match l with
     | nil => T.raise NoProgress
-    | (x :: xs) => x or go xs
+    | (x :: xs) => x || go xs
     end.
 End T.
 

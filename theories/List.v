@@ -27,8 +27,10 @@ In a special module to avoid conflicts. *)
 Module ListNotations.
 Notation "[m: ]" := nil (format "[m: ]") : list_scope.
 Notation "[m: x ]" := (cons x nil) : list_scope.
-Notation "[m: x | y | .. | z ]" :=  (cons x (cons y .. (cons z nil) ..)) : list_scope.
 Notation "[m: x & s ]" :=  (cons x s) : list_scope.
+Notation "[m: x | y | .. | z ]" :=
+  (cons x (cons y .. (cons z nil) ..))
+    (format "'[hv  ' [m:  x '//' |  y  '//' |  .. '//' |  z ']' ]") : list_scope.
 End ListNotations.
 
 Import ListNotations.

@@ -143,6 +143,8 @@ Notation "p => b" := (pbase p%core (fun _ => b%core) UniMatch)
   (no associativity, at level 201) : pattern_scope.
 Notation "p => [ H ] b" := (pbase p%core (fun H => b%core) UniMatch)
   (no associativity, at level 201, H at next level) : pattern_scope.
+Notation "p => [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniMatch)
+  (no associativity, at level 201, H binder, G binder) : pattern_scope.
 Notation "'_' => b " := (ptele (fun x=> pbase x (fun _ => b%core) UniMatch))
   (at level 201, b at next level) : pattern_scope.
 
@@ -150,16 +152,22 @@ Notation "p '=n>' b" := (pbase p%core (fun _ => b%core) UniMatchNoRed)
   (no associativity, at level 201) : pattern_scope.
 Notation "p '=n>' [ H ] b" := (pbase p%core (fun H => b%core) UniMatchNoRed)
   (no associativity, at level 201, H at next level) : pattern_scope.
+Notation "p =n> [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniMatchNoRed)
+  (no associativity, at level 201, H binder, G binder) : pattern_scope.
 
 Notation "p '=u>' b" := (pbase p%core (fun _ => b%core) UniCoq)
   (no associativity, at level 201) : pattern_scope.
 Notation "p '=u>' [ H ] b" := (pbase p%core (fun H => b%core) UniCoq)
   (no associativity, at level 201, H at next level) : pattern_scope.
+Notation "p =u> [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniCoq)
+  (no associativity, at level 201, H binder, G binder) : pattern_scope.
 
 Notation "p '=c>' b" := (pbase p%core (fun _ => b%core) UniEvarconv)
   (no associativity, at level 201) : pattern_scope.
 Notation "p '=c>' [ H ] b" := (pbase p%core (fun H => b%core) UniEvarconv)
   (no associativity, at level 201, H at next level) : pattern_scope.
+Notation "p =c> [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniEvarconv)
+  (no associativity, at level 201, H binder, G binder) : pattern_scope.
 
 Delimit Scope pattern_scope with pattern.
 
