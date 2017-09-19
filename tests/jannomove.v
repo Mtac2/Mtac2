@@ -49,7 +49,7 @@ fix loop (l : LIP) (a : A) {struct l} : M A :=
 
 Definition NotDone : Exception. exact exception. Qed.
 Definition done : tactic :=
-  intros ;; (tauto or T.assumption or T.reflexivity) or (T.raise NotDone).
+  intros ;; (tauto || T.assumption || T.reflexivity) || (T.raise NotDone).
 
 Fixpoint mmap_plist (f: LIP -> tactic) (l: list LIP) : list tactic :=
   match l with

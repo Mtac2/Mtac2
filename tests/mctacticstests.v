@@ -340,10 +340,10 @@ Abort.
 Goal forall x y : bool, x = y -> y = x.
 MProof.
   intros x y H.
-  destruct x or idtac. (* should execute idtac because H depends on x *)
+  destruct x || idtac. (* should execute idtac because H depends on x *)
   move_back H (
     destruct x;; destruct y;; intros;;
-      (reflexivity or (symmetry;; assumption))
+      (reflexivity || (symmetry;; assumption))
   ).
 Qed.
 
