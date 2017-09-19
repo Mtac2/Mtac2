@@ -169,11 +169,6 @@ Definition MTele_of {A} (T : A -> Prop) :=
   ) (T a) >>= (M.abs_fun a)).
 
 
-
-(* Class MT_OF (T : Type) := mt_of : MTele. *)
-
-(* Hint Extern 0 (MT_OF ?t) => ((mrun (MTele_of t))) : typeclass_instances. *)
-
 (* Bind Scope Unification_scope with Unification. *)
 (* Delimit Scope Unification_scope with Unification. *)
 (* Notation "'=u>'" := (UniCoq) : Unification_scope. *)
@@ -194,11 +189,11 @@ Notation "d '=c>' t" := (mtpbase d t UniEvarconv)
     (at level 201) : mtpattern_scope.
 Notation "d '=n>' t" := (mtpbase d t UniMatchNoRed)
     (at level 201) : mtpattern_scope.
-Notation "d '=>' t" := (mtpbase d t UniMatch)
+Notation "d '=m>' t" := (mtpbase d t UniMatch)
     (at level 201) : mtpattern_scope.
-(* Notation "'[?' t1 .. t2 ] d '=m>' t" := (mtptele (fun t1 => .. (mtptele (fun t2 => mtpbase d t (UniMatch))) ..)) (t1 closed binder, t2 closed binder, at level 0, d,t at next level). *)
-(* Notation "'[?' t1 .. t2 ] d '=n>' t" := (mtptele (fun t1 => .. (mtptele (fun t2 => mtpbase d t (UniMatchNoRed))) ..)) (t1 closed binder, t2 closed binder, at level 0, d,t at next level). *)
-(* Notation "'[?' t1 .. t2 ] d '=e>' t" := (mtptele (fun t1 => .. (mtptele (fun t2 => mtpbase d t (UniEvarconv))) ..)) (t1 closed binder, t2 closed binder, at level 0, d at level 100,t at next level). *)
+
+Notation "'_' => b " := (mtptele (fun x=> mtpbase x (fun _ => b%core) UniMatch))
+  (at level 201, b at next level) : mtpattern_scope.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
   ((@cons (mtpattern _ _) p1%mtpattern (.. (@cons (mtpattern _ _) pn%mtpattern nil) ..)))
@@ -209,21 +204,22 @@ Notation "'with' p1 | .. | pn 'end'" :=
 
 Delimit Scope with_mtpattern_scope with with_mtpattern.
 
+Class TC_UNIFY {T : Type} (A B : T) := tc_unify : (A = B).
+Arguments tc_unify {_} _ _ {_}.
+Hint Extern 0 (TC_UNIFY ?A ?B) => mrun (o <- M.unify A B UniCoq; match o with | Some eq => M.ret eq | None => M.failwith "cannot (tc_)unify." end) : typeclass_instances.
+
+Class MT_OF {A} (T : A -> Prop) := mt_of : A -> MTele.
+Arguments mt_of {_} _ {_}.
+Hint Extern 0 (MT_OF ?t) => mrun (MTele_of t) : typeclass_instances.
+
 Notation "'mtmmatch' x 'as' y 'return' T p" :=
   (
-    M.eval
-      (
-        m <- MTele_of (fun y => T%type);
-        oeq <- M.unify  (fun y => MTele_ty M (m y)) (fun y => T%type) UniCoq;
-        (match oeq in option _ return list (mtpattern _ (fun y => T%type)) -> M ((fun y => T%type) x) with
-        | Some eq =>
-          match eq in _ = R return list (mtpattern _ R) -> M (R x) with
-          | eq_refl => fun ps =>
-                         M.ret (mtmmatch' _ m x ps )
-          end
-        | None => fun _ => M.failwith "Impossible Case"
-        end) (p%with_mtpattern)
-      )
+    let m := mt_of (fun y => T) in
+    match tc_unify (fun _z => MTele_ty M (m _z))((fun y => T))
+          in _ = R return list (mtpattern _ R) -> R x with
+    | eq_refl => fun ps => mtmmatch' _ (m) x ps
+    end
+    (p%with_mtpattern)
   ) (at level 90, p at level 91).
 
 (* Goal nat -> True. *)
@@ -249,11 +245,10 @@ Notation "'mtmmatch' x 'as' y 'return' T p" :=
 (* Qed. *)
 
 Local
-Program Definition test_mtmmatch x :=
-  Eval red in (((
-                   mtmmatch (S x) as y return (Fin.t y -> M True)
+Program Definition test_mtmmatch x (F : Fin.t (S x)) : M True :=
+                   (((mtmmatch (S x) as y return (Fin.t y -> M True)
                                               with
                                               | [? (i : nat)] (i + 1) =u> (fun f : Fin.t (i+1) => M.ret I)
                    end
 
-                 )  (@Fin.F1 x)))%MC.
+                 )  F))%MC.
