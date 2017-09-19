@@ -21,4 +21,5 @@ theories/Tactics.v
 theories/ImportedTactics.v
 theories/DepDestruct.v
 theories/Mtac2.v
+theories/Debugger.v
 theories/MTeleMatch.v
