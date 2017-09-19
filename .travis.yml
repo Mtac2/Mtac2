@@ -18,4 +18,4 @@ install:
 script:
 - ./configure.sh
 - make clean && make
-- cd tests && make clean && make
+- cd tests && make clean && make -k
