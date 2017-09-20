@@ -361,7 +361,7 @@ Inductive t : Type -> Prop :=
 | decompose : forall {A}, A -> t (prod dyn (list dyn))
 
 (** [solve_typeclass A] calls type classes resolution for [A] and returns the result or fail. *)
-| solve_typeclass : forall (A:Type), t A
+| solve_typeclass : forall (A:Type), t (option A)
 
 (** [declare dok name opaque t] defines [name] as definition kind
     [dok] with content [t] and opacity [opaque] *)

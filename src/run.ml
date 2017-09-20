@@ -1174,8 +1174,13 @@ let rec run' ctxt t =
 
     | 37 -> (* solve_typeclass *)
         let ty = nth 0 in
-        let sigma, v = Typeclasses.resolve_one_typeclass ~unique:false env sigma  ty in
-        return sigma v
+        begin
+          try
+            let sigma, v = Typeclasses.resolve_one_typeclass ~unique:false env sigma  ty in
+            return sigma (CoqOption.mkSome ty v)
+          with Not_found ->
+            return sigma (CoqOption.mkNone ty)
+        end
 
     | 38 -> (* declare definition *)
         let kind, name, opaque, ty, bod = nth 0, nth 1, nth 2, nth 3, nth 4 in
