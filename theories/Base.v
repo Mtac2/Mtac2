@@ -335,6 +335,9 @@ Inductive t : Type -> Prop :=
     arguments. For instance, [decompose (3 + 3)] returns
     [(Dyn add, [Dyn 3; Dyn 3])] *)
 | decompose : forall {A}, A -> t (prod dyn (list dyn))
+
+(** [solve_typeclass A] calls type classes resolution for [A] and returns the result or fail. *)
+| solve_typeclass : forall (A:Type), t A
 .
 
 Arguments t _%type.

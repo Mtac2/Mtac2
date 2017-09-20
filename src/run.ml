@@ -1081,6 +1081,11 @@ let rec run' ctxt t =
         let sigma, args = CoqList.pto_coq dyn (fun t sigma->mkDyn (Retyping.get_type_of env sigma t) t sigma env) args sigma in
         return sigma (CoqPair.mkPair dyn listdyn dh args)
 
+    | 37 -> (* solve_typeclass *)
+        let ty = nth 0 in
+        let sigma, v = Typeclasses.resolve_one_typeclass ~unique:false env sigma  ty in
+        return sigma v
+
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"
 
