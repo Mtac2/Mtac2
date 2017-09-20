@@ -63,6 +63,30 @@ Definition NotCumul {A B} (x: A) (y: B) : Exception. exact exception. Qed.
 Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
 Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
 
+Definition NotAReference {A} (x : A) : Exception. exact exception. Qed.
+
+(** Lifted from coq 8.6.1 Decl_kinds
+    TODO: auto generate this file to avoid inconsistencies.
+ *)
+Inductive definition_object_kind :=
+| dok_Definition
+| dok_Coercion
+| dok_SubClass
+| dok_CanonicalStructure
+| dok_Example
+| dok_Fixpoint
+| dok_CoFixpoint
+| dok_Scheme
+| dok_StructureComponent
+| dok_IdentityCoercion
+| dok_Instance
+| dok_Method.
+
+Inductive implicit_arguments :=
+| ia_Explicit
+| ia_Implicit
+| ia_MaximallyImplicit.
+
 Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
 Arguments Dyn {_} _.
 
@@ -338,6 +362,18 @@ Inductive t : Type -> Prop :=
 
 (** [solve_typeclass A] calls type classes resolution for [A] and returns the result or fail. *)
 | solve_typeclass : forall (A:Type), t A
+
+(** [declare dok name opaque t] defines [name] as definition kind
+    [dok] with content [t] and opacity [opaque] *)
+| declare : forall (dok : definition_object_kind)
+                   (name : string)
+                   (opaque : bool),
+    forall {A}, A -> t A
+
+(** [declare_implicits r l] declares implicit arguments for global
+    reference [r] according to [l] *)
+| declare_implicits : forall {A : Type} (a : A),
+    list (option (implicit_arguments)) -> t unit
 .
 
 Arguments t _%type.
