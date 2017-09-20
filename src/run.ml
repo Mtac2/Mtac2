@@ -158,6 +158,8 @@ module Exceptions = struct
   let mkStuckTerm () = Lazy.force (mkConstr "StuckTerm")
   let mkNotAList () = Lazy.force (mkConstr "NotAList")
   let mkVarAppearsInValue () = Lazy.force (mkConstr "VarAppearsInValue")
+  let mkNotAReference ty t =
+    mkApp (Lazy.force (mkConstr "NotAReference"), [|ty; t|])
 
   let mkLtacError msg =
     let e = mkConstr "LtacError" in
@@ -763,6 +765,95 @@ let is_nu env x nus =
   in
   find env 0 < nus
 
+(** declare a definition *)
+exception DischargeLocality
+
+exception UnsupportedDefinitionObjectKind
+exception CanonicalStructureMayNotBeOpaque
+
+let run_declare_def env sigma kind name opaque ty bod =
+  let open Decl_kinds in
+  (* copied from coq 8.6.1 Vernacentries *)
+  let fix_exn = Future.fix_exn_of (Future.from_val bod) in
+  let no_hook = Lemmas.mk_hook (fun _ _ -> ()) in
+  let vernac_definition_hook p = function
+    | Coercion -> Class.add_coercion_hook p
+    | CanonicalStructure ->
+        if opaque then raise CanonicalStructureMayNotBeOpaque else
+          Lemmas.mk_hook (fun _ -> Recordops.declare_canonical_structure)
+    | SubClass -> Class.add_subclass_hook p
+    (* | Instance -> Lemmas.mk_hook (fun local gr -> *)
+    (*   let local = match local with | Global -> false | Local -> true | _ -> raise DischargeLocality in *)
+    (*   let () = Typeclasses.declare_instance None local gr *)
+    (*   in () *)
+    (* ) *)
+    | Instance
+    | IdentityCoercion | Scheme | StructureComponent | Fixpoint ->
+        raise UnsupportedDefinitionObjectKind
+    | _ ->
+        no_hook
+  in
+  (* copied from coq 8.6.1 Decl_kinds *)
+  let kinds = [|
+    Definition
+  ; Coercion
+  ; SubClass
+  ; CanonicalStructure
+  ; Example
+  ; Fixpoint
+  ; CoFixpoint
+  ; Scheme
+  ; StructureComponent
+  ; IdentityCoercion
+  ; Instance
+  ; Method|]
+  in
+  let ctx = Evd.universe_context_set sigma in
+  let kind_pos = get_constructor_pos kind in
+  let kind = kinds.(kind_pos) in
+  let name = CoqString.from_coq (env, sigma) name in
+  let id = Names.Id.of_string name in
+  let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, ctx) in
+  let gr = Globnames.ConstRef kn in
+  let () = Lemmas.call_hook fix_exn (vernac_definition_hook false kind) Global gr  in
+  let c = (Universes.constr_of_global gr) in
+  (* Feedback.msg_notice *)
+  (*   (Termops.print_constr_env env c); *)
+  (sigma, c)
+
+(** declare implicits *)
+let run_declare_implicits env sigma gr impls =
+  (* we expect each item in the list to correspond to an optional element of an inductive type roughly like this:
+     | Explicit
+     | Implicit
+     | MaximallyImplicit
+
+     But we do not care much for the actual type so right now we just take the constructor_pos
+  *)
+  let impliciteness = [|
+    (false, false, false) (* Explicit *)
+  ; (false, true, true)   (* Implicit *)
+  ; (true, true, true)    (* Maximal *)
+  |]
+  in
+  let gr = Globnames.global_of_constr gr in
+  let idx = ref 1 in
+  let impls = CoqList.from_coq_conv (env, sigma)
+                (fun item ->
+                   let ret = match CoqOption.from_coq (env, sigma) item with
+                     | None -> None
+                     | Some item ->
+                         let kind_pos = get_constructor_pos item in
+                         Some (Constrexpr.ExplByPos(!idx, None), impliciteness.(kind_pos))
+                   in
+                   idx := !idx + 1; ret
+                ) impls in
+  let impls = List.map_filter (fun x -> x) impls in
+  let () = Impargs.maybe_declare_manual_implicits false gr impls in
+  (sigma, CoqUnit.mkTT)
+
+
+
 type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option}
 let rec run' ctxt t =
   let sigma, env = ctxt.sigma, ctxt.env in
@@ -1081,6 +1172,19 @@ let rec run' ctxt t =
         let sigma, args = CoqList.pto_coq dyn (fun t sigma->mkDyn (Retyping.get_type_of env sigma t) t sigma env) args sigma in
         return sigma (CoqPair.mkPair dyn listdyn dh args)
 
+    | 37 -> (* declare definition *)
+        let kind, name, opaque, ty, bod = nth 0, nth 1, nth 2, nth 3, nth 4 in
+        let sigma, ret = run_declare_def env sigma kind name (CoqBool.from_coq opaque) ty bod in
+        return sigma ret
+
+    | 38 -> (* declare implicit arguments *)
+        let reference, impls = (*nth 0 is the type *) nth 1, nth 2 in
+        (try
+           let sigma, ret = run_declare_implicits env sigma reference impls in
+           return sigma ret
+         with Not_found ->
+           fail sigma (E.mkNotAReference (nth 0) reference)
+        )
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"
 
