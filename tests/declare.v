@@ -33,3 +33,37 @@ Module DeclareTest.
   Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: Some ia_Explicit | Some ia_Explicit])).
   Fail Definition should_work := Nat.add 3 2.
 End DeclareTest.
+Require Import Strings.String.
+Import M.notations.
+
+Fixpoint defineN (n : nat) : M unit :=
+  match n with
+  | 0 => M.ret tt
+  | S n =>
+    s <- M.pretty_print n;
+    M.declare dok_Definition ("NAT"++s)%string false n;;
+    defineN n
+  end.
+Fail Print N0.
+Compute ltac:(mrun (defineN 4)).
+
+Print NAT0.
+Print NAT1.
+Print NAT2.
+Print NAT3.
+Fail Print NAT4.
+
+Set Printing All. (* nasty *)
+Compute ltac:(mrun (defineN 4)).
+Print NATO.
+Search "NAT". (* ouch, there are definitions like "NATS (S O)" *)
+Unset Printing All.
+
+(* ouch, there should be a catchable error. but what about previously declared objects? *)
+Fail Compute ltac:(mrun (mtry defineN 5 with _ => M.ret tt end)).
+
+Fail Print NAT4. (* ah, it is failing. *)
+
+Fail Compute fun x y => ltac:(mrun (M.declare dok_Definition "lenS" true (Le.le_n_S x y))). (* we should check that the terms are closed w.r.t. section variables *)
+
+Fail Compute ltac:(mrun (M.declare dok_Definition "lenS" true (Le.le_n_S))). (* what is going on here? *)
