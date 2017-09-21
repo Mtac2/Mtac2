@@ -12,7 +12,7 @@ Definition isReduce {A} (x:A) : M bool :=
   end.
 
 Definition debug (trace: bool) {A:Type} (bks : list dyn) : M A -> M unit :=
-  M.break (fun A (x:A) =>
+  M.break (fun A (x:M A) =>
              v <- M.decompose x;
              let (hd, _) := v in
              let (_, hd) := hd : dyn in
@@ -32,14 +32,18 @@ Definition debug (trace: bool) {A:Type} (bks : list dyn) : M A -> M unit :=
                  end
                else if trace then
                       M.print_term x;; M.ret x
-                    else M.ret x).
+                    else M.ret x) _.
 
 Definition debugT {A} (trace: bool) (bks : list dyn) (t: gtactic A) : gtactic unit := fun g=>
   debug trace bks (t g) ;; M.ret nil.
 Import Mtac2.List.ListNotations.
 
+Import M.notations.
 
-Definition test : True.
+Definition test : unit := ltac:(mrun (debug true [m:] (M.ret I))).
+
+
+Goal True.
 MProof.
   debugT false [m: (*HAVE FUN Dyn (@M.ret) | Dyn (@M.unify) *)] (T.apply I).
 Qed.

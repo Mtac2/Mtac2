@@ -1161,7 +1161,7 @@ let rec run' ctxt t =
         return sigma (CoqString.to_coq (read_line ()))
 
     | 35 -> (* break *)
-        run' {ctxt with hook=Some (nth 0)} (nth 2) >>= fun (sigma, _) ->
+        run' {ctxt with hook=Some (nth 2)} (nth 4) >>= fun (sigma, _) ->
         return sigma CoqUnit.mkTT
 
     | 36 -> (* decompose *)

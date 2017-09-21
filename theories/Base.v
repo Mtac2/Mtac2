@@ -353,7 +353,9 @@ Inductive t : Type -> Prop :=
 (** [break f t] calls [f] at each step of the computation of [t]. [f]
     is expcted to return the term that receives as argument, or any
     transformation of it. *)
-| break : (forall A, A -> t A) -> forall {A : Type}, A -> t unit
+| break' : forall (S : Type -> Prop),
+  (forall a : Type, S a -> t a) ->
+  (forall A, S A -> t (S A)) -> forall {A : Type}, S A -> t unit
 
 (** [decompose x] decomposes value [x] into a head and a spine of
     arguments. For instance, [decompose (3 + 3)] returns
@@ -388,6 +390,8 @@ Definition fix2 {A1 A2} B := @fix2' A1 A2 B t (fun _ x => x).
 Definition fix3 {A1 A2 A3} B := @fix3' A1 A2 A3 B t (fun _ x => x).
 Definition fix4 {A1 A2 A3 A4} B := @fix4' A1 A2 A3 A4 B t (fun _ x => x).
 Definition fix5 {A1 A2 A3 A4 A5} B := @fix5' A1 A2 A3 A4 A5 B t (fun _ x => x).
+
+Definition break := @break' t (fun _ x => x).
 
 (** Defines [eval f] to execute after elaboration the Mtactic [f].
     It allows e.g. [rewrite (eval f)]. *)
