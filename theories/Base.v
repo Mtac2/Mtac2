@@ -391,7 +391,7 @@ Definition fix3 {A1 A2 A3} B := @fix3' A1 A2 A3 B t (fun _ x => x).
 Definition fix4 {A1 A2 A3 A4} B := @fix4' A1 A2 A3 A4 B t (fun _ x => x).
 Definition fix5 {A1 A2 A3 A4 A5} B := @fix5' A1 A2 A3 A4 A5 B t (fun _ x => x).
 
-Definition break := @break' t (fun _ x => x).
+Definition break {A} f := @break' t (fun _ x => x) f A.
 
 (** Defines [eval f] to execute after elaboration the Mtactic [f].
     It allows e.g. [rewrite (eval f)]. *)

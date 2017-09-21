@@ -12,13 +12,13 @@ Definition isReduce {A} (x:A) : M bool :=
   end.
 
 Definition debug (trace: bool) {A:Type} (bks : list dyn) : M A -> M unit :=
+  let print_if_trace {A} (x:A) := (if trace then M.print_term x else M.ret tt);; M.ret x in
   M.break (fun A (x:M A) =>
              v <- M.decompose x;
              let (hd, _) := v in
              let (_, hd) := hd : dyn in
              mif isReduce hd then (* avoid computation of reduce *)
-               M.print_term x;;
-               M.ret x
+               print_if_trace x
              else
                let x := reduce (RedWhd [rl:RedBeta;RedMatch;RedFix;RedZeta]) x in
                v <- M.decompose x;
@@ -30,9 +30,7 @@ Definition debug (trace: bool) {A:Type} (bks : list dyn) : M A -> M unit :=
                  | "e" => M.raise Break
                  | _ => M.ret x
                  end
-               else if trace then
-                      M.print_term x;; M.ret x
-                    else M.ret x) _.
+               else print_if_trace x).
 
 Definition debugT {A} (trace: bool) (bks : list dyn) (t: gtactic A) : gtactic unit := fun g=>
   debug trace bks (t g) ;; M.ret nil.
