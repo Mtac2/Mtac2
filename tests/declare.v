@@ -62,7 +62,7 @@ Compute (M.eval (c <- M.declare dok_Definition "_" true (S O); M.print_term c)).
 Unset Printing All.
 
 (* ouch, there should be a catchable error. but what about previously declared objects? *)
-Compute ltac:(mrun (mtry defineN 5 with _ => M.ret tt end)).
+Compute ltac:(mrun (mtry defineN 5 with [?s] AlreadyDeclared s => M.print s;; M.ret tt end)).
 
 Print NAT4. (* definitions before the failing one are declared. *)
 
@@ -70,3 +70,17 @@ Fail Compute fun x y => ltac:(mrun (M.declare dok_Definition "lenS" true (Le.le_
 
 (* Fail Compute ltac:(mrun (M.declare dok_Definition "lenS" true (Le.le_n_S))). *) (* what is going on here? *)
 Compute M.eval (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c). (* what is going on here? *)
+
+Print blu.
+
+
+Definition backtracking_test :=
+  mtry
+    M.declare dok_Definition "newone" false tt;;
+    M.declare dok_Definition "blu" false tt
+  with [?s] AlreadyDeclared s => M.ret tt end.
+
+Compute M.eval backtracking_test.
+
+Print newone. (* is this expected? or should the "state" of definitions be also backtracked? *)
+Print blu.
