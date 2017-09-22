@@ -831,7 +831,7 @@ let run_declare_implicits env sigma gr impls =
      But we do not care much for the actual type so right now we just take the constructor_pos
   *)
   let impliciteness = [|
-    (false, false, false) (* Explicit *)
+    (false, false, false)       (* Dummy value *)
   ; (false, true, true)   (* Implicit *)
   ; (true, true, true)    (* Maximal *)
   |]
@@ -840,15 +840,22 @@ let run_declare_implicits env sigma gr impls =
   let idx = ref 1 in
   let impls = CoqList.from_coq_conv (env, sigma)
                 (fun item ->
-                   let ret = match CoqOption.from_coq (env, sigma) item with
-                     | None -> None
-                     | Some item ->
-                         let kind_pos = get_constructor_pos item in
-                         Some (Constrexpr.ExplByPos(!idx, None), impliciteness.(kind_pos))
-                   in
+                   let kind_pos = get_constructor_pos item in
+                   let ret = (if kind_pos > 0 then
+                                Some (Constrexpr.ExplByPos(!idx, None), impliciteness.(kind_pos))
+                              else
+                                None) in
+                   (* let ret = match CoqOption.from_coq (env, sigma) item with *)
+                   (*   | None -> None *)
+                   (*   | Some item -> *)
+                   (*       let kind_pos = get_constructor_pos item in *)
+                   (*       Some (Constrexpr.ExplByPos(!idx, None), impliciteness.(kind_pos)) *)
+                   (* in *)
                    idx := !idx + 1; ret
                 ) impls in
   let impls = List.map_filter (fun x -> x) impls in
+  (* since there is no way to declare something explicit, we clear implicits first *)
+  let () = Impargs.declare_manual_implicits false gr [[]] in
   let () = Impargs.maybe_declare_manual_implicits false gr impls in
   (sigma, CoqUnit.mkTT)
 

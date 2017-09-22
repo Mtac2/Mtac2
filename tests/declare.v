@@ -15,7 +15,7 @@ Import Mtac2.List.ListNotations.
 
 Compute ltac:(mrun (c1 <- M.declare dok_CanonicalStructure "bla" false (fun (x : nat) => (fun x => mkS x) x);
                     c2 <- M.declare dok_Definition "bli" true c1;
-                    M.declare_implicits c2 [m: Some ia_Implicit];;
+                    M.declare_implicits c2 [m: ia_Implicit];;
                     M.ret tt)%MC).
 Print bla.
 Print Coercions.
@@ -30,8 +30,8 @@ Module DeclareTest.
   Fail Compute ltac:(mrun (M.declare_implicits (Nat.add) [m:])).
   Fail Compute ltac:(mrun (M.declare_implicits (Nat.add (n:=1)) [m:])).
   Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m:])).
-  Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: Some ia_Explicit | Some ia_Explicit])).
-  Fail Definition should_work := Nat.add 3 2.
+  Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: ia_Explicit | ia_Explicit])).
+  Definition should_work := Nat.add 3 2.
 End DeclareTest.
 Require Import Strings.String.
 Import M.notations.

@@ -375,7 +375,7 @@ Inductive t : Type -> Prop :=
 (** [declare_implicits r l] declares implicit arguments for global
     reference [r] according to [l] *)
 | declare_implicits : forall {A : Type} (a : A),
-    list (option (implicit_arguments)) -> t unit
+    list (implicit_arguments) -> t unit
 .
 
 Arguments t _%type.
