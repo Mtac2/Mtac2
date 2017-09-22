@@ -62,9 +62,9 @@ Compute (M.eval (c <- M.declare dok_Definition "_" true (S O); M.print_term c)).
 Unset Printing All.
 
 (* ouch, there should be a catchable error. but what about previously declared objects? *)
-Fail Compute ltac:(mrun (mtry defineN 5 with _ => M.ret tt end)).
+Compute ltac:(mrun (mtry defineN 5 with _ => M.ret tt end)).
 
-Fail Print NAT4. (* ah, it is failing. *)
+Print NAT4. (* definitions before the failing one are declared. *)
 
 Fail Compute fun x y => ltac:(mrun (M.declare dok_Definition "lenS" true (Le.le_n_S x y))). (* we should check that the terms are closed w.r.t. section variables *)
 

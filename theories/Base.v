@@ -64,6 +64,7 @@ Definition NotAnEvar {A} (x: A) : Exception. exact exception. Qed.
 Definition CantInstantiate {A} (x t: A) : Exception. exact exception. Qed.
 
 Definition NotAReference {A} (x : A) : Exception. exact exception. Qed.
+Definition AlreadyDeclared (name : string) : Exception. exact exception. Qed.
 
 (** Lifted from coq 8.6.1 Decl_kinds
     TODO: auto generate this file to avoid inconsistencies.

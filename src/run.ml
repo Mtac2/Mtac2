@@ -160,6 +160,8 @@ module Exceptions = struct
   let mkVarAppearsInValue () = Lazy.force (mkConstr "VarAppearsInValue")
   let mkNotAReference ty t =
     mkApp (Lazy.force (mkConstr "NotAReference"), [|ty; t|])
+  let mkAlreadyDeclared  name =
+    mkApp (Lazy.force (mkConstr "AlreadyDeclared"), [|name|])
 
   let mkLtacError msg =
     let e = mkConstr "LtacError" in
@@ -1191,8 +1193,12 @@ let rec run' ctxt t =
 
     | 38 -> (* declare definition *)
         let kind, name, opaque, ty, bod = nth 0, nth 1, nth 2, nth 3, nth 4 in
-        let sigma, ret = run_declare_def env sigma kind name (CoqBool.from_coq opaque) ty bod in
-        return sigma ret
+        (try
+           let sigma, ret = run_declare_def env sigma kind name (CoqBool.from_coq opaque) ty bod in
+           return sigma ret
+         with CErrors.AlreadyDeclared _ ->
+           fail sigma (E.mkAlreadyDeclared name)
+        )
 
     | 39 -> (* declare implicit arguments *)
         let reference, impls = (*nth 0 is the type *) nth 1, nth 2 in
