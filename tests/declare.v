@@ -57,6 +57,8 @@ Set Printing All. (* nasty *)
 Compute ltac:(mrun (defineN 4)).
 Print NATO.
 Search "NAT". (* ouch, there are definitions like "NATS (S O)" *)
+Compute ltac:(mrun (M.get_reference "NATS O")).
+Compute (M.eval (c <- M.declare dok_Definition "_" true (S O); M.print_term c)).
 Unset Printing All.
 
 (* ouch, there should be a catchable error. but what about previously declared objects? *)
@@ -66,4 +68,5 @@ Fail Print NAT4. (* ah, it is failing. *)
 
 Fail Compute fun x y => ltac:(mrun (M.declare dok_Definition "lenS" true (Le.le_n_S x y))). (* we should check that the terms are closed w.r.t. section variables *)
 
-Fail Compute ltac:(mrun (M.declare dok_Definition "lenS" true (Le.le_n_S))). (* what is going on here? *)
+(* Fail Compute ltac:(mrun (M.declare dok_Definition "lenS" true (Le.le_n_S))). *) (* what is going on here? *)
+Compute M.eval (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c). (* what is going on here? *)
