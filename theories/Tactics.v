@@ -751,12 +751,15 @@ Module notations.
   Notation "\tactic g => t" :=
     ((fun g => t%MC) : tactic) (at level 200, g at level 0, right associativity).
 
-  Notation "r '<-' t1 ';' t2" := (bind t1 (fun r => t2%tactic))
-    (at level 81, right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
   Notation "t >>= f" := (bind t f) (at level 70) : tactic_scope.
 
+  Notation "r '<-' t1 ';' t2" := (bind t1 (fun r => t2%tactic))
+    (at level 100, right associativity, t1, t2 at level 200,
+     format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
+
   Notation "t1 ';;' t2" := (seq t1 t2)
-    (at level 81, right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : tactic_scope.
+    (at level 100, right associativity, t2 at level 200,
+     format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : tactic_scope.
 
   Notation "'mif' b 'then' t 'else' u" :=
     (cond <- b; if cond then t else u) (at level 200) : tactic_scope.
