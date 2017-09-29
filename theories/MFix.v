@@ -1,7 +1,5 @@
 From Mtac2 Require Import Mtac2 MTeleMatch.
 
-Check M.fix1.
-
 Notation MFA := (MTele_ty M).
 
 Fixpoint UNCURRY (m : MTele) : Type :=
@@ -28,42 +26,47 @@ Fixpoint curry (m : MTele) : (forall U : UNCURRY m, M (RETURN _ U)) -> MFA m :=
   | mTele f => fun F x => curry (f x) (fun U => F (existT _ x U))
   end.
 
-Definition mfix (m : MTele) (F : MFA m -> MFA m) : MFA m :=
+Definition mfix' (m : MTele) (F : MFA m -> MFA m) : MFA m :=
   curry m (mfix1 rec (U : _) : M _ := uncurry m (F (curry m rec)) U).
 
-Definition mfix' (m : MTele) (F : MFA m -> MFA m) : MFA m :=
-  curry m (M.fix1 _ (fun rec => uncurry m (F (curry m rec)))).
-
-Definition Mmap {A B} (f : A -> M B) : list A -> M (list B) :=
-  mfix (mTele (fun _ : list A => mBase (list B)))
-       (fun (rec : list A -> M (list B)) la =>
-          mmatch la with
-       | nil => M.ret nil
-       | [?a la] cons a la => b <- f a; lb <- rec la; M.ret (cons b lb)
-        end
-       ).
-
-Definition Mmap1 {A B} (f : A -> M B) : list A -> M (list B) :=
-  M.fix1 ((fun _ : list A => (list B)))
-       (fun (rec : list A -> M (list B)) la =>
-          mmatch la with
-       | nil => M.ret nil
-       | [?a la] cons a la => b <- f a; lb <- rec la; M.ret (cons b lb)
-        end
-       ).
+(* Definition mfix' (m : MTele) (F : MFA m -> MFA m) : MFA m := *)
+(*   curry m (M.fix1 _ (fun rec => uncurry m (F (curry m rec)))). *)
 
 
-From Mtac2 Require Import Debugger List.
-Import Mtac2.List.ListNotations.
+(* Less specific version of MTele_of in MTeleMatch.v *)
+Definition MTele_of :=
+  (mfix1 f (T : Prop) : M (MTele) :=
+                    mmatch T as t' return M MTele with
+                                        | [?X : Type] M X =u> M.ret (mBase X)
+                                        | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x)
+                                          =u>
+                                           b <- M.fresh_binder_name F;
+                                          f <- M.nu b None (fun x =>
+                                                 g <- f (F x);
+                                                 M.abs_fun x g);
+                                          M.ret (mTele f)
+   end
+  ).
 
-Time Compute ltac:(mrun
-                (
-                   (Mmap (fun b => M.ret (negb b)) (List.repeat true 2000));; M.ret tt
-                )
-             ).
+Class MT_OF (T : Prop) := mt_of : MTele.
+Arguments mt_of _ {_}.
+Hint Extern 0 (MT_OF ?t) => mrun (MTele_of t) : typeclass_instances.
 
-Time Compute ltac:(mrun
-                (
-                   (Mmap1 (fun b => M.ret (negb b)) (List.repeat true 2000));; M.ret tt
-                )
-             ).
+(* Definition type_of {A : Prop} (a : A) := A.  *)
+
+(* Notation "'mfix' f x .. y := b" := *)
+(*   ( *)
+(*     let m := mt_of (forall x, .. (forall y , type_of b) ..) in *)
+(*     match tc_unify ((forall x, .. (forall y, type_of b) .. )) (MTele_ty M m)  *)
+(*           in _ = R return ((R -> R) -> R) -> R with *)
+(*     | eq_refl => fun g => g (fun f => (fun x => ..  (fun y => b) ..)) *)
+
+(*     end (mfix' m) *)
+(*   ) (no associativity, *)
+(*      at level 85, *)
+(*      f ident, *)
+(*      x closed binder, *)
+(*      y closed binder, *)
+(*      (* T at level 0, *) *)
+(*      format "mfix  f  x  ..  y  :=  b" *)
+(*     ). *)
