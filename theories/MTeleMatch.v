@@ -14,6 +14,8 @@ Inductive MTele : Type :=
 | mTele {X : Type} (F : X -> MTele) : MTele
 .
 
+Notation "'[tele' x .. y , b ]" := (mTele (fun x => .. (mTele (fun y => mBase b)) .. )) (at level 100, x binder, y binder).
+
 (** MTele_ty: calculate `X -> ... -> Z -> M R` from a given MTele
 
    To be able to use this in the definition of M.t itself, we paramatrize by M.
