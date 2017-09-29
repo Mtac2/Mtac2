@@ -162,6 +162,7 @@ module Exceptions = struct
     mkApp (Lazy.force (mkConstr "NotAReference"), [|ty; t|])
   let mkAlreadyDeclared  name =
     mkApp (Lazy.force (mkConstr "AlreadyDeclared"), [|name|])
+  let mkTypeErrorUnboundVar () = Lazy.force (mkConstr "UnboundVar")
 
   let mkLtacError msg =
     let e = mkConstr "LtacError" in
@@ -1196,8 +1197,11 @@ let rec run' ctxt t =
         (try
            let sigma, ret = run_declare_def env sigma kind name (CoqBool.from_coq opaque) ty bod in
            return sigma ret
-         with CErrors.AlreadyDeclared _ ->
-           fail sigma (E.mkAlreadyDeclared name)
+         with
+         | CErrors.AlreadyDeclared _ ->
+             fail sigma (E.mkAlreadyDeclared name)
+         | Type_errors.TypeError(env, Type_errors.UnboundVar _) ->
+             fail sigma (E.mkTypeErrorUnboundVar ())
         )
 
     | 39 -> (* declare implicit arguments *)

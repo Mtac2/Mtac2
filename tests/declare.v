@@ -66,10 +66,16 @@ Compute ltac:(mrun (mtry defineN 5 with [?s] AlreadyDeclared s => M.print s;; M.
 
 Print NAT4. (* definitions before the failing one are declared. *)
 
-Fail Compute fun x y => ltac:(mrun (M.declare dok_Definition "lenS" true (Le.le_n_S x y))). (* we should check that the terms are closed w.r.t. section variables *)
+(* we should check that the terms are closed w.r.t. section variables *)
+(* JANNO: for now we just raise an catchable exception. *)
+Compute fun x y =>
+          ltac:(mrun (
+                    mtry
+                      M.declare dok_Definition "lenS" true (Le.le_n_S x y);; M.ret tt
+                      with | UnboundVar => M.ret tt end
+               )).
 
-(* Fail Compute ltac:(mrun (M.declare dok_Definition "lenS" true (Le.le_n_S))). *) (* what is going on here? *)
-Compute M.eval (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c). (* what is going on here? *)
+Compute M.eval (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c).
 
 Print blu.
 
