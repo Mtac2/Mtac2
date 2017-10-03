@@ -245,8 +245,8 @@ Fixpoint branch_of_CTele {isort} {rsort} {it : ITele isort} (rt : RTele rsort it
 Definition branch_of_NDCTele {isort} {rsort} {it : ITele isort} (rt : RTele rsort it) (ct : NDCTele it) : stype_of rsort :=
   (fix rec l :=
      match l as l' return NDCfold it l' -> stype_of rsort with
-     | nil => fun f => let '(existT _ a t) := f tt in RTele_App a rt t
-     | cons T l => fun f => ForAll (fun t : T => rec l (fun x => f(t,x)))
+     | nil => fun f => RTele_App (projT1 (f tt)) rt (projT2 (f tt))
+     | cons T l => fun f => ForAll (fun t : T => rec l (fun y => f(t,y)))
      end) (projT1 ct) (projT2 ct).
 
 (* Get exactly `max` many arguments *)
