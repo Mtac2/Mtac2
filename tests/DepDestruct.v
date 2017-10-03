@@ -1,5 +1,6 @@
 From Mtac2
-Require Import Datatypes List Mtac2 DepDestruct.
+Require Import Datatypes List Mtac2 DepDestruct Sorts.
+Import Sorts.
 Import T.
 Import Mtac2.List.ListNotations.
 
