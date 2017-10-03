@@ -16,6 +16,7 @@ theories/Logic.v
 theories/Datatypes.v
 theories/List.v
 theories/Utils.v
+theories/Sorts.v
 theories/Base.v
 theories/Tactics.v
 theories/ImportedTactics.v
