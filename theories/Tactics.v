@@ -355,22 +355,46 @@ Definition destructn (n : nat) : tactic :=
     n <- M.fresh_name "tmp";
     @intro_base A _ n destruct g).
 
+(** [apply t] applies theorem t to the current goal.
+    It generates a subgoal for each hypothesis in the theorem.
+    If the hypothesis is introduced by a dependent product (a forall),
+    the sub-goal goes to the end of the list. If it isn't dependent (a ->),
+    then it is included in the list of next subgoals. *)
 Definition apply {T} (c : T) : tactic := fun g=>
   match g with Goal eg =>
     (mfix1 app (d : dyn) : M (list (unit * goal)) :=
       let (_, el) := d in
       mif M.unify_cumul el eg UniCoq then M.ret [m:] else
         mmatch d return M (list (unit * goal)) with
-        | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
+        | [? T1 T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
           r <- app (Dyn (f e));
           mif M.is_evar e then M.ret [m: (tt, Goal e) & r] else M.ret r
+        | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
+          e <- M.evar T1;
+          r <- app (Dyn (f e));
+          mif M.is_evar e then
+            let l := dreduce (Mtac2.List.app) (Mtac2.List.app r [m: (tt, Goal e)]) in
+            M.ret l else M.ret r
         | _ =>
           gT <- M.goal_type g;
           M.raise (CantApply T gT)
         end) (Dyn c)
   | _ => M.raise NotAGoal
   end.
+
+(** Given a list of dyn's, it applies each of them until one
+succeeds. Throws NoProgress if none apply *)
+Definition apply_one_of l : tactic :=
+  Mtac2.List.fold_left (fun a b=>or a (let (_, e) := b : dyn in apply e))%tactic l (T.raise NoProgress).
+
+(** Tries to apply each constructor of the goal type *)
+Definition constructor : tactic := fun g=>
+  T <- M.goal_type g;
+  l <- M.constrs T;
+  let (_, l) := l in
+  apply_one_of l g.
+
 
 Definition change (P : Type) : tactic := fun g =>
   gT <- M.goal_type g;
@@ -928,7 +952,7 @@ Definition symmetry : tactic :=
 Definition exfalso : tactic :=
   apply Coq.Init.Logic.False_ind.
 
-Definition constructor (n : nat) : tactic :=
+Definition nconstructor (n : nat) : tactic :=
   A <- goal_type;
   match n with
   | 0 => M.raise ConstructorsStartsFrom1
@@ -944,7 +968,7 @@ Definition split : tactic :=
   A <- goal_type;
   l <- M.constrs A;
   match snd l with
-  | [m:_] => constructor 1
+  | [m:_] => nconstructor 1
   | _ => raise Not1Constructor
   end.
 
