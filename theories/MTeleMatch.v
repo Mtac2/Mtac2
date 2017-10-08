@@ -135,6 +135,7 @@ Definition mtmmatch' A m (y : A) (ps : list (mtpattern A (fun x => MTele_ty M (m
           end) ps
     ).
 
+Module TestFin.
 Require Fin.
 Definition mt : nat -> MTele := fun n => mTele (fun _ : Fin.t n => mBase (True)).
 Definition pO u : mtpattern nat _ := @mtpbase _ (fun x => MTele_ty M (mt x)) O (fun x => Fin.case0 (fun _ => M True) x) u.
@@ -148,11 +149,7 @@ Program Example pbeta : mtpattern nat (fun x => MTele_ty M (mt x)) :=
   mtptele (fun i : nat =>
             @mtpbase _ (* (fun x => MTele_ty M (mt x)) *) _ (i + 1) (fun n : Fin.t (i + 1) => M.ret I) UniCoq
          ).
-
-Definition blubb : True.
-  MProof.
-  Time ((mtmmatch' _ _ 2 [m: pO UniMatchNoRed | p1 UniMatchNoRed | pi UniMatchNoRed] (Fin.F1)))%MC.
-Qed.
+End TestFin.
 
 Definition MTele_of {A} (T : A -> Prop) :=
   b <- M.fresh_binder_name T;

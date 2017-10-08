@@ -1,4 +1,5 @@
-From Mtac2 Require Import Logic Datatypes List Base Tactics ImportedTactics.
+From Mtac2 Require Import Logic Datatypes List Sorts Base Tactics ImportedTactics.
+Import Sorts.
 Import M.notations.
 
 Require Import Strings.String.
@@ -24,62 +25,10 @@ Notation match_eq E P A :=
 Definition type_of {A : Type} (x : A) : Type := A.
 
 
-(** Types that can hold either a [Prop] or a [Type] *)
-Section Sorts.
-
-Inductive Sort : Type := SProp | SType.
-
-(** Creates a fresh type according to [s] *)
-Definition stype_of (s : Sort) : Type :=
-  match s with SType => Type | SProp => Prop end.
-Arguments stype_of !_ : simpl nomatch.
-
-(** When working with a sort [s], we cannot simply say "we have an
-    element of [stype_of s]". For that, we make [selem_of T], where
-    [T] is a [stype_of s]. *)
-Definition selem_of {s : Sort} (x : stype_of s) : Type :=
-  match s return stype_of s -> Type with
-  | SType => fun x => x
-  | SProp => fun x => x
-  end x.
-Arguments selem_of {!_} _ : simpl nomatch.
-
-Fail Example CannotMakeAnElementOfaSort s (P : stype_of s) (x : P) := x.
-
-Example WeCanWithElemOf s (P : stype_of s) (x : selem_of P) := x.
-
-
-Definition ForAll
-            {sort : Sort} {A : Type} :
-  (A -> stype_of sort) -> stype_of sort :=
-  match
-    sort as sort'
-    return ((A -> stype_of sort') -> stype_of sort')
-  with
-  | SProp => fun F => forall a : A, F a
-  | SType => fun F => forall a : A, F a
-  end.
-
-Definition Fun {sort} {A : Type} :
-  forall {F : A -> stype_of sort}, (forall a, selem_of (F a)) -> selem_of (ForAll F) :=
-  match sort as sort' return
-        forall {F : A -> stype_of sort'}, (forall a, selem_of (F a)) -> selem_of (ForAll F)
-  with
-  | SProp => fun _ f => f
-  | SType => fun _ f => f
-  end.
-
-Definition App {sort} {A : Type} : forall {F : A -> _},  selem_of (ForAll (sort := sort) F) -> forall a, selem_of (F a) :=
-  match sort as sort' return forall F, selem_of (ForAll (sort := sort') F) -> forall a, selem_of (F a) with
-  | SProp => fun F f a => f a
-  | SType => fun F f a => f a
-  end.
-End Sorts.
-
 (** [ITele s] described a sorted type [forall x, ..., y, P] with
     [P] a [stype_of s]. *)
 Inductive ITele (sort : Sort) : Type :=
-| iBase : stype_of sort -> ITele sort
+| iBase : sort -> ITele sort
 | iTele : forall {T : Type}, (T -> ITele sort) -> ITele sort.
 
 Delimit Scope ITele_scope with IT.
@@ -121,7 +70,7 @@ Arguments ITele_App {_ !_%IT} !_%AT : simpl nomatch.
 
 (** Represents a constructor of an inductive type. *)
 Inductive CTele {sort} (it : ITele sort) : Type :=
-| cBase : forall {a : ATele it} (c : selem_of (ITele_App a)), CTele it
+| cBase : forall {a : ATele it} (c : ITele_App a), CTele it
 | cProd : forall {T : Type}, (T -> CTele it) -> CTele it.
 Delimit Scope CTele_scope with CT.
 Bind Scope CTele_scope with CTele.
@@ -132,7 +81,7 @@ Arguments cProd {_ _%IT _%type} _.
 
 (** Represents a constructor of an inductive type where all arguments are non-dependent *)
 Notation NDCfold it := (fun l =>
-                        fold_right (fun T b => T * b)%type unit l -> {a : ATele it & selem_of (ITele_App a)}).
+                        fold_right (fun T b => T * b)%type unit l -> {a : ATele it & ITele_App a}).
 Definition NDCTele {sort} (it : ITele sort) : Type :=
   { l : list Type & NDCfold it l }.
 
@@ -146,9 +95,9 @@ Definition ndcBase {sort} {T : stype_of sort} (a : ATele (iBase T)) (t : selem_o
 (* Bind Scope RTele_scope with RTele. *)
 
 (* Represent it as a function as its shape is completely determined by the given ITele *)
-Fixpoint RTele {isort} rsort (it : ITele isort) : Type :=
+Fixpoint RTele {isort : Sort} (rsort : Sort) (it : ITele isort) : Type :=
   match it with
-  | iBase T => selem_of T -> stype_of rsort
+  | iBase T => T -> rsort
   | iTele f => forall t, RTele rsort (f t)
   end.
 Arguments RTele {_} _ _%IT.
@@ -194,7 +143,7 @@ Fixpoint RTele_App {isort rsort} {it : ITele isort} : forall (a : ATele it), RTe
 Fixpoint RTele_Type {isort rsort} {it : ITele isort} : RTele rsort it -> Type :=
 match it with
 | iBase s => fun _ =>
-  (forall (t : selem_of s), stype_of rsort)
+  (forall (t : s), rsort)
 | iTele _ => fun rt => forall t, RTele_Type (rt t)
 end.
 
@@ -211,7 +160,7 @@ Notation reduce_novars := (reduce (RedStrong [rl:RedBeta;RedMatch;RedFix;RedDelt
 Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (G : stype_of rsort) : forall (args : ATele it) ,
   selem_of (ITele_App args) -> M (RTele rsort it) :=
   match it as it' return forall (a' : ATele it'), selem_of (ITele_App a') -> M (RTele rsort it') with
-  | iBase T => fun _ => fun t : selem_of T =>
+  | iBase T => fun _ => fun t : T =>
     let t := reduce_novars t in
     b <- M.is_var t;
     if b then
@@ -222,7 +171,7 @@ Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (G : stype_of rsort) :
       M.ret r
     else
       M.failwith "Argument t should be a variable"
-  | iTele f => fun '(existT _ v args) => fun t : selem_of (ITele_App _) =>
+  | iTele f => fun '(existT _ v args) => fun t : ITele_App _ =>
       r <- abstract_goal G args t;
       let v := reduce_novars v in
       b <- M.is_var v;
@@ -244,9 +193,9 @@ Fixpoint branch_of_CTele {isort} {rsort} {it : ITele isort} (rt : RTele rsort it
 
 Definition branch_of_NDCTele {isort} {rsort} {it : ITele isort} (rt : RTele rsort it) (ct : NDCTele it) : stype_of rsort :=
   (fix rec l :=
-     match l as l' return NDCfold it l' -> stype_of rsort with
-     | nil => fun f => let '(existT _ a t) := f tt in RTele_App a rt t
-     | cons T l => fun f => ForAll (fun t : T => rec l (fun x => f(t,x)))
+     match l as l' return NDCfold it l' -> rsort with
+     | nil => fun f => RTele_App (projT1 (f tt)) rt (projT2 (f tt))
+     | cons T l => fun f => ForAll (fun t : T => rec l (fun y => f(t,y)))
      end) (projT1 ct) (projT2 ct).
 
 (* Get exactly `max` many arguments *)
@@ -285,13 +234,13 @@ Program Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn) {struct al
       M.ret (existT _ t r)
     | _, _ => M.raise NoPatternMatches
     end.
-Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (CTele it) :=
+Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, A -> M (CTele it) :=
   fun isort it nindx =>
-    mfix2 rec (A : stype_of isort) (a : selem_of A) : M (CTele it) :=
+    mfix2 rec (A : stype_of isort) (a : A) : M (CTele it) :=
     mmatch A with
-    | [? B (F : B -> stype_of isort)] ForAll F =u> [ H ]
+    | [? B (F : B -> isort)] ForAll F =u> [ H ]
         let f := match_eq H selem_of a in
-        n <- M.fresh_name "b";
+        n <- M.fresh_binder_name F;
         M.nu n None (fun b : B =>
           r <- rec (F b) (App f b);
           f' <- abs b r;
@@ -300,13 +249,13 @@ Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : 
         let A_red := reduce RedHNF A in (* why the reduction here? *)
         args <- args_of_max nindx (Dyn A_red);
         atele <- get_ATele it args;
-        a' <- @M.coerce _ (selem_of (ITele_App (isort := isort) atele)) a ;
+        a' <- @M.coerce _ (ITele_App atele) a ;
         M.ret (cBase atele a')
 end.
 
 Definition get_CTele :=
   fun {isort} =>
-    match isort as sort return forall {it : ITele sort} nindx {A : stype_of sort}, selem_of A -> M (CTele it) with
+    match isort as sort return forall {it : ITele sort} nindx {A : sort}, A -> M (CTele it) with
     | SProp => get_CTele_raw (isort := SProp)
     | SType => get_CTele_raw (isort := SType)
     end.
@@ -314,28 +263,28 @@ Definition get_CTele :=
 
 Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (NDCTele it) :=
   fun isort it nindx =>
-    mfix2 rec (A : stype_of isort) (a : selem_of A) : M (NDCTele it) :=
+    mfix2 rec (A : isort) (a : A) : M (NDCTele it) :=
     mmatch A with
-    | [? B (F : B -> stype_of isort)] ForAll F =u> [ H ]
+    | [? B (F : B -> isort)] ForAll F =u> [ H ]
         let f := match_eq H selem_of a in
-        n <- M.fresh_name "b";
+        n <- M.fresh_binder_name F;
         M.nu n None (fun b : B =>
                       r <- rec (F b) (App f b);
                       let '(existT _ l F) := r in
                       r' <- (M.abs_fun b F) : M (B -> _);
-                      M.ret (existT (NDCfold _) (B::l) (fun '(b,x) => r' b x))
+                      M.ret (existT (NDCfold _) (B::l) (fun '(b,y) => r' b y))
                     )
     | _ =>
         let A_red := reduce RedHNF A in (* why the reduction here? *)
         args <- args_of_max nindx (Dyn A_red);
         atele <- get_ATele it args;
-        a' <- @M.coerce _ (selem_of (ITele_App (isort := isort) atele)) a ;
+        a' <- @M.coerce _ (ITele_App atele) a ;
         M.ret (existT _ nil (fun _ => existT _ atele a'))
 end.
 
 Definition get_NDCTele :=
   fun {isort} =>
-    match isort as sort return forall {it : ITele sort} nindx {A : stype_of sort}, selem_of A -> M (NDCTele it) with
+    match isort as sort return forall {it : ITele sort} nindx {A : sort}, A -> M (NDCTele it) with
     | SProp => get_NDCTele_raw (isort := SProp)
     | SType => get_NDCTele_raw (isort := SType)
     end.
@@ -349,6 +298,24 @@ Definition sort_goal {T : Type} (A : T) : M (sigT stype_of) :=
   | Type => [H] let A_Type := match_eq H id A in
                 M.ret (existT _ SType A_Type)
   end.
+
+From Mtac2 Require Import MFix MTeleMatch.
+
+Program Definition sget_ITele (sort : Sort) : forall {T : sort} (ind : T), M (nat * ITele sort) :=
+  mfix f (T : stype_of sort) : forall (ind : T), M (nat * ITele sort)%type :=
+    mtmmatch T as T return T -> M (nat * ITele sort) with
+    | [? (A : Type) (F : A -> stype_of sort)] forall a, F a =u>
+      fun indFun =>
+        name <- M.fresh_binder_name F;
+        M.nu name None (fun a : A =>
+                          r <- f (F a) (indFun a);
+                          let (n, it) := r in
+                          f <- abs a it;
+                          M.ret (S n, iTele f))
+    | stype_of sort =n>
+      fun indProp =>
+        M.ret (0, iBase (sort := sort) indProp)
+    end.
 
 Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele)) :=
   mfix2 f (T : _) (ind : _) : M (nat * sigT ITele)%type :=
@@ -402,7 +369,7 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
                        ty <- M.evar (stype_of isort);
                        b <- M.unify_cumul ty dtype UniCoq;
                        if b then
-                         el <- M.evar (selem_of ty);
+                         el <- M.evar ty;
                          M.unify_cumul el delem UniCoq;;
                          get_CTele it nindx ty el
                        else
