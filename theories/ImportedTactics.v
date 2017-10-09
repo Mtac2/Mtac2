@@ -20,6 +20,9 @@ Definition intuition : tactic := T.ltac (qualify "intuition") nil.
 Ltac auto := auto.
 Definition auto : tactic := T.ltac (qualify "auto") nil.
 
+Ltac eauto := eauto.
+Definition eauto : tactic := T.ltac (qualify "eauto") nil.
+
 Ltac subst := subst.
 Definition subst : tactic := T.ltac (qualify "subst") nil.
 
@@ -75,9 +78,11 @@ Notation "'rewrite' x , .. , z" :=
 
 Ltac elim h := elim h.
 Definition elim {A} (x:A) : tactic :=
-  T.ltac (qualify "elim") (cons (Dyn x) nil).
+  T.ltac (qualify "elim") [m: Dyn x].
 
-Notation induction := elim.
+Ltac induction v := induction v.
+Definition induction {A} (x:A) : tactic :=
+  T.ltac (qualify "induction") [m: Dyn x].
 
 Definition injection {A} (x: A) : tactic :=
   T.ltac ("Coq.Init.Notations.injection") [m:Dyn x].
