@@ -33,6 +33,9 @@ Definition NotThatType : Exception. exact exception. Qed.
 
 Definition NoProgress : Exception. constructor. Qed.
 
+Definition ShouldntHappen (s:string) : Exception. constructor. Qed.
+Definition failwith {A} (s:string) : M A := M.raise (ShouldntHappen s).
+
 (** The type for tactics *)
 Definition gtactic (A : Type) := goal -> M (list (A * goal)).
 Notation tactic := (gtactic unit).
@@ -158,7 +161,7 @@ Definition bind {A B} (t : gtactic A) (f : A -> gtactic B) : gtactic B := fun g 
   gs <- t g;
   r <- M.map (fun '(x,g') => open_and_apply (f x) g') gs;
   let res := dreduce (concat, @List.app) (concat r) in
-  M.ret res.
+  filter_goals res.
 
 Class Seq (A B C : Type) :=
   seq : gtactic A -> C -> gtactic B.
@@ -178,9 +181,10 @@ Fixpoint gmap {A} (tacs : list (gtactic A)) (gs : list goal) : M (list (list (A 
 
 Instance seq_list {A B} : Seq A B (list (gtactic B)) := fun t f g =>
   gs <- t g;
+  filter_goals gs >>= fun gs=>
   ls <- gmap f (map snd gs);
   let res := dreduce (List.concat, List.app) (concat ls) in
-  M.ret res.
+  filter_goals res.
 
 Definition exact {A} (x:A) : tactic := fun g =>
   match g with
@@ -258,7 +262,7 @@ Definition introsn : nat -> tactic :=
         | WrongTerm => M.raise NotAProduct
         | [? s] NameExistsInContext s => intro_anonymous T M.fresh_name g >>= f n'
         end
-      | _, _ => M.failwith "Should never get here"
+      | _, _ => failwith "introsn"
       end) g.
 
 (** Applies reflexivity *)
@@ -305,7 +309,7 @@ Definition generalize {A} (x : A) : tactic := fun g =>
       rcbv match H in _ = Q return Q with eq_refl _ => e end in
     exact (e' x) g;;
     M.ret [m:(tt, Goal e)]
-  | _ => M.failwith "generalize: should never happen"
+  | _ => M.failwith "generalize"
   end.
 
 (** Clear hypothesis [x] and continues the execution on [cont] *)
@@ -507,11 +511,8 @@ Definition treduce (r : Reduction) : tactic := fun g=>
   T <- M.goal_type g;
   let T' := reduce r T in
   e <- M.evar T';
-  b <- M.unify_cumul g (@Goal T e) UniMatch;
-  match b with
-  | true => M.ret [m:(tt, Goal e)]
-  | _ => M.failwith "It should never fail here"
-  end.
+  mif M.unify_cumul g (@Goal T e) UniMatch then M.ret [m:(tt, Goal e)]
+  else failwith "treduce".
 
 Definition typed_intro (T : Type) : tactic := fun g =>
   U <- M.goal_type g;
@@ -754,7 +755,7 @@ Module S.
     | Some (_, g) =>
       goals <- open_and_apply t g;
       let res := dreduce (@List.app, @List.tail) (l1 ++ goals ++ tail l2)%list in
-      M.ret res
+      filter_goals res
     end.
 
   Definition last {A} (t : gtactic A) : selector A := fun l =>
