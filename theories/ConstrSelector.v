@@ -2,6 +2,18 @@ From Mtac2 Require Import Datatypes List Mtac2.
 Import T.
 Import Mtac2.List.ListNotations.
 
+(** This files defines a useful tactic to kill subgoals on groups
+    based on the (position) of the constructors. For instance, for a
+    variable x of some inductive type I with constructors c1, ..., cn,
+    the following code applies tactic t to only constructors c1, c3,
+    c5:
+
+    [induction x &> case c5, c1, c3 do t]
+
+    Note that there is no check on the type of x and the constructors,
+    nor any check that the first tactic (induction above) will produce
+    exactly n subgoals.  *)
+
 (** Obtains the list of constructors of a type I from a type of the
    form A1 -> ... -> An -> I *)
 Definition get_constrs :=
@@ -19,6 +31,7 @@ Definition get_constrs :=
       M.ret l'
     end.
 
+(** Given a constructor c, it returns its index. *)
 Definition index {A} (c: A) : M _ :=
   l <- get_constrs A;
   (mfix2 f (i : nat) (l : list dyn) : M nat :=
@@ -42,7 +55,7 @@ Definition snth_indices (l:list dyn) (t:tactic) : selector unit := fun goals=>
       newgoals <- open_and_apply t g;
       let res := dreduce (app, map) (accu++newgoals) in
       T.filter_goals res
-    | None => M.failwith "Wrong case"
+    | None => failwith "snth_indices"
     end)%MC l goals.
 
 Notation "'case' c , .. , d 'do' t" :=
