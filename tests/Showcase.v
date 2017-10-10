@@ -3,6 +3,7 @@ Import T.
 Require Import Bool.Bool.
 Require Import Lists.List.
 Import Mtac2.List.ListNotations.
+Import Lists.List.ListNotations.
 
 (** This file contains several examples showing the different
     tactics in MetaCoq. Many are taken from SF. *)
@@ -29,7 +30,7 @@ Qed.
 Theorem tl_length_pred : forall l: list nat,
   pred (length l) = length (tl l).
 MProof.
-  destructn 0 asp ([m: [m:] | [m:"n"| "l'"] ])%list.
+  destructn 0 asp [ [] ; ["n" ; "l'"] ].
   - (* l = nil *)
     reflexivity.
   - (* l = cons n l' *)

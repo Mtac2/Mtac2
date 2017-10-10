@@ -22,12 +22,11 @@ MProof.
 Qed.
 
 Require Import Mtac2.ImportedTactics.
-Require Import Mtac2.List.
-Import ListNotations.
+Import Lists.List.ListNotations.
 
 Theorem plus_n_O : forall n:nat, n = n + 0.
 MProof.
-  intros n. elim n asp [m: [m:] | [m:"n'" | "IHn'"]].
+  intros n. elim n asp [ [] ; [ "n'" ; "IHn'"]].
   - (* n = 0 *) reflexivity.
   - (* n = S n' *) simpl. rewrite <- IHn'.
   reflexivity.

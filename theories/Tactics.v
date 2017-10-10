@@ -728,16 +728,16 @@ Definition unfold {A} (x : A) : tactic := fun g =>
 Definition unfold_in {A B} (x : A) (h : B) : tactic :=
   reduce_in (RedStrong [rl:RedBeta; RedMatch; RedFix; RedDeltaOnly [rl:Dyn x]]) h.
 
-Fixpoint intros_simpl (l : list string) : tactic :=
+Fixpoint intros_simpl (l : Init.Datatypes.list string) : tactic :=
   match l with
-  | [m:] => idtac
-  | n :: l => bind (intro_simpl n) (fun _ => intros_simpl l)
+  | Init.Datatypes.nil => idtac
+  | Init.Datatypes.cons n l => bind (intro_simpl n) (fun _ => intros_simpl l)
   end.
 
-Fixpoint name_pattern (l : list (list string)) : list tactic :=
+Fixpoint name_pattern (l : Init.Datatypes.list (Init.Datatypes.list string)) : list tactic :=
   match l with
-  | [m:] => [m:]
-  | ns :: l => intros_simpl ns :: name_pattern l
+  | Init.Datatypes.nil => [m:]
+  | Init.Datatypes.cons ns l => intros_simpl ns :: name_pattern l
   end.
 
 (** Type for goal manipulation primitives *)
@@ -854,7 +854,7 @@ Module notations.
     (cassert (fun x:T=>idtac)) (at level 40, x at next level) : tactic_scope.
 
   Notation "t 'asp' n" :=
-    (seq_list t (name_pattern n)) (at level 40) : tactic_scope.
+    (seq_list t (name_pattern n%list)) (at level 40) : tactic_scope.
 
   Notation "[[ |- ps ] ] => t" :=
     (gbase ps t)
