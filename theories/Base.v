@@ -413,15 +413,11 @@ Module monad_notations.
   Delimit Scope M_scope with MC.
   Open Scope M_scope.
 
-  Notation "t >>= f" := (bind t f) (at level 70) : M_scope.
-
   Notation "r '<-' t1 ';' t2" := (@bind _ _ t1 (fun r=> t2))
-    (at level 100, right associativity, t1, t2 at level 200,
-     format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
-
+    (at level 81, right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
   Notation "t1 ';;' t2" := (bind t1 (fun _ => t2))
-    (at level 100, right associativity, t2 at level 200,
-     format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : M_scope.
+    (at level 81, right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : M_scope.
+  Notation "t >>= f" := (bind t f) (at level 70) : M_scope.
 
   Notation "'mif' b 'then' t 'else' u" :=
     (cond <- b; if cond then t else u) (at level 200) : M_scope.
