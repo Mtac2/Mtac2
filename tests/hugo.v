@@ -38,5 +38,5 @@ Goal my_enum_type.
 MProof.
   pose (H := FS (FS F1) : Fin.t 3).
   let p := proj1_sig (to_nat H) in
-  T.constructor (S p).
+  T.nconstructor (S p).
 Qed.
