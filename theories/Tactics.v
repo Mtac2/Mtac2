@@ -362,24 +362,22 @@ Definition destructn (n : nat) : tactic :=
 (** [apply t] applies theorem t to the current goal.
     It generates a subgoal for each hypothesis in the theorem.
     If the hypothesis is introduced by a dependent product (a forall),
-    the sub-goal goes to the end of the list. If it isn't dependent (a ->),
-    then it is included in the list of next subgoals. *)
+    then no subgoal is generated. If it isn't dependent (a ->), then
+    it is included in the list of next subgoals. *)
 Definition apply {T} (c : T) : tactic := fun g=>
   match g with Goal eg =>
-    (mfix1 app (d : dyn) : M (list (unit * goal)) :=
+    (mfix1 go (d : dyn) : M (list (unit * goal)) :=
       let (_, el) := d in
       mif M.unify_cumul el eg UniCoq then M.ret [m:] else
         mmatch d return M (list (unit * goal)) with
         | [? T1 T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
-          r <- app (Dyn (f e));
-          mif M.is_evar e then M.ret [m: (tt, Goal e) & r] else M.ret r
+          r <- go (Dyn (f e));
+          M.ret ((tt, Goal e) :: r)
         | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- M.evar T1;
-          r <- app (Dyn (f e));
-          mif M.is_evar e then
-            let l := dreduce (Mtac2.List.app) (Mtac2.List.app r [m: (tt, Goal e)]) in
-            M.ret l else M.ret r
+          r <- go (Dyn (f e));
+          M.ret r
         | _ =>
           gT <- M.goal_type g;
           M.raise (CantApply T gT)
