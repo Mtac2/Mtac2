@@ -407,9 +407,6 @@ Definition change (P : Type) : tactic := fun g =>
   exact e g;;
   M.ret [m:(tt, Goal e)].
 
-Definition change_hyp {P Q} (H : P) (newH: Q) : tactic :=
-  cclear H (bind (get_binder_name H) intro_simpl).
-
 Inductive goal_pattern (B : Type) :=
   | gbase : forall {A}, A -> gtactic B -> goal_pattern B
   | gbase_context : forall {A}, A -> ((A -> Type) -> gtactic B) -> goal_pattern B
@@ -528,6 +525,28 @@ Definition typed_intros (T : Type) : tactic := fun g =>
     mtry bind (typed_intro T) (fun _ => f) g with
     | NotThatType => idtac g
     end) g.
+
+(** changes a hypothesis H with one of type Q and the same name *)
+Definition change_hyp {P Q} (H : P) (newH: Q) : tactic := fun g=>
+  name <- M.get_binder_name H;
+  gT <- M.goal_type g;
+  vs <- M.remove H (M.nu name None (fun nH: Q=>
+     r <- M.evar gT;
+     abs <- M.abs_fun nH r;
+     gabs <- M.abs_fun nH (Goal r);
+     M.ret (AHyp None gabs, abs)));
+  let (gabs, abs) := vs in
+  exact (abs newH) g;;
+  M.ret [m:(tt, gabs)].
+
+Definition cassert_with_base {A B} (name : string) (t : A)
+    (cont : A -> gtactic B) : gtactic B := fun g =>
+  M.nu name (Some t) (fun x=>
+    gT <- M.goal_type g;
+    r <- M.evar gT;
+    value <- M.abs_fun x r;
+    exact (value t) g;;
+    cont x (Goal r) >>= close_goals x).
 
 Definition cpose_base {A B} (name : string) (t : A)
     (cont : A -> gtactic B) : gtactic B := fun g =>

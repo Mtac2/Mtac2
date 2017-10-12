@@ -1,5 +1,7 @@
 (** * Logic: Logic in Coq *)
 Require Export Induction. (* lists are defining new notations *)
+Require Import Lists.List.
+Import ListNotations.
 
 (** In previous chapters, we have seen many examples of factual
     claims (_propositions_) and ways of presenting evidence of their
@@ -111,7 +113,7 @@ Example and_example : 3 + 4 = 7 /\ 2 * 2 = 4.
     generate two subgoals, one for each part of the statement: *)
 
 MProof.
-  Tactics.split.
+  T.split.
   - (* 3 + 4 = 7 *) reflexivity.
   - (* 2 + 2 = 4 *) reflexivity.
 Qed.
@@ -121,7 +123,7 @@ Qed.
 
 Lemma and_intro : forall A B : Prop, A -> B -> A /\ B.
 MProof.
-  intros A B HA HB. Tactics.split.
+  intros A B HA HB. T.split.
   - apply HA.
   - apply HB.
 Qed.
@@ -417,21 +419,22 @@ Qed.
 Theorem not_False :
   ~ False.
 MProof.
-(* FIX: unfold a Prop does not work *)
   unfold not. intros H. destruct H. Qed.
+
 
 Theorem contradiction_implies_anything : forall P Q : Prop,
   (P /\ ~P) -> Q.
 MProof.
   (* WORKED IN CLASS *)
-  intros P Q. destructn 0 asp [ ["HP"; "HNA"] ]. (* unfold not in HNA. *)
-  apply_in HNA HP. destruct HP.  Qed.
+intros P Q. intro H. destruct H asp [ ["HP"; "HNA"]]. unfold_in not HNA.
+apply_in HNA HP.
+destruct HP.  Qed.
 
 Theorem double_neg : forall P : Prop,
   P -> ~~P.
 MProof.
   (* WORKED IN CLASS *)
-  intros P H. (*unfold not.*) intros G. apply G. apply H.  Qed.
+  intros P H. unfold not. intros G. apply G. apply H.  Qed.
 
 (** **** Exercise: 2 stars, advanced, recommended (double_neg_inf)  *)
 (** Write an informal proof of [double_neg]:
@@ -478,7 +481,7 @@ Theorem not_true_is_false : forall b : bool,
 MProof.
   destructn 0&> intro H.
   - (* b = true *)
-    (* unfold not in H. *) (* FIX unfold *)
+    unfold_in not H.
     apply ex_falso_quodlibet.
     apply H. reflexivity.
   - (* b = false *)
@@ -493,7 +496,7 @@ Theorem not_true_is_false' : forall b : bool,
 MProof.
   destructn 0&> intro H.
   - (* b = false *)
-    (* unfold not in H. *) (* FIX unfold *)
+    unfold_in not H.
     exfalso.                (* <=== *)
     apply H. reflexivity.
   - (* b = true *) reflexivity.
@@ -538,7 +541,7 @@ Theorem iff_sym : forall P Q : Prop,
 MProof.
   (* WORKED IN CLASS *)
   intros P Q. destructn 0 asp [ ["HAB"; "HBA"] ].
-  split.
+  T.split.
   - (* -> *) apply HBA.
   - (* <- *) apply HAB.  Qed.
 
@@ -546,7 +549,7 @@ Lemma not_true_iff_false : forall b,
   b <> true <-> b = false.
 MProof.
   (* WORKED IN CLASS *)
-  intros b. split.
+  intros b. T.split.
   - (* -> *) apply not_true_is_false.
   - (* <- *)
     intros H. rewrite H. intros H'. inversion H'.
@@ -589,7 +592,7 @@ Require Import Coq.Setoids.Setoid.
 Lemma mult_0 : forall n m, n * m = 0 <-> n = 0 \/ m = 0.
 MProof.
   intros.
-  split.
+  T.split.
   - apply mult_eq_0.
   - apply or_example.
 Qed.
@@ -597,12 +600,12 @@ Qed.
 Lemma or_assoc :
   forall P Q R : Prop, P \/ (Q \/ R) <-> (P \/ Q) \/ R.
 MProof.
-  intros P Q R. split.
-  - destructn 0 asp [ ["H"]; [] ]&> [idtac; destructn 0 asp [ ["H"]; ["H"]]].
+  intros P Q R. T.split.
+  - destructn 0 asp [ ["H"]; [] ]&> [m: idtac | destructn 0 asp [ ["H"]; ["H"]]]%list.
     + left. left. apply H.
     + left. right. apply H.
     + right. apply H.
-  - destructn 0 asp [ []; ["H"] ]&> [destructn 0 asp [ ["H"]; ["H"]]; idtac].
+  - destructn 0 asp [ []; ["H"] ]&> [m:destructn 0 asp [ ["H"]; ["H"]]| idtac]%list.
     + left. apply H.
     + right. left. apply H.
     + right. right. apply H.
@@ -617,7 +620,7 @@ Lemma mult_0_3 :
 MProof.
   intros n m p.
   rewrite mult_0. rewrite mult_0. rewrite or_assoc.
-  split&> trivial.
+  T.split&> trivial.
 Qed.
 
 (** The [apply] tactic can also be used with [<->]. When given an
@@ -649,7 +652,7 @@ Qed.
 
 Lemma four_is_even : exists n : nat, 4 = n + n.
 MProof.
-  mexists 2. Tactics.reflexivity.
+  mexists 2. T.reflexivity.
 Qed.
 
 (** Conversely, if we have an existential hypothesis [exists x, P] in
@@ -703,7 +706,6 @@ MProof.
 (** We can translate this directly into a straightforward Coq
     function, [In].  (It can also be found in the Coq standard
     library.) *)
-
 Fixpoint In {A : Type} (x : A) (l : list A) : Prop :=
   match l with
   | [] => False
@@ -715,7 +717,7 @@ Fixpoint In {A : Type} (x : A) (l : list A) : Prop :=
 
 Example In_example_1 : In 4 [3; 4; 5].
 MProof.
-  simpl. right. left. Tactics.reflexivity.
+  simpl. right. left. T.reflexivity.
 Qed.
 
 Example In_example_2 :
@@ -724,9 +726,9 @@ Example In_example_2 :
 MProof.
   simpl.
   intros n &> destructn 0 asp [ ["H"]; [] ].
-  - mexists 1. rewrite <- H. Tactics.reflexivity.
+  - mexists 1. rewrite <- H. T.reflexivity.
   - destructn 0 asp [ ["H"]; []] l> destructn 0.
-    mexists 2. rewrite <- H &> Tactics.reflexivity.
+    mexists 2. rewrite <- H &> T.reflexivity.
 Qed.
 
 (** (Notice the use of the empty pattern to discharge the last case
@@ -742,12 +744,12 @@ Lemma In_map :
     In (f x) (map f l).
 MProof.
   intros A B f l x.
-  induction l asp [ []; ["x'"; "l'"; "IHl'"]].
+  elim l asp [ []; ["x'"; "l'"; "IHl'"]].
   - (* l = nil, contradiction *)
     simpl. destructn 0.
   - (* l = x' :: l' *)
     simpl. destructn 0 asp [ ["H"]; ["H"] ].
-    + rewrite H &> left &> Tactics.reflexivity.
+    + rewrite H &> left &> T.reflexivity.
     + right. apply IHl'. apply H.
 Qed.
 
@@ -898,9 +900,9 @@ MProof.
 
   rewrite plus_comm.
   assert (H : m + p = p + m).
-  { rewrite plus_comm&> Tactics.reflexivity. }
+  { rewrite plus_comm&> T.reflexivity. }
   rewrite H.
-  Tactics.reflexivity.
+  T.reflexivity.
 Qed.
 
 (** A more elegant alternative is to apply [plus_comm] directly to the
@@ -913,7 +915,7 @@ MProof.
   intros n m p.
   rewrite plus_comm.
   rewrite (plus_comm m).
-  Tactics.reflexivity.
+  T.reflexivity.
 Qed.
 
 (** You can "use theorems as functions" in this way with almost all
@@ -973,7 +975,7 @@ Qed.
     claiming that two _functions_ are equal to each other: *)
 
 Example function_equality_ex : plus 3 = plus (pred 4).
-MProof. Tactics.reflexivity. Qed.
+MProof. T.reflexivity. Qed.
 
 (** In common mathematical practice, two functions [f] and [g] are
     considered equal if they produce the same outputs:
@@ -1077,8 +1079,8 @@ Lemma tr_rev_correct : forall X, @tr_rev X = @rev X.
 
 Theorem evenb_double : forall k, evenb (double k) = true.
 MProof.
-  intros k. induction k asp [ []; ["k'"; "IHk'"] ].
-  - Tactics.reflexivity.
+  intros k. elim k asp [ []; ["k'"; "IHk'"] ].
+  - T.reflexivity.
   - simpl. apply IHk'.
 Qed.
 
@@ -1115,9 +1117,9 @@ MProof.
 Theorem beq_nat_true_iff : forall n1 n2 : nat,
   beq_nat n1 n2 = true <-> n1 = n2.
 MProof.
-  intros n1 n2. split.
+  intros n1 n2. T.split.
   - apply beq_nat_true.
-  - intros H. rewrite H. rewrite <- beq_nat_refl. Tactics.reflexivity.
+  - intros H. rewrite H. rewrite <- beq_nat_refl. T.reflexivity.
 Qed.
 
 (** However, while the boolean and propositional formulations of a
@@ -1178,13 +1180,13 @@ Example even_1000 : exists k, 1000 = double k.
 (** The most direct proof of this fact is to give the value of [k]
     explicitly. *)
 
- MProof. mexists 500. Tactics.reflexivity. Qed.
+ MProof. mexists 500. T.reflexivity. Qed.
 
 (** On the other hand, the proof of the corresponding boolean
     statement is even simpler: *)
 
 Example even_1000' : evenb 1000 = true.
-MProof. Tactics.reflexivity. Qed.
+MProof. T.reflexivity. Qed.
 
 (** What is interesting is that, since the two notions are equivalent,
     we can use the boolean formulation to prove the other one without
@@ -1301,7 +1303,7 @@ Theorem restricted_excluded_middle : forall P b,
   (P <-> b = true) -> P \/ ~ P.
 MProof.
   intros P. destructn 0&> intro H.
-  - left. rewrite H&> Tactics.reflexivity.
+  - left. rewrite H&> T.reflexivity.
   - right. rewrite H. intros contra. inversion contra.
 Qed.
 

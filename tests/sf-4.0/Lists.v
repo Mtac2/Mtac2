@@ -521,7 +521,7 @@ MProof.
 Theorem app_assoc : forall l1 l2 l3 : natlist,
   (l1 ++ l2) ++ l3 = l1 ++ (l2 ++ l3).
 MProof.
-  intros l1 l2 l3. induction l1 asp ([]%list :: ("n"::"l1'"::"IHl1'"::[]%list)::[]%list)%list.
+  intros l1 l2 l3. elim l1 asp ([]%list :: ("n"::"l1'"::"IHl1'"::[]%list)::[]%list)%list.
   - (* l1 = nil *)
     reflexivity.
   - (* l1 = cons n l1' *)
@@ -599,7 +599,7 @@ Notation list_patt := ([]::("n"::"l'"::"IHl'"::[])::[])%list.
 Theorem rev_length_firsttry : forall l : natlist,
   length (rev l) = length l.
 MProof.
-  intros l. induction l asp list_patt.
+  intros l. elim l asp list_patt.
   - (* l = [] *)
     reflexivity.
   - (* l = n :: l' *)
@@ -623,7 +623,7 @@ Theorem app_length : forall l1 l2 : natlist,
   length (l1 ++ l2) = (length l1) + (length l2).
 MProof.
   (* WORKED IN CLASS *)
-  intros l1 l2. induction l1 asp ([]::("x1"::"li1'"::"IHl1'"::[])::[])%list.
+  intros l1 l2. elim l1 asp ([]::("x1"::"li1'"::"IHl1'"::[])::[])%list.
   - (* l1 = nil *)
     reflexivity.
   - (* l1 = cons *)
@@ -642,7 +642,7 @@ Qed.
 Theorem rev_length : forall l : natlist,
   length (rev l) = length l.
 MProof.
-  intros l. induction l asp list_patt.
+  intros l. elim l asp list_patt.
   - (* l = nil *)
     reflexivity.
   - (* l = cons *)
@@ -827,7 +827,7 @@ MProof.
 Theorem ble_n_Sn : forall n,
   leb n (S n) = true.
 MProof.
-  intros n. induction n asp nat_patt.
+  intros n. elim n asp nat_patt.
   - (* 0 *)
     simpl.  reflexivity.
   - (* S n' *)

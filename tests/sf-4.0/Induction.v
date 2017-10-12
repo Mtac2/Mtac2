@@ -81,7 +81,7 @@ Abort.
 
 Theorem plus_n_O : forall n:nat, n = n + 0.
 MProof.
-  intros n. induction n asp [ []; ["n'"; "IHn'"]].
+  intros n. elim n asp [ []; ["n'"; "IHn'"]].
   - (* n = 0 *)    reflexivity.
   - (* n = S n' *) simpl. rewrite <- IHn'.
     reflexivity.
@@ -100,13 +100,13 @@ Qed.
     = S n'], which in turn follows from [IHn']. *)
 
 (** We can use [Notation] or any other Coq command for intro patterns. *)
-Notation nat_patt := ([ []; ["n'"; "IHn'"]]).
+Notation nat_patt := ([ []; ["n'"; "IHn'"]]%list).
 
 Theorem minus_diag : forall n,
   minus n n = 0.
 MProof.
   (* WORKED IN CLASS *)
-  intros n. induction n asp nat_patt.
+  intros n. elim n asp nat_patt.
   - (* n = 0 *)
     simpl. reflexivity.
   - (* n = S n' *)
@@ -472,7 +472,7 @@ MProof.
 
 Theorem plus_assoc' : forall n m p : nat,
   n + (m + p) = (n + m) + p.
-MProof. intros n m p. induction n asp nat_patt.
+MProof. intros n m p. elim n asp nat_patt.
   reflexivity. simpl. rewrite -> IHn'. reflexivity.
     Qed.
 
@@ -483,7 +483,7 @@ MProof. intros n m p. induction n asp nat_patt.
 Theorem plus_assoc'' : forall n m p : nat,
   n + (m + p) = (n + m) + p.
 MProof.
-  intros n m p. induction n asp nat_patt.
+  intros n m p. elim n asp nat_patt.
   - (* n = 0 *)
     reflexivity.
   - (* n = S n' *)

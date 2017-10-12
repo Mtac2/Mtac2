@@ -10,8 +10,11 @@
 
 *)
 
-From MetaCoq
-  Require Export MetaCoq.
+From Mtac2
+  Require Export Mtac2.
+Export T.
+Export Mtac2.List.ListNotations.
+Export Lists.List.ListNotations.
 
 (* [Admitted] is Coq's "escape hatch" that says accept this definition
    without proof.  We use it to mark the 'holes' in the development
@@ -850,7 +853,7 @@ Abort.
 Theorem plus_1_neq_0 : forall n : nat,
   beq_nat (n + 1) 0 = false.
 MProof.
-  intros n. destruct n asp [ []; ["n'"] ].
+  intros n. destruct n asp [ [] ; ["n'"] ].
   - reflexivity.
   - reflexivity.   Qed.
 
