@@ -121,6 +121,7 @@ module Goal = struct
     let newenv =
       let rec remove = function
         | (nd1 :: evenv) as l1, (nd2 :: env) ->
+            let nd2 = Declaration.map_type (Reductionops.nf_evar sigma) nd2 in
             if Declaration.equal nd1 nd2 then
               remove (evenv, env)
             else
@@ -609,6 +610,10 @@ let rec n_prods env sigma ty = function
 (* abs case env a p x y n abstract variable x from term y according to the case.
    if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
 let abs case (env, sigma) a p x y n t : data =
+  let a = nf_evar sigma a in
+  let p = nf_evar sigma p in
+  let x = nf_evar sigma x in
+  let y = nf_evar sigma y in
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
@@ -867,13 +872,12 @@ let run_declare_implicits env sigma gr impls =
 type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option}
 let rec run' ctxt t =
   let sigma, env = ctxt.sigma, ctxt.env in
-  let d =
-    match ctxt.hook with
+  ( match ctxt.hook with
     | Some f ->
         let ty = Retyping.get_type_of env sigma t in
         run' {ctxt with hook = None} (Term.mkApp (f, [|ty; t|]))
-    | None -> return sigma t in
-  d >>= fun (sigma, t) ->
+    | None -> return sigma t
+  ) >>= fun (sigma, t) ->
   let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
   let nth = Array.get args in
   if Term.isLetIn h then

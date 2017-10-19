@@ -433,10 +433,10 @@ Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
     | Some eq =>
       (* eq has type x = t, but for the pattern we need t = x.
          we still want to provide eq_refl though, so we reduce it *)
-      let h := reduce (RedStrong [rl:RedBeta;RedDelta;RedMatch]) (eq_sym eq) in
+      let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (eq_sym eq) in
       let 'eq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
-      let b := reduce (RedStrong [rl:RedBeta]) (f h) in b
+      let b := reduce (RedWhd [rl:RedBeta]) (f h) in b
     | None => raise DoesNotMatch
     end
   | @ptele _ _ _ _ C f => e <- evar C; open_pattern (f e)
@@ -608,6 +608,7 @@ Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
     let (ty, el) := d in
     mmatch d with
     | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
+      let ty := reduce (RedWhd [rl:RedBeta]) ty in
       binder <- get_binder_name ty;
       oeq <- unify binder n UniMatchNoRed;
       if oeq then
