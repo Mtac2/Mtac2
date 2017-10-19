@@ -12,7 +12,7 @@ Abort.
 
 Section Bugs.
 
-(** BUG: It fails with one constructor types, but not with two *)
+(** BUG: It used to fail with one constructor types, but not with two *)
 Inductive one_constr : Prop :=
 | the_one_constr : one_constr
 .
