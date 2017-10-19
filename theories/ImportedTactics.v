@@ -94,3 +94,6 @@ Definition inversion {A} (x: A) : tactic :=
 Ltac typeclasses_eauto := typeclasses eauto.
 Definition typeclasses_eauto : tactic :=
   T.ltac (qualify "typeclasses_eauto") [m:].
+
+Ltac ltac_apply x := apply x.
+Definition ltac_apply {A} (x:A) := T.ltac (qualify "ltac_apply") [m:Dyn x].

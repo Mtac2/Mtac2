@@ -34,22 +34,3 @@ Definition debug (trace: bool) {A:Type} (bks : list dyn) : M A -> M unit :=
 
 Definition debugT {A} (trace: bool) (bks : list dyn) (t: gtactic A) : gtactic unit := fun g=>
   debug trace bks (t g) ;; M.ret nil.
-Import Mtac2.List.ListNotations.
-
-Import M.notations.
-
-Definition test : unit := ltac:(mrun (debug true [m:] (M.ret I))).
-
-
-Goal True.
-MProof.
-  debugT false [m: (*HAVE FUN Dyn (@M.ret) | Dyn (@M.unify) *)] (T.apply I).
-Qed.
-
-Goal unit.
-MProof.
-  (* Prints `6` *)
-  Fail (let x := reduce (RedStrong RedAll) (3+3) in M.print_term x;; M.failwith "").
-  (* Prints `rbcv (3+3)` *)
-  Fail (debug true [m:Dyn (@M.ret)] (let x := reduce (RedStrong RedAll) (3+3) in M.print_term x;; M.failwith "")).
-Abort.

@@ -631,6 +631,13 @@ Definition mexists {A} (x: A) : tactic := fun g =>
   | _ => M.raise (NotUnifiable g (Goal (@ex_intro _ P x e)))
   end.
 
+Definition eexists: tactic := fun g=>
+  T <- M.evar Type;
+  e <- M.evar T;
+  l <- mexists e g;
+  let res := dreduce (@List.app) (l ++ [m:(tt, Goal e)]) in
+  M.ret res.
+
 Definition print_goal : tactic := with_goal M.print_goal.
 
 (** [n_etas n f] takes a function f with type [forall x1, ..., xn, T]
