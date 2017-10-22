@@ -64,6 +64,7 @@ Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
   | IntroB binder =>
     var <- M.get_binder_name binder;
     T.intro_simpl var
+  | IntroC nil => T.destructn 0
   | IntroC ips =>
     T.destructn 0 &> mmap_plist do_intro ips
   | IntroR d =>
@@ -85,7 +86,9 @@ Definition do_intro :  LIP -> tactic :=
   | lcons ip lip => to_tactic ip do_intro ;; do_intro lip
   end%tactic) g.
 
-(* Notation "'do_intro' s" := (do_intro s%IP) (at level 100). *)
-Notation "'i:' l1 .. ln" := (do_intro (LIP_app l1%IP .. (LIP_app ln%IP lnil) ..)) (at level 0).
+Notation "'pintro' s" := (do_intro s%IP) (at level 100).
+Notation "'pintros' l1 .. ln" := (do_intro (LIP_app l1%IP .. (LIP_app ln%IP lnil) ..)) (at level 0).
+
+Notation "[i: l1 | .. | ln ]" := (cons (pintros l1) ( .. (cons (pintros ln) nil) ..)) (at level 0).
 
 Close Scope IP.

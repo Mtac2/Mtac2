@@ -2,33 +2,31 @@ Require Import Mtac2.Mtac2.
 
 Goal True -> True -> True.
 MProof.
-  i:\x y //.
+  pintros \x y //.
 Qed.
 
 Goal nat -> True -> True.
 MProof.
-  i:[| ~~ | \x ] \t //.
+  pintros [| ~~ | \x ] \t //.
 Qed.
 
 Goal forall x y z : nat, x = y -> x + z = y + z.
 MProof.
-  i:\x y z r> //.
+  pintros \x y z r> //.
 Qed.
 
 Goal forall x y z : nat, x = y -> x + z = y + z.
 MProof.
-  i:\x y z <l //.
+  pintros \x y z <l //.
 Qed.
 
 Goal forall x y z : nat, x + z = y + z.
 MProof.
-  Fail i:\x y z //. (* expected: not done *)
+  Fail pintros \x y z //. (* expected: not done *)
 Abort.
 
 Goal forall x z : nat, (forall y, y+0 = y) -> x + z = z + x.
 MProof.
-  i:[| ~~ | \x'] [| ~~ | \z'] /=.
-  - i://.
-  - i:r> //.
-  - i:r> //.
+  (* is there a way to avoid the parens here? *)
+  (pintros [| ~~ | \x'] [| ~~ | \z'] /=) &> [i: // | r> // | r> // | \IH].
 Abort.
