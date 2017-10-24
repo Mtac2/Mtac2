@@ -46,9 +46,9 @@ MProof.
   Fail new_destruct H. (* fine, all indices need to be var *)
   pose (j := S n).
   assert (eq : j = S n) |1> reflexivity.
-  move_back H (rewrite <- eq).
+  cmove_back H (rewrite <- eq).
   intro H. (* now H has only indices *)
-  move_back eq (idtac).
+  move_back eq.
   new_destruct H.
 Abort.
 

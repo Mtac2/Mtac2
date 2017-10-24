@@ -309,7 +309,7 @@ Abort.
 Goal forall (x : nat) (z : bool) (y : nat), x > y.
 MProof.
   intros x z y.
-  move_back x (move_back y (clear z)).
+  cmove_back x (cmove_back y (clear z)).
 Abort.
 
 Goal forall x : Prop, x = x.
@@ -341,7 +341,7 @@ Goal forall x y : bool, x = y -> y = x.
 MProof.
   intros x y H.
   destruct x || idtac. (* should execute idtac because H depends on x *)
-  move_back H (
+  cmove_back H (
     destruct x;; destruct y;; intros;;
       (reflexivity || (symmetry;; assumption))
   ).

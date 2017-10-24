@@ -169,7 +169,7 @@ MProof.
   - (* E_WhileEnd *) (* contradictory -- b is always true! *)
     inversion Heqcw. subst.
     select (bequiv _ _) (unfold_in bequiv).
-    move_back H idtac.
+    move_back H.
     select (forall x:_, _) rrewrite. simpl.
     discriminate.
   - (* E_WhileLoop *) (* immediate from the IH *)

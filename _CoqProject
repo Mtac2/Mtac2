@@ -21,6 +21,7 @@ theories/Base.v
 theories/Tactics.v
 theories/ImportedTactics.v
 theories/IntroPatt.v
+theories/CompoundTactics.v
 theories/DepDestruct.v
 theories/Mtac2.v
 theories/Debugger.v

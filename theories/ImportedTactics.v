@@ -97,3 +97,6 @@ Definition typeclasses_eauto : tactic :=
 
 Ltac ltac_apply x := apply x.
 Definition ltac_apply {A} (x:A) := T.ltac (qualify "ltac_apply") [m:Dyn x].
+
+Ltac ltac_destruct x := destruct x.
+Definition ltac_destruct {A} (x:A) := T.ltac (qualify "ltac_destruct") [m:Dyn x].

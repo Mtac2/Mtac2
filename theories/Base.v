@@ -799,5 +799,5 @@ Notation M := M.t.
 
 Import M.notations.
 
-Notation "t 'mwhere' m := u" :=
+Notation "t 'mwith' ( m := u )" :=
   (elem (ltac:(mrun (v <- M.mwith t m u; M.ret v)%MC))) (at level 0).

@@ -971,6 +971,9 @@ Definition transitivity {B} (y : B) : tactic :=
 Definition symmetry : tactic :=
   apply Coq.Init.Logic.eq_sym.
 
+Definition symmetry_in {T} {x y: T} (H: x = y) : tactic :=
+  apply_in (@Coq.Init.Logic.eq_sym _ _ _) H.
+
 Definition exfalso : tactic :=
   apply Coq.Init.Logic.False_ind.
 
@@ -1021,8 +1024,9 @@ Definition select {B} (T : Type) (cont : T -> gtactic B) : gtactic B :=
   match_goal with [[ x : T |- A ]] => cont x end.
 
 (** generalize with clear *)
-Definition move_back {A} (x : A) (cont : tactic) : tactic :=
+Definition cmove_back {A} (x : A) (cont : tactic) : tactic :=
   generalize x ;; cclear x cont.
+Notation "'move_back' x" := (cmove_back x idtac) (at level 50).
 
 Definition first {B} : list (gtactic B) -> gtactic B :=
   fix go l : gtactic B :=
@@ -1030,6 +1034,6 @@ Definition first {B} : list (gtactic B) -> gtactic B :=
     | nil => T.raise NoProgress
     | (x :: xs) => x || go xs
     end.
-End T.
 
+End T.
 Coercion T.of_M : M >-> gtactic.
