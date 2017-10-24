@@ -158,6 +158,7 @@ module Exceptions = struct
   let mkNotAVar () = Lazy.force (mkConstr "NotAVar")
   let mkStuckTerm () = Lazy.force (mkConstr "StuckTerm")
   let mkNotAList () = Lazy.force (mkConstr "NotAList")
+  let mkNotAMatchExp () = Lazy.force (mkConstr "NotAMatchExp")
   let mkVarAppearsInValue () = Lazy.force (mkConstr "VarAppearsInValue")
   let mkNotAReference ty t =
     mkApp (Lazy.force (mkConstr "NotAReference"), [|ty; t|])
@@ -426,7 +427,6 @@ let name_occurn_env env n =
   let ids = Environ.really_needed env ids in (* and compute closure of ids *)
   Id.Set.mem n ids (* to finally check if n is in it *)
 
-
 let dest_Case (env, sigma) t =
   let sigma, dyn = mkdyn sigma env in
   try
@@ -441,12 +441,12 @@ let dest_Case (env, sigma) t =
     let ind_type = Retyping.get_type_of env sigma discriminant in
     let return_type_type = Retyping.get_type_of env sigma return_type in
     let sigma, ret_dyn = mkDyn return_type_type return_type sigma env in
-    mkCase ind_type discriminant ret_dyn branch_dyns sigma env
+    Some (mkCase ind_type discriminant ret_dyn branch_dyns sigma env)
   with
   | Not_found ->
       Exceptions.block "Something specific went wrong. TODO: find out what!"
   | Term.DestKO ->
-      Exceptions.block "This is not a case construct."
+      None
   | _ ->
       Exceptions.block "Something not so specific went wrong."
 
@@ -1058,8 +1058,11 @@ let rec run' ctxt t =
 
     | 25 -> (* dest case *)
         let t = nth 1 in
-        let (sigma', case) = dest_Case (env, sigma) t in
-        return sigma' case
+        begin
+          match dest_Case (env, sigma) t with
+          | Some (sigma', case) -> return sigma' case
+          | _ -> fail sigma (E.mkNotAMatchExp ())
+        end
 
     | 26 -> (* get constrs *)
         let t = nth 1 in
