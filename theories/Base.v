@@ -385,6 +385,9 @@ Inductive t : Type -> Prop :=
 
 (** [os_cmd cmd] executes the command and returns its error number. *)
 | os_cmd : string -> t Z
+
+| store : Type -> t unit
+| retrieve : t Type
 .
 
 Arguments t _%type.
