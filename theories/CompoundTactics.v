@@ -18,7 +18,7 @@ Proof.
 elim r1. intros f1 p1.
 elim r2. intros f2 p2.
 rewrite p1, p2.
-exact (R (fun y=>f1 y (f2 y)) (Logic.eq_refl _)).
+exact (R (fun y=>f1 y (f2 y)) (eq_refl _)).
 Defined.
 
 
@@ -37,7 +37,7 @@ elim r1; intros f1 b1.
 elim r2; intros f2 b2.
 elim r3; intros f3 b3.
 rewrite b1, b2, b3.
-exact (R (fun y=>if (f1 y) then (f2 y) else f3 y) (Logic.eq_refl _)).
+exact (R (fun y=>if (f1 y) then (f2 y) else f3 y) (eq_refl _)).
 Defined.
 
 Implicit Arguments match_eq [A x r b P Q].
@@ -47,8 +47,27 @@ Definition non_dep_eq {A P Q} (x:A) (P' : result x P) (Q' : result x Q) :
 Proof.
   case P' as [fuP eqP]. case Q' as [fuQ eqQ].
   rewrite eqP, eqQ.
-  refine (R (fun y=>fuP y -> fuQ y) Logic.eq_refl).
+  refine (R (fun y=>fuP y -> fuQ y) eq_refl).
 Defined.
+
+
+Definition construct_case A (x: A) (loop: forall r: dyn, M (result x (elem r))) C :=
+  let val := C.(case_val) in
+  let retrn := C.(case_return) in
+  name <- M.fresh_name "v";
+  nu name None (fun v=>
+    new_val <- loop (Dyn val);
+    let (fuv, _) := new_val in
+    let fuv := reduce (RedWhd [rl:RedBeta]) (fuv v) in
+    new_branches <- M.map (fun b=>r <- loop b;
+                                    let (fub, _) := r in
+                                    let fub := reduce (RedWhd [rl:RedBeta]) (fub v) in
+                                    ret (Dyn fub)) C.(case_branches);
+    let new_case := {| case_val := fuv; case_return := retrn; case_branches := new_branches |} in
+    d <- makecase new_case;
+    let (_, cas) := d in
+    func <- abs_fun v cas;
+    ret (Dyn func)).
 
 Definition abstract A B (x : A) (t : B) :=
    (mfix1 loop (r : dyn) : M (result x (elem r)) :=
@@ -63,22 +82,37 @@ Definition abstract A B (x : A) (t : B) :=
         r1 <- loop (Dyn t1);
         r2 <- loop (Dyn t2);
         ret (abs_app r1 r2)
-    | [? b (P:type r) (Q:type r)] Dyn (match b with
-          | true => P
-          | false => Q
-          end)
-      =u>
-      b' <- loop (Dyn b);
-      P' <- loop (Dyn P);
-      Q' <- loop (Dyn Q);
-      ret (match_eq B b' P' Q')
+    (* | [? b (P:type r) (Q:type r)] Dyn (match b with *)
+    (*       | true => P *)
+    (*       | false => Q *)
+    (*       end) *)
+    (*   =u> *)
+    (*   b' <- loop (Dyn b); *)
+    (*   P' <- loop (Dyn P); *)
+    (*   Q' <- loop (Dyn Q); *)
+    (*   ret (match_eq B b' P' Q') *)
     | [? P Q] Dyn (P -> Q) =u>
       P' <- loop (Dyn P);
       Q' <- loop (Dyn Q);
       ret (non_dep_eq P' Q')
-    | [?z] z =>
-      ret (R (fun _=>elem z) (Logic.eq_refl _))
+    | [?z:dyn] z =>
+      let def := ret (R (fun _=>elem z) (Logic.eq_refl)) : M (result x (elem z)) in
+      mtry
+        let '@Dyn T e := z in
+        C <- destcase e;
+        cas <- construct_case loop C;
+        (* mmatch cas with *)
+        (* | [? el: A -> (type z)] Dyn el => *)
+        (*   eq <- coerce (Logic.eq_refl (type z)) : M (elem z = el x); *)
+        (*   ret (R el eq) *)
+        (* end *) def
+      with NotAMatchExp =>
+        def
+      end
     end) (Dyn t).
+Set Printing Universes.
+Set Printing All.
+Print abstract.
 
 Notation reduce_all := (reduce (RedStrong [rl:RedBeta; RedMatch; RedZeta;
            RedDeltaOnly [rl: Dyn elem; Dyn type; Dyn (@fu); Dyn (@id);
@@ -92,14 +126,19 @@ Proof. elim r. intros f H1 H2. rewrite H1, H2. auto. Qed.
 End Abstract.
 
 Import Abstract.
-
+Set Printing Universes.
 Definition simple_rewrite A {x y : A} (p : x = y) : tactic := fun g=>
-  gT <- goal_type g;
-  r <- abstract x gT;
-  let reduced := reduce_all (fu r y) in
-  newG <- evar reduced;
-  T.exact (eq_fu (r:=r) p newG) g;;
-  ret [m: (tt, Goal newG)].
+  match g with
+  | @Goal gT _ =>
+    store gT;;
+    gT <- retrieve;
+    r <- @abstract A Type x gT;
+      let reduced := reduce_all (fu r y) in
+      newG <- evar reduced;
+        T.exact (eq_fu (r:=r) p newG) g;;
+                ret [m: (tt, Goal newG)]
+  | _ => raise NotAGoal
+  end.
 
 Import T.notations.
 Definition variabilize {A} (t: A) name : tactic :=
@@ -108,3 +147,30 @@ Definition variabilize {A} (t: A) name : tactic :=
   T.cpose_base name t (fun x=>
     let reduced := reduce_all (fu r x) in
     T.change reduced).
+
+
+Require Import Arith String.
+Definition sillyfun1 (n : nat) : bool :=
+  if beq_nat n 3 then true
+  else if beq_nat n 5 then true
+  else false.
+
+Fixpoint evenb (n:nat) : bool :=
+  match n with
+  | O        => true
+  | S O      => false
+  | S (S n') => evenb n'
+  end.
+
+Definition oddb (n:nat) : bool   :=   negb (evenb n).
+
+Theorem sillyfun1_odd : forall (n : nat),
+     (sillyfun1 n = true ->
+     oddb n = true) : Type .
+MProof.
+  intros n. unfold sillyfun1.
+  variabilize (beq_nat n 3) "t".
+  assert (Heqe3 : t = (n =? 3)) |1> reflexivity.
+  move_back Heqe3.
+  destruct t &> intro Heqe3.
+Abort.

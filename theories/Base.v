@@ -380,6 +380,9 @@ Inductive t : Type -> Prop :=
     reference [r] according to [l] *)
 | declare_implicits : forall {A : Type} (a : A),
     list (implicit_arguments) -> t unit
+
+| store : Type -> t unit
+| retrieve : t Type
 .
 
 Arguments t _%type.
