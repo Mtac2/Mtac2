@@ -868,6 +868,7 @@ let run_declare_implicits env sigma gr impls =
   (sigma, CoqUnit.mkTT)
 
 
+let store = ref mkProp
 
 type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option}
 let rec run' ctxt t =
@@ -1224,6 +1225,12 @@ let rec run' ctxt t =
         let cmd = CoqString.from_coq (env, sigma) (nth 0) in
         let ret = Sys.command cmd in
         return sigma (CoqZ.to_coq ret)
+
+    | 41 -> (* store *)
+        store := nth 0;
+        return sigma CoqUnit.mkTT
+    | 42 -> (* retrieve *)
+        return sigma !store
 
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"
