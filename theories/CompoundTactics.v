@@ -143,6 +143,8 @@ Definition simple_rewrite A {x y : A} (p : x = y) : tactic := fun g=>
 Import T.notations.
 Definition variabilize {A} (t: A) name : tactic :=
   gT <- T.goal_type;
+  store gT;;
+  gT <- retrieve;
   r <- abstract t gT;
   T.cpose_base name t (fun x=>
     let reduced := reduce_all (fu r x) in

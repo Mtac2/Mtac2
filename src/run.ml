@@ -868,6 +868,7 @@ let run_declare_implicits env sigma gr impls =
   (sigma, CoqUnit.mkTT)
 
 
+let store = ref mkProp
 
 type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option}
 let rec run' ctxt t =
@@ -1219,6 +1220,12 @@ let rec run' ctxt t =
          with Not_found ->
            fail sigma (E.mkNotAReference (nth 0) reference)
         )
+
+    | 40 -> (* store *)
+        store := nth 0;
+        return sigma CoqUnit.mkTT
+    | 41 -> (* retrieve *)
+        return sigma !store
 
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"
