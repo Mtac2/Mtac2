@@ -812,28 +812,28 @@ Module notations.
 
   Notation "'mfix0' f : 'gtactic' T := b" :=
     (fix0 T%type (fun f => b%tactic))
-    (at level 85, f at level 0, format
+    (at level 200, f ident, format
     "'[v  ' 'mfix0'  f  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
 
-  Notation "'mfix1' f ( x : A ) : 'gtactic' T := b" :=
-    (fix1 (fun x=>T%type) (fun f (x : A)=>b%tactic))
-    (at level 85, f at level 0, x at next level, format
-    "'[v  ' 'mfix1'  f  '(' x  ':'  A ')'  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
+  Notation "'mfix1' f x .. y : 'gtactic' T := b" :=
+    (fix1 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b%tactic) ..))
+    (at level 200, f ident, x binder, y binder, format
+    "'[v  ' 'mfix1'  f  x  ..  y  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
 
-  Notation "'mfix2' f ( x : A ) ( y : B ) : 'gtactic' T := b" :=
-    (fix2 (fun (x : A) (y : B)=>T%type) (fun f (x : A) (y : B)=>b%tactic))
-    (at level 85, f at level 0, x at next level, y at next level, format
-    "'[v  ' 'mfix2'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
+  Notation "'mfix2' f x .. y : 'gtactic' T := b" :=
+    (fix2 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b%tactic) ..))
+    (at level 200, f ident, x binder, y binder, format
+    "'[v  ' 'mfix2'  f  x  ..  y  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
 
-  Notation "'mfix3' f ( x : A ) ( y : B ) ( z : C ) : 'gtactic' T := b" :=
-    (fix3 (fun (x : A) (y : B) (z : C)=>T%type) (fun f (x : A) (y : B) (z : C)=>b%tactic))
-    (at level 85, f at level 0, x at next level, y at next level, z at next level, format
-    "'[v  ' 'mfix3'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  '(' z  ':'  C ')'  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
+  Notation "'mfix3' f x .. y : 'gtactic' T := b" :=
+    (fix3 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b%tactic) ..))
+    (at level 200, f ident, x binder, y binder, format
+    "'[v  ' 'mfix3'  f  x  ..  y  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
 
-  Notation "'mfix4' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) : 'gtactic' T := b" :=
-    (fix4 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4)=>T%type) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) =>b%tactic))
-    (at level 85, f at level 0, x1 at next level, x2 at next level, x3 at next level, x4 at next level, format
-    "'[v  ' 'mfix4'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
+  Notation "'mfix4' f x .. y : 'gtactic' T := b" :=
+    (fix4 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b%tactic) ..))
+    (at level 200, f ident, x binder, y binder, format
+    "'[v  ' 'mfix4'  f  x  ..  y  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
 
   Notation "'mmatch' x ls" :=
     (@mmatch' _ (fun _ => _) x ls%with_pattern)
