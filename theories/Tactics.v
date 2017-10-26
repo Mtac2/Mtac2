@@ -837,19 +837,19 @@ Module notations.
 
   Notation "'mmatch' x ls" :=
     (@mmatch' _ (fun _ => _) x ls%with_pattern)
-    (at level 90, ls at level 91) : tactic_scope.
+    (at level 200, ls at level 91) : tactic_scope.
   Notation "'mmatch' x 'return' 'gtactic' p ls" :=
     (@mmatch' _ (fun x => p%type) x ls%with_pattern)
-    (at level 90, ls at level 91) : tactic_scope.
+    (at level 200, ls at level 91) : tactic_scope.
   Notation "'mmatch' x 'as' y 'return' 'gtactic' p ls" :=
     (@mmatch' _ (fun y => p%type) x ls%with_pattern)
-    (at level 90, ls at level 91) : tactic_scope.
+    (at level 200, ls at level 91) : tactic_scope.
 
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
       (@mmatch' _ (fun _ => _) e
                    (app ls%with_pattern [m:([? x] x => raise x)%pattern]))))
-      (at level 82, a at level 100, ls at level 91, only parsing) : tactic_scope.
+      (at level 200, a at level 100, ls at level 91, only parsing) : tactic_scope.
 
   Notation "t || u" := (or t u) : tactic_scope.
 
@@ -922,9 +922,9 @@ Module notations.
   Delimit Scope match_goal_with_scope with match_goal_with.
 
   Notation "'match_goal' ls" := (match_goal_base UniCoq ls%match_goal_with)
-    (at level 90, ls at level 91) : tactic_scope.
+    (at level 200, ls at level 91) : tactic_scope.
   Notation "'match_goal_nored' ls" := (match_goal_base UniMatchNoRed ls%match_goal_with)
-    (at level 90, ls at level 91) : tactic_scope.
+    (at level 200, ls at level 91) : tactic_scope.
 
   (* Note that unlike the monadic ;; notation, this one is left associative.
   This is needed so that we can nest tactics accordingly, for example:

@@ -460,17 +460,17 @@ Module notations.
   Notation "'\nu' x , a" := (
     let f := fun x => a in
     n <- get_binder_name f;
-    nu n None f) (at level 81, x at next level, right associativity) : M_scope.
+    nu n None f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
 
   Notation "'\nu' x : A , a" := (
     let f := fun x:A=>a in
     n <- get_binder_name f;
-    nu n None f) (at level 81, x at next level, right associativity) : M_scope.
+    nu n None f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
 
   Notation "'\nu' x := t , a" := (
     let f := fun x => a in
     n <- get_binder_name f;
-    nu n (Some t) f) (at level 81, x at next level, right associativity) : M_scope.
+    nu n (Some t) f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
 
   Notation "'mfix1' f x .. y : 'M' T := b" :=
     (fix1 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b%MC) ..))
@@ -499,19 +499,19 @@ Module notations.
 
   Notation "'mmatch' x ls" :=
     (@mmatch' _ (fun _ => _) x ls%with_pattern)
-    (at level 90, ls at level 91) : M_scope.
+    (at level 200, ls at level 91) : M_scope.
   Notation "'mmatch' x 'return' 'M' p ls" :=
     (@mmatch' _ (fun _ => p%type) x ls%with_pattern)
-    (at level 90, ls at level 91) : M_scope.
+    (at level 200, ls at level 91) : M_scope.
   Notation "'mmatch' x 'as' y 'return' 'M' p ls" :=
     (@mmatch' _ (fun y => p%type) x ls%with_pattern)
-    (at level 90, ls at level 91) : M_scope.
+    (at level 200, ls at level 91) : M_scope.
 
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
       (@mmatch' _ (fun _ => _) e
                    (app ls%with_pattern [m:([? x] x => raise x)%pattern]))))
-      (at level 82, a at level 100, ls at level 91, only parsing) : M_scope.
+      (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 End notations.
 
 Import notations.
