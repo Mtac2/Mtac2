@@ -460,58 +460,58 @@ Module notations.
   Notation "'\nu' x , a" := (
     let f := fun x => a in
     n <- get_binder_name f;
-    nu n None f) (at level 81, x at next level, right associativity) : M_scope.
+    nu n None f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
 
   Notation "'\nu' x : A , a" := (
     let f := fun x:A=>a in
     n <- get_binder_name f;
-    nu n None f) (at level 81, x at next level, right associativity) : M_scope.
+    nu n None f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
 
   Notation "'\nu' x := t , a" := (
     let f := fun x => a in
     n <- get_binder_name f;
-    nu n (Some t) f) (at level 81, x at next level, right associativity) : M_scope.
+    nu n (Some t) f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
 
-  Notation "'mfix1' f ( x : A ) : 'M' T := b" :=
-    (fix1 (fun x=>T%type) (fun f (x : A)=>b%MC))
-    (at level 85, f at level 0, x at next level, format
-    "'[v  ' 'mfix1'  f  '(' x  ':'  A ')'  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
+  Notation "'mfix1' f x .. y : 'M' T := b" :=
+    (fix1 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b%MC) ..))
+    (at level 200, f ident, x binder, y binder, format
+    "'[v  ' 'mfix1'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
 
-  Notation "'mfix2' f ( x : A ) ( y : B ) : 'M' T := b" :=
-    (fix2 (fun (x : A) (y : B)=>T%type) (fun f (x : A) (y : B)=>b%MC))
-    (at level 85, f at level 0, x at next level, y at next level, format
-    "'[v  ' 'mfix2'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
+  Notation "'mfix2' f x .. y : 'M' T := b" :=
+    (fix2 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b%MC) ..))
+    (at level 200, f ident, x binder, y binder, format
+    "'[v  ' 'mfix2'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
 
-  Notation "'mfix3' f ( x : A ) ( y : B ) ( z : C ) : 'M' T := b" :=
-    (fix3 (fun (x : A) (y : B) (z : C)=>T%type) (fun f (x : A) (y : B) (z : C)=>b%MC))
-    (at level 85, f at level 0, x at next level, y at next level, z at next level, format
-    "'[v  ' 'mfix3'  f  '(' x  ':'  A ')'  '(' y  ':'  B ')'  '(' z  ':'  C ')'  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
+  Notation "'mfix3' f x .. y : 'M' T := b" :=
+    (fix3 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b%MC) ..))
+    (at level 200, f ident, x binder, y binder, format
+    "'[v  ' 'mfix3'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
 
-  Notation "'mfix4' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) : 'M' T := b" :=
-    (fix4 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4)=>T%type) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) =>b%MC))
-    (at level 85, f at level 0, x1 at next level, x2 at next level, x3 at next level, x4 at next level, format
-    "'[v  ' 'mfix4'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
+  Notation "'mfix4' f x .. y : 'M' T := b" :=
+    (fix4 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b%MC) ..))
+    (at level 200, f ident, x binder, y binder, format
+    "'[v  ' 'mfix4'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
 
-  Notation "'mfix5' f ( x1 : A1 ) ( x2 : A2 ) ( x3 : A3 ) ( x4 : A4 ) ( x5 : A5 ) : 'M' T := b" :=
-    (fix5 (fun (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) (x5 : A5)=>T%type) (fun f (x1 : A1) (x2 : A2) (x3 : A3) (x4 : A4) (x5 : A5) =>b%MC))
-    (at level 85, f at level 0, x1 at next level, x2 at next level, x3 at next level, x4 at next level, x5 at next level, format
-    "'[v  ' 'mfix5'  f  '(' x1  ':'  A1 ')'  '(' x2  ':'  A2 ')'  '(' x3  ':'  A3 ')'  '(' x4  ':'  A4 ')'  '(' x5  ':'  A5 ')'  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
+  Notation "'mfix5' f x .. y : 'M' T := b" :=
+    (fix5 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b%MC) ..))
+    (at level 200, f ident, x binder, y binder, format
+    "'[v  ' 'mfix5'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
 
   Notation "'mmatch' x ls" :=
     (@mmatch' _ (fun _ => _) x ls%with_pattern)
-    (at level 90, ls at level 91) : M_scope.
+    (at level 200, ls at level 91) : M_scope.
   Notation "'mmatch' x 'return' 'M' p ls" :=
     (@mmatch' _ (fun _ => p%type) x ls%with_pattern)
-    (at level 90, ls at level 91) : M_scope.
+    (at level 200, ls at level 91) : M_scope.
   Notation "'mmatch' x 'as' y 'return' 'M' p ls" :=
     (@mmatch' _ (fun y => p%type) x ls%with_pattern)
-    (at level 90, ls at level 91) : M_scope.
+    (at level 200, ls at level 91) : M_scope.
 
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
       (@mmatch' _ (fun _ => _) e
                    (app ls%with_pattern [m:([? x] x => raise x)%pattern]))))
-      (at level 82, a at level 100, ls at level 91, only parsing) : M_scope.
+      (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 End notations.
 
 Import notations.

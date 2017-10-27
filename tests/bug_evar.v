@@ -39,7 +39,7 @@ Fixpoint mmatch' {A P} (y : A) (ps : list (pattern t A P y)) : t (P y) :=
 
   Notation "'mmatch' x ls" :=
     (@mmatch' _ (fun _ => _) x ls%with_pattern)
-    (at level 90, ls at level 91) : M_scope.
+    (at level 200, ls at level 91) : M_scope.
 
 Definition get_ITele : forall (T : Type) (ind : T), M (unit) :=
   mfix2 f (T : _) (ind : _) : M (unit)%type :=
