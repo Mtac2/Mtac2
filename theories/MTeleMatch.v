@@ -142,15 +142,20 @@ Definition MTele_of {A} (T : A -> Prop) :=
   b <- M.fresh_binder_name T;
   M.nu b None (fun a =>
   (mfix1 f (T : Prop) : M (MTele) :=
-                    mmatch T as t' return M MTele with
-                                        | [?X : Type] M X =u> M.ret (mBase X)
-                                        | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x)
-                                          =u>
-                                           b <- M.fresh_binder_name F;
-                                          f <- M.nu b None (fun x =>
-                                                 g <- f (F x);
-                                                 M.abs_fun x g);
-                                          M.ret (mTele f)
+    mmatch T as t' return M MTele with
+    | [?X : Type] M X =u> M.ret (mBase X)
+    (* | [?(X : Prop) (F : forall x:X, Prop)] (forall x:X, F x) =u> *)
+    (*   b <- M.fresh_binder_name F; *)
+    (*   f <- M.nu b None (fun x => *)
+    (*           g <- f (F x); *)
+    (*           M.abs_fun x g); *)
+    (*   M.ret (mTele f) *)
+    | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =u>
+      b <- M.fresh_binder_name F;
+      f <- M.nu b None (fun x =>
+              g <- f (F x);
+              M.abs_fun x g);
+      M.ret (mTele f)
    end
   ) (T a) >>= (M.abs_fun a)).
 
