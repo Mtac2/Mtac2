@@ -36,15 +36,14 @@ Definition mfix' (m : MTele) (F : MFA m -> MFA m) : MFA m :=
 (* Less specific version of MTele_of in MTeleMatch.v *)
 Definition MTele_of :=
   (mfix1 f (T : Prop) : M (MTele) :=
-                    mmatch T as t' return M MTele with
-                                        | [?X : Type] M X =u> M.ret (mBase X)
-                                        | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x)
-                                          =c>
-                                           b <- M.fresh_binder_name F;
-                                          f <- M.nu b None (fun x =>
-                                                 g <- f (F x);
-                                                 M.abs_fun x g);
-                                          M.ret (mTele f)
+     mmatch T as t' return M MTele with
+     | [?X : Type] M X =u> M.ret (mBase X)
+     | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =c>
+       b <- M.fresh_binder_name F;
+       f <- M.nu b None (fun x =>
+                           g <- f (F x);
+                           M.abs_fun x g);
+       M.ret (mTele f)
    end
   ).
 

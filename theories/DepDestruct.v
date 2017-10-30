@@ -61,7 +61,7 @@ Definition aTele {isort} {T} {f} t (a : ATele (f t)) : ATele (@iTele isort T f)
      := existT _ t a.
 
 (** Returns the type resulting from the [ATele] [args] *)
-Fixpoint ITele_App {isort} {it : ITele isort} : forall (args : ATele it), stype_of isort :=
+Fixpoint ITele_App {isort} {it : ITele isort} : forall (args : ATele it), isort :=
   match it with
   | iBase T => fun _ => T
   | iTele f => fun '(existT _ t a) => ITele_App a
@@ -224,7 +224,7 @@ Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
 
 (** Given a inductive described in [it] and a list of elements [al],
     it returns the [ATele] describing the applied version of [it] with [al]. *)
-Program Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn) {struct al} : M (ATele it) :=
+Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn) {struct al} : M (ATele it) :=
     match it as it', al return M (ATele it') with
     | iBase T, [m:] => M.ret tt
     | iTele f, t_dyn :: al =>
@@ -301,7 +301,7 @@ Definition sort_goal {T : Type} (A : T) : M (sigT stype_of) :=
 
 From Mtac2 Require Import MFix MTeleMatch.
 
-Program Definition sget_ITele (sort : Sort) : forall {T : sort} (ind : T), M (nat * ITele sort) :=
+Definition sget_ITele (sort : Sort) : forall {T : sort} (ind : T), M (nat * ITele sort) :=
   mfix f (T : stype_of sort) : forall (ind : T), M (nat * ITele sort)%type :=
     mtmmatch T as T return T -> M (nat * ITele sort) with
     | [? (A : Type) (F : A -> stype_of sort)] forall a, F a =u>
