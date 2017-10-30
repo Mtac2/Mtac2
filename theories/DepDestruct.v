@@ -1,4 +1,4 @@
-From Mtac2 Require Import Logic Datatypes List Sorts Base Tactics ImportedTactics.
+From Mtac2 Require Import Logic Datatypes List Sorts Base Tactics ImportedTactics MTeleMatch.
 Import Sorts.
 Import M.notations.
 
@@ -14,12 +14,6 @@ Definition abs {A} {P} (x:A) (t:P x) :=
   M.abs_fun x t.
 
 Notation redMatch := (reduce (RedWhd [rl:RedMatch])).
-
-(** [match_eq E P A] takes an equality of [T = S] and an element [A]
-    of type [T], and returns [A] casted to [P S], but without any match
-    (it reduces it). *)
-Notation match_eq E P A :=
-  (redMatch match E in _ = R return P R with eq_refl => A end).
 
 (** A polymorphic function that returns the type of an element. *)
 Definition type_of {A : Type} (x : A) : Type := A.
@@ -234,24 +228,26 @@ Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn) {struct al} : M (A
       M.ret (existT _ t r)
     | _, _ => M.raise NoPatternMatches
     end.
+
 Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, A -> M (CTele it) :=
   fun isort it nindx =>
     mfix2 rec (A : stype_of isort) (a : A) : M (CTele it) :=
-    mmatch A with
-    | [? B (F : B -> isort)] ForAll F =u> [ H ]
-        let f := match_eq H selem_of a in
+    (mtmmatch A as A return selem_of A -> M (CTele it) with
+    | [? B (F : B -> isort)] ForAll F =u>
+        fun f =>
         n <- M.fresh_binder_name F;
         M.nu n None (fun b : B =>
           r <- rec (F b) (App f b);
           f' <- abs b r;
           M.ret (cProd f'))
-    | _ =>
+    | A =n>
+      fun a =>
         let A_red := reduce RedHNF A in (* why the reduction here? *)
         args <- args_of_max nindx (Dyn A_red);
         atele <- get_ATele it args;
         a' <- @M.coerce _ (ITele_App atele) a ;
         M.ret (cBase atele a')
-end.
+end) a.
 
 Definition get_CTele :=
   fun {isort} =>
@@ -264,9 +260,9 @@ Definition get_CTele :=
 Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (NDCTele it) :=
   fun isort it nindx =>
     mfix2 rec (A : isort) (a : A) : M (NDCTele it) :=
-    mmatch A with
-    | [? B (F : B -> isort)] ForAll F =u> [ H ]
-        let f := match_eq H selem_of a in
+    (mtmmatch A as A return selem_of A -> M (NDCTele it) with
+    | [? B (F : B -> isort)] ForAll F =u>
+        fun f =>
         n <- M.fresh_binder_name F;
         M.nu n None (fun b : B =>
                       r <- rec (F b) (App f b);
@@ -274,13 +270,14 @@ Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A 
                       r' <- (M.abs_fun b F) : M (B -> _);
                       M.ret (existT (NDCfold _) (B::l) (fun '(b,y) => r' b y))
                     )
-    | _ =>
+    | A =n>
+        fun a =>
         let A_red := reduce RedHNF A in (* why the reduction here? *)
         args <- args_of_max nindx (Dyn A_red);
         atele <- get_ATele it args;
         a' <- @M.coerce _ (ITele_App atele) a ;
         M.ret (existT _ nil (fun _ => existT _ atele a'))
-end.
+end) a.
 
 Definition get_NDCTele :=
   fun {isort} =>
@@ -291,37 +288,35 @@ Definition get_NDCTele :=
 
 
 (** Given a goal, it returns its sorted version *)
-Definition sort_goal {T : Type} (A : T) : M (sigT stype_of) :=
-  mmatch T with
-  | Prop => [H] let A_Prop := match_eq H id A in
-                M.ret (existT _ SProp A_Prop)
-  | Type => [H] let A_Type := match_eq H id A in
-                M.ret (existT _ SType A_Type)
+Definition sort_goal {T : Type} : forall (A : T), M (sigT stype_of) :=
+  mtmmatch T as T return T -> M (sigT stype_of) with
+  | Prop =u> fun A_Prop => M.ret (existT _ SProp A_Prop)
+  | Type =u> fun A_Type => M.ret (existT _ SType A_Type)
   end.
 
 From Mtac2 Require Import MFix MTeleMatch.
 
-Definition sget_ITele (sort : Sort) : forall {T : sort} (ind : T), M (nat * ITele sort) :=
-  mfix f (T : stype_of sort) : forall (ind : T), M (nat * ITele sort)%type :=
-    mtmmatch T as T return T -> M (nat * ITele sort) with
-    | [? (A : Type) (F : A -> stype_of sort)] forall a, F a =u>
-      fun indFun =>
-        name <- M.fresh_binder_name F;
-        M.nu name None (fun a : A =>
-                          r <- f (F a) (indFun a);
-                          let (n, it) := r in
-                          f <- abs a it;
-                          M.ret (S n, iTele f))
-    | stype_of sort =n>
-      fun indProp =>
-        M.ret (0, iBase (sort := sort) indProp)
-    end.
+(* Definition sget_ITele (sort : Sort) : forall {T : sort} (ind : T), M (nat * ITele sort) := *)
+(*   mfix f (T : stype_of sort) : forall (ind : T), M (nat * ITele sort)%type := *)
+(*     mtmmatch T as T return selem_of T -> M (nat * ITele sort) with *)
+(*     | [? (A : Type) (F : A -> stype_of sort)] forall a, F a =u> *)
+(*       fun indFun => *)
+(*         name <- M.fresh_binder_name F; *)
+(*         M.nu name None (fun a : A => *)
+(*                           r <- f (F a) (indFun a); *)
+(*                           let (n, it) := r in *)
+(*                           f <- abs a it; *)
+(*                           M.ret (S n, iTele f)) *)
+(*     | stype_of sort =n> *)
+(*       fun indProp => *)
+(*         M.ret (0, iBase (sort := sort) indProp) *)
+(*     end. *)
 
 Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele)) :=
-  mfix2 f (T : _) (ind : _) : M (nat * sigT ITele)%type :=
-    mmatch T with
-    | [? (A : Type) (F : A -> Type)] forall a, F a => [H]
-      let indFun := match_eq H (fun x=>x) ind in
+  mfix2 f (T : _) (ind : T) : M (nat * sigT ITele)%type :=
+    (mtmmatch T as T return T -> M (nat * sigT ITele)%type with
+    | [? (A : Type) (F : A -> Type)] forall a, F a =m>
+      fun indFun =>
       name <- M.fresh_binder_name T;
       M.nu name None (fun a : A =>
         r <- f (F a) (indFun a);
@@ -329,17 +324,17 @@ Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele)) :=
         let (sort, it) := sit in
         f <- abs a it;
         M.ret (S n, existT _ sort (iTele f)))
-    | Prop => [H]
-      let indProp := match_eq H (fun x=>x) ind in
+    | Prop =m>
+      fun indProp =>
       M.ret (0, existT _ SProp (iBase (sort := SProp) indProp))
-    | Type => [H]
-      let indType := match_eq H (fun x=>x) ind in
+    | Type =m>
+      fun indType =>
       M.ret (0, existT _ (SType) (iBase (sort := SType) indType))
-    | Set => [H]
-      let indType := match_eq H (fun x=>x) ind in
+    | Set =m>
+      fun indType =>
       M.ret (0, existT _ (SType) (iBase (sort := SType) indType))
-    | _ => M.failwith "Impossible ITele"
-    end.
+    | T =n> fun _=> M.failwith "Impossible ITele"
+    end) ind.
 
 Definition get_ind (A : Type) :
   M (nat * sigT (fun s => (ITele s)) * list dyn) :=
