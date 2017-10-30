@@ -23,6 +23,7 @@ theories/ImportedTactics.v
 theories/IntroPatt.v
 theories/CompoundTactics.v
 theories/DepDestruct.v
+theories/SubgoalsStrict.v
 theories/Mtac2.v
 theories/Debugger.v
 theories/MTeleMatch.v
