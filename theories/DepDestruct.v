@@ -1,4 +1,4 @@
-From Mtac2 Require Import Logic Datatypes List Sorts Base Tactics ImportedTactics MTeleMatch.
+From Mtac2 Require Import Logic Datatypes List Sorts Base Tactics ImportedTactics MTeleMatch MFix.
 Import Sorts.
 Import M.notations.
 
@@ -231,8 +231,8 @@ Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn) {struct al} : M (A
 
 Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, A -> M (CTele it) :=
   fun isort it nindx =>
-    mfix2 rec (A : stype_of isort) (a : A) : M (CTele it) :=
-    (mtmmatch A as A return selem_of A -> M (CTele it) with
+    mfix rec (A : stype_of isort) : A -> M (CTele it) :=
+    mtmmatch A as A return selem_of A -> M (CTele it) with
     | [? B (F : B -> isort)] ForAll F =u>
         fun f =>
         n <- M.fresh_binder_name F;
@@ -247,7 +247,7 @@ Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : 
         atele <- get_ATele it args;
         a' <- @M.coerce _ (ITele_App atele) a ;
         M.ret (cBase atele a')
-end) a.
+end.
 
 Definition get_CTele :=
   fun {isort} =>
@@ -259,8 +259,8 @@ Definition get_CTele :=
 
 Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (NDCTele it) :=
   fun isort it nindx =>
-    mfix2 rec (A : isort) (a : A) : M (NDCTele it) :=
-    (mtmmatch A as A return selem_of A -> M (NDCTele it) with
+    mfix rec (A : isort) : A -> M (NDCTele it) :=
+    mtmmatch A as A return selem_of A -> M (NDCTele it) with
     | [? B (F : B -> isort)] ForAll F =u>
         fun f =>
         n <- M.fresh_binder_name F;
@@ -277,7 +277,7 @@ Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A 
         atele <- get_ATele it args;
         a' <- @M.coerce _ (ITele_App atele) a ;
         M.ret (existT _ nil (fun _ => existT _ atele a'))
-end) a.
+end.
 
 Definition get_NDCTele :=
   fun {isort} =>
@@ -288,7 +288,7 @@ Definition get_NDCTele :=
 
 
 (** Given a goal, it returns its sorted version *)
-Definition sort_goal {T : Type} : forall (A : T), M (sigT stype_of) :=
+Definition sort_goal {T : Type} : T -> M (sigT stype_of) :=
   mtmmatch T as T return T -> M (sigT stype_of) with
   | Prop =u> fun A_Prop => M.ret (existT _ SProp A_Prop)
   | Type =u> fun A_Type => M.ret (existT _ SType A_Type)
@@ -313,8 +313,8 @@ From Mtac2 Require Import MFix MTeleMatch.
 (*     end. *)
 
 Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele)) :=
-  mfix2 f (T : _) (ind : T) : M (nat * sigT ITele)%type :=
-    (mtmmatch T as T return T -> M (nat * sigT ITele)%type with
+  mfix f (T : _) : T -> M (nat * sigT ITele)%type :=
+    mtmmatch T as T return T -> M (nat * sigT ITele)%type with
     | [? (A : Type) (F : A -> Type)] forall a, F a =m>
       fun indFun =>
       name <- M.fresh_binder_name T;
@@ -334,7 +334,7 @@ Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele)) :=
       fun indType =>
       M.ret (0, existT _ (SType) (iBase (sort := SType) indType))
     | T =n> fun _=> M.failwith "Impossible ITele"
-    end) ind.
+    end.
 
 Definition get_ind (A : Type) :
   M (nat * sigT (fun s => (ITele s)) * list dyn) :=
