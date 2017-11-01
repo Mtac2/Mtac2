@@ -6,6 +6,11 @@ Import ListNotations.
 Set Implicit Arguments.
 Unset Strict Implicit.
 
+Notation reduce_dyns := (reduce (RedStrong [rl:RedBeta; RedMatch; RedZeta;
+           RedDeltaOnly [rl: Dyn elem; Dyn type; Dyn (@id);
+                           Dyn case_return; Dyn case_val; Dyn case_branches;
+                        Dyn case_ind]])).
+
 Module Abstract.
 
 Structure result A B x t := R { fu : A -> B; pf : t = fu x }.
@@ -50,10 +55,9 @@ Proof.
   refine (R (fun y=>fuP y -> fuQ y) eq_refl).
 Defined.
 
-
 Definition construct_case A (x: A) (loop: forall r: dyn, M (result x (elem r))) C :=
-  let val := C.(case_val) in
-  let retrn := C.(case_return) in
+  let val := reduce_dyns C.(case_val) in
+  let retrn := reduce_dyns C.(case_return) in
   name <- M.fresh_name "v";
   nu name None (fun v=>
     new_val <- loop (Dyn val);
@@ -63,7 +67,7 @@ Definition construct_case A (x: A) (loop: forall r: dyn, M (result x (elem r))) 
                                     let (fub, _) := r in
                                     let fub := reduce (RedWhd [rl:RedBeta]) (fub v) in
                                     ret (Dyn fub)) C.(case_branches);
-    let new_case := {| case_val := fuv; case_return := retrn; case_branches := new_branches |} in
+    let new_case := reduce_dyns {| case_val := fuv; case_return := retrn; case_branches := new_branches |} in
     d <- makecase new_case;
     let (_, cas) := d in
     func <- abs_fun v cas;
@@ -71,6 +75,7 @@ Definition construct_case A (x: A) (loop: forall r: dyn, M (result x (elem r))) 
 
 Definition abstract A B (x : A) (t : B) :=
    (mfix1 loop (r : dyn) : M (result x (elem r)) :=
+   let r := reduce_dyns r in
    print_term r;;
    b <- is_evar (elem r);
    if b then raise exception
@@ -96,18 +101,19 @@ Definition abstract A B (x : A) (t : B) :=
       Q' <- loop (Dyn Q);
       ret (non_dep_eq P' Q')
     | [?z:dyn] z =>
-      let def := ret (R (fun _=>elem z) (Logic.eq_refl)) : M (result x (elem z)) in
+      let def := R (fun _=>elem z) (Logic.eq_refl) : result x (elem z) in
       mtry
         let '@Dyn T e := z in
         C <- destcase e;
         cas <- construct_case loop C;
-        (* mmatch cas with *)
-        (* | [? el: A -> (type z)] Dyn el => *)
-        (*   eq <- coerce (Logic.eq_refl (type z)) : M (elem z = el x); *)
-        (*   ret (R el eq) *)
-        (* end *) def
+        mmatch cas with
+        | [? el: A -> (type z)] Dyn el =c>
+          eq <- coerce (Logic.eq_refl (elem z));
+          ret (R (t:=elem z) el eq)
+        | [? e] e => print "nope:";; print_term e;; ret def
+        end
       with NotAMatchExp =>
-        def
+        ret def
       end
     end) (Dyn t).
 Set Printing Universes.
@@ -130,8 +136,7 @@ Set Printing Universes.
 Definition simple_rewrite A {x y : A} (p : x = y) : tactic := fun g=>
   match g with
   | @Goal gT _ =>
-    store gT;;
-    gT <- retrieve;
+    store gT;; gT <- retrieve;
     r <- @abstract A Type x gT;
       let reduced := reduce_all (fu r y) in
       newG <- evar reduced;
@@ -141,11 +146,11 @@ Definition simple_rewrite A {x y : A} (p : x = y) : tactic := fun g=>
   end.
 
 Import T.notations.
+Set Printing Universes.
 Definition variabilize {A} (t: A) name : tactic :=
   gT <- T.goal_type;
-  store gT;;
-  gT <- retrieve;
-  r <- abstract t gT;
+  store gT;; gT <- retrieve;
+  r <- abstract t gT; print "paso";;
   T.cpose_base name t (fun x=>
     let reduced := reduce_all (fu r x) in
     T.change reduced).
@@ -166,13 +171,14 @@ Fixpoint evenb (n:nat) : bool :=
 
 Definition oddb (n:nat) : bool   :=   negb (evenb n).
 
+Import T.
 Theorem sillyfun1_odd : forall (n : nat),
      (sillyfun1 n = true ->
      oddb n = true) : Type .
 MProof.
   intros n. unfold sillyfun1.
   variabilize (beq_nat n 3) "t".
-  assert (Heqe3 : t = (n =? 3)) |1> reflexivity.
+  assert (Heqe3 : t = (n =? 3)) |1> T.reflexivity.
   move_back Heqe3.
   destruct t &> intro Heqe3.
 Abort.
