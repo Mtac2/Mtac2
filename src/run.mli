@@ -1,8 +1,8 @@
-open Term
-open Evd
 open Environ
+open Evd
+open EConstr
 
-module ExistentialSet : Set.S with type elt = existential_key
+module ExistentialSet : Set.S with type elt = Term.existential_key
 
 type elem = (evar_map * constr)
 
@@ -28,10 +28,9 @@ end
 type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option; fixpoints: Environ.env}
 val run' : ctxt -> constr -> data
 
-val multi_subst : (int * constr) list -> constr -> constr
+val multi_subst : evar_map -> (int * constr) list -> constr -> constr
 
 module Hypotheses : sig
   val from_coq_list : (Environ.env * Evd.evar_map) ->
-    Constr.constr ->
-    (Term.constr * Constr.constr option * Constr.constr) list
+    constr -> (constr * constr option * constr) list
 end
