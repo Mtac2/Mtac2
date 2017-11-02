@@ -1,25 +1,28 @@
 (** This module defines the interpretation of MetaCoq constr
 *)
 
+open Ltac_plugin
 open Declarations
 
 open List
 open String
 
 open Pp
-open Term
+open Environ
+open CClosure
+open Evd
+open Evarutil
+open EConstr
 open Termops
 open Reductionops
-open Environ
-open Evarutil
-open Evd
 open Names
-open CClosure
 open Util
 open Evarconv
 open Libnames
 
 open Constrs
+
+[@@@ocaml.warning "-27-40-41-42-44"]
 
 module Stack = Reductionops.Stack
 
@@ -28,7 +31,7 @@ let reduce_value = Tacred.compute
 let get_ts env = Conv_oracle.get_transp_state (Environ.oracle env)
 
 (** returns the i-th position of constructor c (starting from 0) *)
-let get_constructor_pos c = let (_, pos), _ = destConstruct c in pos-1
+let get_constructor_pos sigma c = let (_, pos), _ = destConstruct sigma c in pos-1
 
 module MetaCoqNames = struct
   let metaCoq_module_name = "Mtac2.Base"
@@ -37,9 +40,9 @@ module MetaCoqNames = struct
   let mkT_lazy = mkConstr "M.t"
   let mkUConstr e = Constr.mkUConstr (metaCoq_module_name ^ "." ^ e)
 
-  let isConstr e =
+  let isConstr sigma e =
     let c = Lazy.force (mkConstr e) in
-    eq_constr c
+    eq_constr sigma c
 
   let mkCase ind v ret branch sigma env =
     let sigma, c = mkUConstr "mkCase" sigma env in
@@ -56,7 +59,7 @@ module MetaCoqNames = struct
     sigma, mkApp(c, [|ty;el|])
 
   (* dyn is expected to be Dyn ty el *)
-  let get_elem dyn = (snd (destApp dyn)).(1)
+  let get_elem sigma dyn = (snd (destApp sigma dyn)).(1)
 end
 
 open MetaCoqNames
@@ -81,7 +84,7 @@ module Goal = struct
   let mkAHypOrDef (name, odef, ty) body sigma env =
     (* we are going to wrap the body in a function, so we need to lift
        the indices. we also replace the name with index 1 *)
-    let body = replace_term (mkVar name) (mkRel 1) (Vars.lift 1 body) in
+    let body = replace_term sigma (mkVar name) (mkRel 1) (Vars.lift 1 body) in
     let odef_coq = CoqOption.to_coq ty odef in
     let sigma, ahyp = mkAHyp sigma env in
     sigma, mkApp (ahyp, [|ty; odef_coq; mkLambda(Name name,ty,body)|])
@@ -89,19 +92,19 @@ module Goal = struct
   (* it assumes goal is of type goal *)
   let evar_of_goal sigma env =
     let rec eog goal =
-      let (c, args) = decompose_appvect goal in
-      if isConstruct c then
-        match get_constructor_pos c with
+      let (c, args) = decompose_appvect sigma goal in
+      if isConstruct sigma c then
+        match get_constructor_pos sigma c with
         | 0 -> (* AGoal *)
             let evar = whd_evar sigma args.(1) in
-            if isEvar evar then
-              Some (fst (destEvar evar))
+            if isEvar sigma evar then
+              Some (fst (destEvar sigma evar))
             else (* it is defined *)
               None
         | 1 -> (* AHyp *)
             let func = args.(2) in
-            if isLambda func then
-              let (_, _, body) = destLambda func in
+            if isLambda sigma func then
+              let (_, _, body) = destLambda sigma func in
               eog body
             else
               None
@@ -109,7 +112,7 @@ module Goal = struct
             eog args.(2)
         | _ -> failwith "Should not happen"
       else
-        CErrors.error "Not a goal"
+        CErrors.user_err Pp.(str "Not a goal")
     in eog
 
   let goal_of_evar (env:env) sigma ev =
@@ -121,27 +124,26 @@ module Goal = struct
     let newenv =
       let rec remove = function
         | (nd1 :: evenv) as l1, (nd2 :: env) ->
-            let nd2 = Declaration.map_type (Reductionops.nf_evar sigma) nd2 in
-            if Declaration.equal nd1 nd2 then
+            if Declaration.equal (eq_constr sigma) nd1 nd2 then
               remove (evenv, env)
             else
               l1
         | l1, _ -> l1 in
       List.rev (remove (List.rev evenv, List.rev (named_context env))) in
-    let ids = List.map (fun v -> mkVar (Declaration.get_id v)) evenv in
+    let ids = List.map (fun v -> Term.mkVar (Declaration.get_id v)) evenv in
     let evar = (ev, Array.of_list ids) in
-    let sigma, tg = mkTheGoal (Evd.existential_type sigma evar) (mkEvar evar) sigma env in
+    let sigma, tg = mkTheGoal (of_constr @@ Evd.existential_type sigma evar) (of_constr @@ Term.mkEvar evar) sigma env in
     fold_inside (fun (sigma,s) v -> mkAHypOrDef (Declaration.to_tuple v) s sigma env) newenv ~init:(sigma,tg)
 
 end
 
 let constr_to_string t = string_of_ppcmds (Termops.print_constr t)
-let constr_to_string_env env t = string_of_ppcmds (Termops.print_constr_env env t)
+let constr_to_string_env env sigma t = string_of_ppcmds (Termops.print_constr_env sigma env t)
 
 module Exceptions = struct
 
-  let mkCannotRemoveVar env x =
-    let varname = CoqString.to_coq (constr_to_string_env env x) in
+  let mkCannotRemoveVar env sigma x =
+    let varname = CoqString.to_coq (constr_to_string_env sigma env x) in
     mkApp(Lazy.force (mkConstr "CannotRemoveVar"), [|varname|])
 
   let mkRefNotFound s =
@@ -180,7 +182,7 @@ module Exceptions = struct
 
   let mkNameExists s = mkApp (Lazy.force (mkConstr "NameExistsInContext"), [|s|])
 
-  let block = CErrors.error
+  let block msg = CErrors.user_err Pp.(str msg)
 end
 
 module E = Exceptions
@@ -192,62 +194,63 @@ module ReductionStrategy = struct
   open CClosure.RedFlags
   open Context
 
-  let isReduce c = isConstr "reduce" c
+  let isReduce sigma c = isConstr sigma "reduce" c
 
-  let has_definition ts env t =
-    if isVar t then
-      let var = destVar t in
+  let has_definition ts env sigma t =
+    if isVar sigma t then
+      let var = destVar sigma t in
       if not (is_transparent_variable ts var) then
         false
       else
         let n = Environ.lookup_named var env in
         Option.has_some (Named.Declaration.get_value n)
-    else if isRel t then
-      let n = destRel t in
+    else if isRel sigma t then
+      let n = destRel sigma t in
       let n = Environ.lookup_rel n env in
       Option.has_some (Rel.Declaration.get_value n)
-    else if isConst t then
-      let (c, _) = destConst t in
+    else if isConst sigma t then
+      let (c, _) = destConst sigma t in
       is_transparent_constant ts c && Environ.evaluable_constant c env
     else
       false
 
-  let get_definition env t =
-    if isVar t then
-      let var = destVar t in
-      let n = Environ.lookup_named var env in
+  let get_definition env sigma t : EConstr.t =
+    if isVar sigma t then
+      let var = destVar sigma t in
+      let n = EConstr.lookup_named var env in
       match Named.Declaration.get_value n with
       | Some c -> c
       | _ -> CErrors.anomaly (Pp.str "get_definition for var didn't have definition!")
-    else if isRel t then
-      let n = destRel t in
+    else if isRel sigma t then
+      let n = destRel sigma t in
       let d = Environ.lookup_rel n env in
       match Rel.Declaration.get_value d with
-      | Some v -> (Vars.lift n) v
+      | Some v -> (Vars.lift n) (of_constr v)
       | _ -> CErrors.anomaly (Pp.str "get_definition for rel didn't have definition!")
-    else if isConst t then
-      let c = destConst t in
-      let (d,_) = Environ.constant_value env c in
-      d
+    else if isConst sigma t then
+      let (c,ui) = destConst sigma t in
+      let ui = EInstance.kind sigma ui in
+      let (d,_) = Environ.constant_value env (c,ui) in
+      of_constr d
     else
       CErrors.anomaly (Pp.str "get_definition didn't have definition!")
 
-  let try_unfolding ts env t =
-    if has_definition ts env t then
-      get_definition env t
+  let try_unfolding ts env sigma t =
+    if has_definition ts env sigma t then
+      get_definition env sigma t
     else
       t
 
   let one_step env sigma c =
     let ts = get_ts env in
-    let h, args = decompose_app c in
+    let h, args = decompose_app sigma c in
     let h = whd_evar sigma h in
     let r =
-      match kind_of_term h with
+      match kind sigma h with
       | Lambda (_, _, trm) when args <> [] ->
           (Vars.subst1 (List.hd args) trm, List.tl args)
       | LetIn (_, trm, _, body) -> (Vars.subst1 trm body, args)
-      | Var _ | Rel _ | Const _ -> (try_unfolding ts env h, args)
+      | Var _ | Rel _ | Const _ -> (try_unfolding ts env sigma h, args)
       | _ -> h, args
     in applist r
 
@@ -257,12 +260,12 @@ module ReductionStrategy = struct
   let posDeltaOnly = posDeltaX + 1
   let posDeltaBut = posDeltaOnly + 1
 
-  let get_flags (env, _ as ctx) flags =
+  let get_flags (env, sigma as ctx) flags =
     (* we assume flags have the right type and are in nf *)
     let flags = RedList.from_coq ctx flags in
     List.fold_right (fun f reds->
-      if isConstruct f then
-        let ci = get_constructor_pos f in
+      if isConstruct sigma f then
+        let ci = get_constructor_pos sigma f in
         if ci < Array.length redflags then
           red_add reds redflags.(ci)
         else if ci = posDeltaC then
@@ -271,23 +274,23 @@ module ReductionStrategy = struct
           red_add_transparent reds Names.var_full_transparent_state
         else
           failwith "Unknown flag"
-      else if isApp f then
-        let c, args = destApp f in
-        if isConstruct c && Array.length args = 1 then
+      else if isApp sigma f then
+        let c, args = destApp sigma f in
+        if isConstruct sigma c && Array.length args = 1 then
           let reds, func =
-            if get_constructor_pos c = posDeltaOnly then
+            if get_constructor_pos sigma c = posDeltaOnly then
               red_add_transparent (red_add reds fDELTA) all_opaque,
               red_add
             else (* must be posDeltaBut *)
               red_add_transparent reds
                 (Conv_oracle.get_transp_state (Environ.oracle env)),
               red_sub in
-          let ids = RedList.from_coq_conv ctx get_elem args.(0) in
+          let ids = RedList.from_coq_conv ctx (get_elem sigma) args.(0) in
           List.fold_right (fun e reds->
-            if isVar e then
-              func reds (fVAR (destVar e))
-            else if isConst e then
-              func reds (fCONST (fst (destConst e)))
+            if isVar sigma e then
+              func reds (fVAR (destVar sigma e))
+            else if isConst sigma e then
+              func reds (fCONST (fst (destConst sigma e)))
             else
               failwith "Unknown reference") ids reds
         else
@@ -300,20 +303,32 @@ module ReductionStrategy = struct
     (fun _ _ _ c -> c);
     (fun _ -> Tacred.simpl);
     (fun _ ->one_step);
-    (fun fs env sigma c->
+    (fun fs env sigma c ->
        let evars ev = safe_evar_value sigma ev in
+       of_constr @@
        whd_val
          (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
-         (inject c));
+         (inject (EConstr.to_constr sigma c)));
     (fun fs env sigma->
        clos_norm_flags (get_flags (env, sigma) fs.(0)) env sigma);
     (fun _ -> Redexpr.cbv_vm) (* vm_compute *)
   |]
 
   let reduce sigma env strategy c =
-    let strategy, args = decompose_appvect strategy in
-    redfuns.(get_constructor_pos strategy) args env sigma c
+    let strategy, args = decompose_appvect sigma strategy in
+    redfuns.(get_constructor_pos sigma strategy) args env sigma c
 
+  (* XXX: Port to 8.7: [EJGA]
+
+     These functions take and return `Constr.t` instead of the
+     preferred `Econstr.t`. This implies a large performance cost in
+     some cases as the called has to perform evar substitution using
+     `EConstr.to_constr`
+
+     The most plausible fix is to use instead
+     `Reductionops.clos_whd_flags`, however @SkySkimmer notes that
+     it catches anomalies so a minor difference may exist.
+  *)
   let whd_betadeltaiota_nolet env sigma c =
     let evars ev = safe_evar_value sigma ev in
     whd_val
@@ -349,7 +364,8 @@ module UnificationStrategy = struct
     let (_, pbs) = extract_all_conv_pbs sigma in
     List.filter (fun (_,_,c1,c2) ->
       List.exists (fun e ->
-        Termops.occur_term e c1 || Termops.occur_term e c2) evars) pbs
+        Termops.occur_term sigma e (of_constr c1) ||
+        Termops.occur_term sigma e (of_constr c2)) evars) pbs
 
   let funs = [|
     (fun _-> Munify.unify_evar_conv);
@@ -377,7 +393,7 @@ module UnificationStrategy = struct
       was one of the Match. *)
   let unify oevars sigma env strategy conv_pb t1 t2 =
     let ts = get_ts env in
-    let pos = get_constructor_pos strategy in
+    let pos = get_constructor_pos sigma strategy in
     let evars =
       match oevars with
       | Some e -> e
@@ -408,14 +424,14 @@ let print env sigma s =
   Feedback.msg_notice (app (str "[DEBUG] ")
                          (str (CoqString.from_coq (env, sigma) s)))
 
-let mysubstn t n c =
-  let rec substrec in_arr depth c = match kind_of_term c with
+let mysubstn sigma t n c =
+  let rec substrec in_arr depth c = match kind sigma c with
     | Rel k    ->
         if k<=depth then c
         else if k = depth+n then
           Vars.lift depth t
         else mkRel (k+1)
-    | _ -> map_constr_with_binders succ (substrec in_arr) depth c in
+    | _ -> map_with_binders sigma succ (substrec in_arr) depth c in
   substrec false 0 c
 
 let name_occurn_env env n =
@@ -430,8 +446,9 @@ let name_occurn_env env n =
 let dest_Case (env, sigma) t =
   let sigma, dyn = mkdyn sigma env in
   try
-    let t = RE.whd_betadelta env sigma t in
-    let (info, return_type, discriminant, branches) = Term.destCase t in
+    let t = to_constr sigma t in
+    let t = of_constr @@ RE.whd_betadelta env sigma t in
+    let (info, return_type, discriminant, branches) = destCase sigma t in
     let sigma, branch_dyns = Array.fold_right (
       fun t (sigma,l) ->
         let dyn_type = Retyping.get_type_of env sigma t in
@@ -452,19 +469,18 @@ let dest_Case (env, sigma) t =
 
 let make_Case (env, sigma) case =
   let open Lazy in
-  let open Term in
-  let (_, args) = decompose_appvect case in
+  let (_, args) = decompose_appvect sigma case in
   let repr_ind = args.(0) in
   let repr_val = args.(1) in
-  let repr_return = get_elem args.(2) in
-  let repr_branches = CoqList.from_coq_conv (env, sigma) get_elem args.(3) in
-  let t_type, l = decompose_appvect repr_ind in
-  if isInd t_type then
-    match kind_of_term t_type with
+  let repr_return = get_elem sigma args.(2) in
+  let repr_branches = CoqList.from_coq_conv (env, sigma) (get_elem sigma) args.(3) in
+  let t_type, l = decompose_appvect sigma repr_ind in
+  if isInd sigma t_type then
+    match kind sigma t_type with
     | Ind ((mind, ind_i), _) ->
         let case_info = Inductiveops.make_case_info env (mind, ind_i) LetPatternStyle in
-        let match_term = mkCase (case_info, repr_return, repr_val,
-                                 (Array.of_list repr_branches)) in
+        let match_term = EConstr.mkCase (case_info, repr_return, repr_val,
+                                         (Array.of_list repr_branches)) in
         let match_type = Retyping.get_type_of env sigma match_term in
         mkDyn match_type match_term sigma env
     | _ -> assert false
@@ -473,9 +489,10 @@ let make_Case (env, sigma) case =
 
 
 let get_Constrs (env, sigma) t =
-  let t_type, args = Term.decompose_app (RE.whd_betadeltaiota env sigma t) in
-  if Term.isInd t_type then
-    let (mind, ind_i), _ = destInd t_type in
+  let t = to_constr sigma t in
+  let t_type, args = decompose_app sigma (of_constr @@ RE.whd_betadeltaiota env sigma t) in
+  if isInd sigma t_type then
+    let (mind, ind_i), _ = destInd sigma t_type in
     let mbody = Environ.lookup_mind mind env in
     let ind = Array.get (mbody.mind_packets) ind_i in
     let sigma, dyn = mkdyn sigma env in
@@ -483,7 +500,7 @@ let get_Constrs (env, sigma) t =
     let sigma, l = Array.fold_right
                      (fun i (sigma, l) ->
                         let constr = Names.ith_constructor_of_inductive (mind, ind_i) i in
-                        let coq_constr = Term.applist (Term.mkConstruct constr, args) in
+                        let coq_constr = applist (mkConstruct constr, args) in
                         let ty = Retyping.get_type_of env sigma coq_constr in
                         let sigma, dyn_constr = mkDyn ty coq_constr sigma env in
                         sigma, CoqList.mkCons dyn dyn_constr l
@@ -492,7 +509,7 @@ let get_Constrs (env, sigma) t =
                      (Array.mapi (fun i t -> i+1) ind.mind_consnames)
                      (sigma, CoqList.mkNil dyn)
     in
-    let indty = Term.applist (t_type, args) in
+    let indty = applist (t_type, args) in
     let indtyty = Retyping.get_type_of env sigma indty in
     let sigma, indtydyn = mkDyn indtyty indty sigma env in
     let pair = CoqPair.mkPair dyn (CoqList.mkType dyn) indtydyn l in
@@ -521,7 +538,7 @@ module Hypotheses = struct
   exception NotAHyp
   let from_coq (env, sigma as ctx) c =
     let fvar = fun c ->
-      if Term.isVar c then c
+      if isVar sigma c then c
       else raise NotAVariable
     in
     let fdecl = CoqOption.from_coq ctx in
@@ -537,59 +554,59 @@ end
 
 (* It replaces each ii by ci in l = [(i1,c1) ... (in, cn)] in c.
    It throws Not_found if there is a variable not in l *)
-let multi_subst l c =
-  let rec substrec depth c = match kind_of_term c with
+let multi_subst sigma l c =
+  let rec substrec depth c = match kind sigma c with
     | Rel k    ->
         if k<=depth then c
         else
           List.assoc (k - depth) l
-    | _ -> map_constr_with_binders succ substrec depth c in
+    | _ -> map_with_binders sigma succ substrec depth c in
   substrec 0 c
 
-let name_depends_on deps ty ot =
+let name_depends_on sigma deps ty ot =
   let open Idset in let open Termops in
-  let vars = collect_vars ty in
+  let vars = collect_vars sigma ty in
   let vars = if Option.has_some ot then
-      union (collect_vars (Option.get ot)) vars
+      union (collect_vars sigma (Option.get ot)) vars
     else vars in
   not (is_empty (inter vars deps))
 
 (* given a named_context env and a variable x it returns all the
    (named) variables that depends transitively on x *)
-let depends_on env x =
+let depends_on env sigma x =
   let open Idset in let open Context.Named in
   let deps = singleton x in
   fold_outside (fun v deps->
     let (n, ot, ty) = Declaration.to_tuple v in
-    if name_depends_on deps ty ot then
+    if name_depends_on sigma deps ty ot then
       Idset.add n deps
     else
       deps) env ~init:deps
 
 let name_deps env x = depends_on (named_context env) x
 
-let compute_deps env x =
-  if isVar x then
-    let name = destVar x in
-    name_deps env name
+let compute_deps env sigma x =
+  if isVar sigma x then
+    let name = destVar sigma x in
+    name_deps env sigma name
   else
     failwith "check_dependencies should not be called with not a var or rel"
 
 (* given a rel or var x and a term t and its type ty, it checks if t or ty does not depend on x *)
-let check_abs_deps env x t ty =
-  let ndeps = compute_deps env x in
+let check_abs_deps env sigma x t ty =
+  let ndeps = compute_deps env sigma x in
   let open Idset in
   is_empty ndeps ||
   (* The term might depend on x, which by invariant we now is a
      variable (since ndeps is not empty) *)
-  (subset (inter (collect_vars t) ndeps) (singleton (destVar x)) &&
-   is_empty (inter (collect_vars ty) ndeps))
+  (subset (inter (collect_vars sigma t) ndeps) (singleton (destVar sigma x)) &&
+   is_empty (inter (collect_vars sigma ty) ndeps))
 
 (* check if x \not\in FV(t) union FV(env) *)
-let check_dependencies env x t =
-  if isVar x then
-    let name = destVar x in
-    not (Termops.occur_var env name t) && not (name_occurn_env env name)
+let check_dependencies env sigma x t =
+  if isVar sigma x then
+    let name = destVar sigma x in
+    not (Termops.occur_var env sigma name t) && not (name_occurn_env env name)
   else
     failwith "check_dependencies should not be called with not a var or rel"
 
@@ -600,9 +617,9 @@ type abs = AbsProd | AbsFun | AbsLet | AbsFix
 let rec n_prods env sigma ty = function
   | 0 -> true
   | n ->
-      let ty = RE.whd_betadeltaiota env sigma ty in
-      if isProd ty then
-        let _, _, b = destProd ty in
+      let ty = of_constr @@ RE.whd_betadeltaiota env sigma (to_constr sigma ty) in
+      if isProd sigma ty then
+        let _, _, b = destProd sigma ty in
         n_prods env sigma b (n-1)
       else
         false
@@ -610,23 +627,19 @@ let rec n_prods env sigma ty = function
 (* abs case env a p x y n abstract variable x from term y according to the case.
    if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
 let abs case (env, sigma) a p x y n t : data =
-  let a = nf_evar sigma a in
-  let p = nf_evar sigma p in
-  let x = nf_evar sigma x in
-  let y = nf_evar sigma y in
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
-  if isVar x then
-    if check_abs_deps env x y p then
-      let name = destVar x in
+  if isVar sigma x then
+    if check_abs_deps env sigma x y p then
+      let name = destVar sigma x in
       let y' = Vars.subst_vars [name] y in
       let t =
         match case with
-        | AbsProd -> Term.mkProd (Name name, a, y')
-        | AbsFun -> Term.mkLambda (Name name, a, y')
-        | AbsLet -> Term.mkLetIn (Name name, t, a, y')
-        | AbsFix -> Term.mkFix (([|n-1|], 0), ([|Name name|], [|a|], [|y'|]))
+        | AbsProd -> mkProd (Name name, a, y')
+        | AbsFun  -> mkLambda (Name name, a, y')
+        | AbsLet  -> mkLetIn (Name name, t, a, y')
+        | AbsFix  -> mkFix (([|n-1|], 0), ([|Name name|], [|a|], [|y'|]))
       in
       return sigma t
     else
@@ -636,10 +649,10 @@ let abs case (env, sigma) a p x y n t : data =
 
 (** checks if (option) definition od and type ty has named
     vars included in vars *)
-let check_vars od ty vars =
-  Idset.subset (Termops.collect_vars ty) vars &&
+let check_vars sigma od ty vars =
+  Idset.subset (Termops.collect_vars sigma ty) vars &&
   if Option.has_some od then
-    Idset.subset (Termops.collect_vars (Option.get od)) vars
+    Idset.subset (Termops.collect_vars sigma (Option.get od)) vars
   else true
 
 exception MissingDep
@@ -649,20 +662,17 @@ exception MissingDep
 let new_env (env, sigma) hyps =
   let _, _, subs, env =
     List.fold_right (fun (var, odef, ty) (idlist, idset, subs, env') ->
-      (* remove false dependencies from type and definition *)
-      let ty = Reductionops.nf_evar sigma ty in
-      let odef = Option.map (Reductionops.nf_evar sigma) odef in
       (* the definition might refer to previously defined indices
          so we perform the substitution *)
       let odef =
-        try Option.map (multi_subst subs) odef
+        try Option.map (multi_subst sigma subs) odef
         with Not_found -> raise MissingDep
       in
       (* if the variable is named, its type can only refer to named variables.
          note that typing ensures the var has type ty, so its type must
          be defined in the named context *)
-      if check_vars odef ty idset then
-        let id = destVar var in
+      if check_vars sigma odef ty idset then
+        let id = destVar sigma var in
         (id::idlist, Idset.add id idset, subs, push_named (Context.Named.Declaration.of_tuple (id, odef, ty)) env')
       else
         raise MissingDep
@@ -670,14 +680,12 @@ let new_env (env, sigma) hyps =
   in subs, env
 
 let make_evar sigma env ty =
-  let open Sigma in
-  let sigma = Unsafe.of_evar_map sigma in
-  if Term.isSort ty && ty <> mkProp then
-    let Sigma ((evar, _), sigma, _) = Evarutil.new_type_evar env sigma Evd.UnivRigid in
-    to_evar_map sigma, evar
+  if isSort sigma ty && ty <> mkProp then
+    let sigma, (evar, _) = Evarutil.new_type_evar env sigma Evd.UnivRigid in
+    sigma, evar
   else
-    let Sigma (evar, sigma, _) = Evarutil.new_evar env sigma ty in
-    to_evar_map sigma, evar
+    let sigma, evar = Evarutil.new_evar env sigma ty in
+    sigma, evar
 
 let cvar (env, sigma as ctx) ty ohyps =
   let ohyps = CoqOption.from_coq (env, sigma) ohyps in
@@ -688,9 +696,9 @@ let cvar (env, sigma as ctx) ty ohyps =
       if List.distinct vars then
         try
           let subs, env = new_env ctx hyps in
-          let ty = multi_subst subs ty in
+          let ty = multi_subst sigma subs ty in
           let sigma, evar = make_evar sigma env ty in
-          let (e, _) = destEvar evar in
+          let (e, _) = destEvar sigma evar in
           (* the evar created by make_evar has id in the substitution
              but we need to remap it to the actual variables in hyps *)
           return sigma (mkEvar (e, Array.of_list vars))
@@ -712,13 +720,13 @@ let rec get_name (env, sigma) (t: constr) : constr option =
   (* If t is a defined variable it is reducing it *)
   (*  let t = whd_betadeltaiota_nolet env sigma t in *)
   let name =
-    if isVar t then Some (Name (destVar t))
-    else if isLambda t then
-      let (n, _, _) = destLambda t in Some n
-    else if isProd t then
-      let (n, _, _) = destProd t in Some n
-    else if isLetIn t then
-      let (n, _, _, _) = destLetIn t in Some n
+    if isVar sigma t then Some (Name (destVar sigma t))
+    else if isLambda sigma t then
+      let (n, _, _) = destLambda sigma t in Some n
+    else if isProd sigma t then
+      let (n, _, _) = destProd sigma t in Some n
+    else if isLetIn sigma t then
+      let (n, _, _, _) = destLetIn sigma t in Some n
     else None
   in
   match name with
@@ -731,7 +739,7 @@ let rec get_name (env, sigma) (t: constr) : constr option =
 (* return the reflected hash of a term *)
 let hash env sigma c size =
   let size = CoqN.from_coq (env, sigma) size in
-  let h = Term.hash_constr c in
+  let h = Term.hash_constr (to_constr sigma c) in
   CoqN.to_coq (Pervasives.abs (h mod size))
 
 (* reflects the hypotheses in [env] in a list of [ahyp] *)
@@ -755,15 +763,15 @@ let env_without sigma env renv x =
   let open Context.Named.Declaration in
   let name_env = named_context env in
   let env = Environ.reset_context env in
-  let nx = destVar x in
+  let nx = destVar sigma x in
   let name_env = List.filter (fun decl -> get_id decl <> nx) name_env in
   let env = push_named_context name_env env in
   env, build_hypotheses sigma env (* TODO: we should do something smarter here, rebuilding everything is costly *)
 
-let is_nu env x nus =
+let is_nu env sigma x nus =
   let open Context.Named.Declaration in
   let env = named_context env in
-  let nx = destVar x in
+  let nx = destVar sigma x in
   let rec find env i =
     let decl = List.hd env in
     if get_id decl = nx then
@@ -817,7 +825,7 @@ let run_declare_def env sigma kind name opaque ty bod =
   ; Method|]
   in
   let ctx = Evd.universe_context_set sigma in
-  let kind_pos = get_constructor_pos kind in
+  let kind_pos = get_constructor_pos sigma kind in
   let kind = kinds.(kind_pos) in
   let name = CoqString.from_coq (env, sigma) name in
   let id = Names.Id.of_string name in
@@ -848,7 +856,7 @@ let run_declare_implicits env sigma gr impls =
   let idx = ref 1 in
   let impls = CoqList.from_coq_conv (env, sigma)
                 (fun item ->
-                   let kind_pos = get_constructor_pos item in
+                   let kind_pos = get_constructor_pos sigma item in
                    let ret = (if kind_pos > 0 then
                                 Some (Constrexpr.ExplByPos(!idx, None), impliciteness.(kind_pos))
                               else
@@ -875,33 +883,34 @@ let rec run' ctxt t =
   ( match ctxt.hook with
     | Some f ->
         let ty = Retyping.get_type_of env sigma t in
-        run' {ctxt with hook = None} (Term.mkApp (f, [|ty; t|]))
+        run' {ctxt with hook = None} (mkApp (f, [|ty; t|]))
     | None -> return sigma t
   ) >>= fun (sigma, t) ->
-  let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
+  let t = to_constr sigma t in
+  let (h, args) = decompose_appvect sigma (of_constr @@ RE.whd_betadeltaiota_nolet env sigma t) in
   let nth = Array.get args in
-  if Term.isLetIn h then
+  if isLetIn sigma h then
     let open ReductionStrategy in
-    let (_, b, _, t) = Term.destLetIn h in
-    let (h, args') = Term.decompose_appvect b in
-    if isReduce h && Array.length args' = 3 then
+    let (_, b, _, t) = destLetIn sigma h in
+    let (h, args') = decompose_appvect sigma b in
+    if isReduce sigma h && Array.length args' = 3 then
       try
         let b = reduce sigma env (Array.get args' 0) (Array.get args' 2) in
-        run' ctxt (Term.mkApp (Vars.subst1 b t, args))
+        run' ctxt (mkApp (Vars.subst1 b t, args))
       with RedList.NotAList l ->
         fail sigma (E.mkNotAList ())
     else
-      run' ctxt (Term.mkApp (Vars.subst1 b t, args))
+      run' ctxt (mkApp (Vars.subst1 b t, args))
   else
-    let constr c =
-      if Term.isConstruct c then
-        let ((m, ix), _) = Term.destConstruct c in
-        if Names.eq_ind m (fst (Term.destInd (Lazy.force mkT_lazy))) then
+    let constr sigma c =
+      if isConstruct sigma c then
+        let ((m, ix), _) = destConstruct sigma c in
+        if Names.eq_ind m (fst (destInd sigma (Lazy.force mkT_lazy))) then
           ix
         else -1
       else -1
     in
-    match constr h with
+    match constr sigma h with
     | -1 -> fail sigma (E.mkStuckTerm ())
     | 1 -> (* ret *)
         return sigma (nth 1)
@@ -922,8 +931,8 @@ let rec run' ctxt t =
 
     | 4 -> (* raise *)
         (* we make sure the exception is a closed term: it does not depend on evars or nus *)
-        let term = nf_evar sigma (nth 1) in
-        let vars = collect_vars term in
+        let term = nth 1 in
+        let vars = collect_vars sigma term in
         let nuvars = Context.Named.to_vars (CList.firstn ctxt.nus (named_context env)) in
         let intersect = Id.Set.inter vars nuvars in
         let closed = Id.Set.is_empty intersect && Evar.Set.is_empty (Evarutil.undefined_evars_of_term sigma term) in
@@ -958,7 +967,7 @@ let rec run' ctxt t =
 
     | 10 -> (* is_var *)
         let e = nth 1 in
-        if isVar e then
+        if isVar sigma e then
           return sigma CoqBool.mkTrue
         else
           return sigma CoqBool.mkFalse
@@ -970,13 +979,13 @@ let rec run' ctxt t =
         if Id.Set.mem name (vars_of_env env) then
           fail sigma (Exceptions.mkNameExists s)
         else begin
-          let fx = Term.mkApp(f, [|Term.mkVar name|]) in
+          let fx = mkApp(f, [|mkVar name|]) in
           let ot = CoqOption.from_coq (env, sigma) ot in
           let env = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
-          let (sigma, renv) = Hypotheses.cons_hyp a (Term.mkVar name) ot ctxt.renv sigma env in
+          let (sigma, renv) = Hypotheses.cons_hyp a (mkVar name) ot ctxt.renv sigma env in
           match run' {ctxt with env; renv; sigma; nus=(ctxt.nus+1)} fx with
           | Val (sigma', e) ->
-              if occur_var env name e then
+              if occur_var env sigma name e then
                 fail sigma (E.mkVarAppearsInValue ())
               else
                 return sigma' e
@@ -1014,13 +1023,13 @@ let rec run' ctxt t =
 
     | 17 -> (* remove *)
         let x, t = nth 2, nth 3 in
-        if isVar x then
-          if check_dependencies env x t then
-            let nus = if is_nu env x ctxt.nus then ctxt.nus-1 else ctxt.nus in
+        if isVar sigma x then
+          if check_dependencies env sigma x t then
+            let nus = if is_nu env sigma x ctxt.nus then ctxt.nus-1 else ctxt.nus in
             let env, (sigma, renv) = env_without sigma env ctxt.renv x in
             run' {ctxt with env; renv; sigma; nus} t
           else
-            fail sigma (E.mkCannotRemoveVar env x)
+            fail sigma (E.mkCannotRemoveVar env sigma x)
         else
           fail sigma (E.mkNotAVar ())
 
@@ -1030,7 +1039,7 @@ let rec run' ctxt t =
 
     | 19 -> (* is_evar *)
         let e = whd_evar sigma (nth 1) in
-        if isEvar e || (isApp e && isEvar (fst (destApp e))) then
+        if isEvar sigma e || (isApp sigma e && isEvar sigma (fst (destApp sigma e))) then
           return sigma CoqBool.mkTrue
         else
           return sigma CoqBool.mkFalse
@@ -1049,8 +1058,7 @@ let rec run' ctxt t =
 
     | 23 -> (* pretty_print *)
         let t = nth 1 in
-        let t = nf_evar sigma t in
-        let s = string_of_ppcmds (Termops.print_constr_env env t) in
+        let s = string_of_ppcmds (Termops.print_constr_env env sigma t) in
         return sigma (CoqString.to_coq s)
 
     | 24 -> (* hypotheses *)
@@ -1112,8 +1120,8 @@ let rec run' ctxt t =
         begin
           try
             let sigma, v = Evd.fresh_global env sigma (locate (qualid_of_string s)) in
-            let ty = Retyping.get_type_of env sigma v in
-            let sigma, dyn = mkDyn ty v sigma env in
+            let ty = Retyping.get_type_of env sigma (of_constr v) in
+            let sigma, dyn = mkDyn ty (of_constr v) sigma env in
             return sigma dyn
           with _ -> fail sigma (Exceptions.mkRefNotFound s)
         end
@@ -1131,7 +1139,6 @@ let rec run' ctxt t =
 
     | 32 -> (* call_ltac *)
         let concl, name, args = nth 0, nth 1, nth 2 in
-        let args = nf_evar sigma args in
         let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq (env, sigma) args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
         (* let tac = Tacenv.interp_ml_tactic name in *)
@@ -1147,7 +1154,7 @@ let rec run' ctxt t =
                   in
                   List.map aux args
                 in
-                Tacexpr.TacArg (Loc.ghost, (Tacexpr.TacCall (Loc.ghost, Misctypes.ArgArg (Loc.ghost, k), args)))
+                Tacexpr.TacArg (Loc.tag (Tacexpr.TacCall (Loc.tag (Misctypes.ArgArg (Loc.tag k), args))))
             | (k, _)::xs -> aux xs
           in
           aux (KNmap.bindings (Tacenv.ltac_entries ()))
@@ -1160,9 +1167,10 @@ let rec run' ctxt t =
             let new_undef = Evar.Set.elements new_undef in
             let sigma, goal = Goal.mkgoal sigma env in
             let sigma, goals = CoqList.pto_coq goal (fun e sigma->Goal.goal_of_evar env sigma e) new_undef sigma in
-            return sigma (CoqPair.mkPair concl goal c goals)
+            return sigma (CoqPair.mkPair concl goal (of_constr c) goals)
           with CErrors.UserError(s,ppm) ->
             let expl = string_of_ppcmds ppm in
+            let s = Option.default "" s in
             fail sigma (Exceptions.mkLtacError (s ^ ": " ^ expl))
              | e ->
                  fail sigma (Exceptions.mkLtacError (Printexc.to_string e))
@@ -1182,7 +1190,7 @@ let rec run' ctxt t =
         return sigma CoqUnit.mkTT
 
     | 36 -> (* decompose *)
-        let (h, args) = decompose_app (nth 1) in
+        let (h, args) = decompose_app sigma (nth 1) in
         let sigma, dyn = mkdyn sigma env in
         let listdyn = CoqList.mkType dyn in
         let sigma, dh = mkDyn (Retyping.get_type_of env sigma h) h sigma env in
@@ -1202,8 +1210,10 @@ let rec run' ctxt t =
     | 38 -> (* declare definition *)
         let kind, name, opaque, ty, bod = nth 0, nth 1, nth 2, nth 3, nth 4 in
         (try
-           let sigma, ret = run_declare_def env sigma kind name (CoqBool.from_coq opaque) ty bod in
-           return sigma ret
+           let ty = to_constr sigma ty in
+           let bod = to_constr sigma bod in
+           let sigma, ret = run_declare_def env sigma kind name (CoqBool.from_coq sigma opaque) ty bod in
+           return sigma (of_constr ret)
          with
          | CErrors.AlreadyDeclared _ ->
              fail sigma (E.mkAlreadyDeclared name)
@@ -1214,6 +1224,7 @@ let rec run' ctxt t =
     | 39 -> (* declare implicit arguments *)
         let reference, impls = (*nth 0 is the type *) nth 1, nth 2 in
         (try
+           let reference = to_constr sigma reference in
            let sigma, ret = run_declare_implicits env sigma reference impls in
            return sigma ret
          with Not_found ->
@@ -1234,22 +1245,22 @@ and run_fix ctxt h a b s i f x =
    [term]. *)
 let clean_unused_metas sigma metas term =
   let rec rem (term : constr) (metas : ExistentialSet.t) =
-    let fms = Evd.evars_of_term term in
+    let fms = Evd.evars_of_term (to_constr sigma term) in
     let metas = ExistentialSet.diff metas fms in
     (* we also need to remove all metas that occur in the
        types, context, and terms of other metas *)
     ExistentialSet.fold (fun ev metas ->
       let ev_info = Evd.find sigma ev  in
-      let metas = rem (Evd.evar_concl ev_info) metas in
+      let metas = rem (of_constr @@ Evd.evar_concl ev_info) metas in
       let metas = List.fold_right (fun var metas ->
         let (_, body, ty) = Context.Named.Declaration.to_tuple var in
         let metas = rem ty metas in
         match body with
         | None -> metas
-        | Some v -> rem v metas) (Evd.evar_context ev_info) metas in
+        | Some v -> rem v metas) (List.map of_named_decl @@ Evd.evar_context ev_info) metas in
       match Evd.evar_body ev_info with
       | Evar_empty -> metas
-      | Evar_defined b -> rem b metas
+      | Evar_defined b -> rem (of_constr b) metas
     ) fms metas
   in
   let metas = rem term metas in
@@ -1272,7 +1283,7 @@ let clean_unused_metas sigma metas term =
   Evd.restore_future_goals sigma alive principal_goal
 
 (* returns the enviornment and substitution without db rels *)
-let db_to_named env =
+let db_to_named sigma env =
   let open Context in
   let env' = push_named_context (named_context env) (reset_context env) in
   let vars = Id.Set.elements (Named.to_vars (named_context env)) in
@@ -1280,8 +1291,8 @@ let db_to_named env =
     (* the definition might refer to previously defined indices
        so we perform the substitution *)
     let (name, odef, ty) = Rel.Declaration.to_tuple var in
-    let odef = Option.map (multi_subst subs) odef in
-    let ty = multi_subst subs ty in
+    let odef = Option.map (multi_subst sigma subs) odef in
+    let ty = multi_subst sigma subs ty in
     (* since the name can be Anonymous, we need to generate a name *)
     let id =
       match name with
@@ -1295,23 +1306,23 @@ let db_to_named env =
   subs, env
 
 (* It replaces each ci by ii in l = [(i1,c1) ... (in, cn)] in c. *)
-let multi_subst_inv l c =
+let multi_subst_inv sigma l c =
   let l = List.map (fun (a, b) -> (b, a)) l in
-  let rec substrec depth c = match kind_of_term c with
+  let rec substrec depth c = match kind sigma c with
     | Var n ->
         begin
           try mkRel (List.assoc (mkVar n) l + depth)
           with Not_found -> mkVar n
         end
-    | _ -> map_constr_with_binders succ substrec depth c in
+    | _ -> map_with_binders sigma succ substrec depth c in
   substrec 0 c
 
 let run (env, sigma) t =
-  let subs, env = db_to_named env in
-  let t = multi_subst subs (nf_evar sigma t) in
+  let subs, env = db_to_named sigma env in
+  let t = multi_subst sigma subs t in
   let (sigma, renv) = build_hypotheses sigma env in
   match run' {env; renv; sigma; nus=0;hook=None} t with
   | Err (sigma', v) ->
-      Err (sigma', multi_subst_inv subs (nf_evar sigma' v))
+      Err (sigma', multi_subst_inv sigma' subs v)
   | Val (sigma', v) ->
-      Val (sigma', multi_subst_inv subs (nf_evar sigma' v))
+      Val (sigma', multi_subst_inv sigma' subs v)

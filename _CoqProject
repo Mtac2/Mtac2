@@ -11,7 +11,7 @@ src/run.mli
 src/metaCoqInterp.ml
 src/metaCoqInterp.mli
 src/metaCoqTactic.ml4
-src/MetaCoqPlugin.mllib
+src/MetaCoqPlugin.mlpack
 theories/Logic.v
 theories/Datatypes.v
 theories/List.v

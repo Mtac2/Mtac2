@@ -1,29 +1,35 @@
-open Constr
-open Term
+open Ltac_plugin
+open EConstr
 open Reductionops
 
 let reduce_value = Tacred.compute
+
+let decompose_appvect sigma c =
+  match kind sigma c with
+  | App (f,cl) -> (f, cl)
+  | _ -> (c,[||])
 
 module Constr = struct
   exception Constr_not_found of string
   exception Constr_poly of string
 
   let mkConstr name = lazy (
-    try Universes.constr_of_global
-          (Nametab.global_of_path (Libnames.path_of_string name))
+    try of_constr @@
+      Universes.constr_of_global
+        (Nametab.global_of_path (Libnames.path_of_string name))
     with Not_found -> raise (Constr_not_found name)
        | Invalid_argument _ -> raise (Constr_poly name)
   )
 
   let mkUConstr name sigma env =
-    try Evd.fresh_global env sigma
+    try fresh_global env sigma
           (Nametab.global_of_path (Libnames.path_of_string name))
     with Not_found -> raise (Constr_not_found name)
 
-  let isConstr = fun r c -> eq_constr (Lazy.force r) c
+  let isConstr sigma = fun r c -> eq_constr sigma (Lazy.force r) c
 
   let isUConstr r sigma env = fun c ->
-    eq_constr_nounivs (snd (mkUConstr r sigma env)) c
+    eq_constr_nounivs sigma (snd (mkUConstr r sigma env)) c
 
   let eq_ind i1 i2 = Names.eq_ind (fst i1) (fst i2)
 end
@@ -36,11 +42,11 @@ module ConstrBuilder = struct
   let build s = Lazy.force (Constr.mkConstr s)
   let build_app s args = mkApp (Lazy.force (Constr.mkConstr s), args)
 
-  let equal s = Constr.isConstr (Constr.mkConstr s)
+  let equal sigma s = Constr.isConstr sigma (Constr.mkConstr s)
 
-  let from_coq s _ cterm =
-    let (head, args) = decompose_appvect cterm in
-    if equal s head then Some args else None
+  let from_coq s (_, sigma) cterm =
+    let (head, args) = decompose_appvect sigma cterm in
+    if equal sigma s head then Some args else None
 end
 
 module UConstrBuilder = struct
@@ -55,7 +61,7 @@ module UConstrBuilder = struct
   let equal = Constr.isUConstr
 
   let from_coq s (env, sigma) cterm =
-    let (head, args) = decompose_appvect cterm in
+    let (head, args) = decompose_appvect sigma cterm in
     if equal s sigma env head then Some args else None
 end
 
@@ -72,7 +78,7 @@ module CoqOption = struct
 
   exception NotAnOption
 
-  let from_coq (env, sigma as ctx) cterm =
+  let from_coq ctx cterm =
     match from_coq noneBuilder ctx cterm with
     | None ->
         begin match from_coq someBuilder ctx cterm with
@@ -127,7 +133,7 @@ module GenericList (LP : ListParams) = struct
       it creates a list of elements using the converstion function.
       if fconv raises Skip, that element is not included.
       if the list is ill-formed, an exception NotAList is raised. *)
-  let from_coq_conv (env, sigma as ctx) (fconv : Term.constr -> 'a) cterm =
+  let from_coq_conv ctx (fconv : constr -> 'a) cterm =
     let rec fcc cterm =
       match from_coq consBuilder ctx cterm with
       | None ->
@@ -180,7 +186,7 @@ end
 module CoqSig = struct
   let rec from_coq (env, sigma) constr =
     (* NOTE: Hightly unsafe *)
-    let (_, args) = decompose_appvect (whd_all env sigma constr) in
+    let (_, args) = decompose_appvect sigma (whd_all env sigma constr) in
     args.(1)
 end
 
@@ -188,24 +194,24 @@ module CoqNat = struct
   let mkZero = Constr.mkConstr "Coq.Init.Datatypes.O"
   let mkSucc = Constr.mkConstr "Coq.Init.Datatypes.S"
 
-  let isZero = Constr.isConstr mkZero
-  let isSucc = Constr.isConstr mkSucc
+  let isZero sigma = Constr.isConstr sigma mkZero
+  let isSucc sigma = Constr.isConstr sigma mkSucc
 
   let rec to_coq = function
     | 0 -> Lazy.force mkZero
-    | n -> Term.mkApp (Lazy.force mkSucc, [| to_coq (pred n) |])
+    | n -> mkApp (Lazy.force mkSucc, [| to_coq (pred n) |])
 
   let from_coq (env, evd) c =
     let rec fc c =
-      if isZero c then
+      if isZero evd c then
         0
       else
-        let (s, n) = destApp c in
+        let (s, n) = destApp evd c in
         begin
-          if isSucc s then
+          if isSucc evd s then
             1 + (fc (n.(0)))
           else
-            CErrors.error "Not a nat"
+            CErrors.user_err Pp.(str "Not a nat")
         end
     in
     let c' = reduce_value env evd c in
@@ -217,23 +223,23 @@ module CoqPositive = struct
   let xO = Constr.mkConstr "Coq.Numbers.BinNums.xO"
   let xH = Constr.mkConstr "Coq.Numbers.BinNums.xH"
 
-  let isH = Constr.isConstr xH
-  let isI = Constr.isConstr xI
-  let isO = Constr.isConstr xO
+  let isH sigma = Constr.isConstr sigma xH
+  let isI sigma = Constr.isConstr sigma xI
+  let isO sigma = Constr.isConstr sigma xO
 
   let from_coq (env, evd) c =
     let rec fc i c =
-      if isH c then
+      if isH evd c then
         1
       else
-        let (s, n) = destApp c in
+        let (s, n) = destApp evd c in
         begin
-          if isI s then
+          if isI evd s then
             (fc (i+1) (n.(0)))*2 + 1
-          else if isO s then
+          else if isO evd s then
             (fc (i+1) (n.(0)))*2
           else
-            CErrors.error "Not a positive"
+            CErrors.user_err Pp.(str "Not a positive")
         end
     in
     let c' = reduce_value env evd c in
@@ -253,19 +259,19 @@ module CoqN = struct
   let h0 = Constr.mkConstr "Coq.Numbers.BinNums.N0"
   let hP = Constr.mkConstr "Coq.Numbers.BinNums.Npos"
 
-  let is0 = Constr.isConstr h0
-  let isP = Constr.isConstr hP
+  let is0 sigma = Constr.isConstr sigma h0
+  let isP sigma = Constr.isConstr sigma hP
 
   exception NotAnN
 
   let from_coq (env, evd) c =
     let rec fc c =
-      if is0 c then
+      if is0 evd c then
         0
       else
-        let (s, n) = destApp c in
+        let (s, n) = destApp evd c in
         begin
-          if isP s then
+          if isP evd s then
             CoqPositive.from_coq (env, evd) (n.(0))
           else
             raise NotAnN
@@ -295,9 +301,9 @@ module CoqBool = struct
   exception NotABool
 
   let to_coq b = if b then mkTrue else mkFalse
-  let from_coq c =
-    if equal trueBuilder c then true
-    else if equal falseBuilder c then false
+  let from_coq sigma c =
+    if equal sigma trueBuilder c then true
+    else if equal sigma falseBuilder c then false
     else raise NotABool
 end
 
@@ -306,11 +312,11 @@ module CoqAscii = struct
 
   let asciiBuilder = from_string "Coq.Strings.Ascii.Ascii"
 
-  let from_coq c =
-    let (h, args) = decompose_appvect c in
+  let from_coq (_, sigma) c =
+    let (h, args) = decompose_appvect sigma c in
     let rec from_bits n =
       if n >= Array.length args then 0
-      else (if CoqBool.from_coq args.(n) then 1 else 0) lsl n + from_bits (n+1)
+      else (if CoqBool.from_coq sigma args.(n) then 1 else 0) lsl n + from_bits (n+1)
     in
     let n = from_bits 0 in
     String.make 1 (Char.chr n)
@@ -330,12 +336,12 @@ module CoqString = struct
 
   exception NotAString
 
-  let from_coq (env, sigma) s =
+  let from_coq (env, sigma as ctx) s =
     let rec fc s =
-      let (h, args) = decompose_appvect s in
-      if equal emptyBuilder h then ""
-      else if equal stringBuilder h then
-        CoqAscii.from_coq args.(0) ^ fc args.(1)
+      let (h, args) = decompose_appvect sigma s in
+      if equal sigma emptyBuilder h then ""
+      else if equal sigma stringBuilder h then
+        CoqAscii.from_coq ctx args.(0) ^ fc args.(1)
       else
         raise NotAString
     in

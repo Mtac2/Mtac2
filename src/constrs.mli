@@ -1,4 +1,7 @@
-open Constr
+open Evd
+open EConstr
+
+val decompose_appvect : evar_map -> constr -> constr * constr array
 
 module Constr : sig
   exception Constr_not_found of string
@@ -6,9 +9,9 @@ module Constr : sig
 
   val mkConstr : string -> constr Lazy.t
 
-  val mkUConstr : string -> Evd.evar_map -> Environ.env -> (Evd.evar_map * constr)
+  val mkUConstr : string -> evar_map -> Environ.env -> (Evd.evar_map * constr)
 
-  val isConstr : Term.constr Lazy.t -> Term.constr -> bool
+  val isConstr : evar_map -> constr Lazy.t -> constr -> bool
 end
 
 module ConstrBuilder : sig
@@ -20,7 +23,7 @@ module ConstrBuilder : sig
 
   val build_app : t -> constr array -> constr
 
-  val equal : t -> constr -> bool
+  val equal : evar_map -> t -> constr -> bool
 end
 
 module UConstrBuilder : sig
@@ -89,6 +92,7 @@ module CoqUnit : sig
 end
 
 module CoqBool : sig
+
   val mkType : constr
   val mkTrue : constr
   val mkFalse : constr
@@ -96,7 +100,7 @@ module CoqBool : sig
   exception NotABool
 
   val to_coq : bool -> constr
-  val from_coq : constr -> bool
+  val from_coq : evar_map -> constr -> bool
 end
 
 module CoqEq : sig
