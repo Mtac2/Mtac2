@@ -405,7 +405,7 @@ Arguments Build_runner {A} _ _.
 Arguments eval {A} _ {_}.
 
 Hint Extern 20 (runner ?f) =>
-  (exact (Build_runner f ltac:(mrun f)))  : typeclass_instances.
+  (mrun (bind f (fun eres=> ret (Build_runner f eres))))  : typeclass_instances.
 
 Definition print_term {A} (x : A) : t unit :=
   bind (pretty_print x) (fun s=> print s).
