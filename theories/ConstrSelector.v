@@ -55,7 +55,7 @@ Definition snth_indices (l:list dyn) (t:tactic) : selector unit := fun goals=>
       newgoals <- open_and_apply t g;
       let res := dreduce (app, map) (accu++newgoals) in
       T.filter_goals res
-    | None => failwith "snth_indices"
+    | None => M.failwith "snth_indices"
     end)%MC l goals.
 
 Notation "'case' c , .. , d 'do' t" :=

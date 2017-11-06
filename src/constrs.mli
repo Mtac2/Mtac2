@@ -37,6 +37,10 @@ module CoqN : sig
   val to_coq : int -> constr
 end
 
+module CoqZ : sig
+  val to_coq : int -> constr
+end
+
 module CoqString : sig
   exception NotAString
 

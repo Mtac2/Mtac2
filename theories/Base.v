@@ -69,6 +69,8 @@ Definition UnboundVar : Exception. exact exception. Qed.
 
 Definition NotAMatchExp : Exception. exact exception. Qed.
 
+Definition NoClassInstance (A : Type) : Exception. exact exception. Qed.
+
 (** Lifted from coq 8.6.1 Decl_kinds
     TODO: auto generate this file to avoid inconsistencies.
  *)
@@ -380,6 +382,9 @@ Inductive t : Type -> Prop :=
     reference [r] according to [l] *)
 | declare_implicits : forall {A : Type} (a : A),
     list (implicit_arguments) -> t unit
+
+(** [os_cmd cmd] executes the command and returns its error number. *)
+| os_cmd : string -> t Z
 .
 
 Arguments t _%type.
@@ -415,10 +420,13 @@ Module monad_notations.
   Delimit Scope M_scope with MC.
   Open Scope M_scope.
 
-  Notation "r '<-' t1 ';' t2" := (@bind _ _ t1 (fun r=> t2))
+  Notation "r '<-' t1 ';' t2" := (bind t1 (fun r=> t2%MC))
     (at level 100, t2 at level 200,
      right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
-  Notation "t1 ';;' t2" := (bind t1 (fun _ => t2))
+  Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2%MC) ..))
+    (at level 100, r1 binder, rn binder, t2 at level 200,
+     right associativity, format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
+  Notation "t1 ';;' t2" := (bind t1 (fun _ => t2%MC))
     (at level 100, t2 at level 200,
      right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : M_scope.
   Notation "t >>= f" := (bind t f) (at level 70) : M_scope.
@@ -582,14 +590,13 @@ Definition fold_left {A B} (f : A -> B -> t A) : list B -> A -> t A :=
     end.
 
 Definition index_of {A} (f : A -> t bool) (l : list A) : t (option nat) :=
-  ir <- fold_left (fun (ir : (nat * option nat)) x =>
+  ''(_, r) <- fold_left (fun (ir : (nat * option nat)) x =>
     let (i, r) := ir in
     match r with
     | Some _ => ret ir
     | _ => mif f x then ret (i, Some i) else ret (S i, None)
     end
   ) l (0, None);
-  let (_, r) := ir in
   ret r.
 
 Fixpoint nth {A} (n : nat) (l : list A) : t A :=
@@ -633,7 +640,7 @@ Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
 Definition type_of {A} (x : A) : Type := A.
 Definition type_inside {A} (x : t A) : Type := A.
 
-Definition unify_cumul {A B} (x: A) (y: B) (u : Unification) : t bool :=
+Definition cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
   of <- unify_univ A B u;
   match of with
   | Some f =>
@@ -645,8 +652,8 @@ Definition unify_cumul {A B} (x: A) (y: B) (u : Unification) : t bool :=
 
 (** Unifies [x] with [y] and raises [NotUnifiable] if it they
     are not unifiable. *)
-Definition unify_or_fail {A} (x y : A) : t (x = y) :=
-  oeq <- unify x y UniCoq;
+Definition unify_or_fail {A} (u : Unification) (x y : A) : t (x = y) :=
+  oeq <- unify x y u;
   match oeq with
   | None => raise (NotUnifiable x y)
   | Some eq => ret eq
@@ -654,8 +661,8 @@ Definition unify_or_fail {A} (x y : A) : t (x = y) :=
 
 (** Unifies [x] with [y] using cumulativity and raises [NotCumul] if it they
     are not unifiable. *)
-Definition cumul_or_fail {A B} (x: A) (y: B) : t unit :=
-  b <- unify_cumul x y UniCoq;
+Definition cumul_or_fail {A B} (u : Unification) (x: A) (y: B) : t unit :=
+  b <- cumul u x y;
   if b then ret tt else raise (NotCumul x y).
 
 Program Definition names_of_hyp : t (list string) :=
@@ -785,8 +792,7 @@ Definition print_goal (g : goal) : t unit :=
     [CantInstantiate] if it fails to find a suitable instantiation. [t] is beta-reduced
     to avoid false dependencies. *)
 Definition instantiate {A} (x y : A) : t unit :=
-  k <- decompose x;
-  let (h, _) := k in
+  ''(h, _) <- decompose x;
   let h := rcbv h.(elem) in
   b <- is_evar h;
   let t := reduce (RedWhd [rl:RedBeta]) t in
@@ -797,6 +803,10 @@ Definition instantiate {A} (x y : A) : t unit :=
     | _ => raise (CantInstantiate x y)
     end
   else raise (NotAnEvar h).
+
+Definition solve_typeclass_or_fail (A : Type) : t A :=
+  x <- solve_typeclass A;
+  match x with Some a => M.ret a | None => raise (NoClassInstance A) end.
 End M.
 
 Notation M := M.t.

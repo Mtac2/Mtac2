@@ -1220,6 +1220,11 @@ let rec run' ctxt t =
            fail sigma (E.mkNotAReference (nth 0) reference)
         )
 
+    | 40 -> (* os_cmd *)
+        let cmd = CoqString.from_coq (env, sigma) (nth 0) in
+        let ret = Sys.command cmd in
+        return sigma (CoqZ.to_coq ret)
+
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"
 

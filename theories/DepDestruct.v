@@ -208,7 +208,7 @@ Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
         f <- M.evar (forall x:T, P x);
         t <- M.evar T;
         let el := rhnf (d.(elem)) in
-        b <- M.unify_cumul el (f t) UniCoq;
+        b <- M.cumul UniCoq el (f t);
         if b then
           r <- args_of_max max (Dyn f); M.ret (app r (Dyn t :: nil))
         else
@@ -362,10 +362,10 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
         cts <- M.map (fun c_dyn : dyn =>
                        let (dtype, delem) := c_dyn in
                        ty <- M.evar (stype_of isort);
-                       b <- M.unify_cumul ty dtype UniCoq;
+                       b <- M.cumul UniCoq ty dtype;
                        if b then
                          el <- M.evar ty;
-                         M.unify_cumul el delem UniCoq;;
+                         M.cumul UniCoq el delem;;
                          get_CTele it nindx ty el
                        else
                          M.failwith "Couldn't unify the type of the inductive with the type of the constructor"
@@ -393,6 +393,6 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
                        case_branches := branches
                      |};
           let gterm := M.dyn_to_goal caseterm in
-          M.unify_or_fail gterm g;;
+          M.unify_or_fail UniCoq gterm g;;
           let goals' := dreduce (@map) (map (pair tt) goals) in
           M.ret goals'.

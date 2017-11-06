@@ -281,6 +281,20 @@ module CoqN = struct
       mkApp(Lazy.force hP, [|CoqPositive.to_coq n|])
 end
 
+module CoqZ = struct
+  let z0 = Constr.mkConstr "Coq.Numbers.BinNums.Z0"
+  let zpos = Constr.mkConstr "Coq.Numbers.BinNums.Zpos"
+  let zneg = Constr.mkConstr "Coq.Numbers.BinNums.Zneg"
+
+  let to_coq n =
+    if n = 0 then
+      Lazy.force z0
+    else if n > 0 then
+      mkApp(Lazy.force zpos, [|CoqPositive.to_coq n|])
+    else
+      mkApp(Lazy.force zneg, [|CoqPositive.to_coq n|])
+end
+
 module CoqBool = struct
   open ConstrBuilder
 
