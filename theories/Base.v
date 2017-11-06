@@ -69,6 +69,8 @@ Definition UnboundVar : Exception. exact exception. Qed.
 
 Definition NotAMatchExp : Exception. exact exception. Qed.
 
+Definition NoClassInstance (A : Type) : Exception. exact exception. Qed.
+
 (** Lifted from coq 8.6.1 Decl_kinds
     TODO: auto generate this file to avoid inconsistencies.
  *)
@@ -797,6 +799,10 @@ Definition instantiate {A} (x y : A) : t unit :=
     | _ => raise (CantInstantiate x y)
     end
   else raise (NotAnEvar h).
+
+Definition solve_typeclass_or_fail (A : Type) : t A :=
+  x <- solve_typeclass A;
+  match x with Some a => M.ret a | None => raise (NoClassInstance A) end.
 End M.
 
 Notation M := M.t.
