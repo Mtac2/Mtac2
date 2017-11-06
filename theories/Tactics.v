@@ -400,7 +400,6 @@ Definition constructor : tactic := fun g=>
 
 Definition change (P : Type) : tactic := fun g =>
   gT <- M.goal_type g;
-  M.unify_or_fail P gT;;
   e <- M.evar P;
   exact e g;;
   M.ret [m:(tt, Goal e)].
