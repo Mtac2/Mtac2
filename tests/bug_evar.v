@@ -29,10 +29,10 @@ Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
   | @ptele _ _ _ _ C f => e <- evar C; (* M.print_term f;; UNCOMMENTING THIS MAKES IT STACK OVERFLOW *) open_pattern (f e)
   end.
 
-Fixpoint mmatch' {A P} (y : A) (ps : list (pattern t A P y)) : t (P y) :=
+Fixpoint mmatch' {A P} (y : A) (ps : mlist (pattern t A P y)) : t (P y) :=
   match ps with
   | [m:] => raise NoPatternMatches
-  | [m: p & ps'] =>
+  | p :m: ps' =>
     mtry' (open_pattern p) (fun e =>
       mif unify e DoesNotMatch UniMatchNoRed then mmatch' y ps' else raise e)
   end.
@@ -53,7 +53,7 @@ Definition Break : Exception. exact exception. Qed.
 
 Require Import Strings.String.
 
-Definition debug (trace: bool) {A:Type} (bks : list dyn) : M A -> M unit :=
+Definition debug (trace: bool) {A:Type} (bks : mlist dyn) : M A -> M unit :=
   M.break (fun A (x:M A) =>
              v <- M.decompose x;
              let (hd, _) := v in
@@ -70,8 +70,8 @@ Definition debug (trace: bool) {A:Type} (bks : list dyn) : M A -> M unit :=
                  end
                else M.print_term x;; M.ret x).
 
-Definition debugT {A} (trace: bool) (bks : list dyn) (t: gtactic A) : gtactic unit := fun g=>
-  debug trace bks (t g) ;; M.ret nil.
+Definition debugT {A} (trace: bool) (bks : mlist dyn) (t: gtactic A) : gtactic unit := fun g=>
+  debug trace bks (t g) ;; M.ret [m:].
 
 Goal unit.
 MProof.

@@ -93,33 +93,33 @@ Require Import Notations.
 
 (** Polymorphic lists and some operations *)
 
-Inductive list (A : Type) : Type :=
- | nil : list A
- | cons : A -> list A -> list A.
+Inductive mlist (A : Type) : Type :=
+ | mnil : mlist A
+ | mcons : A -> mlist A -> mlist A.
 
-Arguments nil {A}.
-Arguments cons {A} a l.
-Infix "::" := cons (at level 60, right associativity) : list_scope.
-Delimit Scope list_scope with list.
-Bind Scope list_scope with list.
+Arguments mnil {A}.
+Arguments mcons {A} a l.
+Infix ":m:" := mcons (at level 60, right associativity) : mlist_scope.
+Delimit Scope mlist_scope with mlist.
+Bind Scope mlist_scope with mlist.
 
-Local Open Scope list_scope.
+Local Open Scope mlist_scope.
 
-Definition length (A : Type) : list A -> nat :=
+Definition mlength (A : Type) : mlist A -> nat :=
   fix length l :=
   match l with
-   | nil => O
-   | _ :: l' => S (length l')
+   | mnil => O
+   | _ :m: l' => S (length l')
   end.
 
 (** Concatenation of two lists *)
 
-Definition app (A : Type) : list A -> list A -> list A :=
-  fix app l m :=
+Definition mapp (A : Type) : mlist A -> mlist A -> mlist A :=
+  fix mapp l m :=
   match l with
-   | nil => m
-   | a :: l1 => a :: app l1 m
+   | mnil => m
+   | a :m: l1 => a :m: mapp l1 m
   end.
 
 
-Infix "++" := app (right associativity, at level 60) : list_scope.
+Infix "+m+" := mapp (right associativity, at level 60) : mlist_scope.

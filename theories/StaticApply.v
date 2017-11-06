@@ -1,26 +1,26 @@
 From Mtac2 Require Import Mtac2 List MFix Datatypes MTeleMatch.
 Import Mtac2.List.ListNotations.
 
-Definition funs_of (T : Prop) : list Prop -> Prop :=
+Definition funs_of (T : Prop) : mlist Prop -> Prop :=
   fix f l :=
   match l with
   | [m: ] => T
-  | [m: X & l] => X -> f l
+  | X :m: l => X -> f l
   end.
   (* fun T l => fold_right (fun B X => B -> X) T l.  *)
 
-Definition args_of : list Prop -> Prop :=
+Definition args_of : mlist Prop -> Prop :=
   fix f l :=
   match l with
   | [m: ] => True
-  | [m: X & l] => (X * f l)%type
+  | X :m: l => (X * f l)%type
   end.
 
 Definition apply_args_of {T} : forall {l}, funs_of T l -> args_of l -> T :=
   fix f l :=
   match l as l return funs_of T l -> args_of l -> T with
   | [m: ] => fun t _ => t
-  | [m: X & l] => fun F '(x, a) => f l (F x) a
+  | X :m: l => fun F '(x, a) => f l (F x) a
   end.
 
 (* Compute funs_of (M nat) [m: True | False]. *)
@@ -29,8 +29,8 @@ Definition funs_bind {T X : Type} : forall {l},
   (X -> funs_of (M T) l) -> (M X -> funs_of (M T) l) :=
   fix f l :=
     match l return (X -> funs_of _ l) -> (M X -> funs_of _ l) with
-    | nil => fun g mx => M.bind mx g
-    | Y :: l => fun g mx y => f _ (fun x => g x y) mx
+    | [m:] => fun g mx => M.bind mx g
+    | Y :m: l => fun g mx y => f _ (fun x => g x y) mx
     end.
 
 (* Definition unify_within {T} {X:Prop} (x : X) : *)
@@ -74,7 +74,7 @@ Definition apply_type_of (P : Type) :
                       M (sigT (funs_of (M P))) :=
   mfix f T : T -> M (sigT (funs_of (M P))) :=
      mtmmatch T as T' return T' -> M (sigT (funs_of (M P))) with
-     | (M P : Type) =c> fun t => M.ret (existT _ nil t)
+     | (M P : Type) =c> fun t => M.ret (existT _ [m:] t)
      | [? X F] (forall x : X, F x) =c>
         fun ft =>
           s <- M.fresh_binder_name ft;
@@ -88,7 +88,7 @@ Definition apply_type_of (P : Type) :
             let '(existT _ rl rp) := r in
              rp' <- M.abs_fun x_nu rp;
              mtry (M.remove x_nu (
-                   let r' : sigT (funs_of (M P)) := existT _ [m: M X & rl] (funs_bind rp') in
+                   let r' : sigT (funs_of (M P)) := existT _ (M X :m: rl) (funs_bind rp') in
                    M.ret r'
                  )) with
                     | [?s] CannotRemoveVar s =>

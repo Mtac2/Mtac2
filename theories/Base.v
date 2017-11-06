@@ -132,7 +132,7 @@ Record Case :=
         case_ind : Type;
         case_val : case_ind;
         case_return : dyn;
-        case_branches : list dyn
+        case_branches : mlist dyn
         }.
 
 (* Reduction primitive. It throws [NotAList] if the list of flags is not a list.  *)
@@ -202,10 +202,10 @@ Notation "p =c> [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) ..
 Delimit Scope pattern_scope with pattern.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
-  ((@cons (pattern _ _ _ _) p1%pattern (.. (@cons (pattern _ _ _ _) pn%pattern nil) ..)))
+  ((@mcons (pattern _ _ _ _) p1%pattern (.. (@mcons (pattern _ _ _ _) pn%pattern [m:]) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_pattern_scope.
 Notation "'with' p1 | .. | pn 'end'" :=
-  ((@cons (pattern _ _ _ _) p1%pattern (.. (@cons (pattern _ _ _ _) pn%pattern nil) ..)))
+  ((@mcons (pattern _ _ _ _) p1%pattern (.. (@mcons (pattern _ _ _ _) pn%pattern [m:]) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_pattern_scope.
 
 Delimit Scope with_pattern_scope with with_pattern.
@@ -304,7 +304,7 @@ Inductive t : Type -> Prop :=
     something that is not a variable, it raises [NotAVar]. If it contains duplicated
     occurrences of a variable, it raises a [DuplicatedVariable].
 *)
-| gen_evar : forall (A : Type), option (list Hyp) -> t A
+| gen_evar : forall (A : Type), option (mlist Hyp) -> t A
 
 (** [is_evar e] returns if [e] is a meta-variable. *)
 | is_evar : forall {A : Type}, A -> t bool
@@ -323,14 +323,14 @@ Inductive t : Type -> Prop :=
 | pretty_print : forall {A : Type}, A -> t string
 
 (** [hyps] returns the list of hypotheses. *)
-| hyps : t (list Hyp)
+| hyps : t (mlist Hyp)
 
 | destcase : forall {A : Type} (a : A), t (Case)
 
 (** Given an inductive type A, applied to all its parameters (but not *)
 (*     necessarily indices), it returns the type applied to exactly the *)
 (*     parameters, and a list of constructors (applied to the parameters). *)
-| constrs : forall {A : Type} (a : A), t (prod dyn (list dyn))
+| constrs : forall {A : Type} (a : A), t (prod dyn (mlist dyn))
 | makecase : forall (C : Case), t dyn
 
 (** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
@@ -350,7 +350,7 @@ Inductive t : Type -> Prop :=
 (** [get_var s] returns the var named after s. *)
 | get_var : string -> t dyn
 
-| call_ltac : forall {A : Type}, string -> list dyn -> t (prod A (list goal))
+| call_ltac : forall {A : Type}, string -> mlist dyn -> t (prod A (mlist goal))
 | list_ltac : t unit
 
 (** [read_line] returns the string from stdin. *)
@@ -366,7 +366,7 @@ Inductive t : Type -> Prop :=
 (** [decompose x] decomposes value [x] into a head and a spine of
     arguments. For instance, [decompose (3 + 3)] returns
     [(Dyn add, [Dyn 3; Dyn 3])] *)
-| decompose : forall {A}, A -> t (prod dyn (list dyn))
+| decompose : forall {A}, A -> t (prod dyn (mlist dyn))
 
 (** [solve_typeclass A] calls type classes resolution for [A] and returns the result or fail. *)
 | solve_typeclass : forall (A:Type), t (option A)
@@ -381,7 +381,7 @@ Inductive t : Type -> Prop :=
 (** [declare_implicits r l] declares implicit arguments for global
     reference [r] according to [l] *)
 | declare_implicits : forall {A : Type} (a : A),
-    list (implicit_arguments) -> t unit
+    mlist implicit_arguments -> t unit
 
 (** [os_cmd cmd] executes the command and returns its error number. *)
 | os_cmd : string -> t Z
@@ -389,7 +389,7 @@ Inductive t : Type -> Prop :=
 
 Arguments t _%type.
 
-Definition Cevar (A : Type) (ctx : list Hyp) : t A := gen_evar A (Some ctx).
+Definition Cevar (A : Type) (ctx : mlist Hyp) : t A := gen_evar A (Some ctx).
 Definition evar (A : Type) : t A := gen_evar A None.
 
 Definition failwith {A} (s : string) : t A := raise (Failure s).
@@ -454,10 +454,10 @@ Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
   | @ptele _ _ _ _ C f => e <- evar C; open_pattern (f e)
   end.
 
-Fixpoint mmatch' {A P} (y : A) (ps : list (pattern t A P y)) : t (P y) :=
+Fixpoint mmatch' {A P} (y : A) (ps : mlist (pattern t A P y)) : t (P y) :=
   match ps with
   | [m:] => raise NoPatternMatches
-  | [m: p & ps'] =>
+  | p :m: ps' =>
     mtry' (open_pattern p) (fun e =>
       mif unify e DoesNotMatch UniMatchNoRed then mmatch' y ps' else raise e)
   end.
@@ -520,7 +520,7 @@ Module notations.
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
       (@mmatch' _ (fun _ => _) e
-                   (app ls%with_pattern [m:([? x] x => raise x)%pattern]))))
+                   (mapp ls%with_pattern [m:([? x] x => raise x)%pattern]))))
       (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 End notations.
 
@@ -528,68 +528,67 @@ Import notations.
 
 (* Utilities for lists *)
 Definition map {A B} (f : A -> t B) :=
-  mfix1 rec (l : list A) : M (list B) :=
+  mfix1 rec (l : mlist A) : M (mlist B) :=
     match l with
     | [m:] => ret [m:]
-    | [m: x & xs] => x <- f x; xs <- rec xs; ret [m: x & xs]
+    | x :m: xs => x <- f x; xs <- rec xs; ret (x :m: xs)
     end.
 
-Fixpoint mapi' (n : nat) {A B} (f : nat -> A -> t B) (l: list A) : t (list B) :=
+Fixpoint mapi' (n : nat) {A B} (f : nat -> A -> t B) (l: mlist A) : t (mlist B) :=
   match l with
   | [m:] => ret [m:]
-  | [m: x & xs] =>
+  | x :m: xs =>
     el <- f n x;
     xs' <- mapi' (S n) f xs;
-    ret [m: el & xs']
+    ret (el :m: xs')
   end.
 
 Definition mapi := @mapi' 0.
 Arguments mapi {_ _} _ _.
 
-Definition find {A} (b : A -> t bool) : list A -> t (option A) :=
+Definition find {A} (b : A -> t bool) : mlist A -> t (option A) :=
   fix f l :=
     match l with
     | [m:] => ret None
-    | [m: x & xs] => bx <- b x;
-                 if bx then ret (Some x) else f xs
+    | x :m: xs => bx <- b x; if bx then ret (Some x) else f xs
     end.
 
-Definition filter {A} (b : A -> t bool) : list A -> t (list A) :=
+Definition filter {A} (b : A -> t bool) : mlist A -> t (mlist A) :=
   fix f l :=
     match l with
     | [m:] => ret [m:]
-    | [m: x & xs] => bx <- b x; r <- f xs;
-                 if bx then ret [m: x & r] else ret r
+    | x :m: xs => bx <- b x; r <- f xs;
+                 if bx then ret (x :m: r) else ret r
     end.
 
-Definition hd {A} (l : list A) : t A :=
+Definition hd {A} (l : mlist A) : t A :=
   match l with
-  | [m: a & _] => ret a
+  | a :m: _ => ret a
   | _ => raise EmptyList
   end.
 
-Fixpoint last {A} (l : list A) : t A :=
+Fixpoint last {A} (l : mlist A) : t A :=
   match l with
   | [m:a] => ret a
-  | [m:_ & s] => last s
+  | _ :m: s => last s
   | _ => raise EmptyList
   end.
 
-Definition fold_right {A B} (f : B -> A -> t A) (x : A) : list B -> t A :=
+Definition fold_right {A B} (f : B -> A -> t A) (x : A) : mlist B -> t A :=
   fix loop l :=
     match l with
     | [m:] => ret x
-    | [m: x & xs] => r <- loop xs; f x r
+    | x :m: xs => r <- loop xs; f x r
     end.
 
-Definition fold_left {A B} (f : A -> B -> t A) : list B -> A -> t A :=
+Definition fold_left {A B} (f : A -> B -> t A) : mlist B -> A -> t A :=
   fix loop l (a : A) :=
     match l with
     | [m:] => ret a
-    | [m: b & bs] => r <- f a b; loop bs r
+    | b :m: bs => r <- f a b; loop bs r
     end.
 
-Definition index_of {A} (f : A -> t bool) (l : list A) : t (option nat) :=
+Definition index_of {A} (f : A -> t bool) (l : mlist A) : t (option nat) :=
   ''(_, r) <- fold_left (fun (ir : (nat * option nat)) x =>
     let (i, r) := ir in
     match r with
@@ -599,18 +598,18 @@ Definition index_of {A} (f : A -> t bool) (l : list A) : t (option nat) :=
   ) l (0, None);
   ret r.
 
-Fixpoint nth {A} (n : nat) (l : list A) : t A :=
+Fixpoint nth {A} (n : nat) (l : mlist A) : t A :=
   match n, l with
-  | 0, [m: a & _] => ret a
-  | S n, [m:_ & s] => nth n s
+  | 0, a :m: _ => ret a
+  | S n, _ :m: s => nth n s
   | _, _ => raise NotThatManyElements
   end.
 
-Definition iterate {A} (f : A -> t unit) : list A -> t unit :=
+Definition iterate {A} (f : A -> t unit) : mlist A -> t unit :=
   fix loop l :=
     match l with
     | [m:] => ret tt
-    | [m: b & bs] => f b;; loop bs
+    | b :m: bs => f b;; loop bs
     end.
 
 (** More utilitie *)
@@ -665,14 +664,14 @@ Definition cumul_or_fail {A B} (u : Unification) (x: A) (y: B) : t unit :=
   b <- cumul u x y;
   if b then ret tt else raise (NotCumul x y).
 
-Program Definition names_of_hyp : t (list string) :=
+Program Definition names_of_hyp : t (mlist string) :=
   env <- hyps;
-  Mtac2.List.fold_left (fun (ns : t (list string)) (h:Hyp)=>
+  mfold_left (fun (ns : t (mlist string)) (h:Hyp)=>
     let (_, var, _) := h in
     n <- get_binder_name var;
-    r <- ns; ret [m: n & r]) env (ret [m:]).
+    r <- ns; ret (n :m: r)) env (ret [m:]).
 
-Definition hyps_except {A} (x : A) : t (list Hyp) :=
+Definition hyps_except {A} (x : A) : t (mlist Hyp) :=
   l <- M.hyps;
   filter (fun y =>
     mmatch y with
@@ -680,7 +679,7 @@ Definition hyps_except {A} (x : A) : t (list Hyp) :=
     | _ => ret true
     end) l.
 
-Definition find_hyp_index {A} (x : A) : t(option nat) :=
+Definition find_hyp_index {A} (x : A) : t (option nat) :=
   l <- M.hyps;
   index_of (fun y =>
     mmatch y with
@@ -697,7 +696,7 @@ Definition anonymize (s : string) : t string :=
 Definition fresh_name (name: string) : t string :=
   names <- names_of_hyp;
   let find name : t bool :=
-    let res := reduce RedNF (Mtac2.List.find (fun n => dec_bool (string_dec name n)) names) in
+    let res := reduce RedNF (mfind (fun n => dec_bool (string_dec name n)) names) in
     match res with Datatypes.None => ret false | _ => ret true end
   in
   (mfix1 f (name: string) : M string :=
@@ -770,7 +769,7 @@ Definition print_hyp (a : Hyp) : t unit :=
 
 Definition print_hyps : t unit :=
   l <- hyps;
-  let l := rev' l in
+  let l := mrev' l in
   iterate print_hyp l.
 
 Definition print_goal (g : goal) : t unit :=

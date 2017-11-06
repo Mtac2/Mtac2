@@ -1,5 +1,4 @@
-From Mtac2 Require Export Base Tactics ImportedTactics IntroPatt.
-From Mtac2 Require Import List.
+From Mtac2 Require Export Base Tactics ImportedTactics IntroPatt List.
 
 Export M.notations.
 Export T.notations.

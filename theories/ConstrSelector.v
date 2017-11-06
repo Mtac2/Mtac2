@@ -17,7 +17,7 @@ Import Mtac2.List.ListNotations.
 (** Obtains the list of constructors of a type I from a type of the
    form A1 -> ... -> An -> I *)
 Definition get_constrs :=
-  mfix1 fill (T : Type) : M (list dyn) :=
+  mfix1 fill (T : Type) : M (mlist dyn) :=
     mmatch T with
     | [? A B] A -> B => fill B
     | [? A (P:A->Type)] forall x:A, P x =>
@@ -34,10 +34,10 @@ Definition get_constrs :=
 (** Given a constructor c, it returns its index. *)
 Definition index {A} (c: A) : M _ :=
   l <- get_constrs A;
-  (mfix2 f (i : nat) (l : list dyn) : M nat :=
+  (mfix2 f (i : nat) (l : mlist dyn) : M nat :=
     mmatch l with
-    | [? l'] (Dyn c :: l') => M.ret i
-    | [? d' l'] (d' :: l') => f (S i) l'
+    | [? l'] (Dyn c :m: l') => M.ret i
+    | [? d' l'] (d' :m: l') => f (S i) l'
     end) 0 l.
 
 Definition snth_index {A:Type} (c:A) (t:tactic) : T.selector unit := fun l =>
@@ -45,18 +45,18 @@ Definition snth_index {A:Type} (c:A) (t:tactic) : T.selector unit := fun l =>
 
 Notation "'case' c 'do' t" := (snth_index c t) (at level 40).
 
-Definition snth_indices (l:list dyn) (t:tactic) : selector unit := fun goals=>
-  M.fold_left (fun (accu : list (unit * goal)) (d : dyn)=>
+Definition snth_indices (l : mlist dyn) (t : tactic) : selector unit := fun goals=>
+  M.fold_left (fun (accu : mlist (unit * goal)) (d : dyn)=>
     let (_, c) := d in
     i <- index c;
-    let ogoal := nth_error goals i in
+    let ogoal := mnth_error goals i in
     match ogoal with
     | Some (_, g) =>
       newgoals <- open_and_apply t g;
-      let res := dreduce (app, map) (accu++newgoals) in
+      let res := dreduce (mapp, mmap) (accu +m+ newgoals) in
       T.filter_goals res
     | None => M.failwith "snth_indices"
     end)%MC l goals.
 
 Notation "'case' c , .. , d 'do' t" :=
-  (snth_indices (Dyn c :: .. (Dyn d :: nil) ..) t) (at level 40).
+  (snth_indices (Dyn c :m: .. (Dyn d :m: [m:]) ..) t) (at level 40).
