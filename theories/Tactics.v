@@ -157,7 +157,7 @@ Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
 Definition bind {A B} (t : gtactic A) (f : A -> gtactic B) : gtactic B := fun g =>
   gs <- t g;
   r <- M.map (fun '(x,g') => open_and_apply (f x) g') gs;
-  let res := dreduce (mconcat, mapp) (mconcat r) in
+  let res := dreduce (@mconcat, mapp) (mconcat r) in
   filter_goals res.
 
 Class Seq (A B C : Type) :=
@@ -180,7 +180,7 @@ Instance seq_list {A B} : Seq A B (mlist (gtactic B)) := fun t f g =>
   gs <- t g;
   filter_goals gs >>= fun gs=>
   ls <- gmap f (mmap snd gs);
-  let res := dreduce (mconcat, mapp) (mconcat ls) in
+  let res := dreduce (@mconcat, mapp) (mconcat ls) in
   filter_goals res.
 
 Definition exact {A} (x:A) : tactic := fun g =>
@@ -345,7 +345,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
   case <- M.makecase c;
   case <- M.unfold_projection (elem case);
   exact case g;;
-  let res := dreduce (mmap, M.dyn_to_goal)
+  let res := dreduce (@mmap, M.dyn_to_goal)
                      (mmap (fun d => (tt, M.dyn_to_goal d)) l) in
   M.ret res.
 
@@ -781,7 +781,7 @@ Module S.
     | mNone => M.raise NoGoalsLeft
     | mSome (_, g) =>
       goals <- open_and_apply t g;
-      let res := dreduce (mapp, mtl) (l1 +m+ goals +m+ mtl l2) in
+      let res := dreduce (@mapp, @mtl) (l1 +m+ goals +m+ mtl l2) in
       filter_goals res
     end.
 
@@ -792,7 +792,7 @@ Module S.
   Definition first {A} (t : gtactic A) : selector A := nth 0 t.
 
   Definition rev {A} : selector A := fun l =>
-    let res := dreduce (mrev', mrev_append, mapp) (mrev' l) in M.ret res.
+    let res := dreduce (@mrev', @mrev_append, @mapp) (mrev' l) in M.ret res.
 End S.
 
 Module notations.

@@ -53,7 +53,7 @@ Definition snth_indices (l : mlist dyn) (t : tactic) : selector unit := fun goal
     match ogoal with
     | mSome (_, g) =>
       newgoals <- open_and_apply t g;
-      let res := dreduce (mapp, mmap) (accu +m+ newgoals) in
+      let res := dreduce (@mapp, @mmap) (accu +m+ newgoals) in
       T.filter_goals res
     | mNone => M.failwith "snth_indices"
     end)%MC l goals.
