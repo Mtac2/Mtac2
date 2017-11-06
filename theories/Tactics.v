@@ -792,7 +792,7 @@ Module S.
   Definition first {A} (t : gtactic A) : selector A := nth 0 t.
 
   Definition rev {A} : selector A := fun l =>
-    let res := dreduce (mrev', mrev_append, app) (mrev' l) in M.ret res.
+    let res := dreduce (mrev', mrev_append, mapp) (mrev' l) in M.ret res.
 End S.
 
 Module notations.
