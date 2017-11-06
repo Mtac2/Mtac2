@@ -382,6 +382,13 @@ Definition apply {T} (c : T) : tactic := fun g=>
   | _ => M.raise NotAGoal
   end.
 
+Definition apply_ : tactic := fun g =>
+  match g with
+  | @Goal G g =>
+     x <- M.solve_typeclass_or_fail G; M.cumul_or_fail UniCoq x g;; M.ret [m:]
+  | _ => M.raise NotAGoal
+  end.
+
 (** Given a list of dyn's, it applies each of them until one
 succeeds. Throws NoProgress if none apply *)
 Definition apply_one_of l : tactic :=
