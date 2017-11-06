@@ -86,10 +86,10 @@ Qed.
   Example bla_RTele P b (r : reflect P b) : RTele _ _ :=
     Eval compute in M.eval (abstract_goal (rsort := SProp) ((P <-> b = true)) (reflect_args P b) r).
 
-  Example bla_goals P b r : list dyn :=
+  Example bla_goals P b r : mlist dyn :=
     Eval compute in
-      map (fun cs => Dyn (branch_of_CTele (rsort := SProp) (bla_RTele P b r) cs))
-          (reflect_RTrue P :: reflect_RFalse P :: nil).
+      mmap (fun cs => Dyn (branch_of_CTele (rsort := SProp) (bla_RTele P b r) cs))
+           [m: reflect_RTrue P | reflect_RFalse P].
 
   Example reflectP_it : ITele _ :=
     iTele (fun P => iTele (fun b => iBase (sort := SType) (reflect P b))).
@@ -105,10 +105,10 @@ Qed.
   Example blaP_RTele P b r : RTele _ _ :=
     Eval compute in M.eval (abstract_goal (rsort := SProp) ((P <-> b = true)) (reflectP_args P b) r).
 
-  Example blaP_goals P b r : list dyn :=
+  Example blaP_goals P b r : mlist dyn :=
     Eval compute in
-      map (fun cs => Dyn (branch_of_CTele (blaP_RTele P b r) cs))
-          (reflectP_RFalse :: reflectP_RTrue :: nil).
+      mmap (fun cs => Dyn (branch_of_CTele (blaP_RTele P b r) cs))
+           [m: reflectP_RFalse | reflectP_RTrue ].
 
   Goal True.
     MProof.
@@ -135,7 +135,7 @@ Qed.
             M.makecase {|
                 case_val := r;
                 case_return := Dyn (RTele_Fun rG);
-                case_branches := (Dyn T) :: (Dyn F) :: nil
+                case_branches := [m: Dyn T | Dyn F]
               |}).
     compute in mc.
     pose (c := M.eval mc).
@@ -177,7 +177,7 @@ MProof.
           M.makecase {|
               case_val := r;
               case_return := Dyn (return_type);
-              case_branches := (Dyn T) :: (Dyn F) :: nil
+              case_branches := [m: Dyn T | Dyn F]
             |}).
   let mc := reduce RedNF mc in r <- mc; pose (c := r).
   clear mc.

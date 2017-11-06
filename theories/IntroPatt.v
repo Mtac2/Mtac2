@@ -8,7 +8,7 @@ Inductive IPB := .
 Inductive IP :=
 | IntroNoOp : IP
 | IntroB (binder : IPB -> unit) : IP
-| IntroC (cases : list LIP)
+| IntroC (cases : mlist LIP)
 | IntroR : RewriteDirection -> IP
 | IntroDone
 | IntroSimpl : IP
@@ -37,7 +37,7 @@ Notation "r>" := (lcons (IntroR RightRewrite) lnil) : IP_scope.
 Notation "<l" := (lcons (IntroR LeftRewrite) lnil) : IP_scope.
 
 Notation "[| ]" := (lcons (IntroC nil) lnil) : IP_scope.
-Notation "[| x | .. | y ]" := (lcons (IntroC ( cons x .. (cons y nil) .. )) lnil) : IP_scope.
+Notation "[| x | .. | y ]" := (lcons (IntroC (mcons x .. (mcons y mnil) .. )) lnil) : IP_scope.
 
 Close Scope IP.
 
@@ -52,10 +52,10 @@ Definition NotDone : Exception. exact exception. Qed.
 Definition done : tactic :=
   intros ;; (tauto || T.assumption || T.reflexivity) || (T.raise NotDone).
 
-Fixpoint mmap_plist (f: LIP -> tactic) (l: list LIP) : list tactic :=
+Fixpoint mmap_plist (f: LIP -> tactic) (l: mlist LIP) : mlist tactic :=
   match l with
-  | nil => [m:]
-  | cons a l' => [m: f a & mmap_plist f l']
+  | [m:] => [m:]
+  | a :m: l' => f a :m: mmap_plist f l'
   end.
 
 Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
@@ -64,7 +64,7 @@ Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
   | IntroB binder =>
     var <- M.get_binder_name binder;
     T.intro_simpl var
-  | IntroC nil => T.destructn 0
+  | IntroC [m:] => T.destructn 0
   | IntroC ips =>
     T.destructn 0 &> mmap_plist do_intro ips
   | IntroR d =>
@@ -79,7 +79,7 @@ Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
   end.
 
 Definition do_intro :  LIP -> tactic :=
-  mfix2 do_intro (lip : LIP) (g : goal) : M (list (unit * goal)) :=
+  mfix2 do_intro (lip : LIP) (g : goal) : M (mlist (unit * goal)) :=
   (match lip return tactic with
   | lnil => T.idtac
   | lcons ip lnil => to_tactic ip do_intro
@@ -89,6 +89,6 @@ Definition do_intro :  LIP -> tactic :=
 Notation "'pintro' s" := (do_intro s%IP) (at level 100).
 Notation "'pintros' l1 .. ln" := (do_intro (LIP_app l1%IP .. (LIP_app ln%IP lnil) ..)) (at level 0).
 
-Notation "[i: l1 | .. | ln ]" := (cons (pintros l1) ( .. (cons (pintros ln) nil) ..)) (at level 0).
+Notation "[i: l1 | .. | ln ]" := (mcons (pintros l1) ( .. (mcons (pintros ln) mnil) ..)) (at level 0).
 
 Close Scope IP.

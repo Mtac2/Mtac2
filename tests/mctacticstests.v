@@ -91,7 +91,7 @@ MProof.
 Qed.
 
 Require Import Coq.omega.Omega.
-Definition omega := ltac "Coq.omega.Omega.omega" Datatypes.nil.
+Definition omega := ltac "Coq.omega.Omega.omega" [m:].
 
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.
@@ -148,7 +148,7 @@ Lemma test6 : forall (x y z : Prop), x = y -> y = z -> x = z.
 MProof.
   intros x y z H G.
   ltac transitivity [m:Dyn y].
-  ltac "Coq.Init.Notations.revgoals" Mtac2.List.nil.
+  ltac "Coq.Init.Notations.revgoals" [m:].
   exact H.
   exact G.
 Qed.
@@ -313,9 +313,7 @@ MProof.
 Abort.
 
 Goal forall x : Prop, x = x.
-MProof.
-  ltac "Coq.Init.Notations.auto" Mtac2.List.nil.
-Qed.
+MProof. auto. Qed.
 
 (** intros_all test *)
 Goal forall (x y z : nat) (H: x = y), y = x.
