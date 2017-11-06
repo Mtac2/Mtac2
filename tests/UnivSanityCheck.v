@@ -23,7 +23,7 @@ Goal eval (os_cmd assert_cmd) = Z0.
   reflexivity.
 Qed.
 
-
+(* erase the file created *)
 Goal eval (os_cmd ("rm " ++ file)) = Z0.
   reflexivity.
 Qed.
