@@ -11,7 +11,7 @@ Definition isReduce {A} (x:A) : M bool :=
   | _ => M.ret false
   end.
 
-Definition debug (trace: bool) {A:Type} (bks : list dyn) : M A -> M unit :=
+Definition debug (trace: bool) {A:Type} (bks : mlist dyn) : M A -> M unit :=
   let print_if_trace {A} (x:A) := (if trace then M.print_term x else M.ret tt);; M.ret x in
   M.break (fun A (x:M A) =>
              v <- M.decompose x;
@@ -32,5 +32,5 @@ Definition debug (trace: bool) {A:Type} (bks : list dyn) : M A -> M unit :=
                  end
                else print_if_trace x).
 
-Definition debugT {A} (trace: bool) (bks : list dyn) (t: gtactic A) : gtactic unit := fun g=>
-  debug trace bks (t g) ;; M.ret nil.
+Definition debugT {A} (trace: bool) (bks : mlist dyn) (t: gtactic A) : gtactic unit := fun g=>
+  debug trace bks (t g) ;; M.ret [m:].

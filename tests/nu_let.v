@@ -1,12 +1,11 @@
 From Mtac2 Require Import Mtac2.
 Require Import Bool.Bool.
-Import Mtac2.List.ListNotations.
 
 Example hyp_well_formed : True.
 MProof.
   (\nu x := I,
    l <- M.hyps;
-   oeq <- M.unify l [m:ahyp x (Some I)]%list UniCoq;
+   oeq <- M.unify l [m: ahyp x (Some I)] UniCoq;
    match oeq with
    | None => M.raise exception
    | _ => M.ret I
