@@ -33,9 +33,6 @@ Definition NotThatType : Exception. exact exception. Qed.
 
 Definition NoProgress : Exception. constructor. Qed.
 
-Definition ShouldntHappen (s:string) : Exception. constructor. Qed.
-Definition failwith {A} (s:string) : M A := M.raise (ShouldntHappen s).
-
 (** The type for tactics *)
 Definition gtactic (A : Type) := goal -> M (list (A * goal)).
 Notation tactic := (gtactic unit).
@@ -262,7 +259,7 @@ Definition introsn : nat -> tactic :=
         | WrongTerm => M.raise NotAProduct
         | [? s] NameExistsInContext s => intro_anonymous T M.fresh_name g >>= f n'
         end
-      | _, _ => failwith "introsn"
+      | _, _ => M.failwith "introsn"
       end) g.
 
 (** Applies reflexivity *)
@@ -507,7 +504,7 @@ Definition treduce (r : Reduction) : tactic := fun g=>
   let T' := reduce r T in
   e <- M.evar T';
   mif M.unify_cumul g (@Goal T e) UniMatch then M.ret [m:(tt, Goal e)]
-  else failwith "treduce".
+  else M.failwith "treduce".
 
 Definition typed_intro (T : Type) : tactic := fun g =>
   U <- M.goal_type g;
