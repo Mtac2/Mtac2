@@ -3,7 +3,7 @@ Declare ML Module "unicoq".
 (** Load library "MetaCoqPlugin.cma". *)
 Declare ML Module "MetaCoqPlugin".
 
-From Mtac2 Require Import Logic Datatypes List Utils.
+From Mtac2 Require Import Logic Datatypes Logic List Utils.
 Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
@@ -161,7 +161,7 @@ Inductive goal :=
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
 we could make it part of the B, but then higher order unification will fail. *)
 Inductive pattern (M : Type -> Type) (A : Type) (B : A -> Type) (y : A) : Prop :=
-  | pbase : forall x : A, (y = x -> M (B x)) -> Unification -> pattern M A B y
+  | pbase : forall x : A, (y =m= x -> M (B x)) -> Unification -> pattern M A B y
   | ptele : forall {C}, (forall x : C, pattern M A B y) -> pattern M A B y.
 
 Arguments pbase {M A B y} _ _ _.
@@ -337,7 +337,7 @@ Inductive t : Type -> Prop :=
     It uses convertibility of universes, meaning that it fails if [x]
     is [Prop] and [y] is [Type]. If they are both types, it will
     try to equate its leveles. *)
-| unify {A} (x y : A) : Unification -> t (moption (x = y))
+| unify {A} (x y : A) : Unification -> t (moption (x =m= y))
 
 (** [munify_univ A B r] uses reduction strategy [r] to equate universes
     [A] and [B].  It uses cumulativity of universes, e.g., it succeeds if
@@ -443,10 +443,10 @@ Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
     oeq <- unify x y u;
     match oeq return t (P y) with
     | mSome eq =>
-      (* eq has type x = t, but for the pattern we need t = x.
+      (* eq has type x =m= t, but for the pattern we need t = x.
          we still want to provide eq_refl though, so we reduce it *)
-      let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (eq_sym eq) in
-      let 'eq_refl := eq in
+      let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
+      let 'meq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
       let b := reduce (RedWhd [rl:RedBeta]) (f h) in b
     | mNone => raise DoesNotMatch
@@ -625,7 +625,7 @@ Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
         oeq' <- unify B T1 UniCoq;
         match oeq' with
         | mSome eq' =>
-          let v' := reduce (RedWhd [rl:RedMatch]) match eq' as x in _ = x with eq_refl=> v end in
+          let v' := reduce (RedWhd [rl:RedMatch]) match eq' as x in _ =m= x with meq_refl=> v end in
           ret (Dyn (f v'))
         | _ => raise (WrongType T1)
         end
@@ -651,7 +651,7 @@ Definition cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
 
 (** Unifies [x] with [y] and raises [NotUnifiable] if it they
     are not unifiable. *)
-Definition unify_or_fail {A} (u : Unification) (x y : A) : t (x = y) :=
+Definition unify_or_fail {A} (u : Unification) (x y : A) : t (x =m= y) :=
   oeq <- unify x y u;
   match oeq with
   | mNone => raise (NotUnifiable x y)
@@ -719,7 +719,7 @@ Definition unfold_projection {A} (y : A) : t A :=
 Definition coerce {A B : Type} (x : A) : t B :=
   oH <- unify A B UniCoq;
   match oH with
-  | mSome H => match H with eq_refl => ret x end
+  | mSome H => match H with meq_refl => ret x end
   | _ => raise CantCoerce
   end.
 

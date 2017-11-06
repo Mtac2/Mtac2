@@ -1,4 +1,4 @@
-From Mtac2 Require Import Base Tactics ImportedTactics List.
+From Mtac2 Require Import Base Tactics ImportedTactics List Logic.
 
 Import M. Import M.notations.
 Import ListNotations.
@@ -8,7 +8,7 @@ Unset Strict Implicit.
 
 Module Abstract.
 
-Structure result A B x t := R { fu : A -> B; pf : t = fu x }.
+Structure result A B x t := R { fu : A -> B; pf : t =m= fu x }.
 Implicit Arguments R [A B x t].
 
 Lemma abs_app
@@ -18,7 +18,7 @@ Proof.
 elim r1. intros f1 p1.
 elim r2. intros f2 p2.
 rewrite p1, p2.
-exact (R (fun y=>f1 y (f2 y)) (Logic.eq_refl _)).
+exact (R (fun y=>f1 y (f2 y)) (meq_refl _)).
 Defined.
 
 
@@ -37,7 +37,7 @@ elim r1; intros f1 b1.
 elim r2; intros f2 b2.
 elim r3; intros f3 b3.
 rewrite b1, b2, b3.
-exact (R (fun y=>if (f1 y) then (f2 y) else f3 y) (Logic.eq_refl _)).
+exact (R (fun y=>if (f1 y) then (f2 y) else f3 y) (meq_refl _)).
 Defined.
 
 Implicit Arguments match_eq [A x r b P Q].
@@ -47,7 +47,7 @@ Definition non_dep_eq {A P Q} (x:A) (P' : result x P) (Q' : result x Q) :
 Proof.
   case P' as [fuP eqP]. case Q' as [fuQ eqQ].
   rewrite eqP, eqQ.
-  refine (R (fun y=>fuP y -> fuQ y) Logic.eq_refl).
+  refine (R (fun y=>fuP y -> fuQ y) meq_refl).
 Defined.
 
 Definition abstract A B (x : A) (t : B) :=
@@ -58,7 +58,7 @@ Definition abstract A B (x : A) (t : B) :=
    else
     mmatch r as r' return M (result x (elem r')) with
     | Dyn x =>
-      ret (R id (Logic.eq_refl _))
+      ret (R id (meq_refl _))
     | [? A' (t1 : A' -> type r) t2] Dyn (t1 t2)  =u>
         r1 <- loop (Dyn t1);
         r2 <- loop (Dyn t2);
@@ -77,7 +77,7 @@ Definition abstract A B (x : A) (t : B) :=
       Q' <- loop (Dyn Q);
       ret (non_dep_eq P' Q')
     | [?z] z =>
-      ret (R (fun _=>elem z) (Logic.eq_refl _))
+      ret (R (fun _=>elem z) (meq_refl _))
     end) (Dyn t).
 
 Notation reduce_all := (reduce (RedStrong [rl:RedBeta; RedMatch; RedZeta;

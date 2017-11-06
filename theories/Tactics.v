@@ -1,6 +1,6 @@
 Require Import Strings.String.
 From Mtac2 Require Export Base.
-From Mtac2 Require Import Logic Datatypes List Utils.
+From Mtac2 Require Import Logic Datatypes List Utils Logic.
 Import M.notations.
 Import Mtac2.List.ListNotations.
 
@@ -204,7 +204,7 @@ Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := f
       e' <- M.evar Px;
       nG <- M.abs_let (P:=P) x def e';
       exact nG g;;
-      let x := reduce (RedWhd [rl:RedMatch]) (match eqBA with eq_refl => x end) in
+      let x := reduce (RedWhd [rl:RedMatch]) (match eqBA with meq_refl => x end) in
       t x (Goal e') >>= let_close_goals x)
   | [? P e] @Goal (forall x:A, P x) e =u>
     M.nu var mNone (fun x=>
@@ -303,7 +303,7 @@ Definition generalize {A} (x : A) : tactic := fun g =>
   mmatch aP with
   | [? Q : A -> Type] (forall z:A, Q z) =n> [H]
     let e' :=
-      rcbv match H in _ = Q return Q with eq_refl _ => e end in
+      rcbv match H in _ =m= Q return Q with meq_refl _ => e end in
     exact (e' x) g;;
     M.ret [m:(tt, Goal e)]
   | _ => M.failwith "generalize"
@@ -432,7 +432,7 @@ Definition match_goal_context
   oeqAB <- M.unify B A UniMatchNoRed;
   match oeqAB with
   | mSome eqAB =>
-    let 'eq_refl := eq_sym eqAB in fun (y : A) t =>
+    let 'meq_refl := meq_sym eqAB in fun (y : A) t =>
     mif M.cumul UniMatchNoRed x y then
       let term := reduce (RedStrong [rl:RedBeta]) (t (fun a => a) g) in
       term
@@ -455,7 +455,7 @@ Fixpoint match_goal_pattern' {B}
     oeqCA <- M.unify C A u;
     match oeqCA with
     | mSome eqCA =>
-      let a' := rcbv match eq_sym eqCA with eq_refl => a end in
+      let a' := rcbv match meq_sym eqCA with meq_refl => a end in
       mtry match_goal_pattern' u (f a') [m:] (mrev_append l1 l2') g
       with DoesNotMatchGoal =>
         go (ahyp a d :m: l1) l2' g
@@ -600,7 +600,7 @@ Definition simpl_in_all : tactic := fun g =>
   (* we need normal unification since g might be a compound value *)
   oeq <- M.unify g (Goal e) UniCoq;
   match oeq with
-  | mSome (eq_refl _) => M.ret [m:(tt,Goal e)]
+  | mSome (meq_refl _) => M.ret [m:(tt,Goal e)]
   | _ => M.raise exception (* should never happen *)
   end.
 
@@ -615,7 +615,7 @@ Definition reduce_in (r : Reduction) {P} (H : P) : tactic := fun g =>
   e <- M.Cevar gT l';
   oeq <- M.unify (Goal e) g UniCoq;
   match oeq with
-  | mSome (eq_refl _) => M.ret [m:(tt,Goal e)]
+  | mSome (meq_refl _) => M.ret [m:(tt,Goal e)]
   | _ => M.raise exception (* should never happen *)
   end.
 
@@ -628,7 +628,7 @@ Definition mexists {A} (x: A) : tactic := fun g =>
   e <- M.evar _;
   oeq <- M.unify g (Goal (@ex_intro _ P x e)) UniCoq;
   match oeq with
-  | mSome (eq_refl _) => M.ret [m:(tt,Goal e)]
+  | mSome (meq_refl _) => M.ret [m:(tt,Goal e)]
   | _ => M.raise (NotUnifiable g (Goal (@ex_intro _ P x e)))
   end.
 

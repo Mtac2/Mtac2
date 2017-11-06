@@ -1,4 +1,4 @@
-From Mtac2 Require Import Mtac2 List MFix Datatypes MTeleMatch.
+From Mtac2 Require Import Mtac2 List Logic MFix Datatypes MTeleMatch.
 Import Mtac2.List.ListNotations.
 
 Definition funs_of (T : Prop) : mlist Prop -> Prop :=
@@ -60,8 +60,8 @@ Definition remove_ret {V} {B} {Q : B -> Type} {A} : forall (v : V) b (m : Q b), 
   match oe with
   | mNone => M.failwith "Impossible branch."
   | mSome e =>
-    match eq_sym e in _ = m'' return _ -> M A  with
-    | eq_refl =>
+    match meq_sym e in _ =m= m'' return _ -> M A  with
+    | meq_refl =>
       fun cont =>
         cont m'
     end cont
@@ -117,7 +117,7 @@ Definition apply_type_of (P : Type) :
 (* Hint Extern 0 (Apply_Args ?P ?T ?t) => *)
 (* mrun [apply_args_mtac t in P] : typeclass_instances. *)
 
-(* Goal forall x y : nat, Apply_Args (x = x) _ (fun x => test_lemma True x y). *)
+(* Goal forall x y : nat, Apply_Args (x =m= x) _ (fun x => test_lemma True x y). *)
 (*   intros. *)
 (*   mrun [apply_args_mtac (fun x => test_lemma True x y) in x = x]. *)
 (* Defined. *)
@@ -151,7 +151,7 @@ Notation "t '&s>' '[s' t1 ; .. ; tn ]" :=
     ).
 
 
-(* Definition test_lemma (T : Type) (x y : nat) : T -> y > 0 -> M (x = x) := *)
+(* Definition test_lemma (T : Type) (x y : nat) : T -> y > 0 -> M (x =m= x) := *)
 (*   fun t H => M.print_term (T, x, y, t, H);; M.ret eq_refl. *)
 
 (* Goal 1=1. *)

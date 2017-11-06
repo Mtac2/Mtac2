@@ -22,7 +22,7 @@ Abort.
 Example fubar (T : Type) (A : T) : M Prop:=
   oeq <- M.unify Prop T UniCoq;
   match oeq with
-  | mSome eq => M.ret (eq_rect Prop (fun T=>T -> Prop) id T eq A)
+  | mSome eq => M.ret (meq_rect Prop (fun T=>T -> Prop) id T eq A)
   | _ => M.raise exception
 end.
 
@@ -33,7 +33,7 @@ Definition fubarType :=
 (** With mmatch should be the same *)
 Example fubar_mmatch (T : Type) (A : T) : M Prop:=
   mmatch T with
-  | Prop => [eq] M.ret (eq_rect Prop (fun T=>T -> Prop) id T (eq_sym eq) A)
+  | Prop => [eq] M.ret (meq_rect Prop (fun T=>T -> Prop) id T (meq_sym eq) A)
   | _ => M.raise exception
   end.
 

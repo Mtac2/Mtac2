@@ -61,8 +61,8 @@ Notation "'mfix' f x .. y : T := b" :=
   (
     let m := mt_of (forall x, .. (forall y , T) ..) in
     match tc_unify ((forall x, .. (forall y, T) .. )) (MTele_ty M m)
-          in _ = R return ((R -> R) -> R) -> R with
-    | eq_refl => fun g => g (fun f => (fun x => ..  (fun y => b) ..))
+          in _ =m= R return ((R -> R) -> R) -> R with
+    | meq_refl => fun g => g (fun f => (fun x => ..  (fun y => b) ..))
     end (mfix' m)
   ) (no associativity,
      at level 85,

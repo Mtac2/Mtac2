@@ -7,7 +7,7 @@ Tactic Notation "admit" := abstract case proof_admitted.
 Require Mtac2.Sorts.
 Require Mtac2.Debugger.
 Import Mtac2.Datatypes.
-Import Mtac2.List.
+Import Mtac2.List Mtac2.Logic.
 Import Mtac2.Sorts.
 Import Mtac2.Tactics.
 Import Sorts.
@@ -21,8 +21,8 @@ Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
     oeq <- unify x y u;
     match oeq return t (P y) with
     | mSome eq =>
-      let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (eq_sym eq) in
-      let 'eq_refl := eq in
+      let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
+      let 'meq_refl := eq in
       let b := reduce (RedWhd [rl:RedBeta]) (f h) in b
     | mNone => raise DoesNotMatch
     end
@@ -44,7 +44,7 @@ Fixpoint mmatch' {A P} (y : A) (ps : mlist (pattern t A P y)) : t (P y) :=
 Definition get_ITele : forall (T : Type) (ind : T), M (unit) :=
   mfix2 f (T : _) (ind : _) : M (unit)%type :=
     mmatch T with
-    | [? (A : Type) (F : A -> Type)] forall a, F a => [H] let indFun := match H in _ = R return R with eq_refl => ind end in
+    | [? (A : Type) (F : A -> Type)] forall a, F a => [H] let indFun := match H in _ =m= R return R with meq_refl => ind end in
                                                           M.ret tt
     end.
 

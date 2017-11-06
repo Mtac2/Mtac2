@@ -162,8 +162,8 @@ module CoqList = GenericList (struct
 module CoqEq = struct
   open ConstrBuilder
 
-  let eqBuilder = from_string "Coq.Init.Logic.eq"
-  let eqReflBuilder = from_string "Coq.Init.Logic.eq_refl"
+  let eqBuilder = from_string "Mtac2.Logic.meq"
+  let eqReflBuilder = from_string "Mtac2.Logic.meq_refl"
 
   let mkType a x y = build_app eqBuilder [|a;x;y|]
   let mkEqRefl a x = build_app eqReflBuilder [|a;x|]

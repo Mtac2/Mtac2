@@ -1,4 +1,4 @@
-From Mtac2 Require Import Mtac2 Datatypes List.
+From Mtac2 Require Import Mtac2 Datatypes List Logic.
 
 Import ListNotations.
 Open Scope M_scope.
@@ -87,14 +87,14 @@ Definition mtmmatch' A m (y : A) (ps : mlist (mtpattern A (fun x => MTele_ty M (
                           | mSome eq =>
                             (* eq has type x = t, but for the pattern we need t = x.
          we still want to provide eq_refl though, so we reduce it *)
-                            let h := reduce (RedStrong [rl:RedBeta;RedDelta;RedMatch]) (eq_sym eq) in
-                            let 'eq_refl := eq in
+                            let h := reduce (RedStrong [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
+                            let 'meq_refl := eq in
                             (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
 
                             (* M.print "dbg1";; *)
-                            let f' := (match h in _ = z return MTele_ty M.t (m z) -> MTele_ty M.t (m y)
+                            let f' := (match h in _ =m= z return MTele_ty M.t (m z) -> MTele_ty M.t (m y)
                                        with
-                                       | eq_refl => fun f => f
+                                       | meq_refl => fun f => f
                                        end f)
                             in
                             let a := acc _ f' in
@@ -187,7 +187,7 @@ Notation "'with' p1 | .. | pn 'end'" :=
 
 Delimit Scope with_mtpattern_prog_scope with with_mtpattern_prog.
 
-Class TC_UNIFY {T : Type} (A B : T) := tc_unify : (A = B).
+Class TC_UNIFY {T : Type} (A B : T) := tc_unify : (A =m= B).
 Arguments tc_unify {_} _ _ {_}.
 Hint Extern 0 (TC_UNIFY ?A ?B) => mrun (o <- M.unify A B UniCoq; match o with | mSome eq => M.ret eq | mNone => M.failwith "cannot (tc_)unify." end) : typeclass_instances.
 
@@ -195,10 +195,10 @@ Structure CS_UNIFY (T : Type) :=
   CS_Unify {
       cs_unify_A : T;
       cs_unify_B : T;
-      cs_unify: cs_unify_A = cs_unify_B
+      cs_unify: cs_unify_A =m= cs_unify_B
     }.
 
-Canonical Structure CS_UNIFY_REFl {T} (A : T) : CS_UNIFY T := CS_Unify _ A A eq_refl.
+Canonical Structure CS_UNIFY_REFl {T} (A : T) : CS_UNIFY T := CS_Unify _ A A meq_refl.
 Arguments cs_unify [_ _].
 
 Class MT_OF {A} (T : A -> Prop) := mt_of : A -> MTele.
@@ -209,17 +209,17 @@ Notation "'mtmmatch_prog' x 'as' y 'return' T p" :=
   (
     let m := mt_of (fun y => T) in
     match tc_unify (fun _z => MTele_ty M (m _z))((fun y => T))
-          in _ = R return mlist (mtpattern _ R) -> R x with
-    | eq_refl => mtmmatch' _ (m) x
+          in _ =m= R return mlist (mtpattern _ R) -> R x with
+    | meq_refl => mtmmatch' _ (m) x
     end
     (p%with_mtpattern_prog)
   ) (at level 200, p at level 201).
 
 
 
-Definition mtpbase_eq {A} {m : A -> Prop} (x : A) F (eq : m x = F x) : F x -> Unification -> mtpattern A m :=
-  match eq in _ = R return R -> _ -> _ with
-  | eq_refl => mtpbase x
+Definition mtpbase_eq {A} {m : A -> Prop} (x : A) F (eq : m x =m= F x) : F x -> Unification -> mtpattern A m :=
+  match eq in _ =m= R return R -> _ -> _ with
+  | meq_refl => mtpbase x
   end.
 
 
