@@ -46,10 +46,10 @@ Section Lists.
       | x :m: _ => x
     end.
 
-  Definition mhd_error (l:mlist A) :=
+  Definition mhd_error (l:mlist A) : moption A :=
     match l with
-      | [m:] => None
-      | x :m: _ => Some x
+      | [m:] => mNone
+      | x :m: _ => mSome x
     end.
 
   Definition mtl (l:mlist A) :=
@@ -91,14 +91,14 @@ Section Facts.
   Qed.
 
   Lemma mhd_error_mtl_repr : forall l (a:A) r,
-    mhd_error l = Some a /\ mtl l = r <-> l = a :m: r.
+    mhd_error l = mSome a /\ mtl l = r <-> l = a :m: r.
   Proof. destruct l as [|x xs].
     - unfold mhd_error, mtl; intros a r. split; firstorder discriminate.
     - intros. simpl. split. * intros (H1, H2). inversion H1. rewrite H2. reflexivity.
       * inversion 1. subst. auto.
   Qed.
 
-  Lemma mhd_error_some_mnil : forall l (a:A), mhd_error l = Some a -> l <> mnil.
+  Lemma mhd_error_some_mnil : forall l (a:A), mhd_error l = mSome a -> l <> mnil.
   Proof. unfold mhd_error. destruct l; now discriminate. Qed.
 
   Theorem mlength_zero_iff_mnil (l : mlist A):
@@ -109,12 +109,12 @@ Section Facts.
 
   (** *** Head and tail *)
 
-  Theorem mhd_error_mnil : mhd_error (@mnil A) = None.
+  Theorem mhd_error_mnil : mhd_error (@mnil A) = mNone.
   Proof.
     simpl; reflexivity.
   Qed.
 
-  Theorem mhd_error_mcons : forall (l : mlist A) (x : A), mhd_error (x:m:l) = Some x.
+  Theorem mhd_error_mcons : forall (l : mlist A) (x : A), mhd_error (x:m:l) = mSome x.
   Proof.
     intros; simpl; reflexivity.
   Qed.
@@ -394,17 +394,17 @@ Section Elts.
     simpl; auto.
   Qed.
 
-  Fixpoint mnth_error (l:mlist A) (n:nat) {struct n} : option A :=
+  Fixpoint mnth_error (l:mlist A) (n:nat) {struct n} : moption A :=
     match n, l with
-      | O, x :m: _ => Some x
+      | O, x :m: _ => mSome x
       | S n, _ :m: l => mnth_error l n
-      | _, _ => None
+      | _, _ => mNone
     end.
 
   Definition mnth_default (default:A) (l:mlist A) (n:nat) : A :=
     match mnth_error l n with
-      | Some x => x
-      | None => default
+      | mSome x => x
+      | mNone => default
     end.
 
   Lemma mnth_default_eq :
@@ -479,14 +479,14 @@ Section Elts.
 
   (** Results about [mnth_error] *)
 
-  Lemma mnth_error_mIn l n x : mnth_error l n = Some x -> mIn x l.
+  Lemma mnth_error_mIn l n x : mnth_error l n = mSome x -> mIn x l.
   Proof.
     revert n. induction l as [|a l IH]; intros [|n]; simpl; try easy.
     - injection 1; auto.
     - eauto.
   Qed.
 
-  Lemma mIn_mnth_error l x : mIn x l -> exists n, mnth_error l n = Some x.
+  Lemma mIn_mnth_error l x : mIn x l -> exists n, mnth_error l n = mSome x.
   Proof.
     induction l as [|a l IH].
     - easy.
@@ -496,7 +496,7 @@ Section Elts.
         exists (S n); simpl; auto with arith.
   Qed.
 
-  Lemma mnth_error_None l n : mnth_error l n = None <-> mlength l <= n.
+  Lemma mnth_error_None l n : mnth_error l n = mNone <-> mlength l <= n.
   Proof.
     revert n. induction l; destruct n; simpl.
     - split; auto.
@@ -505,7 +505,7 @@ Section Elts.
     - rewrite IHl; split; auto with arith.
   Qed.
 
-  Lemma mnth_error_Some l n : mnth_error l n <> None <-> n < mlength l.
+  Lemma mnth_error_Some l n : mnth_error l n <> mNone <-> n < mlength l.
   Proof.
    revert n. induction l; destruct n; simpl.
     - split; [now destruct 1 | inversion 1].
@@ -514,7 +514,7 @@ Section Elts.
     - rewrite IHl; split; auto with arith.
   Qed.
 
-  Lemma mnth_error_msplit l n a : mnth_error l n = Some a ->
+  Lemma mnth_error_msplit l n a : mnth_error l n = mSome a ->
     exists l1, exists l2, l = l1 +m+ a :m: l2 /\ mlength l1 = n.
   Proof.
     revert l.
@@ -915,7 +915,7 @@ Section Map.
   Qed.
 
   Lemma mmap_mnth_error : forall n l d,
-    mnth_error l n = Some d -> mnth_error (mmap l) n = Some (f d).
+    mnth_error l n = mSome d -> mnth_error (mmap l) n = mSome (f d).
   Proof.
     induction n; intros [ | ] ? Heq; simpl in *; inversion Heq; auto.
   Qed.
@@ -1220,13 +1220,13 @@ End Fold_Right_Recursor.
 
   (** [mfind] *)
 
-    Fixpoint mfind (l:mlist A) : option A :=
+    Fixpoint mfind (l:mlist A) : moption A :=
       match l with
-	| mnil => None
-	| x :m: mtl => if f x then Some x else mfind mtl
+	| mnil => mNone
+	| x :m: mtl => if f x then mSome x else mfind mtl
       end.
 
-    Lemma mfind_some l x : mfind l = Some x -> mIn x l /\ f x = true.
+    Lemma mfind_some l x : mfind l = mSome x -> mIn x l /\ f x = true.
     Proof.
      induction l as [|a l IH]; simpl; [easy| ].
      case_eq (f a); intros Ha Eq.
@@ -1234,7 +1234,7 @@ End Fold_Right_Recursor.
      * destruct (IH Eq); auto.
     Qed.
 
-    Lemma mfind_none l : mfind l = None -> forall x, mIn x l -> f x = false.
+    Lemma mfind_none l : mfind l = mNone -> forall x, mIn x l -> f x = false.
     Proof.
      induction l as [|a l IH]; simpl; [easy|].
      case_eq (f a); intros Ha Eq x IN; [easy|].

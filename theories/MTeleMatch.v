@@ -84,7 +84,7 @@ Definition mtmmatch' A m (y : A) (ps : mlist (mtpattern A (fun x => MTele_ty M (
                           (* M.print "mtpbase";; *)
                           oeq <- M.unify x y u;
                           match oeq return M.t R with
-                          | Some eq =>
+                          | mSome eq =>
                             (* eq has type x = t, but for the pattern we need t = x.
          we still want to provide eq_refl though, so we reduce it *)
                             let h := reduce (RedStrong [rl:RedBeta;RedDelta;RedMatch]) (eq_sym eq) in
@@ -101,7 +101,7 @@ Definition mtmmatch' A m (y : A) (ps : mlist (mtpattern A (fun x => MTele_ty M (
                             let b := reduce (RedStrong [rl:RedBeta]) (a) in
                             (* b *)
                             b
-                          | None =>
+                          | mNone =>
                             M.raise DoesNotMatch
                         end
 
@@ -140,7 +140,7 @@ End TestFin.
 
 Definition MTele_of {A} (T : A -> Prop) :=
   b <- M.fresh_binder_name T;
-  M.nu b None (fun a =>
+  M.nu b mNone (fun a =>
   (mfix1 f (T : Prop) : M (MTele) :=
     mmatch T as t' return M MTele with
     | [?X : Type] M X =u> M.ret (mBase X)
@@ -152,7 +152,7 @@ Definition MTele_of {A} (T : A -> Prop) :=
     (*   M.ret (mTele f) *)
     | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =u>
       b <- M.fresh_binder_name F;
-      f <- M.nu b None (fun x =>
+      f <- M.nu b mNone (fun x =>
               g <- f (F x);
               M.abs_fun x g);
       M.ret (mTele f)
@@ -189,7 +189,7 @@ Delimit Scope with_mtpattern_prog_scope with with_mtpattern_prog.
 
 Class TC_UNIFY {T : Type} (A B : T) := tc_unify : (A = B).
 Arguments tc_unify {_} _ _ {_}.
-Hint Extern 0 (TC_UNIFY ?A ?B) => mrun (o <- M.unify A B UniCoq; match o with | Some eq => M.ret eq | None => M.failwith "cannot (tc_)unify." end) : typeclass_instances.
+Hint Extern 0 (TC_UNIFY ?A ?B) => mrun (o <- M.unify A B UniCoq; match o with | mSome eq => M.ret eq | mNone => M.failwith "cannot (tc_)unify." end) : typeclass_instances.
 
 Structure CS_UNIFY (T : Type) :=
   CS_Unify {

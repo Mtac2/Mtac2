@@ -10,7 +10,7 @@ tt. *)
 Definition assert_eq {A} (x y: A) : M unit :=
   o1 <- M.unify x y UniMatchNoRed;
   match o1 with
-    | Some _ => M.ret tt
+    | mSome _ => M.ret tt
     | _ => M.raise (NotUnifiable x y)
   end.
 

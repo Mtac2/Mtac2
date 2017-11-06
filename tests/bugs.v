@@ -22,7 +22,7 @@ Abort.
 Example fubar (T : Type) (A : T) : M Prop:=
   oeq <- M.unify Prop T UniCoq;
   match oeq with
-  | Some eq => M.ret (eq_rect Prop (fun T=>T -> Prop) id T eq A)
+  | mSome eq => M.ret (eq_rect Prop (fun T=>T -> Prop) id T eq A)
   | _ => M.raise exception
 end.
 

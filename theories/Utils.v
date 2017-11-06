@@ -7,8 +7,8 @@ Definition dec_bool {P} (x : {P}+{~P}) : bool :=
   | _ => false
   end.
 
-Definition option_to_bool {A} (ox : option A) : bool :=
-  match ox with Some _ => true | _ => false end.
+Definition option_to_bool {A} (ox : moption A) : bool :=
+  match ox with mSome _ => true | _ => false end.
 
 Definition is_empty {A} (l: mlist A) : bool :=
   match l with [m:] => true | _ => false end.

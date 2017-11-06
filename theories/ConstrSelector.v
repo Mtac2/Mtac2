@@ -22,7 +22,7 @@ Definition get_constrs :=
     | [? A B] A -> B => fill B
     | [? A (P:A->Type)] forall x:A, P x =>
       name <- M.fresh_binder_name T;
-      M.nu name None (fun x=>
+      M.nu name mNone (fun x=>
         fill (P x)
       )
     | _ =>
@@ -51,11 +51,11 @@ Definition snth_indices (l : mlist dyn) (t : tactic) : selector unit := fun goal
     i <- index c;
     let ogoal := mnth_error goals i in
     match ogoal with
-    | Some (_, g) =>
+    | mSome (_, g) =>
       newgoals <- open_and_apply t g;
       let res := dreduce (mapp, mmap) (accu +m+ newgoals) in
       T.filter_goals res
-    | None => M.failwith "snth_indices"
+    | mNone => M.failwith "snth_indices"
     end)%MC l goals.
 
 Notation "'case' c , .. , d 'do' t" :=

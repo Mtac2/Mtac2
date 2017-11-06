@@ -62,9 +62,9 @@ end
 module CoqOption = struct
   open ConstrBuilder
 
-  let optionBuilder = from_string "Coq.Init.Datatypes.option"
-  let noneBuilder = from_string "Coq.Init.Datatypes.None"
-  let someBuilder = from_string "Coq.Init.Datatypes.Some"
+  let optionBuilder = from_string "Mtac2.Datatypes.moption"
+  let noneBuilder = from_string "Mtac2.Datatypes.mNone"
+  let someBuilder = from_string "Mtac2.Datatypes.mSome"
 
   let mkType ty = build_app optionBuilder [|ty|]
   let mkNone ty = build_app noneBuilder [|ty|]

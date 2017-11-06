@@ -75,7 +75,7 @@ Definition count_nondep_binders (T: Type) : M nat :=
       M.ret (S r)
     | [? T1 T2] (forall x:T1, T2 x) =>
       name <- M.fresh_name "Z";
-      nu name None (fun e:T1=>go (T2 e))
+      nu name mNone (fun e:T1=>go (T2 e))
     | _ => M.ret 0
     end) T.
 

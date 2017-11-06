@@ -20,11 +20,11 @@ Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
   | pbase x f u =>
     oeq <- unify x y u;
     match oeq return t (P y) with
-    | Some eq =>
+    | mSome eq =>
       let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (eq_sym eq) in
       let 'eq_refl := eq in
       let b := reduce (RedWhd [rl:RedBeta]) (f h) in b
-    | None => raise DoesNotMatch
+    | mNone => raise DoesNotMatch
     end
   | @ptele _ _ _ _ C f => e <- evar C; (* M.print_term f;; UNCOMMENTING THIS MAKES IT STACK OVERFLOW *) open_pattern (f e)
   end.

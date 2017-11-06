@@ -1,8 +1,8 @@
 Require Import Mtac2.Mtac2.
 
-Definition test {A} (o : M (option A)) : M _ :=
+Definition test {A} (o : M (moption A)) : M _ :=
   o <- o;
-  match o with Some x => M.ret x | _ => M.raise exception end.
+  match o with mSome x => M.ret x | _ => M.raise exception end.
 
 Goal True = True.
 MProof.

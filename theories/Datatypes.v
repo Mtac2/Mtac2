@@ -17,20 +17,20 @@ Require Import Notations.
 
 (* (* Set Universe Polymorphism. *) *)
 
-(* (** [option A] is the extension of [A] with an extra element [None] *) *)
+(** [option A] is the extension of [A] with an extra element [None] *)
 
-(* Inductive option (A:Type) : Type := *)
-(*   | Some : A -> option A *)
-(*   | None : option A. *)
+Inductive moption (A:Type) : Type :=
+  | mSome : A -> moption A
+  | mNone : moption A.
 
-(* Arguments Some {A} a. *)
-(* Arguments None {A}. *)
+Arguments mSome {A} a.
+Arguments mNone {A}.
 
-(* Definition option_map (A B:Type) (f:A->B) (o : option A) : option B := *)
-(*   match o with *)
-(*     | Some a => @Some B (f a) *)
-(*     | None => @None B *)
-(*   end. *)
+Definition moption_map (A B:Type) (f:A->B) (o : moption A) : moption B :=
+  match o with
+    | mSome a => @mSome B (f a)
+    | mNone => @mNone B
+  end.
 
 (* (** [sum A B], written [A + B], is the disjoint sum of [A] and [B] *) *)
 

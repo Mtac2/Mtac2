@@ -21,7 +21,7 @@ Qed.
 
 Goal True.
 MProof.
-  M.nu "name" None (fun x:nat=>
+  M.nu "name" mNone (fun x:nat=>
   s <- M.get_binder_name x;
   match String.string_dec s "name" with
   | Specif.left _ => M.ret I
@@ -31,7 +31,7 @@ Qed.
 
 Goal True.
 MProof.
-  (r <- M.nu "name" None (fun x:nat => M.abs_fun x x);
+  (r <- M.nu "name" mNone (fun x:nat => M.abs_fun x x);
   s <- M.get_binder_name r;
   match String.string_dec s "name" with
   | Specif.left _ => M.ret I

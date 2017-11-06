@@ -236,7 +236,7 @@ Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : 
     | [? B (F : B -> isort)] ForAll F =u>
         fun f =>
         n <- M.fresh_binder_name F;
-        M.nu n None (fun b : B =>
+        M.nu n mNone (fun b : B =>
           r <- rec (F b) (App f b);
           f' <- abs b r;
           M.ret (cProd f'))
@@ -264,7 +264,7 @@ Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A 
     | [? B (F : B -> isort)] ForAll F =u>
         fun f =>
         n <- M.fresh_binder_name F;
-        M.nu n None (fun b : B =>
+        M.nu n mNone (fun b : B =>
                       r <- rec (F b) (App f b);
                       let '(existT _ l F) := r in
                       r' <- (M.abs_fun b F) : M (B -> _);
@@ -302,7 +302,7 @@ From Mtac2 Require Import MFix MTeleMatch.
 (*     | [? (A : Type) (F : A -> stype_of sort)] forall a, F a =u> *)
 (*       fun indFun => *)
 (*         name <- M.fresh_binder_name F; *)
-(*         M.nu name None (fun a : A => *)
+(*         M.nu name mNone (fun a : A => *)
 (*                           r <- f (F a) (indFun a); *)
 (*                           let (n, it) := r in *)
 (*                           f <- abs a it; *)
@@ -318,7 +318,7 @@ Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele)) :=
     | [? (A : Type) (F : A -> Type)] forall a, F a =m>
       fun indFun =>
       name <- M.fresh_binder_name T;
-      M.nu name None (fun a : A =>
+      M.nu name mNone (fun a : A =>
         r <- f (F a) (indFun a);
         let (n, sit) := r in
         let (sort, it) := sit in

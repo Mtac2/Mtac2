@@ -5,9 +5,9 @@ Example hyp_well_formed : True.
 MProof.
   (\nu x := I,
    l <- M.hyps;
-   oeq <- M.unify l [m: ahyp x (Some I)] UniCoq;
+   oeq <- M.unify l [m: ahyp x (mSome I)] UniCoq;
    match oeq with
-   | None => M.raise exception
+   | mNone => M.raise exception
    | _ => M.ret I
    end)%MC.
 Qed.
@@ -17,7 +17,7 @@ MProof.
   (\nu x := I,
    oeq <- M.unify x I UniCoq;
    match oeq with
-   | None => M.raise exception
+   | mNone => M.raise exception
    | _ => M.ret I
    end)%MC.
 Qed.

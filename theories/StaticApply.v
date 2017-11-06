@@ -58,8 +58,8 @@ Definition remove_ret {V} {B} {Q : B -> Type} {A} : forall (v : V) b (m : Q b), 
   m' <- M.remove v (M.ret m);
   oe <- M.unify m m' UniMatchNoRed;
   match oe with
-  | None => M.failwith "Impossible branch."
-  | Some e =>
+  | mNone => M.failwith "Impossible branch."
+  | mSome e =>
     match eq_sym e in _ = m'' return _ -> M A  with
     | eq_refl =>
       fun cont =>
@@ -78,7 +78,7 @@ Definition apply_type_of (P : Type) :
      | [? X F] (forall x : X, F x) =c>
         fun ft =>
           s <- M.fresh_binder_name ft;
-          M.nu s None (fun x_nu : X =>
+          M.nu s mNone (fun x_nu : X =>
           x <- M.evar X;
           let F' := reduce RedOneStep (F x) in
           let f' := reduce RedOneStep (ft x) in

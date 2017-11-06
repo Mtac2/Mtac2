@@ -40,7 +40,7 @@ Definition MTele_of :=
      | [?X : Type] M X =u> M.ret (mBase X)
      | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =c>
        b <- M.fresh_binder_name F;
-       f <- M.nu b None (fun x =>
+       f <- M.nu b mNone (fun x =>
                            g <- f (F x);
                            M.abs_fun x g);
        M.ret (mTele f)
