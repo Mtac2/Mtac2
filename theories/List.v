@@ -8,7 +8,7 @@
 
 Require Setoid.
 Require Import PeanoNat Le Gt Minus Bool Lt.
-Require Import Mtac2.Datatypes.
+Require Export Mtac2.Datatypes.
 
 Set Implicit Arguments.
 (* Set Universe Polymorphism. *)
@@ -17,20 +17,19 @@ Set Implicit Arguments.
 (** * Basics: definition of polymorphic lists and some operations *)
 (******************************************************************)
 
-(** The definition of [list] is now in [Init/Datatypes],
-    as well as the definitions of [length] and [app] *)
+(** The definition of [list] is now in [mInit/Datatypes],
+    as well as the definitions of [mlength] and [mapp] *)
 
-Open Scope list_scope.
+Open Scope mlist_scope.
 
 (** Standard notations for lists.
-In a special module to avoid conflicts. *)
+mIn a special module to avoid conflicts. *)
 Module ListNotations.
-Notation "[m: ]" := nil (format "[m: ]") : list_scope.
-Notation "[m: x ]" := (cons x nil) : list_scope.
-Notation "[m: x & s ]" :=  (cons x s) : list_scope.
+Notation "[m: ]" := mnil (format "[m: ]") : mlist_scope.
+Notation "[m: x ]" := (mcons x mnil) : mlist_scope.
 Notation "[m: x | y | .. | z ]" :=
-  (cons x (cons y .. (cons z nil) ..))
-    (format "'[hv  ' [m:  x '//' |  y  '//' |  .. '//' |  z ']' ]") : list_scope.
+  (mcons x (mcons y .. (mcons z mnil) ..))
+    (format "'[hv  ' [m:  x '//' |  y  '//' |  .. '//' |  z ']' ]") : mlist_scope.
 End ListNotations.
 
 Import ListNotations.
@@ -41,29 +40,29 @@ Section Lists.
 
   (** Head and tail *)
 
-  Definition hd (default:A) (l:list A) :=
+  Definition mhd (default:A) (l:mlist A) :=
     match l with
       | [m:] => default
-      | x :: _ => x
+      | x :m: _ => x
     end.
 
-  Definition hd_error (l:list A) :=
+  Definition mhd_error (l:mlist A) :=
     match l with
       | [m:] => None
-      | x :: _ => Some x
+      | x :m: _ => Some x
     end.
 
-  Definition tl (l:list A) :=
+  Definition mtl (l:mlist A) :=
     match l with
-      | [m:] => nil
-      | a :: m => m
+      | [m:] => mnil
+      | a :m: m => m
     end.
 
-  (** The [In] predicate *)
-  Fixpoint In (a:A) (l:list A) : Prop :=
+  (** The [mIn] predicate *)
+  Fixpoint mIn (a:A) (l:mlist A) : Prop :=
     match l with
       | [m:] => False
-      | b :: m => b = a \/ In a m
+      | b :m: m => b = a \/ mIn a m
     end.
 
 End Lists.
@@ -75,8 +74,8 @@ Section Facts.
 
   (** *** Generic facts *)
 
-  (** Discrimination *)
-  Theorem nil_cons : forall (x:A) (l:list A), [m:] <> x :: l.
+  (** DiscrimInation *)
+  Theorem mnil_mcons : forall (x:A) (l:mlist A), [m:] <> x :m: l.
   Proof.
     intros; discriminate.
   Qed.
@@ -84,94 +83,93 @@ Section Facts.
 
   (** Destruction *)
 
-  Theorem destruct_list : forall l : list A, {x:A & {tl:list A | l = x::tl}}+{l = [m:]}.
+  Theorem destruct_mlist : forall l : mlist A, {x:A & {mtl:mlist A | l = x:m:mtl}}+{l = [m:]}.
   Proof.
     induction l as [|a tail].
     right; reflexivity.
     left; exists a, tail; reflexivity.
   Qed.
 
-  Lemma hd_error_tl_repr : forall l (a:A) r,
-    hd_error l = Some a /\ tl l = r <-> l = a :: r.
+  Lemma mhd_error_mtl_repr : forall l (a:A) r,
+    mhd_error l = Some a /\ mtl l = r <-> l = a :m: r.
   Proof. destruct l as [|x xs].
-    - unfold hd_error, tl; intros a r. split; firstorder discriminate.
-    - intros. simpl. split.
-      * intros (H1, H2). inversion H1. rewrite H2. reflexivity.
+    - unfold mhd_error, mtl; intros a r. split; firstorder discriminate.
+    - intros. simpl. split. * intros (H1, H2). inversion H1. rewrite H2. reflexivity.
       * inversion 1. subst. auto.
   Qed.
 
-  Lemma hd_error_some_nil : forall l (a:A), hd_error l = Some a -> l <> nil.
-  Proof. unfold hd_error. destruct l; now discriminate. Qed.
+  Lemma mhd_error_some_mnil : forall l (a:A), mhd_error l = Some a -> l <> mnil.
+  Proof. unfold mhd_error. destruct l; now discriminate. Qed.
 
-  Theorem length_zero_iff_nil (l : list A):
-    length l = 0 <-> l=[m:].
+  Theorem mlength_zero_iff_mnil (l : mlist A):
+    mlength l = 0 <-> l=[m:].
   Proof.
     split; [now destruct l | now intros ->].
   Qed.
 
   (** *** Head and tail *)
 
-  Theorem hd_error_nil : hd_error (@nil A) = None.
+  Theorem mhd_error_mnil : mhd_error (@mnil A) = None.
   Proof.
     simpl; reflexivity.
   Qed.
 
-  Theorem hd_error_cons : forall (l : list A) (x : A), hd_error (x::l) = Some x.
+  Theorem mhd_error_mcons : forall (l : mlist A) (x : A), mhd_error (x:m:l) = Some x.
   Proof.
     intros; simpl; reflexivity.
   Qed.
 
 
   (************************)
-  (** *** Facts about [In] *)
+  (** *** Facts about [mIn] *)
   (************************)
 
 
-  (** Characterization of [In] *)
+  (** Characterization of [mIn] *)
 
-  Theorem in_eq : forall (a:A) (l:list A), In a (a :: l).
+  Theorem mIn_eq : forall (a:A) (l:mlist A), mIn a (a :m: l).
   Proof.
     simpl; auto.
   Qed.
 
-  Theorem in_cons : forall (a b:A) (l:list A), In b l -> In b (a :: l).
+  Theorem mIn_mcons : forall (a b:A) (l:mlist A), mIn b l -> mIn b (a :m: l).
   Proof.
     simpl; auto.
   Qed.
 
-  Theorem not_in_cons (x a : A) (l : list A):
-    ~ In x (a::l) <-> x<>a /\ ~ In x l.
+  Theorem not_mIn_mcons (x a : A) (l : mlist A):
+    ~ mIn x (a:m:l) <-> x<>a /\ ~ mIn x l.
   Proof.
     simpl. intuition.
   Qed.
 
-  Theorem in_nil : forall a:A, ~ In a [m:].
+  Theorem mIn_mnil : forall a:A, ~ mIn a [m:].
   Proof.
     unfold not; intros a H; inversion_clear H.
   Qed.
 
-  Theorem in_split : forall x (l:list A), In x l -> exists l1 l2, l = l1++x::l2.
+  Theorem mIn_msplit : forall x (l:mlist A), mIn x l -> exists l1 l2, l = l1+m+x:m:l2.
   Proof.
   induction l; simpl; destruct 1.
   subst a; auto.
   exists [m:], l; auto.
   destruct (IHl H) as (l1,(l2,H0)).
-  exists (a::l1), l2; simpl. apply f_equal. auto.
+  exists (a:m:l1), l2; simpl. apply f_equal. auto.
   Qed.
 
-  (** Inversion *)
-  Lemma in_inv : forall (a b:A) (l:list A), In b (a :: l) -> a = b \/ In b l.
+  (** mInversion *)
+  Lemma mIn_inv : forall (a b:A) (l:mlist A), mIn b (a :m: l) -> a = b \/ mIn b l.
   Proof.
     intros a b l H; inversion_clear H; auto.
   Qed.
 
-  (** Decidability of [In] *)
-  Theorem in_dec :
+  (** Decidability of [mIn] *)
+  Theorem mIn_dec :
     (forall x y:A, {x = y} + {x <> y}) ->
-    forall (a:A) (l:list A), {In a l} + {~ In a l}.
+    forall (a:A) (l:mlist A), {mIn a l} + {~ mIn a l}.
   Proof.
     intro H; induction l as [| a0 l IHl].
-    right; apply in_nil.
+    right; apply mIn_mnil.
     destruct (H a0 a); simpl; auto.
     destruct IHl; simpl; auto.
     right; unfold not; intros [Hc1| Hc2]; auto.
@@ -179,11 +177,11 @@ Section Facts.
 
 
   (**************************)
-  (** *** Facts about [app] *)
+  (** *** Facts about [mapp] *)
   (**************************)
 
-  (** Discrimination *)
-  Theorem app_cons_not_nil : forall (x y:list A) (a:A), [m:] <> x ++ a :: y.
+  (** DiscrimInation *)
+  Theorem mapp_mcons_not_mnil : forall (x y:mlist A) (a:A), [m:] <> x +m+ a :m: y.
   Proof.
     unfold not.
     destruct x as [| a l]; simpl; intros.
@@ -192,56 +190,56 @@ Section Facts.
   Qed.
 
 
-  (** Concat with [nil] *)
-  Theorem app_nil_l : forall l:list A, [m:] ++ l = l.
+  (** Concat with [mnil] *)
+  Theorem mapp_mnil_l : forall l:mlist A, [m:] +m+ l = l.
   Proof.
     reflexivity.
   Qed.
 
-  Theorem app_nil_r : forall l:list A, l ++ [m:] = l.
+  Theorem mapp_mnil_r : forall l:mlist A, l +m+ [m:] = l.
   Proof.
     induction l; simpl; f_equal; auto.
   Qed.
 
   (* begin hide *)
   (* Deprecated *)
-  Theorem app_nil_end : forall (l:list A), l = l ++ [m:].
-  Proof. symmetry; apply app_nil_r. Qed.
+  Theorem mapp_mnil_end : forall (l:mlist A), l = l +m+ [m:].
+  Proof. symmetry; apply mapp_mnil_r. Qed.
   (* end hide *)
 
-  (** [app] is associative *)
-  Theorem app_assoc : forall l m n:list A, l ++ m ++ n = (l ++ m) ++ n.
+  (** [mapp] is associative *)
+  Theorem mapp_assoc : forall l m n:mlist A, l +m+ m +m+ n = (l +m+ m) +m+ n.
   Proof.
     intros l m n; induction l; simpl; f_equal; auto.
   Qed.
 
   (* begin hide *)
   (* Deprecated *)
-  Theorem app_assoc_reverse : forall l m n:list A, (l ++ m) ++ n = l ++ m ++ n.
+  Theorem mapp_assoc_mreverse : forall l m n:mlist A, (l +m+ m) +m+ n = l +m+ m +m+ n.
   Proof.
-     auto using app_assoc.
+     auto using mapp_assoc.
   Qed.
-  Hint Resolve app_assoc_reverse.
+  Hint Resolve mapp_assoc_mreverse.
   (* end hide *)
 
-  (** [app] commutes with [cons] *)
-  Theorem app_comm_cons : forall (x y:list A) (a:A), a :: (x ++ y) = (a :: x) ++ y.
+  (** [mapp] commutes with [mcons] *)
+  Theorem mapp_comm_mcons : forall (x y:mlist A) (a:A), a :m: (x +m+ y) = (a :m: x) +m+ y.
   Proof.
     auto.
   Qed.
 
-  (** Facts deduced from the result of a concatenation *)
+  (** Facts deduced from the result of a mconcatenation *)
 
-  Theorem app_eq_nil : forall l l':list A, l ++ l' = [m:] -> l = [m:] /\ l' = [m:].
+  Theorem mapp_eq_mnil : forall l l':mlist A, l +m+ l' = [m:] -> l = [m:] /\ l' = [m:].
   Proof.
     destruct l as [| x l]; destruct l' as [| y l']; simpl; auto.
     intro; discriminate.
     intros H; discriminate H.
   Qed.
 
-  Theorem app_eq_unit :
-    forall (x y:list A) (a:A),
-      x ++ y = [m:a] -> x = [m:] /\ y = [m:a] \/ x = [m:a] /\ y = [m:].
+  Theorem mapp_eq_unit :
+    forall (x y:mlist A) (a:A),
+      x +m+ y = [m:a] -> x = [m:] /\ y = [m:a] \/ x = [m:a] /\ y = [m:].
   Proof.
     destruct x as [| a l]; [ destruct y as [| a l] | destruct y as [| a0 l0] ];
       simpl.
@@ -249,16 +247,16 @@ Section Facts.
     left; split; auto.
     right; split; auto.
     generalize H.
-    generalize (app_nil_r l); intros E.
+    generalize (mapp_mnil_r l); intros E.
     rewrite -> E; auto.
     intros.
     injection H as H H0.
-    assert ([m:] = l ++ a0 :: l0) by auto.
-    apply app_cons_not_nil in H1 as [].
+    assert ([m:] = l +m+ a0 :m: l0) by auto.
+    apply mapp_mcons_not_mnil in H1 as [].
   Qed.
 
-  Lemma app_inj_tail :
-    forall (x y:list A) (a b:A), x ++ [m:a] = y ++ [m:b] -> x = y /\ a = b.
+  Lemma mapp_inj_tail :
+    forall (x y:mlist A) (a b:A), x +m+ [m:a] = y +m+ [m:b] -> x = y /\ a = b.
   Proof.
     induction x as [| x l IHl];
       [ destruct y as [| a l] | destruct y as [| a l0] ];
@@ -268,11 +266,11 @@ Section Facts.
       auto.
     - intros a0 b H.
       injection H as H1 H0.
-      apply app_cons_not_nil in H0 as [].
+      apply mapp_mcons_not_mnil in H0 as [].
     - intros a b H.
       injection H as H1 H0.
-      assert ([m:] = l ++ [m:a]) by auto.
-      apply app_cons_not_nil in H as [].
+      assert ([m:] = l +m+ [m:a]) by auto.
+      apply mapp_mcons_not_mnil in H as [].
     - intros a0 b H.
       injection H as <- H0.
       destruct (IHl l0 a0 b H0) as (<-,<-).
@@ -282,77 +280,77 @@ Section Facts.
 
   (** Compatibility with other operations *)
 
-  Lemma app_length : forall l l' : list A, length (l++l') = length l + length l'.
+  Lemma mapp_mlength : forall l l' : mlist A, mlength (l+m+l') = mlength l + mlength l'.
   Proof.
     induction l; simpl; auto.
   Qed.
 
-  Lemma in_app_or : forall (l m:list A) (a:A), In a (l ++ m) -> In a l \/ In a m.
+  Lemma mIn_mapp_or : forall (l m:mlist A) (a:A), mIn a (l +m+ m) -> mIn a l \/ mIn a m.
   Proof.
     intros l m a.
     elim l; simpl; auto.
     intros a0 y H H0.
-    now_show ((a0 = a \/ In a y) \/ In a m).
+    now_show ((a0 = a \/ mIn a y) \/ mIn a m).
     elim H0; auto.
     intro H1.
-    now_show ((a0 = a \/ In a y) \/ In a m).
+    now_show ((a0 = a \/ mIn a y) \/ mIn a m).
     elim (H H1); auto.
   Qed.
 
-  Lemma in_or_app : forall (l m:list A) (a:A), In a l \/ In a m -> In a (l ++ m).
+  Lemma mIn_or_mapp : forall (l m:mlist A) (a:A), mIn a l \/ mIn a m -> mIn a (l +m+ m).
   Proof.
     intros l m a.
     elim l; simpl; intro H.
-    now_show (In a m).
+    now_show (mIn a m).
     elim H; auto; intro H0.
-    now_show (In a m).
+    now_show (mIn a m).
     elim H0. (* subProof completed *)
     intros y H0 H1.
-    now_show (H = a \/ In a (y ++ m)).
+    now_show (H = a \/ mIn a (y +m+ m)).
     elim H1; auto 4.
     intro H2.
-    now_show (H = a \/ In a (y ++ m)).
+    now_show (H = a \/ mIn a (y +m+ m)).
     elim H2; auto.
   Qed.
 
-  Lemma in_app_iff : forall l l' (a:A), In a (l++l') <-> In a l \/ In a l'.
+  Lemma mIn_mapp_iff : forall l l' (a:A), mIn a (l+m+l') <-> mIn a l \/ mIn a l'.
   Proof.
-    split; auto using in_app_or, in_or_app.
+    split; auto using mIn_mapp_or, mIn_or_mapp.
   Qed.
 
-  Lemma app_inv_head:
-   forall l l1 l2 : list A, l ++ l1 = l ++ l2 -> l1 = l2.
+  Lemma mapp_inv_head:
+   forall l l1 l2 : mlist A, l +m+ l1 = l +m+ l2 -> l1 = l2.
   Proof.
     induction l; simpl; auto; injection 1; auto.
   Qed.
 
-  Lemma app_inv_tail:
-    forall l l1 l2 : list A, l1 ++ l = l2 ++ l -> l1 = l2.
+  Lemma mapp_inv_tail:
+    forall l l1 l2 : mlist A, l1 +m+ l = l2 +m+ l -> l1 = l2.
   Proof.
     intros l l1 l2; revert l1 l2 l.
     induction l1 as [ | x1 l1]; destruct l2 as [ | x2 l2];
      simpl; auto; intros l H.
-    absurd (length (x2 :: l2 ++ l) <= length l).
-    simpl; rewrite app_length; auto with arith.
+    absurd (mlength (x2 :m: l2 +m+ l) <= mlength l).
+    simpl; rewrite mapp_mlength; auto with arith.
     rewrite <- H; auto with arith.
-    absurd (length (x1 :: l1 ++ l) <= length l).
-    simpl; rewrite app_length; auto with arith.
+    absurd (mlength (x1 :m: l1 +m+ l) <= mlength l).
+    simpl; rewrite mapp_mlength; auto with arith.
     rewrite H; auto with arith.
     injection H as H H0; f_equal; eauto.
   Qed.
 
 End Facts.
 
-Hint Resolve app_assoc app_assoc_reverse: datatypes.
-Hint Resolve app_comm_cons app_cons_not_nil: datatypes.
-Hint Immediate app_eq_nil: datatypes.
-Hint Resolve app_eq_unit app_inj_tail: datatypes.
-Hint Resolve in_eq in_cons in_inv in_nil in_app_or in_or_app: datatypes.
+Hint Resolve mapp_assoc mapp_assoc_mreverse: datatypes.
+Hint Resolve mapp_comm_mcons mapp_mcons_not_mnil: datatypes.
+Hint Immediate mapp_eq_mnil: datatypes.
+Hint Resolve mapp_eq_unit mapp_inj_tail: datatypes.
+Hint Resolve mIn_eq mIn_mcons mIn_inv mIn_mnil mIn_mapp_or mIn_or_mapp: datatypes.
 
 
 
 (*******************************************)
-(** * Operations on the elements of a list *)
+(** * Operations on the elements of a mlist *)
 (*******************************************)
 
 Section Elts.
@@ -360,27 +358,27 @@ Section Elts.
   Variable A : Type.
 
   (*****************************)
-  (** ** Nth element of a list *)
+  (** ** Nth element of a mlist *)
   (*****************************)
 
-  Fixpoint nth (n:nat) (l:list A) (default:A) {struct l} : A :=
+  Fixpoint mnth (n:nat) (l:mlist A) (default:A) {struct l} : A :=
     match n, l with
-      | O, x :: l' => x
+      | O, x :m: l' => x
       | O, other => default
       | S m, [m:] => default
-      | S m, x :: t => nth m t default
+      | S m, x :m: t => mnth m t default
     end.
 
-  Fixpoint nth_ok (n:nat) (l:list A) (default:A) {struct l} : bool :=
+  Fixpoint mnth_ok (n:nat) (l:mlist A) (default:A) {struct l} : bool :=
     match n, l with
-      | O, x :: l' => true
+      | O, x :m: l' => true
       | O, other => false
       | S m, [m:] => false
-      | S m, x :: t => nth_ok m t default
+      | S m, x :m: t => mnth_ok m t default
     end.
 
-  Lemma nth_in_or_default :
-    forall (n:nat) (l:list A) (d:A), {In (nth n l d) l} + {nth n l d = d}.
+  Lemma mnth_mIn_or_default :
+    forall (n:nat) (l:mlist A) (d:A), {mIn (mnth n l d) l} + {mnth n l d = d}.
   Proof.
     intros n l d; revert n; induction l.
     - right; destruct n; trivial.
@@ -389,36 +387,36 @@ Section Elts.
       * destruct (IHl n); auto.
   Qed.
 
-  Lemma nth_S_cons :
-    forall (n:nat) (l:list A) (d a:A),
-      In (nth n l d) l -> In (nth (S n) (a :: l) d) (a :: l).
+  Lemma mnth_S_mcons :
+    forall (n:nat) (l:mlist A) (d a:A),
+      mIn (mnth n l d) l -> mIn (mnth (S n) (a :m: l) d) (a :m: l).
   Proof.
     simpl; auto.
   Qed.
 
-  Fixpoint nth_error (l:list A) (n:nat) {struct n} : option A :=
+  Fixpoint mnth_error (l:mlist A) (n:nat) {struct n} : option A :=
     match n, l with
-      | O, x :: _ => Some x
-      | S n, _ :: l => nth_error l n
+      | O, x :m: _ => Some x
+      | S n, _ :m: l => mnth_error l n
       | _, _ => None
     end.
 
-  Definition nth_default (default:A) (l:list A) (n:nat) : A :=
-    match nth_error l n with
+  Definition mnth_default (default:A) (l:mlist A) (n:nat) : A :=
+    match mnth_error l n with
       | Some x => x
       | None => default
     end.
 
-  Lemma nth_default_eq :
-    forall n l (d:A), nth_default d l n = nth n l d.
+  Lemma mnth_default_eq :
+    forall n l (d:A), mnth_default d l n = mnth n l d.
   Proof.
-    unfold nth_default; induction n; intros [ | ] ?; simpl; auto.
+    unfold mnth_default; induction n; intros [ | ] ?; simpl; auto.
   Qed.
 
-  (** Results about [nth] *)
+  (** Results about [mnth] *)
 
-  Lemma nth_In :
-    forall (n:nat) (l:list A) (d:A), n < length l -> In (nth n l d) l.
+  Lemma mnth_mIn :
+    forall (n:nat) (l:mlist A) (d:A), n < mlength l -> mIn (mnth n l d) l.
   Proof.
     unfold lt; induction n as [| n hn]; simpl.
     - destruct l; simpl; [ inversion 2 | auto ].
@@ -427,8 +425,8 @@ Section Elts.
       * intros d ie; right; apply hn; auto with arith.
   Qed.
 
-  Lemma In_nth l x d : In x l ->
-    exists n, n < length l /\ nth n l d = x.
+  Lemma mIn_mnth l x d : mIn x l ->
+    exists n, n < mlength l /\ mnth n l d = x.
   Proof.
     induction l as [|a l IH].
     - easy.
@@ -438,57 +436,57 @@ Section Elts.
         exists (S n); simpl; auto with arith.
   Qed.
 
-  Lemma nth_overflow : forall l n d, length l <= n -> nth n l d = d.
+  Lemma mnth_overflow : forall l n d, mlength l <= n -> mnth n l d = d.
   Proof.
     induction l; destruct n; simpl; intros; auto.
     - inversion H.
     - apply IHl; auto with arith.
   Qed.
 
-  Lemma nth_indep :
-    forall l n d d', n < length l -> nth n l d = nth n l d'.
+  Lemma mnth_indep :
+    forall l n d d', n < mlength l -> mnth n l d = mnth n l d'.
   Proof.
     induction l.
     - inversion 1.
     - intros [|n] d d'; simpl; auto with arith.
   Qed.
 
-  Lemma app_nth1 :
-    forall l l' d n, n < length l -> nth n (l++l') d = nth n l d.
+  Lemma mapp_mnth1 :
+    forall l l' d n, n < mlength l -> mnth n (l+m+l') d = mnth n l d.
   Proof.
     induction l.
     - inversion 1.
     - intros l' d [|n]; simpl; auto with arith.
   Qed.
 
-  Lemma app_nth2 :
-    forall l l' d n, n >= length l -> nth n (l++l') d = nth (n-length l) l' d.
+  Lemma mapp_mnth2 :
+    forall l l' d n, n >= mlength l -> mnth n (l+m+l') d = mnth (n-mlength l) l' d.
   Proof.
     induction l; intros l' d [|n]; auto.
     - inversion 1.
     - intros; simpl; rewrite IHl; auto with arith.
   Qed.
 
-  Lemma nth_split n l d : n < length l ->
-    exists l1, exists l2, l = l1 ++ nth n l d :: l2 /\ length l1 = n.
+  Lemma mnth_msplit n l d : n < mlength l ->
+    exists l1, exists l2, l = l1 +m+ mnth n l d :m: l2 /\ mlength l1 = n.
   Proof.
     revert l.
     induction n as [|n IH]; intros [|a l] H; try easy.
-    - exists nil; exists l; now simpl.
+    - exists mnil; exists l; now simpl.
     - destruct (IH l) as (l1 & l2 & Hl & Hl1); auto with arith.
-      exists (a::l1); exists l2; simpl; split; now f_equal.
+      exists (a:m:l1); exists l2; simpl; split; now f_equal.
   Qed.
 
-  (** Results about [nth_error] *)
+  (** Results about [mnth_error] *)
 
-  Lemma nth_error_In l n x : nth_error l n = Some x -> In x l.
+  Lemma mnth_error_mIn l n x : mnth_error l n = Some x -> mIn x l.
   Proof.
     revert n. induction l as [|a l IH]; intros [|n]; simpl; try easy.
     - injection 1; auto.
     - eauto.
   Qed.
 
-  Lemma In_nth_error l x : In x l -> exists n, nth_error l n = Some x.
+  Lemma mIn_mnth_error l x : mIn x l -> exists n, mnth_error l n = Some x.
   Proof.
     induction l as [|a l IH].
     - easy.
@@ -498,7 +496,7 @@ Section Elts.
         exists (S n); simpl; auto with arith.
   Qed.
 
-  Lemma nth_error_None l n : nth_error l n = None <-> length l <= n.
+  Lemma mnth_error_None l n : mnth_error l n = None <-> mlength l <= n.
   Proof.
     revert n. induction l; destruct n; simpl.
     - split; auto.
@@ -507,7 +505,7 @@ Section Elts.
     - rewrite IHl; split; auto with arith.
   Qed.
 
-  Lemma nth_error_Some l n : nth_error l n <> None <-> n < length l.
+  Lemma mnth_error_Some l n : mnth_error l n <> None <-> n < mlength l.
   Proof.
    revert n. induction l; destruct n; simpl.
     - split; [now destruct 1 | inversion 1].
@@ -516,26 +514,26 @@ Section Elts.
     - rewrite IHl; split; auto with arith.
   Qed.
 
-  Lemma nth_error_split l n a : nth_error l n = Some a ->
-    exists l1, exists l2, l = l1 ++ a :: l2 /\ length l1 = n.
+  Lemma mnth_error_msplit l n a : mnth_error l n = Some a ->
+    exists l1, exists l2, l = l1 +m+ a :m: l2 /\ mlength l1 = n.
   Proof.
     revert l.
     induction n as [|n IH]; intros [|x l] H; simpl in *; try easy.
-    - exists nil; exists l. now injection H as ->.
+    - exists mnil; exists l. now injection H as ->.
     - destruct (IH _ H) as (l1 & l2 & H1 & H2).
-      exists (x::l1); exists l2; simpl; split; now f_equal.
+      exists (x:m:l1); exists l2; simpl; split; now f_equal.
   Qed.
 
-  Lemma nth_error_app1 l l' n : n < length l ->
-    nth_error (l++l') n = nth_error l n.
+  Lemma mnth_error_mapp1 l l' n : n < mlength l ->
+    mnth_error (l+m+l') n = mnth_error l n.
   Proof.
     revert l.
     induction n; intros [|a l] H; auto; try solve [inversion H].
     simpl in *. apply IHn. auto with arith.
   Qed.
 
-  Lemma nth_error_app2 l l' n : length l <= n ->
-    nth_error (l++l') n = nth_error l' (n-length l).
+  Lemma mnth_error_mapp2 l l' n : mlength l <= n ->
+    mnth_error (l+m+l') n = mnth_error l' (n-mlength l).
   Proof.
     revert l.
     induction n; intros [|a l] H; auto; try solve [inversion H].
@@ -548,13 +546,13 @@ Section Elts.
 
   Hypothesis eq_dec : forall x y : A, {x = y}+{x <> y}.
 
-  Fixpoint remove (x : A) (l : list A) : list A :=
+  Fixpoint mremove (x : A) (l : mlist A) : mlist A :=
     match l with
       | [m:] => [m:]
-      | y::tl => if (eq_dec x y) then remove x tl else y::(remove x tl)
+      | y:m:mtl => if (eq_dec x y) then mremove x mtl else y:m:(mremove x mtl)
     end.
 
-  Theorem remove_In : forall (l : list A) (x : A), ~ In x (remove x l).
+  Theorem mremove_mIn : forall (l : mlist A) (x : A), ~ mIn x (mremove x l).
   Proof.
     induction l as [|x l]; auto.
     intro y; simpl; destruct (eq_dec y x) as [yeqx | yneqx].
@@ -565,40 +563,40 @@ Section Elts.
 
 
 (******************************)
-(** ** Last element of a list *)
+(** ** Last element of a mlist *)
 (******************************)
 
-  (** [last l d] returns the last element of the list [l],
+  (** [mlast l d] returns the mlast element of the mlist [l],
     or the default value [d] if [l] is empty. *)
 
-  Fixpoint last (l:list A) (d:A) : A :=
+  Fixpoint mlast (l:mlist A) (d:A) : A :=
   match l with
     | [m:] => d
     | [m:a] => a
-    | a :: l => last l d
+    | a :m: l => mlast l d
   end.
 
-  (** [removelast l] remove the last element of [l] *)
+  (** [mremovemlast l] mremove the mlast element of [l] *)
 
-  Fixpoint removelast (l:list A) : list A :=
+  Fixpoint mremovemlast (l:mlist A) : mlist A :=
     match l with
       | [m:] =>  [m:]
       | [m:a] => [m:]
-      | a :: l => a :: removelast l
+      | a :m: l => a :m: mremovemlast l
     end.
 
-  Lemma app_removelast_last :
-    forall l d, l <> [m:] -> l = removelast l ++ [m:last l d].
+  Lemma mapp_mremovemlast_mlast :
+    forall l d, l <> [m:] -> l = mremovemlast l +m+ [m:mlast l d].
   Proof.
     induction l.
     destruct 1; auto.
     intros d _.
     destruct l; auto.
-    pattern (a0::l) at 1; rewrite IHl with d; auto; discriminate.
+    pattern (a0:m:l) at 1; rewrite IHl with d; auto; discriminate.
   Qed.
 
-  Lemma exists_last :
-    forall l, l <> [m:] -> { l' : (list A) & { a : A | l = l' ++ [m:a]}}.
+  Lemma exists_mlast :
+    forall l, l <> [m:] -> { l' : (mlist A) & { a : A | l = l' +m+ [m:a]}}.
   Proof.
     induction l.
     destruct 1; auto.
@@ -607,21 +605,21 @@ Section Elts.
     exists [m:], a; auto.
     destruct IHl as [l' (a',H)]; try discriminate.
     rewrite H.
-    exists (a::l'), a'; auto.
+    exists (a:m:l'), a'; auto.
   Qed.
 
-  Lemma removelast_app :
-    forall l l', l' <> [m:] -> removelast (l++l') = l ++ removelast l'.
+  Lemma mremovemlast_mapp :
+    forall l l', l' <> [m:] -> mremovemlast (l+m+l') = l +m+ mremovemlast l'.
   Proof.
     induction l.
     simpl; auto.
     simpl; intros.
-    assert (l++l' <> [m:]).
+    assert (l+m+l' <> [m:]).
     destruct l.
     simpl; auto.
     simpl; discriminate.
     specialize (IHl l' H).
-    destruct (l++l'); [elim H0; auto|f_equal; auto].
+    destruct (l+m+l'); [elim H0; auto|f_equal; auto].
   Qed.
 
 
@@ -629,50 +627,49 @@ Section Elts.
   (** ** Counting occurrences of an element *)
   (******************************************)
 
-  Fixpoint count_occ (l : list A) (x : A) : nat :=
+  Fixpoint count_occ (l : mlist A) (x : A) : nat :=
     match l with
       | [m:] => 0
-      | y :: tl =>
-        let n := count_occ tl x in
+      | y :m: mtl =>
+        let n := count_occ mtl x in
         if eq_dec y x then S n else n
     end.
 
-  (** Compatibility of count_occ with operations on list *)
-  Theorem count_occ_In l x : In x l <-> count_occ l x > 0.
+  (** Compatibility of count_occ with operations on mlist *)
+  Theorem count_occ_mIn l x : mIn x l <-> count_occ l x > 0.
   Proof.
     induction l as [|y l]; simpl.
     - split; [destruct 1 | apply gt_irrefl].
     - destruct eq_dec as [->|Hneq]; rewrite IHl; intuition.
   Qed.
 
-  Theorem count_occ_not_In l x : ~ In x l <-> count_occ l x = 0.
+  Theorem count_occ_not_mIn l x : ~ mIn x l <-> count_occ l x = 0.
   Proof.
-    rewrite count_occ_In. unfold gt. now rewrite Nat.nlt_ge, Nat.le_0_r.
+    rewrite count_occ_mIn. unfold gt. now rewrite Nat.nlt_ge, Nat.le_0_r.
   Qed.
 
-  Lemma count_occ_nil x : count_occ [m:] x = 0.
+  Lemma count_occ_mnil x : count_occ [m:] x = 0.
   Proof.
     reflexivity.
   Qed.
 
-  Theorem count_occ_inv_nil l :
+  Theorem count_occ_inv_mnil l :
     (forall x:A, count_occ l x = 0) <-> l = [m:].
   Proof.
-    split.
-    - induction l as [|x l]; trivial.
+    split. induction l as [|x l]; trivial.
       intros H. specialize (H x). simpl in H.
       destruct eq_dec as [_|NEQ]; [discriminate|now elim NEQ].
     - now intros ->.
   Qed.
 
-  Lemma count_occ_cons_eq l x y :
-    x = y -> count_occ (x::l) y = S (count_occ l y).
+  Lemma count_occ_mcons_eq l x y :
+    x = y -> count_occ (x:m:l) y = S (count_occ l y).
   Proof.
     intros H. simpl. now destruct (eq_dec x y).
   Qed.
 
-  Lemma count_occ_cons_neq l x y :
-    x <> y -> count_occ (x::l) y = count_occ l y.
+  Lemma count_occ_mcons_neq l x y :
+    x <> y -> count_occ (x:m:l) y = count_occ l y.
   Proof.
     intros H. simpl. now destruct (eq_dec x y).
   Qed.
@@ -680,7 +677,7 @@ Section Elts.
 End Elts.
 
 (*******************************)
-(** * Manipulating whole lists *)
+(** * Manipulating whole mlists *)
 (*******************************)
 
 Section ListOps.
@@ -691,13 +688,13 @@ Section ListOps.
   (** ** Reverse           *)
   (*************************)
 
-  Fixpoint rev (l:list A) : list A :=
+  Fixpoint mrev (l:mlist A) : mlist A :=
     match l with
       | [m:] => [m:]
-      | x :: l' => rev l' ++ [m:x]
+      | x :m: l' => mrev l' +m+ [m:x]
     end.
 
-  Lemma rev_app_distr : forall x y:list A, rev (x ++ y) = rev y ++ rev x.
+  Lemma mrev_mapp_distr : forall x y:mlist A, mrev (x +m+ y) = mrev y +m+ mrev x.
   Proof.
     induction x as [| a l IHl].
     destruct y as [| a l].
@@ -705,34 +702,34 @@ Section ListOps.
     auto.
 
     simpl.
-    rewrite app_nil_r; auto.
+    rewrite mapp_mnil_r; auto.
 
     intro y.
     simpl.
     rewrite (IHl y).
-    rewrite app_assoc; trivial.
+    rewrite mapp_assoc; trivial.
   Qed.
 
-  Remark rev_unit : forall (l:list A) (a:A), rev (l ++ [m:a]) = a :: rev l.
+  Remark mrev_unit : forall (l:mlist A) (a:A), mrev (l +m+ [m:a]) = a :m: mrev l.
   Proof.
     intros.
-    apply (rev_app_distr l [m:a]); simpl; auto.
+    apply (mrev_mapp_distr l [m:a]); simpl; auto.
   Qed.
 
-  Lemma rev_involutive : forall l:list A, rev (rev l) = l.
+  Lemma mrev_involutive : forall l:mlist A, mrev (mrev l) = l.
   Proof.
     induction l as [| a l IHl].
     simpl; auto.
 
     simpl.
-    rewrite (rev_unit (rev l) a).
+    rewrite (mrev_unit (mrev l) a).
     rewrite IHl; auto.
   Qed.
 
 
   (** Compatibility with other operations *)
 
-  Lemma in_rev : forall l x, In x l <-> In x (rev l).
+  Lemma mIn_mrev : forall l x, mIn x l <-> mIn x (mrev l).
   Proof.
     induction l.
     simpl; intuition.
@@ -740,140 +737,140 @@ Section ListOps.
     simpl.
     intuition.
     subst.
-    apply in_or_app; right; simpl; auto.
-    apply in_or_app; left; firstorder.
-    destruct (in_app_or _ _ _ H); firstorder.
+    apply mIn_or_mapp; right; simpl; auto.
+    apply mIn_or_mapp; left; firstorder.
+    destruct (mIn_mapp_or _ _ _ H); firstorder.
   Qed.
 
-  Lemma rev_length : forall l, length (rev l) = length l.
+  Lemma mrev_mlength : forall l, mlength (mrev l) = mlength l.
   Proof.
     induction l;simpl; auto.
-    rewrite app_length.
+    rewrite mapp_mlength.
     rewrite IHl.
     simpl.
-    elim (length l); simpl; auto.
+    elim (mlength l); simpl; auto.
   Qed.
 
-  Lemma rev_nth : forall l d n,  n < length l ->
-    nth n (rev l) d = nth (length l - S n) l d.
+  Lemma mrev_mnth : forall l d n,  n < mlength l ->
+    mnth n (mrev l) d = mnth (mlength l - S n) l d.
   Proof.
     induction l.
     intros; inversion H.
     intros.
     simpl in H.
-    simpl (rev (a :: l)).
-    simpl (length (a :: l) - S n).
+    simpl (mrev (a :m: l)).
+    simpl (mlength (a :m: l) - S n).
     inversion H.
     rewrite <- minus_n_n; simpl.
-    rewrite <- rev_length.
-    rewrite app_nth2; auto.
+    rewrite <- mrev_mlength.
+    rewrite mapp_mnth2; auto.
     rewrite <- minus_n_n; auto.
-    rewrite app_nth1; auto.
-    rewrite (minus_plus_simpl_l_reverse (length l) n 1).
-    replace (1 + length l) with (S (length l)); auto with arith.
+    rewrite mapp_mnth1; auto.
+    rewrite (minus_plus_simpl_l_reverse (mlength l) n 1).
+    replace (1 + mlength l) with (S (mlength l)); auto with arith.
     rewrite <- minus_Sn_m; auto with arith.
     apply IHl ; auto with arith.
-    rewrite rev_length; auto.
+    rewrite mrev_mlength; auto.
   Qed.
 
 
-  (**  An alternative tail-recursive definition for reverse *)
+  (**  An alternative tail-recursive definition for mreverse *)
 
-  Fixpoint rev_append (l l': list A) : list A :=
+  Fixpoint mrev_append (l l': mlist A) : mlist A :=
     match l with
       | [m:] => l'
-      | a::l => rev_append l (a::l')
+      | a:m:l => mrev_append l (a:m:l')
     end.
 
-  Definition rev' l : list A := rev_append l [m:].
+  Definition mrev' l : mlist A := mrev_append l [m:].
 
-  Lemma rev_append_rev : forall l l', rev_append l l' = rev l ++ l'.
+  Lemma mrev_append_mrev : forall l l', mrev_append l l' = mrev l +m+ l'.
   Proof.
     induction l; simpl; auto; intros.
-    rewrite <- app_assoc; firstorder.
+    rewrite <- mapp_assoc; firstorder.
   Qed.
 
-  Lemma rev_alt : forall l, rev l = rev_append l [m:].
+  Lemma mrev_alt : forall l, mrev l = mrev_append l [m:].
   Proof.
-    intros; rewrite rev_append_rev.
-    rewrite app_nil_r; trivial.
+    intros; rewrite mrev_append_mrev.
+    rewrite mapp_mnil_r; trivial.
   Qed.
 
 
 (*********************************************)
-(** Reverse Induction Principle on Lists  *)
+(** Reverse mInduction Principle on Lists  *)
 (*********************************************)
 
-  Section Reverse_Induction.
+  Section Reverse_mInduction.
 
-    Lemma rev_list_ind :
-      forall P:list A-> Prop,
+    Lemma mrev_mlist_ind :
+      forall P:mlist A-> Prop,
 	P [m:] ->
-	(forall (a:A) (l:list A), P (rev l) -> P (rev (a :: l))) ->
-	forall l:list A, P (rev l).
+	(forall (a:A) (l:mlist A), P (mrev l) -> P (mrev (a :m: l))) ->
+	forall l:mlist A, P (mrev l).
     Proof.
       induction l; auto.
     Qed.
 
-    Theorem rev_ind :
-      forall P:list A -> Prop,
+    Theorem mrev_ind :
+      forall P:mlist A -> Prop,
 	P [m:] ->
-	(forall (x:A) (l:list A), P l -> P (l ++ [m:x])) -> forall l:list A, P l.
+	(forall (x:A) (l:mlist A), P l -> P (l +m+ [m:x])) -> forall l:mlist A, P l.
     Proof.
       intros.
-      generalize (rev_involutive l).
+      generalize (mrev_involutive l).
       intros E; rewrite <- E.
-      apply (rev_list_ind P).
+      apply (mrev_mlist_ind P).
       auto.
 
       simpl.
       intros.
-      apply (H0 a (rev l0)).
+      apply (H0 a (mrev l0)).
       auto.
     Qed.
 
-  End Reverse_Induction.
+  End Reverse_mInduction.
 
   (*************************)
   (** ** Concatenation     *)
   (*************************)
 
-  Fixpoint concat (l : list (list A)) : list A :=
+  Fixpoint mconcat (l : mlist (mlist A)) : mlist A :=
   match l with
-  | nil => nil
-  | cons x l => x ++ concat l
+  | mnil => mnil
+  | mcons x l => x +m+ mconcat l
   end.
 
-  Lemma concat_nil : concat nil = nil.
+  Lemma mconcat_mnil : mconcat mnil = mnil.
   Proof.
   reflexivity.
   Qed.
 
-  Lemma concat_cons : forall x l, concat (cons x l) = x ++ concat l.
+  Lemma mconcat_mcons : forall x l, mconcat (mcons x l) = x +m+ mconcat l.
   Proof.
   reflexivity.
   Qed.
 
-  Lemma concat_app : forall l1 l2, concat (l1 ++ l2) = concat l1 ++ concat l2.
+  Lemma mconcat_mapp : forall l1 l2, mconcat (l1 +m+ l2) = mconcat l1 +m+ mconcat l2.
   Proof.
   intros l1; induction l1 as [|x l1 IH]; intros l2; simpl.
   + reflexivity.
-  + rewrite IH; apply app_assoc.
+  + rewrite IH; apply mapp_assoc.
   Qed.
 
   (***********************************)
-  (** ** Decidable equality on lists *)
+  (** ** Decidable equality on mlists *)
   (***********************************)
 
   Hypothesis eq_dec : forall (x y : A), {x = y}+{x <> y}.
 
-  Lemma list_eq_dec : forall l l':list A, {l = l'} + {l <> l'}.
+  Lemma mlist_eq_dec : forall l l':mlist A, {l = l'} + {l <> l'}.
   Proof. decide equality. Defined.
 
 End ListOps.
 
 (***************************************************)
-(** * Applying functions to the elements of a list *)
+(** * Applying functions to the elements of a mlist *)
 (***************************************************)
 
 (************)
@@ -884,72 +881,72 @@ Section Map.
   Variables (A : Type) (B : Type).
   Variable f : A -> B.
 
-  Fixpoint map (l:list A) : list B :=
+  Fixpoint mmap (l:mlist A) : mlist B :=
     match l with
       | [m:] => [m:]
-      | a :: t => (f a) :: (map t)
+      | a :m: t => (f a) :m: (mmap t)
     end.
 
-  Lemma map_cons (x:A)(l:list A) : map (x::l) = (f x) :: (map l).
+  Lemma mmap_mcons (x:A)(l:mlist A) : mmap (x:m:l) = (f x) :m: (mmap l).
   Proof.
     reflexivity.
   Qed.
 
-  Lemma in_map :
-    forall (l:list A) (x:A), In x l -> In (f x) (map l).
+  Lemma mIn_mmap :
+    forall (l:mlist A) (x:A), mIn x l -> mIn (f x) (mmap l).
   Proof.
     induction l; firstorder (subst; auto).
   Qed.
 
-  Lemma in_map_iff : forall l y, In y (map l) <-> exists x, f x = y /\ In x l.
+  Lemma mIn_mmap_iff : forall l y, mIn y (mmap l) <-> exists x, f x = y /\ mIn x l.
   Proof.
     induction l; firstorder (subst; auto).
   Qed.
 
-  Lemma map_length : forall l, length (map l) = length l.
+  Lemma mmap_mlength : forall l, mlength (mmap l) = mlength l.
   Proof.
     induction l; simpl; auto.
   Qed.
 
-  Lemma map_nth : forall l d n,
-    nth n (map l) (f d) = f (nth n l d).
+  Lemma mmap_mnth : forall l d n,
+    mnth n (mmap l) (f d) = f (mnth n l d).
   Proof.
-    induction l; simpl map; destruct n; firstorder.
+    induction l; simpl mmap; destruct n; firstorder.
   Qed.
 
-  Lemma map_nth_error : forall n l d,
-    nth_error l n = Some d -> nth_error (map l) n = Some (f d).
+  Lemma mmap_mnth_error : forall n l d,
+    mnth_error l n = Some d -> mnth_error (mmap l) n = Some (f d).
   Proof.
     induction n; intros [ | ] ? Heq; simpl in *; inversion Heq; auto.
   Qed.
 
-  Lemma map_app : forall l l',
-    map (l++l') = (map l)++(map l').
+  Lemma mmap_mapp : forall l l',
+    mmap (l+m+l') = (mmap l)+m+(mmap l').
   Proof.
     induction l; simpl; auto.
     intros; rewrite IHl; auto.
   Qed.
 
-  Lemma map_rev : forall l, map (rev l) = rev (map l).
+  Lemma mmap_mrev : forall l, mmap (mrev l) = mrev (mmap l).
   Proof.
     induction l; simpl; auto.
-    rewrite map_app.
+    rewrite mmap_mapp.
     rewrite IHl; auto.
   Qed.
 
-  Lemma map_eq_nil : forall l, map l = [m:] -> l = [m:].
+  Lemma mmap_eq_mnil : forall l, mmap l = [m:] -> l = [m:].
   Proof.
     destruct l; simpl; reflexivity || discriminate.
   Qed.
 
-  (** [map] and count of occurrences *)
+  (** [mmap] and count of occurrences *)
 
   Hypothesis decA: forall x1 x2 : A, {x1 = x2} + {x1 <> x2}.
   Hypothesis decB: forall y1 y2 : B, {y1 = y2} + {y1 <> y2}.
   Hypothesis Hfinjective: forall x1 x2: A, (f x1) = (f x2) -> x1 = x2.
 
-  Theorem count_occ_map x l:
-    count_occ decA l x = count_occ decB (map l) (f x).
+  Theorem count_occ_mmap x l:
+    count_occ decA l x = count_occ decB (mmap l) (f x).
   Proof.
     revert x. induction l as [| a l' Hrec]; intro x; simpl.
     - reflexivity.
@@ -961,27 +958,27 @@ Section Map.
       * assumption.
   Qed.
 
-  (** [flat_map] *)
+  (** [mflat_mmap] *)
 
-  Definition flat_map (f:A -> list B) :=
-    fix flat_map (l:list A) : list B :=
+  Definition mflat_mmap (f:A -> mlist B) :=
+    fix mflat_mmap (l:mlist A) : mlist B :=
     match l with
-      | nil => nil
-      | cons x t => (f x)++(flat_map t)
+      | mnil => mnil
+      | mcons x t => (f x)+m+(mflat_mmap t)
     end.
 
-  Lemma in_flat_map : forall (f:A->list B)(l:list A)(y:B),
-    In y (flat_map f l) <-> exists x, In x l /\ In y (f x).
+  Lemma mIn_mflat_mmap : forall (f:A->mlist B)(l:mlist A)(y:B),
+    mIn y (mflat_mmap f l) <-> exists x, mIn x l /\ mIn y (f x).
   Proof using A B.
     clear Hfinjective.
     induction l; simpl; split; intros.
     contradiction.
     destruct H as (x,(H,_)); contradiction.
-    destruct (in_app_or _ _ _ H).
+    destruct (mIn_mapp_or _ _ _ H).
     exists a; auto.
     destruct (IHl y) as (H1,_); destruct (H1 H0) as (x,(H2,H3)).
     exists x; auto.
-    apply in_or_app.
+    apply mIn_or_mapp.
     destruct H as (x,(H0,H1)); destruct H0.
     subst; auto.
     right; destruct (IHl y) as (_,H2); apply H2.
@@ -990,64 +987,64 @@ Section Map.
 
 End Map.
 
-Lemma flat_map_concat_map : forall A B (f : A -> list B) l,
-  flat_map f l = concat (map f l).
+Lemma mflat_mmap_mconcat_mmap : forall A B (f : A -> mlist B) l,
+  mflat_mmap f l = mconcat (mmap f l).
 Proof.
 intros A B f l; induction l as [|x l IH]; simpl.
 + reflexivity.
 + rewrite IH; reflexivity.
 Qed.
 
-Lemma concat_map : forall A B (f : A -> B) l, map f (concat l) = concat (map (map f) l).
+Lemma mconcat_mmap : forall A B (f : A -> B) l, mmap f (mconcat l) = mconcat (mmap (mmap f) l).
 Proof.
 intros A B f l; induction l as [|x l IH]; simpl.
 + reflexivity.
-+ rewrite map_app, IH; reflexivity.
++ rewrite mmap_mapp, IH; reflexivity.
 Qed.
 
-Lemma map_id : forall (A :Type) (l : list A),
-  map (fun x => x) l = l.
+Lemma mmap_id : forall (A :Type) (l : mlist A),
+  mmap (fun x => x) l = l.
 Proof.
   induction l; simpl; auto; rewrite IHl; auto.
 Qed.
 
-Lemma map_map : forall (A B C:Type)(f:A->B)(g:B->C) l,
-  map g (map f l) = map (fun x => g (f x)) l.
+Lemma mmap_mmap : forall (A B C:Type)(f:A->B)(g:B->C) l,
+  mmap g (mmap f l) = mmap (fun x => g (f x)) l.
 Proof.
   induction l; simpl; auto.
   rewrite IHl; auto.
 Qed.
 
-Lemma map_ext_in :
-  forall (A B : Type)(f g:A->B) l, (forall a, In a l -> f a = g a) -> map f l = map g l.
+Lemma mmap_ext_in :
+  forall (A B : Type)(f g:A->B) l, (forall a, mIn a l -> f a = g a) -> mmap f l = mmap g l.
 Proof.
   induction l; simpl; auto.
   intros; rewrite H by intuition; rewrite IHl; auto.
 Qed.
 
-Lemma map_ext :
-  forall (A B : Type)(f g:A->B), (forall a, f a = g a) -> forall l, map f l = map g l.
+Lemma mmap_ext :
+  forall (A B : Type)(f g:A->B), (forall a, f a = g a) -> forall l, mmap f l = mmap g l.
 Proof.
-  intros; apply map_ext_in; auto.
+  intros; apply mmap_ext_in; auto.
 Qed.
 
 
 (************************************)
-(** Left-to-right iterator on lists *)
+(** Left-to-right iterator on mlists *)
 (************************************)
 
 Section Fold_Left_Recursor.
   Variables (A : Type) (B : Type).
   Variable f : A -> B -> A.
 
-  Fixpoint fold_left (l:list B) (a0:A) : A :=
+  Fixpoint mfold_left (l:mlist B) (a0:A) : A :=
     match l with
-      | nil => a0
-      | cons b t => fold_left t (f a0 b)
+      | mnil => a0
+      | mcons b t => mfold_left t (f a0 b)
     end.
 
-  Lemma fold_left_app : forall (l l':list B)(i:A),
-    fold_left (l++l') i = fold_left l' (fold_left l i).
+  Lemma mfold_left_mapp : forall (l l':mlist B)(i:A),
+    mfold_left (l+m+l') i = mfold_left l' (mfold_left l i).
   Proof.
     induction l.
     simpl; auto.
@@ -1058,18 +1055,18 @@ Section Fold_Left_Recursor.
 
 End Fold_Left_Recursor.
 
-Lemma fold_left_length :
-  forall (A:Type)(l:list A), fold_left (fun x _ => S x) l 0 = length l.
+Lemma mfold_left_mlength :
+  forall (A:Type)(l:mlist A), mfold_left (fun x _ => S x) l 0 = mlength l.
 Proof.
   intros A l.
-  enough (H : forall n, fold_left (fun x _ => S x) l n = n + length l) by exact (H 0).
+  enough (H : forall n, mfold_left (fun x _ => S x) l n = n + mlength l) by exact (H 0).
   induction l; simpl; auto.
   intros; rewrite IHl.
   simpl; auto with arith.
 Qed.
 
 (************************************)
-(** Right-to-left iterator on lists *)
+(** Right-to-left iterator on mlists *)
 (************************************)
 
 Section Fold_Right_Recursor.
@@ -1077,16 +1074,16 @@ Section Fold_Right_Recursor.
   Variable f : B -> A -> A.
   Variable a0 : A.
 
-  Fixpoint fold_right (l:list B) : A :=
+  Fixpoint mfold_right (l:mlist B) : A :=
     match l with
-      | nil => a0
-      | cons b t => f b (fold_right t)
+      | mnil => a0
+      | mcons b t => f b (mfold_right t)
     end.
 
 End Fold_Right_Recursor.
 
-  Lemma fold_right_app : forall (A B:Type)(f:A->B->B) l l' i,
-    fold_right f i (l++l') = fold_right f (fold_right f i l') l.
+  Lemma mfold_right_mapp : forall (A B:Type)(f:A->B->B) l l' i,
+    mfold_right f i (l+m+l') = mfold_right f (mfold_right f i l') l.
   Proof.
     induction l.
     simpl; auto.
@@ -1094,21 +1091,21 @@ End Fold_Right_Recursor.
     f_equal; auto.
   Qed.
 
-  Lemma fold_left_rev_right : forall (A B:Type)(f:A->B->B) l i,
-    fold_right f i (rev l) = fold_left (fun x y => f y x) l i.
+  Lemma mfold_left_mrev_right : forall (A B:Type)(f:A->B->B) l i,
+    mfold_right f i (mrev l) = mfold_left (fun x y => f y x) l i.
   Proof.
     induction l.
     simpl; auto.
     intros.
     simpl.
-    rewrite fold_right_app; simpl; auto.
+    rewrite mfold_right_mapp; simpl; auto.
   Qed.
 
   Theorem fold_symmetric :
     forall (A : Type) (f : A -> A -> A),
     (forall x y z : A, f x (f y z) = f (f x y) z) ->
     forall (a0 : A), (forall y : A, f a0 y = f y a0) ->
-    forall (l : list A), fold_left f l a0 = fold_right f a0 l.
+    forall (l : mlist A), mfold_left f l a0 = mfold_right f a0 l.
   Proof.
     intros A f assoc a0 comma0 l.
     induction l as [ | a1 l ]; [ simpl; reflexivity | ].
@@ -1116,38 +1113,38 @@ End Fold_Right_Recursor.
     simpl. intro. rewrite <- assoc. rewrite IHl. rewrite IHl. auto.
   Qed.
 
-  (** [(list_power x y)] is [y^x], or the set of sequences of elts of [y]
+  (** [(mlist_power x y)] is [y^x], or the set of sequences of elts of [y]
       indexed by elts of [x], sorted in lexicographic order. *)
 
-  Fixpoint list_power (A B:Type)(l:list A) (l':list B) :
-    list (list (A * B)) :=
+  Fixpoint mlist_power (A B:Type)(l:mlist A) (l':mlist B) :
+    mlist (mlist (A * B)) :=
     match l with
-      | nil => cons nil nil
-      | cons x t =>
-	flat_map (fun f:list (A * B) => map (fun y:B => cons (x, y) f) l')
-        (list_power t l')
+      | mnil => mcons mnil mnil
+      | mcons x t =>
+	mflat_mmap (fun f:mlist (A * B) => mmap (fun y:B => mcons (x, y) f) l')
+        (mlist_power t l')
     end.
 
 
   (*************************************)
-  (** ** Boolean operations over lists *)
+  (** ** Boolean operations over mlists *)
   (*************************************)
 
   Section Bool.
     Variable A : Type.
     Variable f : A -> bool.
 
-  (** find whether a boolean function can be satisfied by an
-       elements of the list. *)
+  (** mfind whether a boolean function can be satisfied by an
+       elements of the mlist. *)
 
-    Fixpoint existsb (l:list A) : bool :=
+    Fixpoint mexistsb (l:mlist A) : bool :=
       match l with
-	| nil => false
-	| a::l => f a || existsb l
+	| mnil => false
+	| a:m:l => f a || mexistsb l
       end.
 
-    Lemma existsb_exists :
-      forall l, existsb l = true <-> exists x, In x l /\ f x = true.
+    Lemma mexistsb_exists :
+      forall l, mexistsb l = true <-> exists x, mIn x l /\ f x = true.
     Proof.
       induction l; simpl; intuition.
       inversion H.
@@ -1158,8 +1155,8 @@ End Fold_Right_Recursor.
       rewrite H2; auto.
     Qed.
 
-    Lemma existsb_nth : forall l n d, n < length l ->
-      existsb l = false -> f (nth n l d) = false.
+    Lemma mexistsb_mnth : forall l n d, n < mlength l ->
+      mexistsb l = false -> f (mnth n l d) = false.
     Proof.
       induction l.
       inversion 1.
@@ -1169,51 +1166,51 @@ End Fold_Right_Recursor.
       rewrite IHl; auto with arith.
     Qed.
 
-    Lemma existsb_app : forall l1 l2,
-      existsb (l1++l2) = existsb l1 || existsb l2.
+    Lemma mexistsb_mapp : forall l1 l2,
+      mexistsb (l1+m+l2) = mexistsb l1 || mexistsb l2.
     Proof.
       induction l1; intros l2; simpl.
         solve[auto].
       case (f a); simpl; solve[auto].
     Qed.
 
-  (** find whether a boolean function is satisfied by
-    all the elements of a list. *)
+  (** mfind whether a boolean function is satisfied by
+    all the elements of a mlist. *)
 
-    Fixpoint forallb (l:list A) : bool :=
+    Fixpoint mforallb (l:mlist A) : bool :=
       match l with
-	| nil => true
-	| a::l => f a && forallb l
+	| mnil => true
+	| a:m:l => f a && mforallb l
       end.
 
-    Lemma forallb_forall :
-      forall l, forallb l = true <-> (forall x, In x l -> f x = true).
+    Lemma mforallb_forall :
+      forall l, mforallb l = true <-> (forall x, mIn x l -> f x = true).
     Proof.
       induction l; simpl; intuition.
       destruct (andb_prop _ _ H1).
       congruence.
       destruct (andb_prop _ _ H1); auto.
-      assert (forallb l = true).
+      assert (mforallb l = true).
       apply H0; intuition.
       rewrite H1; auto.
     Qed.
 
-    Lemma forallb_app :
-      forall l1 l2, forallb (l1++l2) = forallb l1 && forallb l2.
+    Lemma mforallb_mapp :
+      forall l1 l2, mforallb (l1+m+l2) = mforallb l1 && mforallb l2.
     Proof.
       induction l1; simpl.
         solve[auto].
       case (f a); simpl; solve[auto].
     Qed.
-  (** [filter] *)
+  (** [mfilter] *)
 
-    Fixpoint filter (l:list A) : list A :=
+    Fixpoint mfilter (l:mlist A) : mlist A :=
       match l with
-	| nil => nil
-	| x :: l => if f x then x::(filter l) else filter l
+	| mnil => mnil
+	| x :m: l => if f x then x:m:(mfilter l) else mfilter l
       end.
 
-    Lemma filter_In : forall x l, In x (filter l) <-> In x l /\ f x = true.
+    Lemma mfilter_mIn : forall x l, mIn x (mfilter l) <-> mIn x l /\ f x = true.
     Proof.
       induction l; simpl.
       intuition.
@@ -1221,15 +1218,15 @@ End Fold_Right_Recursor.
       case_eq (f a); intros; simpl; intuition congruence.
     Qed.
 
-  (** [find] *)
+  (** [mfind] *)
 
-    Fixpoint find (l:list A) : option A :=
+    Fixpoint mfind (l:mlist A) : option A :=
       match l with
-	| nil => None
-	| x :: tl => if f x then Some x else find tl
+	| mnil => None
+	| x :m: mtl => if f x then Some x else mfind mtl
       end.
 
-    Lemma find_some l x : find l = Some x -> In x l /\ f x = true.
+    Lemma mfind_some l x : mfind l = Some x -> mIn x l /\ f x = true.
     Proof.
      induction l as [|a l IH]; simpl; [easy| ].
      case_eq (f a); intros Ha Eq.
@@ -1237,65 +1234,65 @@ End Fold_Right_Recursor.
      * destruct (IH Eq); auto.
     Qed.
 
-    Lemma find_none l : find l = None -> forall x, In x l -> f x = false.
+    Lemma mfind_none l : mfind l = None -> forall x, mIn x l -> f x = false.
     Proof.
      induction l as [|a l IH]; simpl; [easy|].
      case_eq (f a); intros Ha Eq x IN; [easy|].
      destruct IN as [<-|IN]; auto.
     Qed.
 
-  (** [partition] *)
+  (** [mpartition] *)
 
-    Fixpoint partition (l:list A) : list A * list A :=
+    Fixpoint mpartition (l:mlist A) : mlist A * mlist A :=
       match l with
-	| nil => (nil, nil)
-	| x :: tl => let (g,d) := partition tl in
-	  if f x then (x::g,d) else (g,x::d)
+	| mnil => (mnil, mnil)
+	| x :m: mtl => let (g,d) := mpartition mtl in
+	  if f x then (x:m:g,d) else (g,x:m:d)
       end.
 
-  Theorem partition_cons1 a l l1 l2:
-    partition l = (l1, l2) ->
+  Theorem mpartition_mcons1 a l l1 l2:
+    mpartition l = (l1, l2) ->
     f a = true ->
-    partition (a::l) = (a::l1, l2).
+    mpartition (a:m:l) = (a:m:l1, l2).
   Proof.
     simpl. now intros -> ->.
   Qed.
 
-  Theorem partition_cons2 a l l1 l2:
-    partition l = (l1, l2) ->
+  Theorem mpartition_mcons2 a l l1 l2:
+    mpartition l = (l1, l2) ->
     f a=false ->
-    partition (a::l) = (l1, a::l2).
+    mpartition (a:m:l) = (l1, a:m:l2).
   Proof.
     simpl. now intros -> ->.
   Qed.
 
-  Theorem partition_length l l1 l2:
-    partition l = (l1, l2) ->
-    length l = length l1 + length l2.
+  Theorem mpartition_mlength l l1 l2:
+    mpartition l = (l1, l2) ->
+    mlength l = mlength l1 + mlength l2.
   Proof.
     revert l1 l2. induction l as [ | a l' Hrec]; intros l1 l2.
     - now intros [= <- <- ].
-    - simpl. destruct (f a), (partition l') as (left, right);
+    - simpl. destruct (f a), (mpartition l') as (left, right);
       intros [= <- <- ]; simpl; rewrite (Hrec left right); auto.
   Qed.
 
-  Theorem partition_inv_nil (l : list A):
-    partition l = ([m:], [m:]) <-> l = [m:].
+  Theorem mpartition_inv_mnil (l : mlist A):
+    mpartition l = ([m:], [m:]) <-> l = [m:].
   Proof.
     split.
     - destruct l as [|a l'].
       * intuition.
-      * simpl. destruct (f a), (partition l'); now intros [= -> ->].
+      * simpl. destruct (f a), (mpartition l'); now intros [= -> ->].
     - now intros ->.
   Qed.
 
-  Theorem elements_in_partition l l1 l2:
-    partition l = (l1, l2) ->
-    forall x:A, In x l <-> In x l1 \/ In x l2.
+  Theorem elements_mIn_mpartition l l1 l2:
+    mpartition l = (l1, l2) ->
+    forall x:A, mIn x l <-> mIn x l1 \/ mIn x l2.
   Proof.
     revert l1 l2. induction l as [| a l' Hrec]; simpl; intros l1 l2 Eq x.
     - injection Eq as <- <-. tauto.
-    - destruct (partition l') as (left, right).
+    - destruct (mpartition l') as (left, right).
       specialize (Hrec left right eq_refl x).
       destruct (f a); injection Eq as <- <-; simpl; tauto.
   Qed.
@@ -1306,94 +1303,94 @@ End Fold_Right_Recursor.
 
 
   (******************************************************)
-  (** ** Operations on lists of pairs or lists of lists *)
+  (** ** Operations on mlists of pairs or mlists of mlists *)
   (******************************************************)
 
   Section ListPairs.
     Variables (A : Type) (B : Type).
 
-  (** [split] derives two lists from a list of pairs *)
+  (** [msplit] derives two mlists from a mlist of pairs *)
 
-    Fixpoint split (l:list (A*B)) : list A * list B :=
+    Fixpoint msplit (l:mlist (A*B)) : mlist A * mlist B :=
       match l with
 	| [m:] => ([m:], [m:])
-	| (x,y) :: tl => let (left,right) := split tl in (x::left, y::right)
+	| (x,y) :m: mtl => let (left,right) := msplit mtl in (x:m:left, y:m:right)
       end.
 
-    Lemma in_split_l : forall (l:list (A*B))(p:A*B),
-      In p l -> In (fst p) (fst (split l)).
+    Lemma mIn_msplit_l : forall (l:mlist (A*B))(p:A*B),
+      mIn p l -> mIn (fst p) (fst (msplit l)).
     Proof.
       induction l; simpl; intros; auto.
-      destruct p; destruct a; destruct (split l); simpl in *.
+      destruct p; destruct a; destruct (msplit l); simpl in *.
       destruct H.
       injection H; auto.
       right; apply (IHl (a0,b) H).
     Qed.
 
-    Lemma in_split_r : forall (l:list (A*B))(p:A*B),
-      In p l -> In (snd p) (snd (split l)).
+    Lemma mIn_msplit_r : forall (l:mlist (A*B))(p:A*B),
+      mIn p l -> mIn (snd p) (snd (msplit l)).
     Proof.
       induction l; simpl; intros; auto.
-      destruct p; destruct a; destruct (split l); simpl in *.
+      destruct p; destruct a; destruct (msplit l); simpl in *.
       destruct H.
       injection H; auto.
       right; apply (IHl (a0,b) H).
     Qed.
 
-    Lemma split_nth : forall (l:list (A*B))(n:nat)(d:A*B),
-      nth n l d = (nth n (fst (split l)) (fst d), nth n (snd (split l)) (snd d)).
+    Lemma msplit_mnth : forall (l:mlist (A*B))(n:nat)(d:A*B),
+      mnth n l d = (mnth n (fst (msplit l)) (fst d), mnth n (snd (msplit l)) (snd d)).
     Proof.
       induction l.
       destruct n; destruct d; simpl; auto.
       destruct n; destruct d; simpl; auto.
-      destruct a; destruct (split l); simpl; auto.
-      destruct a; destruct (split l); simpl in *; auto.
+      destruct a; destruct (msplit l); simpl; auto.
+      destruct a; destruct (msplit l); simpl in *; auto.
       apply IHl.
     Qed.
 
-    Lemma split_length_l : forall (l:list (A*B)),
-      length (fst (split l)) = length l.
+    Lemma msplit_mlength_l : forall (l:mlist (A*B)),
+      mlength (fst (msplit l)) = mlength l.
     Proof.
       induction l; simpl; auto.
-      destruct a; destruct (split l); simpl; auto.
+      destruct a; destruct (msplit l); simpl; auto.
     Qed.
 
-    Lemma split_length_r : forall (l:list (A*B)),
-      length (snd (split l)) = length l.
+    Lemma msplit_mlength_r : forall (l:mlist (A*B)),
+      mlength (snd (msplit l)) = mlength l.
     Proof.
       induction l; simpl; auto.
-      destruct a; destruct (split l); simpl; auto.
+      destruct a; destruct (msplit l); simpl; auto.
     Qed.
 
-  (** [combine] is the opposite of [split].
-      Lists given to [combine] are meant to be of same length.
-      If not, [combine] stops on the shorter list *)
+  (** [mcombine] is the opposite of [msplit].
+      Lists given to [mcombine] are meant to be of same mlength.
+      If not, [mcombine] stops on the shorter mlist *)
 
-    Fixpoint combine (l : list A) (l' : list B) : list (A*B) :=
+    Fixpoint mcombine (l : mlist A) (l' : mlist B) : mlist (A*B) :=
       match l,l' with
-	| x::tl, y::tl' => (x,y)::(combine tl tl')
-	| _, _ => nil
+	| x:m:mtl, y:m:mtl' => (x,y):m:(mcombine mtl mtl')
+	| _, _ => mnil
       end.
 
-    Lemma split_combine : forall (l: list (A*B)),
-      let (l1,l2) := split l in combine l1 l2 = l.
+    Lemma msplit_mcombine : forall (l: mlist (A*B)),
+      let (l1,l2) := msplit l in mcombine l1 l2 = l.
     Proof.
       induction l.
       simpl; auto.
       destruct a; simpl.
-      destruct (split l); simpl in *.
+      destruct (msplit l); simpl in *.
       f_equal; auto.
     Qed.
 
-    Lemma combine_split : forall (l:list A)(l':list B), length l = length l' ->
-      split (combine l l') = (l,l').
+    Lemma mcombine_msplit : forall (l:mlist A)(l':mlist B), mlength l = mlength l' ->
+      msplit (mcombine l l') = (l,l').
     Proof.
       induction l, l'; simpl; trivial; try discriminate.
       now intros [= ->%IHl].
     Qed.
 
-    Lemma in_combine_l : forall (l:list A)(l':list B)(x:A)(y:B),
-      In (x,y) (combine l l') -> In x l.
+    Lemma mIn_mcombine_l : forall (l:mlist A)(l':mlist B)(x:A)(y:B),
+      mIn (x,y) (mcombine l l') -> mIn x l.
     Proof.
       induction l.
       simpl; auto.
@@ -1404,8 +1401,8 @@ End Fold_Right_Recursor.
       right; apply IHl with l' y; auto.
     Qed.
 
-    Lemma in_combine_r : forall (l:list A)(l':list B)(x:A)(y:B),
-      In (x,y) (combine l l') -> In y l'.
+    Lemma mIn_mcombine_r : forall (l:mlist A)(l':mlist B)(x:A)(y:B),
+      mIn (x,y) (mcombine l l') -> mIn y l'.
     Proof.
       induction l.
       simpl; intros; contradiction.
@@ -1415,37 +1412,37 @@ End Fold_Right_Recursor.
       right; apply IHl with x; auto.
     Qed.
 
-    Lemma combine_length : forall (l:list A)(l':list B),
-      length (combine l l') = min (length l) (length l').
+    Lemma mcombine_mlength : forall (l:mlist A)(l':mlist B),
+      mlength (mcombine l l') = min (mlength l) (mlength l').
     Proof.
       induction l.
       simpl; auto.
       destruct l'; simpl; auto.
     Qed.
 
-    Lemma combine_nth : forall (l:list A)(l':list B)(n:nat)(x:A)(y:B),
-      length l = length l' ->
-      nth n (combine l l') (x,y) = (nth n l x, nth n l' y).
+    Lemma mcombine_mnth : forall (l:mlist A)(l':mlist B)(n:nat)(x:A)(y:B),
+      mlength l = mlength l' ->
+      mnth n (mcombine l l') (x,y) = (mnth n l x, mnth n l' y).
     Proof.
       induction l; destruct l'; intros; try discriminate.
       destruct n; simpl; auto.
       destruct n; simpl in *; auto.
     Qed.
 
-  (** [list_prod] has the same signature as [combine], but unlike
-     [combine], it adds every possible pairs, not only those at the
+  (** [mlist_prod] has the same signature as [mcombine], but unlike
+     [mcombine], it adds every possible pairs, not only those at the
      same position. *)
 
-    Fixpoint list_prod (l:list A) (l':list B) :
-      list (A * B) :=
+    Fixpoint mlist_prod (l:mlist A) (l':mlist B) :
+      mlist (A * B) :=
       match l with
-	| nil => nil
-	| cons x t => (map (fun y:B => (x, y)) l')++(list_prod t l')
+	| mnil => mnil
+	| mcons x t => (mmap (fun y:B => (x, y)) l')+m+(mlist_prod t l')
       end.
 
-    Lemma in_prod_aux :
-      forall (x:A) (y:B) (l:list B),
-	In y l -> In (x, y) (map (fun y0:B => (x, y0)) l).
+    Lemma mIn_prod_aux :
+      forall (x:A) (y:B) (l:mlist B),
+	mIn y l -> mIn (x, y) (mmap (fun y0:B => (x, y0)) l).
     Proof.
       induction l;
 	[ simpl; auto
@@ -1453,37 +1450,37 @@ End Fold_Right_Recursor.
 	    [ left; rewrite H1; trivial | right; auto ] ].
     Qed.
 
-    Lemma in_prod :
-      forall (l:list A) (l':list B) (x:A) (y:B),
-	In x l -> In y l' -> In (x, y) (list_prod l l').
+    Lemma mIn_prod :
+      forall (l:mlist A) (l':mlist B) (x:A) (y:B),
+	mIn x l -> mIn y l' -> mIn (x, y) (mlist_prod l l').
     Proof.
       induction l;
 	[ simpl; tauto
-	  | simpl; intros; apply in_or_app; destruct H;
-	    [ left; rewrite H; apply in_prod_aux; assumption | right; auto ] ].
+	  | simpl; intros; apply mIn_or_mapp; destruct H;
+	    [ left; rewrite H; apply mIn_prod_aux; assumption | right; auto ] ].
     Qed.
 
-    Lemma in_prod_iff :
-      forall (l:list A)(l':list B)(x:A)(y:B),
-	In (x,y) (list_prod l l') <-> In x l /\ In y l'.
+    Lemma mIn_prod_iff :
+      forall (l:mlist A)(l':mlist B)(x:A)(y:B),
+	mIn (x,y) (mlist_prod l l') <-> mIn x l /\ mIn y l'.
     Proof.
-      split; [ | intros; apply in_prod; intuition ].
+      split; [ | intros; apply mIn_prod; intuition ].
       induction l; simpl; intros.
       intuition.
-      destruct (in_app_or _ _ _ H); clear H.
-      destruct (in_map_iff (fun y : B => (a, y)) l' (x,y)) as (H1,_).
+      destruct (mIn_mapp_or _ _ _ H); clear H.
+      destruct (mIn_mmap_iff (fun y : B => (a, y)) l' (x,y)) as (H1,_).
       destruct (H1 H0) as (z,(H2,H3)); clear H0 H1.
       injection H2 as -> ->; intuition.
       intuition.
     Qed.
 
-    Lemma prod_length : forall (l:list A)(l':list B),
-      length (list_prod l l') = (length l) * (length l').
+    Lemma prod_mlength : forall (l:mlist A)(l':mlist B),
+      mlength (mlist_prod l l') = (mlength l) * (mlength l').
     Proof.
       induction l; simpl; auto.
       intros.
-      rewrite app_length.
-      rewrite map_length.
+      rewrite mapp_mlength.
+      rewrite mmap_mlength.
       auto.
     Qed.
 
@@ -1493,179 +1490,179 @@ End Fold_Right_Recursor.
 
 
 (*****************************************)
-(** * Miscellaneous operations on lists  *)
+(** * Miscellaneous operations on mlists  *)
 (*****************************************)
 
 
 
 (******************************)
-(** ** Length order of lists  *)
+(** ** Length order of mlists  *)
 (******************************)
 
-Section length_order.
+Section mlength_order.
   Variable A : Type.
 
-  Definition lel (l m:list A) := length l <= length m.
+  Definition mlel (l m:mlist A) := mlength l <= mlength m.
 
   Variables a b : A.
-  Variables l m n : list A.
+  Variables l m n : mlist A.
 
-  Lemma lel_refl : lel l l.
+  Lemma mlel_refl : mlel l l.
   Proof.
-    unfold lel; auto with arith.
+    unfold mlel; auto with arith.
   Qed.
 
-  Lemma lel_trans : lel l m -> lel m n -> lel l n.
+  Lemma mlel_trans : mlel l m -> mlel m n -> mlel l n.
   Proof.
-    unfold lel; intros.
-    now_show (length l <= length n).
-    apply le_trans with (length m); auto with arith.
+    unfold mlel; intros.
+    now_show (mlength l <= mlength n).
+    apply le_trans with (mlength m); auto with arith.
   Qed.
 
-  Lemma lel_cons_cons : lel l m -> lel (a :: l) (b :: m).
+  Lemma mlel_mcons_mcons : mlel l m -> mlel (a :m: l) (b :m: m).
   Proof.
-    unfold lel; simpl; auto with arith.
+    unfold mlel; simpl; auto with arith.
   Qed.
 
-  Lemma lel_cons : lel l m -> lel l (b :: m).
+  Lemma mlel_mcons : mlel l m -> mlel l (b :m: m).
   Proof.
-    unfold lel; simpl; auto with arith.
+    unfold mlel; simpl; auto with arith.
   Qed.
 
-  Lemma lel_tail : lel (a :: l) (b :: m) -> lel l m.
+  Lemma mlel_tail : mlel (a :m: l) (b :m: m) -> mlel l m.
   Proof.
-    unfold lel; simpl; auto with arith.
+    unfold mlel; simpl; auto with arith.
   Qed.
 
-  Lemma lel_nil : forall l':list A, lel l' nil -> nil = l'.
+  Lemma mlel_mnil : forall l':mlist A, mlel l' mnil -> mnil = l'.
   Proof.
     intro l'; elim l'; auto with arith.
     intros a' y H H0.
-    now_show (nil = a' :: y).
-    absurd (S (length y) <= 0); auto with arith.
+    now_show (mnil = a' :m: y).
+    absurd (S (mlength y) <= 0); auto with arith.
   Qed.
-End length_order.
+End mlength_order.
 
-Hint Resolve lel_refl lel_cons_cons lel_cons lel_nil lel_nil nil_cons:
+Hint Resolve mlel_refl mlel_mcons_mcons mlel_mcons mlel_mnil mlel_mnil mnil_mcons:
   datatypes.
 
 
 (******************************)
-(** ** Set inclusion on list  *)
+(** ** Set minclusion on mlist  *)
 (******************************)
 
-Section SetIncl.
+Section SetmIncl.
 
   Variable A : Type.
 
-  Definition incl (l m:list A) := forall a:A, In a l -> In a m.
-  Hint Unfold incl.
+  Definition mincl (l m:mlist A) := forall a:A, mIn a l -> mIn a m.
+  Hint Unfold mincl.
 
-  Lemma incl_refl : forall l:list A, incl l l.
+  Lemma mincl_refl : forall l:mlist A, mincl l l.
   Proof.
     auto.
   Qed.
-  Hint Resolve incl_refl.
+  Hint Resolve mincl_refl.
 
-  Lemma incl_tl : forall (a:A) (l m:list A), incl l m -> incl l (a :: m).
+  Lemma mincl_mtl : forall (a:A) (l m:mlist A), mincl l m -> mincl l (a :m: m).
   Proof.
     auto with datatypes.
   Qed.
-  Hint Immediate incl_tl.
+  Hint Immediate mincl_mtl.
 
-  Lemma incl_tran : forall l m n:list A, incl l m -> incl m n -> incl l n.
+  Lemma mincl_tran : forall l m n:mlist A, mincl l m -> mincl m n -> mincl l n.
   Proof.
     auto.
   Qed.
 
-  Lemma incl_appl : forall l m n:list A, incl l n -> incl l (n ++ m).
+  Lemma mincl_mappl : forall l m n:mlist A, mincl l n -> mincl l (n +m+ m).
   Proof.
     auto with datatypes.
   Qed.
-  Hint Immediate incl_appl.
+  Hint Immediate mincl_mappl.
 
-  Lemma incl_appr : forall l m n:list A, incl l n -> incl l (m ++ n).
+  Lemma mincl_mappr : forall l m n:mlist A, mincl l n -> mincl l (m +m+ n).
   Proof.
     auto with datatypes.
   Qed.
-  Hint Immediate incl_appr.
+  Hint Immediate mincl_mappr.
 
-  Lemma incl_cons :
-    forall (a:A) (l m:list A), In a m -> incl l m -> incl (a :: l) m.
+  Lemma mincl_mcons :
+    forall (a:A) (l m:mlist A), mIn a m -> mincl l m -> mincl (a :m: l) m.
   Proof.
-    unfold incl; simpl; intros a l m H H0 a0 H1.
-    now_show (In a0 m).
+    unfold mincl; simpl; intros a l m H H0 a0 H1.
+    now_show (mIn a0 m).
     elim H1.
-    now_show (a = a0 -> In a0 m).
+    now_show (a = a0 -> mIn a0 m).
     elim H1; auto; intro H2.
-    now_show (a = a0 -> In a0 m).
+    now_show (a = a0 -> mIn a0 m).
     elim H2; auto. (* solves subgoal *)
-    now_show (In a0 l -> In a0 m).
+    now_show (mIn a0 l -> mIn a0 m).
     auto.
   Qed.
-  Hint Resolve incl_cons.
+  Hint Resolve mincl_mcons.
 
-  Lemma incl_app : forall l m n:list A, incl l n -> incl m n -> incl (l ++ m) n.
+  Lemma mincl_mapp : forall l m n:mlist A, mincl l n -> mincl m n -> mincl (l +m+ m) n.
   Proof.
-    unfold incl; simpl; intros l m n H H0 a H1.
-    now_show (In a n).
-    elim (in_app_or _ _ _ H1); auto.
+    unfold mincl; simpl; intros l m n H H0 a H1.
+    now_show (mIn a n).
+    elim (mIn_mapp_or _ _ _ H1); auto.
   Qed.
-  Hint Resolve incl_app.
+  Hint Resolve mincl_mapp.
 
-End SetIncl.
+End SetmIncl.
 
-Hint Resolve incl_refl incl_tl incl_tran incl_appl incl_appr incl_cons
-  incl_app: datatypes.
+Hint Resolve mincl_refl mincl_mtl mincl_tran mincl_mappl mincl_mappr mincl_mcons
+  mincl_mapp: datatypes.
 
 
 (**************************************)
-(** * Cutting a list at some position *)
+(** * Cutting a mlist at some position *)
 (**************************************)
 
 Section Cutting.
 
   Variable A : Type.
 
-  Fixpoint firstn (n:nat)(l:list A) : list A :=
+  Fixpoint mfirstn (n:nat)(l:mlist A) : mlist A :=
     match n with
-      | 0 => nil
+      | 0 => mnil
       | S n => match l with
-		 | nil => nil
-		 | a::l => a::(firstn n l)
+		 | mnil => mnil
+		 | a:m:l => a:m:(mfirstn n l)
 	       end
     end.
 
-  Lemma firstn_nil n: firstn n [m:] = [m:].
+  Lemma mfirstn_mnil n: mfirstn n [m:] = [m:].
   Proof. induction n; now simpl. Qed.
 
-  Lemma firstn_cons n a l: firstn (S n) (a::l) = a :: (firstn n l).
+  Lemma mfirstn_mcons n a l: mfirstn (S n) (a:m:l) = a :m: (mfirstn n l).
   Proof. now simpl. Qed.
 
-  Lemma firstn_all l: firstn (length l) l = l.
+  Lemma mfirstn_all l: mfirstn (mlength l) l = l.
   Proof. induction l as [| ? ? H]; simpl; [reflexivity | now rewrite H]. Qed.
 
-  Lemma firstn_all2 n: forall (l:list A), (length l) <= n -> firstn n l = l.
+  Lemma mfirstn_all2 n: forall (l:mlist A), (mlength l) <= n -> mfirstn n l = l.
   Proof. induction n as [|k iHk].
     - intro. inversion 1 as [H1|?].
-      rewrite (length_zero_iff_nil l) in H1. subst. now simpl.
+      rewrite (mlength_zero_iff_mnil l) in H1. subst. now simpl.
     - destruct l as [|x xs]; simpl.
       * now reflexivity.
       * simpl. intro H. apply Peano.le_S_n in H. f_equal. apply iHk, H.
   Qed.
 
-  Lemma firstn_O l: firstn 0 l = [m:].
+  Lemma mfirstn_O l: mfirstn 0 l = [m:].
   Proof. now simpl. Qed.
 
-  Lemma firstn_le_length n: forall l:list A, length (firstn n l) <= n.
+  Lemma mfirstn_le_mlength n: forall l:mlist A, mlength (mfirstn n l) <= n.
   Proof.
     induction n as [|k iHk]; simpl; [auto | destruct l as [|x xs]; simpl].
     - auto with arith.
     - apply Peano.le_n_S, iHk.
   Qed.
 
-  Lemma firstn_length_le: forall l:list A, forall n:nat,
-    n <= length l -> length (firstn n l) = n.
+  Lemma mfirstn_mlength_le: forall l:mlist A, forall n:nat,
+    n <= mlength l -> mlength (mfirstn n l) = n.
   Proof. induction l as [|x xs Hrec].
     - simpl. intros n H. apply le_n_0_eq in H. rewrite <- H. now simpl.
     - destruct n.
@@ -1673,36 +1670,36 @@ Section Cutting.
       * simpl. intro H. apply le_S_n in H. now rewrite (Hrec n H).
   Qed.
 
-  Lemma firstn_app n:
+  Lemma mfirstn_mapp n:
     forall l1 l2,
-    firstn n (l1 ++ l2) = (firstn n l1) ++ (firstn (n - length l1) l2).
+    mfirstn n (l1 +m+ l2) = (mfirstn n l1) +m+ (mfirstn (n - mlength l1) l2).
   Proof. induction n as [|k iHk]; intros l1 l2.
     - now simpl.
     - destruct l1 as [|x xs].
-      * unfold firstn at 2, length. now rewrite 2!app_nil_l, <- minus_n_O.
-      * rewrite <- app_comm_cons. simpl. f_equal. apply iHk.
+      * unfold mfirstn at 2, mlength. now rewrite 2!mapp_mnil_l, <- minus_n_O.
+      * rewrite <- mapp_comm_mcons. simpl. f_equal. apply iHk.
   Qed.
 
-  Lemma firstn_app_2 n:
+  Lemma mfirstn_mapp_2 n:
     forall l1 l2,
-    firstn ((length l1) + n) (l1 ++ l2) = l1 ++ firstn n l2.
+    mfirstn ((mlength l1) + n) (l1 +m+ l2) = l1 +m+ mfirstn n l2.
   Proof. induction n as [| k iHk];intros l1 l2.
-    - unfold firstn at 2. rewrite <- plus_n_O, app_nil_r.
-      rewrite firstn_app. rewrite <- minus_diag_reverse.
-      unfold firstn at 2. rewrite app_nil_r. apply firstn_all.
+    - unfold mfirstn at 2. rewrite <- plus_n_O, mapp_mnil_r.
+      rewrite mfirstn_mapp. rewrite <- minus_diag_reverse.
+      unfold mfirstn at 2. rewrite mapp_mnil_r. apply mfirstn_all.
     - destruct l2 as [|x xs].
-      * simpl. rewrite app_nil_r. apply firstn_all2. auto with arith.
-      * rewrite firstn_app. assert (H0 : (length l1 + S k - length l1) = S k).
+      * simpl. rewrite mapp_mnil_r. apply mfirstn_all2. auto with arith.
+      * rewrite mfirstn_mapp. assert (H0 : (mlength l1 + S k - mlength l1) = S k).
         auto with arith.
-        rewrite H0, firstn_all2; [reflexivity | auto with arith].
+        rewrite H0, mfirstn_all2; [reflexivity | auto with arith].
   Qed.
 
-  Lemma firstn_firstn:
-    forall l:list A,
+  Lemma mfirstn_mfirstn:
+    forall l:mlist A,
     forall i j : nat,
-    firstn i (firstn j l) = firstn (min i j) l.
+    mfirstn i (mfirstn j l) = mfirstn (min i j) l.
   Proof. induction l as [|x xs Hl].
-    - intros. simpl. now rewrite ?firstn_nil.
+    - intros. simpl. now rewrite ?mfirstn_mnil.
     - destruct i.
       * intro. now simpl.
       * destruct j.
@@ -1710,16 +1707,16 @@ Section Cutting.
         + simpl. f_equal. apply Hl.
   Qed.
 
-  Fixpoint skipn (n:nat)(l:list A) : list A :=
+  Fixpoint skipn (n:nat)(l:mlist A) : mlist A :=
     match n with
       | 0 => l
       | S n => match l with
-		 | nil => nil
-		 | a::l => skipn n l
+		 | mnil => mnil
+		 | a:m:l => skipn n l
 	       end
     end.
 
-  Lemma firstn_skipn : forall n l, firstn n l ++ skipn n l = l.
+  Lemma mfirstn_skipn : forall n l, mfirstn n l +m+ skipn n l = l.
   Proof.
     induction n.
     simpl; auto.
@@ -1727,13 +1724,13 @@ Section Cutting.
     f_equal; auto.
   Qed.
 
-  Lemma firstn_length : forall n l, length (firstn n l) = min n (length l).
+  Lemma mfirstn_mlength : forall n l, mlength (mfirstn n l) = min n (mlength l).
   Proof.
     induction n; destruct l; simpl; auto.
   Qed.
 
-   Lemma removelast_firstn : forall n l, n < length l ->
-     removelast (firstn (S n) l) = firstn n l.
+   Lemma mremovemlast_mfirstn : forall n l, n < mlength l ->
+     mremovemlast (mfirstn (S n) l) = mfirstn n l.
    Proof.
      induction n; destruct l.
      simpl; auto.
@@ -1741,9 +1738,9 @@ Section Cutting.
      simpl; auto.
      intros.
      simpl in H.
-     change (firstn (S (S n)) (a::l)) with ((a::nil)++firstn (S n) l).
-     change (firstn (S n) (a::l)) with (a::firstn n l).
-     rewrite removelast_app.
+     change (mfirstn (S (S n)) (a:m:l)) with ((a:m:mnil)+m+mfirstn (S n) l).
+     change (mfirstn (S n) (a:m:l)) with (a:m:mfirstn n l).
+     rewrite mremovemlast_mapp.
      rewrite IHn; auto with arith.
 
      clear IHn; destruct l; simpl in *; try discriminate.
@@ -1751,8 +1748,8 @@ Section Cutting.
      inversion_clear H0.
    Qed.
 
-   Lemma firstn_removelast : forall n l, n < length l ->
-     firstn n (removelast l) = firstn n l.
+   Lemma mfirstn_mremovemlast : forall n l, n < mlength l ->
+     mfirstn n (mremovemlast l) = mfirstn n l.
    Proof.
      induction n; destruct l.
      simpl; auto.
@@ -1760,8 +1757,8 @@ Section Cutting.
      simpl; auto.
      intros.
      simpl in H.
-     change (removelast (a :: l)) with (removelast ((a::nil)++l)).
-     rewrite removelast_app.
+     change (mremovemlast (a :m: l)) with (mremovemlast ((a:m:mnil)+m+l)).
+     rewrite mremovemlast_mapp.
      simpl; f_equal; auto with arith.
      intro H0; rewrite H0 in H; inversion_clear H; inversion_clear H1.
    Qed.
@@ -1772,57 +1769,57 @@ End Cutting.
 (** ** Predicate for List addition/removal (no need for decidability) *)
 (**********************************************************************)
 
-Section Add.
+Section mAdd.
 
   Variable A : Type.
 
-  (* [Add a l l'] means that [l'] is exactly [l], with [a] added
+  (* [mAdd a l l'] means that [l'] is exacmtly [l], with [a] added
      once somewhere *)
-  Inductive Add (a:A) : list A -> list A -> Prop :=
-    | Add_head l : Add a l (a::l)
-    | Add_cons x l l' : Add a l l' -> Add a (x::l) (x::l').
+  Inductive mAdd (a:A) : mlist A -> mlist A -> Prop :=
+    | mAdd_head l : mAdd a l (a:m:l)
+    | mAdd_mcons x l l' : mAdd a l l' -> mAdd a (x:m:l) (x:m:l').
 
-  Lemma Add_app a l1 l2 : Add a (l1++l2) (l1++a::l2).
+  Lemma mAdd_mapp a l1 l2 : mAdd a (l1+m+l2) (l1+m+a:m:l2).
   Proof.
    induction l1; simpl; now constructor.
   Qed.
 
-  Lemma Add_split a l l' :
-    Add a l l' -> exists l1 l2, l = l1++l2 /\ l' = l1++a::l2.
+  Lemma mAdd_msplit a l l' :
+    mAdd a l l' -> exists l1 l2, l = l1+m+l2 /\ l' = l1+m+a:m:l2.
   Proof.
    induction 1.
-   - exists nil; exists l; split; trivial.
-   - destruct IHAdd as (l1 & l2 & Hl & Hl').
-     exists (x::l1); exists l2; split; simpl; f_equal; trivial.
+   - exists mnil; exists l; split; trivial.
+   - destruct IHmAdd as (l1 & l2 & Hl & Hl').
+     exists (x:m:l1); exists l2; split; simpl; f_equal; trivial.
   Qed.
 
-  Lemma Add_in a l l' : Add a l l' ->
-   forall x, In x l' <-> In x (a::l).
+  Lemma mAdd_in a l l' : mAdd a l l' ->
+   forall x, mIn x l' <-> mIn x (a:m:l).
   Proof.
-   induction 1; intros; simpl in *; rewrite ?IHAdd; tauto.
+   induction 1; intros; simpl in *; rewrite ?IHmAdd; tauto.
   Qed.
 
-  Lemma Add_length a l l' : Add a l l' -> length l' = S (length l).
+  Lemma mAdd_mlength a l l' : mAdd a l l' -> mlength l' = S (mlength l).
   Proof.
    induction 1; simpl; auto with arith.
   Qed.
 
-  Lemma Add_inv a l : In a l -> exists l', Add a l' l.
+  Lemma mAdd_inv a l : mIn a l -> exists l', mAdd a l' l.
   Proof.
-   intro Ha. destruct (in_split _ _ Ha) as (l1 & l2 & ->).
-   exists (l1 ++ l2). apply Add_app.
+   intro Ha. destruct (mIn_msplit _ _ Ha) as (l1 & l2 & ->).
+   exists (l1 +m+ l2). apply mAdd_mapp.
   Qed.
 
-  Lemma incl_Add_inv a l u v :
-    ~In a l -> incl (a::l) v -> Add a u v -> incl l u.
+  Lemma mincl_mAdd_inv a l u v :
+    ~mIn a l -> mincl (a:m:l) v -> mAdd a u v -> mincl l u.
   Proof.
    intros Ha H AD y Hy.
-   assert (Hy' : In y (a::u)).
-   { rewrite <- (Add_in AD). apply H; simpl; auto. }
+   assert (Hy' : mIn y (a:m:u)).
+   { rewrite <- (mAdd_in AD). apply H; simpl; auto. }
    destruct Hy'; [ subst; now elim Ha | trivial ].
   Qed.
 
-End Add.
+End mAdd.
 
 (********************************)
 (** ** Lists without redundancy *)
@@ -1832,102 +1829,102 @@ Section ReDun.
 
   Variable A : Type.
 
-  Inductive NoDup : list A -> Prop :=
-    | NoDup_nil : NoDup nil
-    | NoDup_cons : forall x l, ~ In x l -> NoDup l -> NoDup (x::l).
+  Inductive mNoDup : mlist A -> Prop :=
+    | mNoDup_mnil : mNoDup mnil
+    | mNoDup_mcons : forall x l, ~ mIn x l -> mNoDup l -> mNoDup (x:m:l).
 
-  Lemma NoDup_Add a l l' : Add a l l' -> (NoDup l' <-> NoDup l /\ ~In a l).
+  Lemma mNoDup_mAdd a l l' : mAdd a l l' -> (mNoDup l' <-> mNoDup l /\ ~mIn a l).
   Proof.
    induction 1 as [l|x l l' AD IH].
    - split; [ inversion_clear 1; now split | now constructor ].
    - split.
-     + inversion_clear 1. rewrite IH in *. rewrite (Add_in AD) in *.
+     + inversion_clear 1. rewrite IH in *. rewrite (mAdd_in AD) in *.
        simpl in *; split; try constructor; intuition.
      + intros (N,IN). inversion_clear N. constructor.
-       * rewrite (Add_in AD); simpl in *; intuition.
+       * rewrite (mAdd_in AD); simpl in *; intuition.
        * apply IH. split; trivial. simpl in *; intuition.
   Qed.
 
-  Lemma NoDup_remove l l' a :
-    NoDup (l++a::l') -> NoDup (l++l') /\ ~In a (l++l').
+  Lemma mNoDup_mremove l l' a :
+    mNoDup (l+m+a:m:l') -> mNoDup (l+m+l') /\ ~mIn a (l+m+l').
   Proof.
-  apply NoDup_Add. apply Add_app.
+  apply mNoDup_mAdd. apply mAdd_mapp.
   Qed.
 
-  Lemma NoDup_remove_1 l l' a : NoDup (l++a::l') -> NoDup (l++l').
+  Lemma mNoDup_mremove_1 l l' a : mNoDup (l+m+a:m:l') -> mNoDup (l+m+l').
   Proof.
-  intros. now apply NoDup_remove with a.
+  intros. now apply mNoDup_mremove with a.
   Qed.
 
-  Lemma NoDup_remove_2 l l' a : NoDup (l++a::l') -> ~In a (l++l').
+  Lemma mNoDup_mremove_2 l l' a : mNoDup (l+m+a:m:l') -> ~mIn a (l+m+l').
   Proof.
-  intros. now apply NoDup_remove.
+  intros. now apply mNoDup_mremove.
   Qed.
 
-  Theorem NoDup_cons_iff a l:
-    NoDup (a::l) <-> ~ In a l /\ NoDup l.
+  Theorem mNoDup_mcons_iff a l:
+    mNoDup (a:m:l) <-> ~ mIn a l /\ mNoDup l.
   Proof.
     split.
     + inversion_clear 1. now split.
     + now constructor.
   Qed.
 
-  (** Effective computation of a list without duplicates *)
+  (** Effective computation of a mlist without duplicates *)
 
   Hypothesis decA: forall x y : A, {x = y} + {x <> y}.
 
-  Fixpoint nodup (l : list A) : list A :=
+  Fixpoint nodup (l : mlist A) : mlist A :=
     match l with
       | [m:] => [m:]
-      | x::xs => if in_dec decA x xs then nodup xs else x::(nodup xs)
+      | x:m:xs => if mIn_dec decA x xs then nodup xs else x:m:(nodup xs)
     end.
 
-  Lemma nodup_In l x : In x (nodup l) <-> In x l.
+  Lemma nodup_mIn l x : mIn x (nodup l) <-> mIn x l.
   Proof.
     induction l as [|a l' Hrec]; simpl.
     - reflexivity.
-    - destruct (in_dec decA a l'); simpl; rewrite Hrec.
+    - destruct (mIn_dec decA a l'); simpl; rewrite Hrec.
       * intuition; now subst.
       * reflexivity.
   Qed.
 
-  Lemma NoDup_nodup l: NoDup (nodup l).
+  Lemma mNoDup_nodup l: mNoDup (nodup l).
   Proof.
     induction l as [|a l' Hrec]; simpl.
     - constructor.
-    - destruct (in_dec decA a l'); simpl.
+    - destruct (mIn_dec decA a l'); simpl.
       * assumption.
-      * constructor; [ now rewrite nodup_In | assumption].
+      * constructor; [ now rewrite nodup_mIn | assumption].
   Qed.
 
-  Lemma nodup_inv k l a : nodup k = a :: l -> ~ In a l.
+  Lemma nodup_inv k l a : nodup k = a :m: l -> ~ mIn a l.
   Proof.
     intros H.
-    assert (H' : NoDup (a::l)).
-    { rewrite <- H. apply NoDup_nodup. }
+    assert (H' : mNoDup (a:m:l)).
+    { rewrite <- H. apply mNoDup_nodup. }
     now inversion_clear H'.
   Qed.
 
-  Theorem NoDup_count_occ l:
-    NoDup l <-> (forall x:A, count_occ decA l x <= 1).
+  Theorem mNoDup_count_occ l:
+    mNoDup l <-> (forall x:A, count_occ decA l x <= 1).
   Proof.
     induction l as [| a l' Hrec].
     - simpl; split; auto. constructor.
-    - rewrite NoDup_cons_iff, Hrec, (count_occ_not_In decA). clear Hrec. split.
+    - rewrite mNoDup_mcons_iff, Hrec, (count_occ_not_mIn decA). clear Hrec. split.
       + intros (Ha, H) x. simpl. destruct (decA a x); auto.
         subst; now rewrite Ha.
       + split.
-        * specialize (H a). rewrite count_occ_cons_eq in H; trivial.
+        * specialize (H a). rewrite count_occ_mcons_eq in H; trivial.
           now inversion H.
         * intros x. specialize (H x). simpl in *. destruct (decA a x); auto.
           now apply Nat.lt_le_incl.
   Qed.
 
-  Theorem NoDup_count_occ' l:
-    NoDup l <-> (forall x:A, In x l -> count_occ decA l x = 1).
+  Theorem mNoDup_count_occ' l:
+    mNoDup l <-> (forall x:A, mIn x l -> count_occ decA l x = 1).
   Proof.
-    rewrite NoDup_count_occ.
-    setoid_rewrite (count_occ_In decA). unfold gt, lt in *.
+    rewrite mNoDup_count_occ.
+    setoid_rewrite (count_occ_mIn decA). unfold gt, lt in *.
     split; intros H x; specialize (H x);
     set (n := count_occ decA l x) in *; clearbody n.
     (* the rest would be solved by omega if we had it here... *)
@@ -1938,84 +1935,84 @@ Section ReDun.
   Qed.
 
   (** Alternative characterisations of being without duplicates,
-      thanks to [nth_error] and [nth] *)
+      thanks to [mnth_error] and [mnth] *)
 
-  Lemma NoDup_nth_error l :
-    NoDup l <->
-    (forall i j, i<length l -> nth_error l i = nth_error l j -> i = j).
+  Lemma mNoDup_mnth_error l :
+    mNoDup l <->
+    (forall i j, i<mlength l -> mnth_error l i = mnth_error l j -> i = j).
   Proof.
     split.
     { intros H; induction H as [|a l Hal Hl IH]; intros i j Hi E.
       - inversion Hi.
       - destruct i, j; simpl in *; auto.
-        * elim Hal. eapply nth_error_In; eauto.
-        * elim Hal. eapply nth_error_In; eauto.
+        * elim Hal. eapply mnth_error_mIn; eauto.
+        * elim Hal. eapply mnth_error_mIn; eauto.
         * f_equal. apply IH; auto with arith. }
     { induction l as [|a l]; intros H; constructor.
-      * intro Ha. apply In_nth_error in Ha. destruct Ha as (n,Hn).
-        assert (n < length l) by (now rewrite <- nth_error_Some, Hn).
+      * intro Ha. apply mIn_mnth_error in Ha. destruct Ha as (n,Hn).
+        assert (n < mlength l) by (now rewrite <- mnth_error_Some, Hn).
         specialize (H 0 (S n)). simpl in H. discriminate H; auto with arith.
       * apply IHl.
         intros i j Hi E. apply eq_add_S, H; simpl; auto with arith. }
   Qed.
 
-  Lemma NoDup_nth l d :
-    NoDup l <->
-    (forall i j, i<length l -> j<length l ->
-       nth i l d = nth j l d -> i = j).
+  Lemma mNoDup_mnth l d :
+    mNoDup l <->
+    (forall i j, i<mlength l -> j<mlength l ->
+       mnth i l d = mnth j l d -> i = j).
   Proof.
     split.
     { intros H; induction H as [|a l Hal Hl IH]; intros i j Hi Hj E.
       - inversion Hi.
       - destruct i, j; simpl in *; auto.
-        * elim Hal. subst a. apply nth_In; auto with arith.
-        * elim Hal. subst a. apply nth_In; auto with arith.
+        * elim Hal. subst a. apply mnth_mIn; auto with arith.
+        * elim Hal. subst a. apply mnth_mIn; auto with arith.
         * f_equal. apply IH; auto with arith. }
     { induction l as [|a l]; intros H; constructor.
-      * intro Ha. eapply In_nth in Ha. destruct Ha as (n & Hn & Hn').
+      * intro Ha. eapply mIn_mnth in Ha. destruct Ha as (n & Hn & Hn').
         specialize (H 0 (S n)). simpl in H. discriminate H; eauto with arith.
       * apply IHl.
         intros i j Hi Hj E. apply eq_add_S, H; simpl; auto with arith. }
   Qed.
 
-  (** Having [NoDup] hypotheses bring more precise facts about [incl]. *)
+  (** Having [mNoDup] hypotheses bring more precise facts about [mincl]. *)
 
-  Lemma NoDup_incl_length l l' :
-    NoDup l -> incl l l' -> length l <= length l'.
+  Lemma mNoDup_mincl_mlength l l' :
+    mNoDup l -> mincl l l' -> mlength l <= mlength l'.
   Proof.
    intros N. revert l'. induction N as [|a l Hal N IH]; simpl.
    - auto with arith.
    - intros l' H.
-     destruct (Add_inv a l') as (l'', AD). { apply H; simpl; auto. }
-     rewrite (Add_length AD). apply le_n_S. apply IH.
-     now apply incl_Add_inv with a l'.
+     destruct (mAdd_inv a l') as (l'', AD). { apply H; simpl; auto. }
+     rewrite (mAdd_mlength AD). apply le_n_S. apply IH.
+     now apply mincl_mAdd_inv with a l'.
   Qed.
 
-  Lemma NoDup_length_incl l l' :
-    NoDup l -> length l' <= length l -> incl l l' -> incl l' l.
+  Lemma mNoDup_mlength_mincl l l' :
+    mNoDup l -> mlength l' <= mlength l -> mincl l l' -> mincl l' l.
   Proof.
    intros N. revert l'. induction N as [|a l Hal N IH].
    - destruct l'; easy.
    - intros l' E H x Hx.
-     destruct (Add_inv a l') as (l'', AD). { apply H; simpl; auto. }
-     rewrite (Add_in AD) in Hx. simpl in Hx.
+     destruct (mAdd_inv a l') as (l'', AD). { apply H; simpl; auto. }
+     rewrite (mAdd_in AD) in Hx. simpl in Hx.
      destruct Hx as [Hx|Hx]; [left; trivial|right].
      revert x Hx. apply (IH l''); trivial.
-     * apply le_S_n. now rewrite <- (Add_length AD).
-     * now apply incl_Add_inv with a l'.
+     * apply le_S_n. now rewrite <- (mAdd_mlength AD).
+     * now apply mincl_mAdd_inv with a l'.
   Qed.
 
 End ReDun.
 
-(** NoDup and map *)
+(** mNoDup and mmap *)
 
 (** NB: the reciprocal result holds only for injective functions,
     see FinFun.v *)
 
-Lemma NoDup_map_inv A B (f:A->B) l : NoDup (map f l) -> NoDup l.
+Lemma mNoDup_mmap_inv A B (f:A->B) l : mNoDup (mmap f l) -> mNoDup l.
 Proof.
  induction l; simpl; inversion_clear 1; subst; constructor; auto.
- intro H. now apply (in_map f) in H.
+ intro H. now apply (mIn_mmap f) in H.
 Qed.
 
 (***********************************)
@@ -2024,33 +2021,33 @@ Qed.
 
 Section NatSeq.
 
-  (** [seq] computes the sequence of [len] contiguous integers
-      that starts at [start]. For instance, [seq 2 3] is [2::3::4::nil]. *)
+  (** [mseq] computes the sequence of [len] contiguous integers
+      that starts at [start]. For instance, [mseq 2 3] is [2:m:3:m:4:m:mnil]. *)
 
-  Fixpoint seq (start len:nat) : list nat :=
+  Fixpoint mseq (start len:nat) : mlist nat :=
     match len with
-      | 0 => nil
-      | S len => start :: seq (S start) len
+      | 0 => mnil
+      | S len => start :m: mseq (S start) len
     end.
 
-  Lemma seq_length : forall len start, length (seq start len) = len.
+  Lemma mseq_mlength : forall len start, mlength (mseq start len) = len.
   Proof.
     induction len; simpl; auto.
   Qed.
 
-  Lemma seq_nth : forall len start n d,
-    n < len -> nth n (seq start len) d = start+n.
+  Lemma mseq_mnth : forall len start n d,
+    n < len -> mnth n (mseq start len) d = start+n.
   Proof.
     induction len; intros.
     inversion H.
-    simpl seq.
+    simpl mseq.
     destruct n; simpl.
     auto with arith.
     rewrite IHlen;simpl; auto with arith.
   Qed.
 
-  Lemma seq_shift : forall len start,
-    map S (seq start len) = seq (S start) len.
+  Lemma mseq_shift : forall len start,
+    mmap S (mseq start len) = mseq (S start) len.
   Proof.
     induction len; simpl; auto.
     intros.
@@ -2058,8 +2055,8 @@ Section NatSeq.
     auto with arith.
   Qed.
 
-  Lemma in_seq len start n :
-    In n (seq start len) <-> start <= n < start+len.
+  Lemma mIn_mseq len start n :
+    mIn n (mseq start len) <-> start <= n < start+len.
   Proof.
    revert start. induction len; simpl; intros.
    - rewrite <- plus_n_O. split;[easy|].
@@ -2069,17 +2066,17 @@ Section NatSeq.
      * intros (H,H'). destruct (Lt.le_lt_or_eq _ _ H); intuition.
   Qed.
 
-  Lemma seq_NoDup len start : NoDup (seq start len).
+  Lemma mseq_mNoDup len start : mNoDup (mseq start len).
   Proof.
    revert start; induction len; simpl; constructor; trivial.
-   rewrite in_seq. intros (H,_). apply (Lt.lt_irrefl _ H).
+   rewrite mIn_mseq. intros (H,_). apply (Lt.lt_irrefl _ H).
   Qed.
 
 End NatSeq.
 
-Section Exists_Forall.
+Section mExists_mForall.
 
-  (** * Existential and universal predicates over lists *)
+  (** * Existential and universal predicates over mlists *)
 
   Variable A:Type.
 
@@ -2087,240 +2084,240 @@ Section Exists_Forall.
 
     Variable P:A->Prop.
 
-    Inductive Exists : list A -> Prop :=
-      | Exists_cons_hd : forall x l, P x -> Exists (x::l)
-      | Exists_cons_tl : forall x l, Exists l -> Exists (x::l).
+    Inductive mExists : mlist A -> Prop :=
+      | mExists_mcons_mhd : forall x l, P x -> mExists (x:m:l)
+      | mExists_mcons_mtl : forall x l, mExists l -> mExists (x:m:l).
 
-    Hint Constructors Exists.
+    Hint Constructors mExists.
 
-    Lemma Exists_exists (l:list A) :
-      Exists l <-> (exists x, In x l /\ P x).
+    Lemma mExists_exists (l:mlist A) :
+      mExists l <-> (exists x, mIn x l /\ P x).
     Proof.
       split.
       - induction 1; firstorder.
       - induction l; firstorder; subst; auto.
     Qed.
 
-    Lemma Exists_nil : Exists nil <-> False.
+    Lemma mExists_mnil : mExists mnil <-> False.
     Proof. split; inversion 1. Qed.
 
-    Lemma Exists_cons x l:
-      Exists (x::l) <-> P x \/ Exists l.
+    Lemma mExists_mcons x l:
+      mExists (x:m:l) <-> P x \/ mExists l.
     Proof. split; inversion 1; auto. Qed.
 
-    Lemma Exists_dec l:
+    Lemma mExists_dec l:
       (forall x:A, {P x} + { ~ P x }) ->
-      {Exists l} + {~ Exists l}.
+      {mExists l} + {~ mExists l}.
     Proof.
       intro Pdec. induction l as [|a l' Hrec].
-      - right. now rewrite Exists_nil.
+      - right. now rewrite mExists_mnil.
       - destruct Hrec as [Hl'|Hl'].
-        * left. now apply Exists_cons_tl.
+        * left. now apply mExists_mcons_mtl.
         * destruct (Pdec a) as [Ha|Ha].
-          + left. now apply Exists_cons_hd.
+          + left. now apply mExists_mcons_mhd.
           + right. now inversion_clear 1.
     Qed.
 
-    Inductive Forall : list A -> Prop :=
-      | Forall_nil : Forall nil
-      | Forall_cons : forall x l, P x -> Forall l -> Forall (x::l).
+    Inductive mForall : mlist A -> Prop :=
+      | mForall_mnil : mForall mnil
+      | mForall_mcons : forall x l, P x -> mForall l -> mForall (x:m:l).
 
-    Hint Constructors Forall.
+    Hint Constructors mForall.
 
-    Lemma Forall_forall (l:list A):
-      Forall l <-> (forall x, In x l -> P x).
+    Lemma mForall_forall (l:mlist A):
+      mForall l <-> (forall x, mIn x l -> P x).
     Proof.
       split.
       - induction 1; firstorder; subst; auto.
       - induction l; firstorder.
     Qed.
 
-    Lemma Forall_inv : forall (a:A) l, Forall (a :: l) -> P a.
+    Lemma mForall_inv : forall (a:A) l, mForall (a :m: l) -> P a.
     Proof.
       intros; inversion H; trivial.
     Qed.
 
-    Lemma Forall_rect : forall (Q : list A -> Type),
-      Q [m:] -> (forall b l, P b -> Q (b :: l)) -> forall l, Forall l -> Q l.
+    Lemma mForall_rect : forall (Q : mlist A -> Type),
+      Q [m:] -> (forall b l, P b -> Q (b :m: l)) -> forall l, mForall l -> Q l.
     Proof.
-      intros Q H H'; induction l; intro; [|eapply H', Forall_inv]; eassumption.
+      intros Q H H'; induction l; intro; [|eapply H', mForall_inv]; eassumption.
     Qed.
 
-    Lemma Forall_dec :
+    Lemma mForall_dec :
       (forall x:A, {P x} + { ~ P x }) ->
-      forall l:list A, {Forall l} + {~ Forall l}.
+      forall l:mlist A, {mForall l} + {~ mForall l}.
     Proof.
       intro Pdec. induction l as [|a l' Hrec].
-      - left. apply Forall_nil.
+      - left. apply mForall_mnil.
       - destruct Hrec as [Hl'|Hl'].
         + destruct (Pdec a) as [Ha|Ha].
-          * left. now apply Forall_cons.
+          * left. now apply mForall_mcons.
           * right. now inversion_clear 1.
         + right. now inversion_clear 1.
     Qed.
 
   End One_predicate.
 
-  Lemma Forall_Exists_neg (P:A->Prop)(l:list A) :
-   Forall (fun x => ~ P x) l <-> ~(Exists P l).
+  Lemma mForall_mExists_neg (P:A->Prop)(l:mlist A) :
+   mForall (fun x => ~ P x) l <-> ~(mExists P l).
   Proof.
-   rewrite Forall_forall, Exists_exists. firstorder.
+   rewrite mForall_forall, mExists_exists. firstorder.
   Qed.
 
-  Lemma Exists_Forall_neg (P:A->Prop)(l:list A) :
+  Lemma mExists_mForall_neg (P:A->Prop)(l:mlist A) :
     (forall x, P x \/ ~P x) ->
-    Exists (fun x => ~ P x) l <-> ~(Forall P l).
+    mExists (fun x => ~ P x) l <-> ~(mForall P l).
   Proof.
    intro Dec.
    split.
-   - rewrite Forall_forall, Exists_exists; firstorder.
+   - rewrite mForall_forall, mExists_exists; firstorder.
    - intros NF.
      induction l as [|a l IH].
      + destruct NF. constructor.
      + destruct (Dec a) as [Ha|Ha].
-       * apply Exists_cons_tl, IH. contradict NF. now constructor.
-       * now apply Exists_cons_hd.
+       * apply mExists_mcons_mtl, IH. contradict NF. now constructor.
+       * now apply mExists_mcons_mhd.
   Qed.
 
-  Lemma Forall_Exists_dec (P:A->Prop) :
+  Lemma mForall_mExists_dec (P:A->Prop) :
     (forall x:A, {P x} + { ~ P x }) ->
-    forall l:list A,
-    {Forall P l} + {Exists (fun x => ~ P x) l}.
+    forall l:mlist A,
+    {mForall P l} + {mExists (fun x => ~ P x) l}.
   Proof.
     intros Pdec l.
-    destruct (Forall_dec P Pdec l); [left|right]; trivial.
-    apply Exists_Forall_neg; trivial.
+    destruct (mForall_dec P Pdec l); [left|right]; trivial.
+    apply mExists_mForall_neg; trivial.
     intro x. destruct (Pdec x); [now left|now right].
   Qed.
 
-  Lemma Forall_impl : forall (P Q : A -> Prop), (forall a, P a -> Q a) ->
-    forall l, Forall P l -> Forall Q l.
+  Lemma mForall_impl : forall (P Q : A -> Prop), (forall a, P a -> Q a) ->
+    forall l, mForall P l -> mForall Q l.
   Proof.
-    intros P Q H l. rewrite !Forall_forall. firstorder.
+    intros P Q H l. rewrite !mForall_forall. firstorder.
   Qed.
 
-End Exists_Forall.
+End mExists_mForall.
 
-Hint Constructors Exists.
-Hint Constructors Forall.
+Hint Constructors mExists.
+Hint Constructors mForall.
 
-Section Forall2.
+Section mForall2.
 
-  (** [Forall2]: stating that elements of two lists are pairwise related. *)
+  (** [mForall2]: stating that elements of two mlists are pairwise related. *)
 
   Variables A B : Type.
   Variable R : A -> B -> Prop.
 
-  Inductive Forall2 : list A -> list B -> Prop :=
-    | Forall2_nil : Forall2 [m:] [m:]
-    | Forall2_cons : forall x y l l',
-      R x y -> Forall2 l l' -> Forall2 (x::l) (y::l').
+  Inductive mForall2 : mlist A -> mlist B -> Prop :=
+    | mForall2_mnil : mForall2 [m:] [m:]
+    | mForall2_mcons : forall x y l l',
+      R x y -> mForall2 l l' -> mForall2 (x:m:l) (y:m:l').
 
-  Hint Constructors Forall2.
+  Hint Constructors mForall2.
 
-  Theorem Forall2_refl : Forall2 [m:] [m:].
-  Proof. intros; apply Forall2_nil. Qed.
+  Theorem mForall2_refl : mForall2 [m:] [m:].
+  Proof. intros; apply mForall2_mnil. Qed.
 
-  Theorem Forall2_app_inv_l : forall l1 l2 l',
-    Forall2 (l1 ++ l2) l' ->
-    exists l1' l2', Forall2 l1 l1' /\ Forall2 l2 l2' /\ l' = l1' ++ l2'.
+  Theorem mForall2_mapp_inv_l : forall l1 l2 l',
+    mForall2 (l1 +m+ l2) l' ->
+    exists l1' l2', mForall2 l1 l1' /\ mForall2 l2 l2' /\ l' = l1' +m+ l2'.
   Proof.
     induction l1; intros.
       exists [m:], l'; auto.
       simpl in H; inversion H; subst; clear H.
       apply IHl1 in H4 as (l1' & l2' & Hl1 & Hl2 & ->).
-      exists (y::l1'), l2'; simpl; auto.
+      exists (y:m:l1'), l2'; simpl; auto.
   Qed.
 
-  Theorem Forall2_app_inv_r : forall l1' l2' l,
-    Forall2 l (l1' ++ l2') ->
-    exists l1 l2, Forall2 l1 l1' /\ Forall2 l2 l2' /\ l = l1 ++ l2.
+  Theorem mForall2_mapp_inv_r : forall l1' l2' l,
+    mForall2 l (l1' +m+ l2') ->
+    exists l1 l2, mForall2 l1 l1' /\ mForall2 l2 l2' /\ l = l1 +m+ l2.
   Proof.
     induction l1'; intros.
       exists [m:], l; auto.
       simpl in H; inversion H; subst; clear H.
       apply IHl1' in H4 as (l1 & l2 & Hl1 & Hl2 & ->).
-      exists (x::l1), l2; simpl; auto.
+      exists (x:m:l1), l2; simpl; auto.
   Qed.
 
-  Theorem Forall2_app : forall l1 l2 l1' l2',
-    Forall2 l1 l1' -> Forall2 l2 l2' -> Forall2 (l1 ++ l2) (l1' ++ l2').
+  Theorem mForall2_mapp : forall l1 l2 l1' l2',
+    mForall2 l1 l1' -> mForall2 l2 l2' -> mForall2 (l1 +m+ l2) (l1' +m+ l2').
   Proof.
     intros. induction l1 in l1', H, H0 |- *; inversion H; subst; simpl; auto.
   Qed.
-End Forall2.
+End mForall2.
 
-Hint Constructors Forall2.
+Hint Constructors mForall2.
 
-Section ForallPairs.
+Section mForallPairs.
 
-  (** [ForallPairs] : specifies that a certain relation should
-    always hold when inspecting all possible pairs of elements of a list. *)
+  (** [mForallPairs] : specifies that a certain relation should
+    always hold when inspecting all possible pairs of elements of a mlist. *)
 
   Variable A : Type.
   Variable R : A -> A -> Prop.
 
-  Definition ForallPairs l :=
-    forall a b, In a l -> In b l -> R a b.
+  Definition mForallPairs l :=
+    forall a b, mIn a l -> mIn b l -> R a b.
 
-  (** [ForallOrdPairs] : we still check a relation over all pairs
-     of elements of a list, but now the order of elements matters. *)
+  (** [mForallOrdPairs] : we still check a relation over all pairs
+     of elements of a mlist, but now the order of elements matters. *)
 
-  Inductive ForallOrdPairs : list A -> Prop :=
-    | FOP_nil : ForallOrdPairs nil
-    | FOP_cons : forall a l,
-      Forall (R a) l -> ForallOrdPairs l -> ForallOrdPairs (a::l).
+  Inductive mForallOrdPairs : mlist A -> Prop :=
+    | FOP_mnil : mForallOrdPairs mnil
+    | FOP_mcons : forall a l,
+      mForall (R a) l -> mForallOrdPairs l -> mForallOrdPairs (a:m:l).
 
-  Hint Constructors ForallOrdPairs.
+  Hint Constructors mForallOrdPairs.
 
-  Lemma ForallOrdPairs_In : forall l,
-    ForallOrdPairs l ->
-    forall x y, In x l -> In y l -> x=y \/ R x y \/ R y x.
+  Lemma mForallOrdPairs_mIn : forall l,
+    mForallOrdPairs l ->
+    forall x y, mIn x l -> mIn y l -> x=y \/ R x y \/ R y x.
   Proof.
     induction 1.
     inversion 1.
     simpl; destruct 1; destruct 1; subst; auto.
-    right; left. apply -> Forall_forall; eauto.
-    right; right. apply -> Forall_forall; eauto.
+    right; left. apply -> mForall_forall; eauto.
+    right; right. apply -> mForall_forall; eauto.
   Qed.
 
-  (** [ForallPairs] implies [ForallOrdPairs]. The reverse implication is true
+  (** [mForallPairs] implies [mForallOrdPairs]. The mreverse implication is true
     only when [R] is symmetric and reflexive. *)
 
-  Lemma ForallPairs_ForallOrdPairs l: ForallPairs l -> ForallOrdPairs l.
+  Lemma mForallPairs_mForallOrdPairs l: mForallPairs l -> mForallOrdPairs l.
   Proof.
     induction l; auto. intros H.
     constructor.
-    apply <- Forall_forall. intros; apply H; simpl; auto.
+    apply <- mForall_forall. intros; apply H; simpl; auto.
     apply IHl. red; intros; apply H; simpl; auto.
   Qed.
 
-  Lemma ForallOrdPairs_ForallPairs :
+  Lemma mForallOrdPairs_mForallPairs :
     (forall x, R x x) ->
     (forall x y, R x y -> R y x) ->
-    forall l, ForallOrdPairs l -> ForallPairs l.
+    forall l, mForallOrdPairs l -> mForallPairs l.
   Proof.
     intros Refl Sym l Hl x y Hx Hy.
-    destruct (ForallOrdPairs_In Hl _ _ Hx Hy); subst; intuition.
+    destruct (mForallOrdPairs_mIn Hl _ _ Hx Hy); subst; intuition.
   Qed.
-End ForallPairs.
+End mForallPairs.
 
-(** * Inversion of predicates over lists based on head symbol *)
+(** * mInversion of predicates over mlists based on head symbol *)
 
-Ltac is_list_constr c :=
+Ltac is_mlist_mconstr c :=
  match c with
-  | nil => idtac
-  | (_::_) => idtac
+  | mnil => idtac
+  | (_:m:_) => idtac
   | _ => fail
  end.
 
-Ltac invlist f :=
+Ltac invmlist f :=
  match goal with
-  | H:f ?l |- _ => is_list_constr l; inversion_clear H; invlist f
-  | H:f _ ?l |- _ => is_list_constr l; inversion_clear H; invlist f
-  | H:f _ _ ?l |- _ => is_list_constr l; inversion_clear H; invlist f
-  | H:f _ _ _ ?l |- _ => is_list_constr l; inversion_clear H; invlist f
-  | H:f _ _ _ _ ?l |- _ => is_list_constr l; inversion_clear H; invlist f
+  | H:f ?l |- _ => is_mlist_mconstr l; inversion_clear H; invmlist f
+  | H:f _ ?l |- _ => is_mlist_mconstr l; inversion_clear H; invmlist f
+  | H:f _ _ ?l |- _ => is_mlist_mconstr l; inversion_clear H; invmlist f
+  | H:f _ _ _ ?l |- _ => is_mlist_mconstr l; inversion_clear H; invmlist f
+  | H:f _ _ _ _ ?l |- _ => is_mlist_mconstr l; inversion_clear H; invmlist f
   | _ => idtac
  end.
 
@@ -2330,64 +2327,39 @@ Ltac invlist f :=
 
 
 Hint Rewrite
-  rev_involutive (* rev (rev l) = l *)
-  rev_unit (* rev (l ++ a :: nil) = a :: rev l *)
-  map_nth (* nth n (map f l) (f d) = f (nth n l d) *)
-  map_length (* length (map f l) = length l *)
-  seq_length (* length (seq start len) = len *)
-  app_length (* length (l ++ l') = length l + length l' *)
-  rev_length (* length (rev l) = length l *)
-  app_nil_r (* l ++ nil = l *)
-  : list.
+  mrev_involutive (* mrev (mrev l) = l *)
+  mrev_unit (* mrev (l +m+ a :m: mnil) = a :m: mrev l *)
+  mmap_mnth (* mnth n (mmap f l) (f d) = f (mnth n l d) *)
+  mmap_mlength (* mlength (mmap f l) = mlength l *)
+  mseq_mlength (* mlength (mseq start len) = len *)
+  mapp_mlength (* mlength (l +m+ l') = mlength l + mlength l' *)
+  mrev_mlength (* mlength (mrev l) = mlength l *)
+  mapp_mnil_r (* l +m+ mnil = l *)
+  : mlist.
 
-Ltac simpl_list := autorewrite with list.
-Ltac ssimpl_list := autorewrite with list using simpl.
+Ltac simpl_mlist := autorewrite with mlist.
+Ltac ssimpl_mlist := autorewrite with mlist using simpl.
 
-(* begin hide *)
-(* Compatibility notations after the migration of [list] to [Datatypes] *)
-Notation list := list (only parsing).
-Notation list_rect := list_rect (only parsing).
-Notation list_rec := list_rec (only parsing).
-Notation list_ind := list_ind (only parsing).
-Notation nil := nil (only parsing).
-Notation cons := cons (only parsing).
-Notation length := length (only parsing).
-Notation app := app (only parsing).
-(* Compatibility Names *)
-Notation tail := tl (only parsing).
-Notation head := hd_error (only parsing).
-Notation head_nil := hd_error_nil (only parsing).
-Notation head_cons := hd_error_cons (only parsing).
-Notation ass_app := app_assoc (only parsing).
-Notation app_ass := app_assoc_reverse (only parsing).
-Notation In_split := in_split (only parsing).
-Notation In_rev := in_rev (only parsing).
-Notation In_dec := in_dec (only parsing).
-Notation distr_rev := rev_app_distr (only parsing).
-Notation rev_acc := rev_append (only parsing).
-Notation rev_acc_rev := rev_append_rev (only parsing).
-Notation AllS := Forall (only parsing). (* was formerly in TheoryList *)
-
-Hint Resolve app_nil_end : datatypes.
+Hint Resolve mapp_mnil_end : datatypes.
 (* end hide *)
 
 Section Repeat.
 
   Variable A : Type.
-  Fixpoint repeat (x : A) (n: nat ) :=
+  Fixpoint mrepeat (x : A) (n: nat ) :=
     match n with
       | O => [m:]
-      | S k => x::(repeat x k)
+      | S k => x:m:(mrepeat x k)
     end.
 
-  Theorem repeat_length x n:
-    length (repeat x n) = n.
+  Theorem mrepeat_mlength x n:
+    mlength (mrepeat x n) = n.
   Proof.
     induction n as [| k Hrec]; simpl; rewrite ?Hrec; reflexivity.
   Qed.
 
-  Theorem repeat_spec n x y:
-    In y (repeat x n) -> y=x.
+  Theorem mrepeat_spec n x y:
+    mIn y (mrepeat x n) -> y=x.
   Proof.
     induction n as [|k Hrec]; simpl; destruct 1; auto.
   Qed.

@@ -67,14 +67,14 @@ Inductive mtpattern A (m : A -> Prop)  : Prop :=
 Arguments mtpbase {A m} _ _ _.
 Arguments mtptele {A m C} _.
 
-Definition mtmmatch' A m (y : A) (ps : list (mtpattern A (fun x => MTele_ty M (m x)))) : MTele_ty M.t (m y) :=
+Definition mtmmatch' A m (y : A) (ps : mlist (mtpattern A (fun x => MTele_ty M (m x)))) : MTele_ty M.t (m y) :=
   MTele_open
     M.t (m y)
     (fun R acc =>
        (fix mmatch' ps : M.t R :=
           match ps with
           | [m:] => M.raise NoPatternMatches
-          | [m: p & ps'] =>
+          | p :m: ps' =>
             (* M.print "dbg2";; *)
                     let g := (fix go p :=
                                 (* M.print "inner";; *)
@@ -179,10 +179,10 @@ Notation "'_' => b " := (mtptele (fun x=> mtpbase x b%core UniMatch))
   (at level 201, b at next level) : mtpattern_prog_scope.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
-  ((@cons (mtpattern _ _) p1%mtpattern_prog (.. (@cons (mtpattern _ _) pn%mtpattern_prog nil) ..)))
+  ((@mcons (mtpattern _ _) p1%mtpattern_prog (.. (@mcons (mtpattern _ _) pn%mtpattern_prog mnil) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_mtpattern_prog_scope.
 Notation "'with' p1 | .. | pn 'end'" :=
-  ((@cons (mtpattern _ _) p1%mtpattern_prog (.. (@cons (mtpattern _ _) pn%mtpattern_prog nil) ..)))
+  ((@mcons (mtpattern _ _) p1%mtpattern_prog (.. (@mcons (mtpattern _ _) pn%mtpattern_prog mnil) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_mtpattern_prog_scope.
 
 Delimit Scope with_mtpattern_prog_scope with with_mtpattern_prog.
@@ -209,7 +209,7 @@ Notation "'mtmmatch_prog' x 'as' y 'return' T p" :=
   (
     let m := mt_of (fun y => T) in
     match tc_unify (fun _z => MTele_ty M (m _z))((fun y => T))
-          in _ = R return list (mtpattern _ R) -> R x with
+          in _ = R return mlist (mtpattern _ R) -> R x with
     | eq_refl => mtmmatch' _ (m) x
     end
     (p%with_mtpattern_prog)
@@ -250,10 +250,10 @@ Notation "'_' => b " := (mtptele (m:=mty_of) (fun x=> mtpbase_eq (m:=mty_of) x r
   (at level 201, b at next level) : mtpattern_scope.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
-  ((@cons (mtpattern _ _) p1%mtpattern (.. (@cons (mtpattern _ _) pn%mtpattern nil) ..)))
+  ((@mcons (mtpattern _ _) p1%mtpattern (.. (@mcons (mtpattern _ _) pn%mtpattern mnil) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_mtpattern_scope.
 Notation "'with' p1 | .. | pn 'end'" :=
-  ((@cons (mtpattern _ _) p1%mtpattern (.. (@cons (mtpattern _ _) pn%mtpattern nil) ..)))
+  ((@mcons (mtpattern _ _) p1%mtpattern (.. (@mcons (mtpattern _ _) pn%mtpattern mnil) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_mtpattern_scope.
 
 Delimit Scope with_mtpattern_scope with with_mtpattern.

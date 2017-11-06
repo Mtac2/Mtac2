@@ -21,12 +21,12 @@ Fixpoint prove_leq n m : M (n < m) :=
   end.
 
 Definition to_fin_MP : T.selector unit := (fun l=>
-  let n := Mtac2.List.length l in
+  let n := mlength l in
   M.mapi (fun i '(_,g) =>
     H <- prove_leq i n;
     let v := rcbv (of_nat_lt H) in
     T.exact v g) l;;
-  M.ret Mtac2.List.nil)%MC.
+  M.ret [m:])%MC.
 
 Goal my_enum_type -> Fin.t 3.
 MProof.

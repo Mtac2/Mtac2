@@ -154,9 +154,9 @@ module GenericList (LP : ListParams) = struct
 end
 
 module CoqList = GenericList (struct
-    let nilname = "Mtac2.Datatypes.nil"
-    let consname = "Mtac2.Datatypes.cons"
-    let typename = "Mtac2.Datatypes.list"
+    let nilname = "Mtac2.Datatypes.mnil"
+    let consname = "Mtac2.Datatypes.mcons"
+    let typename = "Mtac2.Datatypes.mlist"
   end)
 
 module CoqEq = struct

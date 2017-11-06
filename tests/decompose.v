@@ -2,11 +2,11 @@ From Mtac2 Require Import List Mtac2 Debugger.
 Import ListNotations.
 
 Definition decompose {T} (x : T) :=
-  (mfix2 f (d : dyn) (args: list dyn) : M (dyn * list dyn) :=
+  (mfix2 f (d : dyn) (args: mlist dyn) : M (dyn * mlist dyn) :=
     M.print_term d;;
     mmatch d with
-    | [? A B (t1: A -> B) t2] Dyn (t1 t2) => f (Dyn t1) [m: Dyn t2 & args]
-    | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1) [m: Dyn t2 & args]
+    | [? A B (t1: A -> B) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :m: args)
+    | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :m: args)
     | _ => M.ret (d, args)
     end) (Dyn x) [m:].
 

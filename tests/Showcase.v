@@ -114,7 +114,7 @@ Proof.
 Qed.
 
 Definition apply_one_of l : tactic :=
-  Mtac2.List.fold_left (fun a b=>a || (apply (elem b)))%tactic l (raise exception).
+  mfold_left (fun a b=>a || (apply (elem b)))%tactic l (raise exception).
 
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 MProof.

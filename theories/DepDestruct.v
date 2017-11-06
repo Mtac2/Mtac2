@@ -75,9 +75,9 @@ Arguments cProd {_ _%IT _%type} _.
 
 (** Represents a constructor of an inductive type where all arguments are non-dependent *)
 Notation NDCfold it := (fun l =>
-                        fold_right (fun T b => T * b)%type unit l -> {a : ATele it & ITele_App a}).
+                        mfold_right (fun T b => T * b)%type unit l -> {a : ATele it & ITele_App a}).
 Definition NDCTele {sort} (it : ITele sort) : Type :=
-  { l : list Type & NDCfold it l }.
+  { l : mlist Type & NDCfold it l }.
 
 Definition ndcBase {sort} {T : stype_of sort} (a : ATele (iBase T)) (t : selem_of T) : NDCTele (iBase T) := existT _ [m:] (fun _ => existT _ a t).
 
@@ -188,20 +188,20 @@ Fixpoint branch_of_CTele {isort} {rsort} {it : ITele isort} (rt : RTele rsort it
 Definition branch_of_NDCTele {isort} {rsort} {it : ITele isort} (rt : RTele rsort it) (ct : NDCTele it) : stype_of rsort :=
   (fix rec l :=
      match l as l' return NDCfold it l' -> rsort with
-     | nil => fun f => RTele_App (projT1 (f tt)) rt (projT2 (f tt))
-     | cons T l => fun f => ForAll (fun t : T => rec l (fun y => f(t,y)))
+     | [m:] => fun f => RTele_App (projT1 (f tt)) rt (projT2 (f tt))
+     | T :m: l => fun f => ForAll (fun t : T => rec l (fun y => f(t,y)))
      end) (projT1 ct) (projT2 ct).
 
 (* Get exactly `max` many arguments *)
 Definition NotEnoughArguments : Exception. exact exception. Qed.
-Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
+Fixpoint args_of_max (max : nat) : dyn -> M (mlist dyn) :=
     match max with
     | 0 => fun _ => M.ret [m:]
     | S max => fun d=>
       mmatch d with
       | [? T Q (t : T) (f : T -> Q)] Dyn (f t) =>
          r <- args_of_max max (Dyn f);
-         M.ret (app r [m:Dyn t])
+         M.ret (mapp r [m:Dyn t])
       | _ =>
         T <- M.evar Type;
         P <- M.evar (T -> Type);
@@ -210,7 +210,7 @@ Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
         let el := rhnf (d.(elem)) in
         b <- M.cumul UniCoq el (f t);
         if b then
-          r <- args_of_max max (Dyn f); M.ret (app r (Dyn t :: nil))
+          r <- args_of_max max (Dyn f); M.ret (mapp r [m: Dyn t])
         else
           M.raise NotEnoughArguments
       end
@@ -218,10 +218,10 @@ Fixpoint args_of_max (max : nat) : dyn -> M (list dyn) :=
 
 (** Given a inductive described in [it] and a list of elements [al],
     it returns the [ATele] describing the applied version of [it] with [al]. *)
-Fixpoint get_ATele {isort} (it : ITele isort) (al : list dyn) {struct al} : M (ATele it) :=
+Fixpoint get_ATele {isort} (it : ITele isort) (al : mlist dyn) {struct al} : M (ATele it) :=
     match it as it', al return M (ATele it') with
     | iBase T, [m:] => M.ret tt
-    | iTele f, t_dyn :: al =>
+    | iTele f, t_dyn :m: al =>
       (* We coerce the type of the element in [t_dyn] to match that expected by f *)
       t <- M.coerce (elem t_dyn);
       r <- get_ATele (f t) al;
@@ -268,7 +268,7 @@ Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A 
                       r <- rec (F b) (App f b);
                       let '(existT _ l F) := r in
                       r' <- (M.abs_fun b F) : M (B -> _);
-                      M.ret (existT (NDCfold _) (B::l) (fun '(b,y) => r' b y))
+                      M.ret (existT (NDCfold _) (B:m:l) (fun '(b,y) => r' b y))
                     )
     | A =n>
         fun a =>
@@ -276,7 +276,7 @@ Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A 
         args <- args_of_max nindx (Dyn A_red);
         atele <- get_ATele it args;
         a' <- @M.coerce _ (ITele_App atele) a ;
-        M.ret (existT _ nil (fun _ => existT _ atele a'))
+        M.ret (existT _ [m:] (fun _ => existT _ atele a'))
 end.
 
 Definition get_NDCTele :=
@@ -337,7 +337,7 @@ Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele)) :=
     end.
 
 Definition get_ind (A : Type) :
-  M (nat * sigT (fun s => (ITele s)) * list dyn) :=
+  M (nat * sigT (fun s => (ITele s)) * mlist dyn) :=
   r <- M.constrs A;
   let (indP, constrs) := r in
   sortit <- get_ITele (elem indP) : M (nat * sigT ITele);
@@ -347,7 +347,7 @@ Definition get_ind (A : Type) :
 
 (* Compute ind type ATele *)
 Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) : M (ATele it) :=
-  indlist <- args_of_max nindx (Dyn A) : M (list dyn);
+  indlist <- args_of_max nindx (Dyn A) : M (mlist dyn);
   atele <- get_ATele it indlist : M (ATele it);
   M.ret atele.
 
@@ -376,7 +376,7 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
         let (rsort, sG) := rsG in
         n' <- M.coerce n;
         rt <- abstract_goal sG atele n';
-          let sg := reduce RedSimpl (map (
+          let sg := reduce RedSimpl (mmap (
                         fun ct =>
                            (selem_of (branch_of_CTele rt ct))
                                        ) cts) in
@@ -394,5 +394,5 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
                      |};
           let gterm := M.dyn_to_goal caseterm in
           M.unify_or_fail UniCoq gterm g;;
-          let goals' := dreduce (@map) (map (pair tt) goals) in
+          let goals' := dreduce (mmap) (mmap (pair tt) goals) in
           M.ret goals'.

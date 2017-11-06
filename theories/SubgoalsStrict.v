@@ -13,7 +13,7 @@ Set Implicit Arguments.
 (** For that reason, we use the following record instead of a Vector.t: we want
     to easily embed tactics into ntactics and back. *)
 Record PackedVec (A: Type) (count: nat) := mkPackedVec {
-  goals : list (A * goal)
+  goals : mlist (A * goal)
 }.
 
 Definition ntactic A n := goal -> M (PackedVec A n).
@@ -25,16 +25,16 @@ Coercion n_to_g A n (nt : ntactic A n) : gtactic A := fun g=>pv <- nt g; M.ret p
 
 (** For the composition, we can't be generic here: we produce a gtactic out of
     the composition of an ntactic with nth gtactics. *)
-Class NSeq (A B : Type) n (nt: ntactic A n) (l: list (gtactic B)) (pf: length l = n) :=
+Class NSeq (A B : Type) n (nt: ntactic A n) (l: mlist (gtactic B)) (pf: mlength l = n) :=
   nseq : gtactic B.
 Arguments nseq {A B _} _%tactic _%tactic _ {_}.
 
 Import Mtac2.List.
 
-Instance nseq_list {A B} n (nt: ntactic A n) (l: list (gtactic B)) pf: NSeq nt l pf := fun g =>
+Instance nseq_list {A B} n (nt: ntactic A n) (l: mlist (gtactic B)) pf: NSeq nt l pf := fun g =>
   gs <- nt g;
-  ls <- T.gmap l (map snd gs.(goals));
-  let res := dreduce (concat, app) (concat ls) in
+  ls <- T.gmap l (mmap snd gs.(goals));
+  let res := dreduce (mconcat, mapp) (mconcat ls) in
   T.filter_goals res.
 
 Notation "t1 '&n>' ts" :=
@@ -46,14 +46,14 @@ Import Datatypes.
     It generates a subgoal for each non-dependent hypothesis in the theorem. *)
 Definition max_apply {T} (c : T) : tactic := fun g=>
   match g with Goal eg =>
-    (mfix1 go (d : dyn) : M (list (unit * goal)) :=
+    (mfix1 go (d : dyn) : M (mlist (unit * goal)) :=
       (* let (_, el) := d in *)
       (* mif M.unify_cumul el eg UniCoq then M.ret [m:] else *)
-        mmatch d return M (list (unit * goal)) with
+        mmatch d return M (mlist (unit * goal)) with
         | [? T1 T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
-          M.ret ((tt, Goal e) :: r)
+          M.ret ((tt, Goal e) :m: r)
         | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
