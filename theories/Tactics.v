@@ -807,6 +807,10 @@ Module notations.
   Notation "r '<-' t1 ';' t2" := (bind t1 (fun r => t2%tactic))
     (at level 100, t2 at level 200,
      right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
+  Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2%tactic) ..))
+    (at level 100, r1 binder, rn binder, t2 at level 200,
+     right associativity, format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
+
   Notation "t >>= f" := (bind t f) (at level 70) : tactic_scope.
 
   Notation "t1 ';;' t2" := (seq t1 t2)

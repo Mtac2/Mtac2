@@ -417,10 +417,13 @@ Module monad_notations.
   Delimit Scope M_scope with MC.
   Open Scope M_scope.
 
-  Notation "r '<-' t1 ';' t2" := (@bind _ _ t1 (fun r=> t2))
+  Notation "r '<-' t1 ';' t2" := (bind t1 (fun r=> t2%MC))
     (at level 100, t2 at level 200,
      right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
-  Notation "t1 ';;' t2" := (bind t1 (fun _ => t2))
+  Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2%MC) ..))
+    (at level 100, r1 binder, rn binder, t2 at level 200,
+     right associativity, format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
+  Notation "t1 ';;' t2" := (bind t1 (fun _ => t2%MC))
     (at level 100, t2 at level 200,
      right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : M_scope.
   Notation "t >>= f" := (bind t f) (at level 70) : M_scope.
@@ -584,14 +587,13 @@ Definition fold_left {A B} (f : A -> B -> t A) : list B -> A -> t A :=
     end.
 
 Definition index_of {A} (f : A -> t bool) (l : list A) : t (option nat) :=
-  ir <- fold_left (fun (ir : (nat * option nat)) x =>
+  ''(_, r) <- fold_left (fun (ir : (nat * option nat)) x =>
     let (i, r) := ir in
     match r with
     | Some _ => ret ir
     | _ => mif f x then ret (i, Some i) else ret (S i, None)
     end
   ) l (0, None);
-  let (_, r) := ir in
   ret r.
 
 Fixpoint nth {A} (n : nat) (l : list A) : t A :=
@@ -787,8 +789,7 @@ Definition print_goal (g : goal) : t unit :=
     [CantInstantiate] if it fails to find a suitable instantiation. [t] is beta-reduced
     to avoid false dependencies. *)
 Definition instantiate {A} (x y : A) : t unit :=
-  k <- decompose x;
-  let (h, _) := k in
+  ''(h, _) <- decompose x;
   let h := rcbv h.(elem) in
   b <- is_evar h;
   let t := reduce (RedWhd [rl:RedBeta]) t in
