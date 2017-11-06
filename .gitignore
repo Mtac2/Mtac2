@@ -48,3 +48,6 @@
 
 # locals for emacs
 .dir-locals.el
+
+# output of tests
+tests/univ.txt
