@@ -61,7 +61,7 @@ Definition debug (trace: bool) {A:Type} (bks : list dyn) : M A -> M unit :=
                let x := reduce (RedWhd [rl:RedBeta;RedMatch;RedFix;RedZeta]) x in
                v <- M.decompose x;
                let (hd, _) := v in
-               mif M.find (fun d=>M.unify_cumul d hd UniMatchNoRed) bks then
+               mif M.find (fun d=>M.cumul UniMatchNoRed d hd) bks then
                  M.print_term x;;
                  inp <- M.read_line;
                  match inp with

@@ -635,7 +635,7 @@ Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
 Definition type_of {A} (x : A) : Type := A.
 Definition type_inside {A} (x : t A) : Type := A.
 
-Definition unify_cumul {A B} (x: A) (y: B) (u : Unification) : t bool :=
+Definition cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
   of <- unify_univ A B u;
   match of with
   | Some f =>
@@ -647,8 +647,8 @@ Definition unify_cumul {A B} (x: A) (y: B) (u : Unification) : t bool :=
 
 (** Unifies [x] with [y] and raises [NotUnifiable] if it they
     are not unifiable. *)
-Definition unify_or_fail {A} (x y : A) : t (x = y) :=
-  oeq <- unify x y UniCoq;
+Definition unify_or_fail {A} (u : Unification) (x y : A) : t (x = y) :=
+  oeq <- unify x y u;
   match oeq with
   | None => raise (NotUnifiable x y)
   | Some eq => ret eq
@@ -656,8 +656,8 @@ Definition unify_or_fail {A} (x y : A) : t (x = y) :=
 
 (** Unifies [x] with [y] using cumulativity and raises [NotCumul] if it they
     are not unifiable. *)
-Definition cumul_or_fail {A B} (x: A) (y: B) : t unit :=
-  b <- unify_cumul x y UniCoq;
+Definition cumul_or_fail {A B} (u : Unification) (x: A) (y: B) : t unit :=
+  b <- cumul u x y;
   if b then ret tt else raise (NotCumul x y).
 
 Program Definition names_of_hyp : t (list string) :=

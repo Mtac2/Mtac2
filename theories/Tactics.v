@@ -185,7 +185,7 @@ Instance seq_list {A B} : Seq A B (list (gtactic B)) := fun t f g =>
 
 Definition exact {A} (x:A) : tactic := fun g =>
   match g with
-  | Goal g => M.cumul_or_fail x g;; M.ret [m:]
+  | Goal g => M.cumul_or_fail UniCoq x g;; M.ret [m:]
   | _ => M.raise NotAGoal
   end.
 
@@ -198,7 +198,7 @@ Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := f
   mmatch g with
   | [? B (def: B) P e] @Goal (let x := def in P x) e =n>
     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
-    eqBA <- M.unify_or_fail B A;
+    eqBA <- M.unify_or_fail UniCoq B A;
     M.nu var (Some def) (fun x=>
       let Px := reduce (RedWhd [rl:RedBeta]) (P x) in
       e' <- M.evar Px;
@@ -266,7 +266,7 @@ Definition introsn : nat -> tactic :=
 Definition prim_reflexivity : tactic := fun g =>
   A <- M.evar Type;
   x <- M.evar A;
-  M.unify_or_fail g (Goal (Coq.Init.Logic.eq_refl x));; M.ret [m:].
+  M.unify_or_fail UniCoq g (Goal (Coq.Init.Logic.eq_refl x));; M.ret [m:].
 
 (** Fist introduces the hypotheses and then applies reflexivity *)
 Definition reflexivity : tactic := fun g =>
@@ -329,7 +329,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
   P <- M.Cevar (A->Type) ctx;
   let Pn := P n in
   gT <- M.goal_type g;
-  M.unify_or_fail Pn gT;;
+  M.unify_or_fail UniCoq Pn gT;;
   l <- M.constrs A;
   l <- M.map (fun d : dyn =>
     (* a constructor c has type (forall x, ... y, A) and we return
@@ -365,7 +365,7 @@ Definition apply {T} (c : T) : tactic := fun g=>
   match g with Goal eg =>
     (mfix1 go (d : dyn) : M (list (unit * goal)) :=
       let (_, el) := d in
-      mif M.unify_cumul el eg UniCoq then M.ret [m:] else
+      mif M.cumul UniCoq el eg then M.ret [m:] else
         mmatch d return M (list (unit * goal)) with
         | [? T1 T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
@@ -404,7 +404,7 @@ Definition constructor : tactic := fun g=>
 
 Definition change (P : Type) : tactic := fun g =>
   gT <- M.goal_type g;
-  M.unify_or_fail P gT;;
+  M.unify_or_fail UniCoq P gT;;
   e <- M.evar P;
   exact e g;;
   M.ret [m:(tt, Goal e)].
@@ -434,7 +434,7 @@ Definition match_goal_context
   match oeqAB with
   | Some eqAB =>
     let 'eq_refl := eq_sym eqAB in fun (y : A) t =>
-    mif M.unify_cumul x y UniMatchNoRed then
+    mif M.cumul UniMatchNoRed x y then
       let term := reduce (RedStrong [rl:RedBeta]) (t (fun a => a) g) in
       term
     else recur y t
@@ -447,7 +447,7 @@ Fixpoint match_goal_pattern' {B}
   match p, l2 with
   | gbase P t, _ =>
     gT <- M.goal_type g;
-    mif M.unify_cumul P gT u then t g
+    mif M.cumul u P gT then t g
     else M.raise DoesNotMatchGoal
   | gbase_context x t, _ =>
     gT <- M.goal_type g;
@@ -486,7 +486,7 @@ Definition ltac (t : string) (args : list dyn) : tactic := fun g =>
   let (ty, el) := d in
   v <- @M.call_ltac ty t args;
   let (v, l) := v in
-  M.unify_or_fail v el;;
+  M.unify_or_fail UniCoq v el;;
   b <- M.is_evar v;
   if b then
     M.ret [m:(tt, Goal v)] (* it wasn't solved *)
@@ -510,7 +510,7 @@ Definition treduce (r : Reduction) : tactic := fun g=>
   T <- M.goal_type g;
   let T' := reduce r T in
   e <- M.evar T';
-  mif M.unify_cumul g (@Goal T e) UniMatch then M.ret [m:(tt, Goal e)]
+  mif M.cumul UniMatch g (@Goal T e) then M.ret [m:(tt, Goal e)]
   else M.failwith "treduce".
 
 Definition typed_intro (T : Type) : tactic := fun g =>
@@ -609,7 +609,7 @@ Definition reduce_in (r : Reduction) {P} (H : P) : tactic := fun g =>
   l <- M.hyps;
   l' <- M.map (fun hyp : Hyp =>
     let (T, v, def) := hyp in
-    mif M.unify_cumul H v UniMatchNoRed then
+    mif M.cumul UniMatchNoRed H v then
       let T' := reduce r T in M.ret (@ahyp T' v def)
     else M.ret hyp) l;
   gT <- M.goal_type g;
