@@ -1,5 +1,6 @@
 # Generated Makefile
 /Makefile
+/Makefile.conf
 
 # Make dependencies
 *.d
@@ -28,6 +29,9 @@
 *.cmi
 *.a
 *.o
+*.cmi
+*.cmt
+*.cmti
 *.cmx
 *.cmxs
 *.cmxa
@@ -42,9 +46,6 @@
 # oasis generated files
 /setup.data
 /setup.log
-
-# merlin generated files
-/.merlin
 
 # locals for emacs
 .dir-locals.el

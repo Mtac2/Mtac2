@@ -1,3 +1,4 @@
+open Ltac_plugin
 open Constrs
 
 module MetaCoqRun = struct
@@ -9,7 +10,7 @@ module MetaCoqRun = struct
   let ifM env sigma concl ty c =
     let metaCoqType = Lazy.force Run.MetaCoqNames.mkT_lazy in
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
-    if Term.eq_constr_nounivs metaCoqType h && List.length args = 1 then
+    if EConstr.eq_constr_nounivs sigma metaCoqType h && List.length args = 1 then
       try
         let sigma = Evarconv.the_conv_x_leq env concl (List.hd args) sigma in
         (true, sigma)
@@ -20,7 +21,7 @@ module MetaCoqRun = struct
   let ifTactic env sigma ty c =
     let (sigma, gtactic) = MCTactics.mkGTactic env sigma in
     let unitType = Constrs.CoqUnit.mkType in
-    let gtactic = Term.mkApp(gtactic, [|unitType|]) in
+    let gtactic = EConstr.mkApp(EConstr.of_constr gtactic, [|unitType|]) in
     let open Evarsolve in
     let res = Munify.unify_evar_conv Names.full_transparent_state env sigma Reduction.CONV gtactic ty in
     match res with
@@ -39,7 +40,7 @@ module MetaCoqRun = struct
       let b, sigma = ifTactic env sigma ty c in
       if b then
         let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
-        (true, sigma, Term.mkApp(c, [|goal|]))
+        (true, sigma, EConstr.mkApp(c, [|goal|]))
       else
         CErrors.error "Not a Mtactic"
 
@@ -48,7 +49,7 @@ module MetaCoqRun = struct
     match Run.run (env, sigma) t with
     | Run.Val (sigma, v) ->
         if not istactic then
-          Refine.refine ~unsafe:false {Sigma.run = fun _ ->Sigma.Unsafe.of_pair (v, sigma)}
+          Refine.refine ~typecheck:false begin fun evd -> evd, v end
         else
           let goals = Constrs.CoqList.from_coq (env, sigma) v in
           let goals = List.map (fun x -> snd (Constrs.CoqPair.from_coq (env, sigma) x)) goals in
@@ -73,36 +74,38 @@ module MetaCoqRun = struct
   *)
   let run_tac t =
     let open Proofview.Goal in
-    nf_enter { enter = fun gl ->
+    nf_enter begin fun gl ->
       let env = env gl in
       let concl = concl gl in
       let sigma = sigma gl in
       let evar = evar_of_goal gl in
-      let (sigma, c) = Constrintern.interp_open_constr env (Sigma.to_evar_map sigma) t in
-      run env sigma concl evar c
-    }
+      let (sigma, c) = Constrintern.interp_open_constr env sigma t in
+      run env sigma concl (EConstr.of_constr evar) c
+    end
 
 
   let understand env sigma {Glob_term.closure=closure;term=term} =
+    let open Glob_ops in
+    let open Glob_term in
     let open Pretyping in
     let flags = all_no_fail_flags in
     let lvar = { empty_lvar with
-                 ltac_constrs = closure.Glob_term.typed;
-                 ltac_uconstrs = closure.Glob_term.untyped;
-                 ltac_idents = closure.Glob_term.idents;
+                 ltac_constrs = closure.typed;
+                 ltac_uconstrs = closure.untyped;
+                 ltac_idents = closure.idents;
                } in
     understand_ltac flags env sigma lvar WithoutTypeConstraint term
 
   let run_tac_constr t =
     let open Proofview.Goal in
-    nf_enter { enter = fun gl ->
+    nf_enter begin fun gl ->
       let env = env gl in
       let concl = concl gl in
       let sigma = sigma gl in
       let evar = evar_of_goal gl in
-      let sigma, t = understand env (Sigma.to_evar_map sigma) t in
-      run env sigma concl evar t
-    }
+      let sigma, t = understand env sigma t in
+      run env sigma concl (EConstr.of_constr evar) t
+    end
 
 end
 
@@ -122,7 +125,7 @@ let interp_mproof_command () =
   else
     begin
       Proof_global.set_proof_mode "MProof";
-      Vernacentries.print_subgoals ();
+      Feedback.msg_info @@ Printer.pr_open_subgoals ();
     end
 
 (** Interpreter of a mtactic *)
@@ -171,4 +174,4 @@ let end_proof () =
   if proof_is_closed_wrt_to_evars () then
     remove_dangling_evars ();
   (* The following invokes the usual Qed. *)
-  Vernacentries.vernac_end_proof Vernacexpr.(Proved (Opaque None,None))
+  Lemmas.save_proof (Proved (Opaque None,None))

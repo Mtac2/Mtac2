@@ -1,5 +1,6 @@
 (** This module initializes the plugin (parser extension, callbacks, …). *)
 
+open Ltac_plugin
 open Pcoq  (* required by Camlp5 *)
 
 (**
