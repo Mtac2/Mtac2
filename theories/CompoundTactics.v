@@ -52,7 +52,6 @@ Defined.
 
 Definition abstract A B (x : A) (t : B) :=
    (mfix1 loop (r : dyn) : M (result x (elem r)) :=
-   print_term r;;
    b <- is_evar (elem r);
    if b then raise exception
    else
@@ -82,7 +81,7 @@ Definition abstract A B (x : A) (t : B) :=
 
 Notation reduce_all := (reduce (RedStrong [rl:RedBeta; RedMatch; RedZeta;
            RedDeltaOnly [rl: Dyn elem; Dyn type; Dyn (@fu); Dyn (@id);
-             Dyn (@abs_app); Dyn (@eq_rect_r); Dyn (@eq_rect); Dyn (@eq_sym);
+             Dyn (@abs_app); Dyn (@meq_rect_r); Dyn (@meq_rect); Dyn (@meq_sym); Dyn (@internal_meq_rew_r);
              Dyn (@match_eq); Dyn (@non_dep_eq)]])).
 
 Lemma eq_fu (A : Type) (x y : A) (P : Type) (r : result x P) :
