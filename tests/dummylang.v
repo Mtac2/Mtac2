@@ -105,10 +105,10 @@ Notation "t '[x]'" := (t &> T.raise UnsoledGoals) (at level 0).
 Lemma alwas_sc_mtac2 : forall p, steps p ;;.
 MProof.
   intros p.
-  select st induction &> case steps0 do eauto [x].
-  select exp induction &> case false, nil do eauto [x].
+  (select st >>= induction) &> case steps0 do eauto [x].
+  (select exp >>= induction) &> case false, nil do eauto [x].
   + stepIfTrue.
-  + select binop destruct &> select exp induction &> eauto [x].
-  + select unop destruct &> select exp induction
+  + (select binop >>= destruct) &> (select exp >>= induction) &> eauto [x].
+  + (select unop >>= destruct) &> (select exp >>= induction)
            &> case true, B, U do eauto [x] &> (stepInIf &> stepIfTrue).
 Qed.

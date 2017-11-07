@@ -26,13 +26,13 @@ Definition lrewrite {A} (x: A) := trewrite LeftRewrite [m:Dyn x]%list.
 Goal forall n, n + 0 = n.
 MProof.
   elim0 &> case 0 do reflexivity.
-  intros &> simpl. select (_ = _) rrewrite &> reflexivity.
+  intros &> simpl. select (_ = _) >>= rrewrite ;; reflexivity.
 Qed.
 
 Goal forall n, n + 0 = n.
 MProof.
   elim0 &> simpl &> case 0, S do intros &> try reflexivity.
-  select (_ = _) rrewrite &> reflexivity.
+  select (_ = _) >>= rrewrite ;; reflexivity.
 Qed.
 
 Require Import Coq.Arith.Arith.
@@ -168,11 +168,11 @@ MProof.
   induction H &> case E_Skip, E_Ass, E_IfTrue, E_IfFalse, E_Seq do discriminate.
   - (* E_WhileEnd *) (* contradictory -- b is always true! *)
     inversion Heqcw. subst.
-    select (bequiv _ _) (unfold_in bequiv).
+    select (bequiv _ _) >>= unfold_in bequiv.
     move_back H.
-    select (forall x:_, _) rrewrite. simpl.
+    select (forall x:_, _) >>= rrewrite. simpl.
     discriminate.
   - (* E_WhileLoop *) (* immediate from the IH *)
-    select (WHILE _ DO _ END = _ -> _) apply.
+    select (WHILE _ DO _ END = _ -> _) >>= apply.
     assumption.
 Qed.

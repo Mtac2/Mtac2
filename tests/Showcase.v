@@ -59,18 +59,18 @@ Qed.
 
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
-  intros. select (_ -> _) apply;; assumption.
+  intros. select (_ -> _) >>= apply;; assumption.
 Qed.
 
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
-  cintros _ _ _ _ {- select (_ -> _) apply;; assumption -}.
+  cintros _ _ _ _ {- select (_ -> _) >>= apply;; assumption -}.
 Qed.
 
 Definition apply_fun : tactic :=
   A <- M.evar Type;
   B <- M.evar Type;
-  select (A -> B) apply.
+  select (A -> B) >>= apply.
 
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.

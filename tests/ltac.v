@@ -46,7 +46,7 @@ Qed.
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
   intros P Q f x.
-  select (_->_) (fun g=>ltac apply' [m:Dyn g]) ;; assumption.
+  g <- select (_->_); ltac apply' [m:Dyn g] ;; assumption.
 Qed.
 
 Goal forall P Q, (P -> Q) -> P -> Q.

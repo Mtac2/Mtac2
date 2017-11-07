@@ -171,7 +171,7 @@ MProof.
   assert (T : branch_of_CTele rG (reflect_RTrue P)).
   { simpl. cintros x {- split&> [m:cintros xP {- reflexivity -} | cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }
   assert (F : branch_of_CTele rG (reflect_RFalse P)).
-  { simpl. intros. split. intros. select (~ _) (fun a=>select P (fun x=>exact (match a x with end))). intros;; discriminate. }
+  { simpl. intros. split. intros. a <- select (~ _); x <- select P; exact (match a x with end). intros;; discriminate. }
   mpose (return_type := unfold_funs (RTele_Fun rG) 5).
   pose (mc :=
           M.makecase {|

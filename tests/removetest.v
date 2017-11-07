@@ -34,21 +34,21 @@ Qed.
 
 Lemma negb_involutive : forall b b2:bool, negb (negb b) = b.
 MProof.
-  cintros b {- T.destruct b -};; T.select bool T.clear ;; intros b2.
+  cintros b {- T.destruct b -};; T.select bool >>= T.clear ;; intros b2.
   - T.reflexivity.
   - T.reflexivity.
 Qed.
 
 Lemma negb_involutive' (n:nat) : forall b b2:bool, negb (negb b) = b.
 MProof.
-  cintros b {- T.destruct b -};; T.select bool T.clear ;; intros b2.
+  cintros b {- T.destruct b -};; T.select bool >>= T.clear ;; intros b2.
   - T.reflexivity.
   - T.reflexivity.
 Qed.
 
 Lemma negb_involutive'' (n1 n2 n3:nat) : forall b b2:bool, negb (negb b) = b.
 MProof.
-  cintros b {- T.destruct b -};; T.select bool T.clear ;; intros b2.
+  cintros b {- T.destruct b -};; T.select bool >>= T.clear ;; intros b2.
   - T.reflexivity.
   - T.reflexivity.
 Qed.

@@ -284,8 +284,8 @@ MProof.
   destructn 0.
   - destructn 1.
     + Fail destructn 0.
-      select bool destruct;; reflexivity.
-    + select bool destruct;; reflexivity.
+      select bool >>= destruct;; reflexivity.
+    + select bool >>= destruct;; reflexivity.
   - introsn 2;; reflexivity.
 Qed.
 
@@ -319,7 +319,7 @@ MProof. auto. Qed.
 Goal forall (x y z : nat) (H: x = y), y = x.
 MProof.
   intros.
-  select (_ = _) (fun x=>rewrite x).
+  x <- select (_ = _); rewrite x.
   reflexivity.
 Qed.
 

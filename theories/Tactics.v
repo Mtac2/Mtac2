@@ -1028,9 +1028,9 @@ Definition assumption : tactic :=
 
 (** Given a type [T] it searches for a hypothesis with that type and
     executes the [cont]inuation on it.  *)
-Definition select {B} (T : Type) (cont : T -> gtactic B) : gtactic B :=
+Definition select (T : Type) : gtactic T :=
   A <- goal_type;
-  match_goal with [[ x : T |- A ]] => cont x end.
+  match_goal with [[ x : T |- A ]] => T.ret x end.
 
 (** generalize with clear *)
 Definition cmove_back {A} (x : A) (cont : tactic) : tactic :=
