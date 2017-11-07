@@ -91,16 +91,15 @@ Definition apply_type_of (P : Type) :
                    let r' : sigT (funs_of (M P)) := existT _ (M X :m: rl) (funs_bind rp') in
                    M.ret r'
                  )) with
-                    | [?s] CannotRemoveVar s =>
-                      let err := (String.append "A hypothesis depends on " s) in
-                      M.failwith err
-            end
-          else M.remove x_nu (M.ret r)
-          )
-     | _ =>
-       fun _ =>
-         M.failwith "The lemma's conclusion does not unify with the goal."
-     end
+          | [?s] CannotRemoveVar s =>
+            let err := (String.append "A hypothesis depends on " s) in
+            M.failwith err
+         end
+       else M.remove x_nu (M.ret r)
+       )
+  | _ => fun _ =>
+      M.failwith "The lemma's conclusion does not unify with the goal."
+  end
 .
 
 (* Notation "'[apply_args_mtac' t 'in' P ]" := *)
@@ -152,14 +151,14 @@ Notation "t '&s>' '[s' t1 ; .. ; tn ]" :=
 
 
 (* Definition test_lemma (T : Type) (x y : nat) : T -> y > 0 -> M (x =m= x) := *)
-(*   fun t H => M.print_term (T, x, y, t, H);; M.ret eq_refl. *)
+(*   fun t H => M.print_term (T, x, y, t, H);; M.ret meq_refl. *)
 
-(* Goal 1=1. *)
+(* Goal 1=m=1. *)
 (*   mrun ((test_lemma _ _ _) &s> [s M.ret I ; M.evar (1>0) ]). *)
 (*   auto. *)
 (* Qed. *)
 
-(* Goal 1=1. *)
+(* Goal 1=m=1. *)
 (*   mrun ( *)
 (*       let f : M(1=1) := *)
 (*           (test_lemma _ _ _) &s> [s M.ret I ; M.evar (1>0) ] in *)
