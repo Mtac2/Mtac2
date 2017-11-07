@@ -386,8 +386,9 @@ Inductive t : Type -> Prop :=
 (** [os_cmd cmd] executes the command and returns its error number. *)
 | os_cmd : string -> t Z
 
-| store : Type -> t unit
-| retrieve : t Type
+(** [cast T] returns T. It is useful when universes levels creates a cycle
+    that has no consequences at execution time. *)
+| cast : Type -> t Type
 .
 
 Arguments t _%type.
