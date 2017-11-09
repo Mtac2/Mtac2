@@ -18,6 +18,7 @@ theories/List.v
 theories/Utils.v
 theories/Sorts.v
 theories/Base.v
+theories/Abstract.v
 theories/Tactics.v
 theories/ImportedTactics.v
 theories/IntroPatt.v

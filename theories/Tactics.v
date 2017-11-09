@@ -1,6 +1,6 @@
 Require Import Strings.String.
 From Mtac2 Require Export Base.
-From Mtac2 Require Import Logic Datatypes List Utils Logic.
+From Mtac2 Require Import Logic Datatypes List Utils Logic Abstract.
 Import M.notations.
 Import Mtac2.List.ListNotations.
 
@@ -419,26 +419,10 @@ Arguments gtele {B C} _.
 Arguments gtele_evar {B C} _.
 
 Definition match_goal_context
-    {C A} (x : A) : forall {B}, B -> ((A -> B) -> gtactic C) -> gtactic C :=
-  mfix4 go (B : Type) (y : B) (t : (A -> B) -> gtactic C) (g : goal): M (mlist (C * goal)) :=
-  let recur := fun {B} (y : B) (t : (A -> B) -> gtactic C) =>
-    mmatch y with
-    | [? A' (h : A' -> B) z] h z =n>
-      mtry go _ z (fun C => t (fun a => h (C a))) g with
-      | DoesNotMatchGoal => go _ h (fun C => t (fun a => C a z)) g
-      end
-    | _ => M.raise DoesNotMatchGoal
-    end in
-  oeqAB <- M.unify B A UniMatchNoRed;
-  match oeqAB with
-  | mSome eqAB =>
-    let 'meq_refl := meq_sym eqAB in fun (y : A) t =>
-    mif M.cumul UniMatchNoRed x y then
-      let term := reduce (RedStrong [rl:RedBeta]) (t (fun a => a) g) in
-      term
-    else recur y t
-  | mNone => recur
-  end y t.
+    {C A B} (x: A) (y: B) (cont: (A -> B) -> gtactic C) : gtactic C := fun g=>
+  r <- abstract x y;
+  let reduced := dreduce (fu) (fu r) in
+  cont reduced g.
 
 Fixpoint match_goal_pattern' {B}
     (u : Unification) (p : goal_pattern B) : mlist Hyp -> mlist Hyp -> gtactic B :=
