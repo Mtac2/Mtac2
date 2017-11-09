@@ -155,8 +155,7 @@ Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
     end.
 
 Definition bind {A B} (t : gtactic A) (f : A -> gtactic B) : gtactic B := fun g =>
-  gs <- t g;
-  r <- M.map (fun '(x,g') => open_and_apply (f x) g') gs;
+  r <- M.map (fun '(x,g') => open_and_apply (f x) g') =<< t g;
   let res := dreduce (@mconcat, mapp) (mconcat r) in
   filter_goals res.
 
@@ -174,16 +173,12 @@ Instance seq_one {A B} : Seq A B (gtactic B) := fun t1 t2 => bind t1 (fun _ => t
 Fixpoint gmap {A} (tacs : mlist (gtactic A)) (gs : mlist goal) : M (mlist (mlist (A * goal))) :=
   match tacs, gs with
   | [m:], [m:] => M.ret [m:]
-  | tac :m: tacs', g :m: gs' =>
-    fa <- open_and_apply tac g;
-    rest <- gmap tacs' gs';
-    M.ret (fa :m: rest)
+  | tac :m: tacs', g :m: gs' => mcons <$> open_and_apply tac g <*> gmap tacs' gs'
   | l, l' => M.raise NotSameSize
   end.
 
 Instance seq_list {A B} : Seq A B (mlist (gtactic B)) := fun t f g =>
-  gs <- t g;
-  filter_goals gs >>= fun gs=>
+  gs <- filter_goals =<< t g;
   ls <- gmap f (mmap snd gs);
   let res := dreduce (@mconcat, mapp) (mconcat ls) in
   filter_goals res.
@@ -317,11 +312,10 @@ Definition generalize {A} (x : A) : tactic := fun g =>
 (** Clear hypothesis [x] and continues the execution on [cont] *)
 Definition cclear {A B} (x:A) (cont : gtactic B) : gtactic B := fun g=>
   gT <- M.goal_type g;
-  r <- M.remove x (
+  ''(e,l) <- M.remove x (
     e <- M.evar gT;
     l <- cont (Goal e);
     M.ret (e, l));
-  let (e, l) := r in
   exact e g;;
   rem_hyp x l.
 
@@ -396,14 +390,12 @@ Definition apply_ : tactic := fun g =>
 
 (** Given a list of dyn's, it applies each of them until one
 succeeds. Throws NoProgress if none apply *)
-Definition apply_one_of l : tactic :=
-  mfold_left (fun a b=>or a (let (_, e) := b : dyn in apply e))%tactic l (T.raise NoProgress).
+Definition apply_one_of (l : mlist dyn) : tactic :=
+  mfold_left (fun a '(Dyn e) => or a (apply e)) l (T.raise NoProgress).
 
 (** Tries to apply each constructor of the goal type *)
 Definition constructor : tactic := fun g=>
-  T <- M.goal_type g;
-  l <- M.constrs T;
-  let (_, l) := l in
+  ''(_, l) <- M.constrs =<< M.goal_type g;
   apply_one_of l g.
 
 
@@ -470,24 +462,19 @@ Fixpoint match_goal_base {B} (u : Unification)
   end.
 
 Definition ltac (t : string) (args : mlist dyn) : tactic := fun g =>
-  d <- M.goal_to_dyn g;
-  let (ty, el) := d in
-  v <- @M.call_ltac ty t args;
-  let (v, l) := v in
+  ''(@Dyn ty el) <- M.goal_to_dyn g;
+  ''(v, l) <- @M.call_ltac ty t args;
   M.unify_or_fail UniCoq v el;;
-  b <- M.is_evar v;
-  if b then
+  mif M.is_evar v then
     M.ret [m:(tt, Goal v)] (* it wasn't solved *)
   else
     let l' := dreduce (@mmap) (mmap (pair tt) l) in
     M.ret l'.
 
 Definition destruct_all (T : Type) : tactic := fun g=>
-  l <- M.hyps;
-  l <- M.filter (fun h : Hyp=>
-    let (Th, _, _) := h in
+  l <- M.filter (fun '(@ahyp Th _ _) =>
     r <- M.unify Th T UniCoq;
-    M.ret (option_to_bool r)) l;
+    M.ret (option_to_bool r)) =<< M.hyps;
   (fix f (l : mlist Hyp) : tactic :=
     match l with
     | [m:] => idtac
@@ -520,12 +507,11 @@ Definition typed_intros (T : Type) : tactic := fun g =>
 Definition change_hyp {P Q} (H : P) (newH: Q) : tactic := fun g=>
   name <- M.get_binder_name H;
   gT <- M.goal_type g;
-  vs <- M.remove H (M.nu name mNone (fun nH: Q=>
+  ''(gabs, abs) <- M.remove H (M.nu name mNone (fun nH: Q=>
      r <- M.evar gT;
      abs <- M.abs_fun nH r;
      gabs <- M.abs_fun nH (Goal r);
      M.ret (AHyp mNone gabs, abs)));
-  let (gabs, abs) := vs in
   exact (abs newH) g;;
   M.ret [m:(tt, gabs)].
 
@@ -536,7 +522,7 @@ Definition cassert_with_base {A B} (name : string) (t : A)
     r <- M.evar gT;
     value <- M.abs_fun x r;
     exact (value t) g;;
-    cont x (Goal r) >>= close_goals x).
+    close_goals x =<< cont x (Goal r)).
 
 Definition cpose_base {A B} (name : string) (t : A)
     (cont : A -> gtactic B) : gtactic B := fun g =>
@@ -545,7 +531,7 @@ Definition cpose_base {A B} (name : string) (t : A)
     r <- M.evar gT;
     value <- M.abs_let x t r;
     exact value g;;
-    cont x (Goal r) >>= let_close_goals x).
+    let_close_goals x =<< cont x (Goal r)).
 
 Definition cpose {A} (t: A) (cont : A -> tactic) : tactic := fun g =>
   n <- M.get_binder_name cont;
@@ -577,12 +563,11 @@ Definition cut (U : Type) : tactic := fun g =>
 
 (* performs simpl in each hypothesis and in the goal *)
 Definition simpl_in_all : tactic := fun g =>
-  l <- M.hyps;
   l <- M.fold_right (fun (hyp : Hyp) hyps =>
     let (A, x, ot) := hyp in
     let A := rsimpl A in
     M.ret (@ahyp A x ot :m: hyps)
-  ) [m:] l;
+  ) [m:] =<< M.hyps;
   T <- M.goal_type g;
   let T := rsimpl T in
   e <- M.Cevar T l; (* create the new goal in the new context *)
@@ -594,12 +579,10 @@ Definition simpl_in_all : tactic := fun g =>
   end.
 
 Definition reduce_in (r : Reduction) {P} (H : P) : tactic := fun g =>
-  l <- M.hyps;
-  l' <- M.map (fun hyp : Hyp =>
-    let (T, v, def) := hyp in
+  l' <- M.map (fun '(@ahyp T v def) =>
     mif M.cumul UniMatchNoRed H v then
       let T' := reduce r T in M.ret (@ahyp T' v def)
-    else M.ret hyp) l;
+    else M.ret (ahyp v def)) =<< M.hyps;
   gT <- M.goal_type g;
   e <- M.Cevar gT l';
   oeq <- M.unify (Goal e) g UniCoq;
@@ -657,7 +640,7 @@ Definition n_etas (n : nat) {A} (f : A) : M A :=
     [n] products. *)
 Definition fix_tac (f : string) (n : N) : tactic := fun g =>
   gT <- M.goal_type g;
-  r <- M.nu f mNone (fun f : gT =>
+  ''(f, new_goal) <- M.nu f mNone (fun f : gT =>
     (* We introduce the recursive definition f and create the new
        goal having it. *)
     new_goal <- M.evar gT;
@@ -670,7 +653,6 @@ Definition fix_tac (f : string) (n : N) : tactic := fun g =>
     new_goal <- M.abs_fun f (Goal new_goal);
     M.ret (fixp, AHyp mNone new_goal)
   );
-  let (f, new_goal) := r in
   exact f g;;
   M.ret [m:(tt,new_goal)].
 

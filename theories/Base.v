@@ -541,16 +541,13 @@ Definition map {A B} (f : A -> t B) :=
   mfix1 rec (l : mlist A) : M (mlist B) :=
     match l with
     | [m:] => ret [m:]
-    | x :m: xs => x <- f x; xs <- rec xs; ret (x :m: xs)
+    | x :m: xs => mcons <$> f x <*> rec xs
     end.
 
 Fixpoint mapi' (n : nat) {A B} (f : nat -> A -> t B) (l: mlist A) : t (mlist B) :=
   match l with
   | [m:] => ret [m:]
-  | x :m: xs =>
-    el <- f n x;
-    xs' <- mapi' (S n) f xs;
-    ret (el :m: xs')
+  | x :m: xs => mcons <$> f n x <*> mapi' (S n) f xs
   end.
 
 Definition mapi := @mapi' 0.
@@ -560,15 +557,14 @@ Definition find {A} (b : A -> t bool) : mlist A -> t (moption A) :=
   fix f l :=
     match l with
     | [m:] => ret mNone
-    | x :m: xs => bx <- b x; if bx then ret (mSome x) else f xs
+    | x :m: xs => mif b x then ret (mSome x) else f xs
     end.
 
 Definition filter {A} (b : A -> t bool) : mlist A -> t (mlist A) :=
   fix f l :=
     match l with
     | [m:] => ret [m:]
-    | x :m: xs => bx <- b x; r <- f xs;
-                 if bx then ret (x :m: r) else ret r
+    | x :m: xs => mif b x then mcons x <$> f xs else f xs
     end.
 
 Definition hd {A} (l : mlist A) : t A :=
@@ -588,21 +584,20 @@ Definition fold_right {A B} (f : B -> A -> t A) (x : A) : mlist B -> t A :=
   fix loop l :=
     match l with
     | [m:] => ret x
-    | x :m: xs => r <- loop xs; f x r
+    | x :m: xs => f x =<< loop xs
     end.
 
 Definition fold_left {A B} (f : A -> B -> t A) : mlist B -> A -> t A :=
   fix loop l (a : A) :=
     match l with
     | [m:] => ret a
-    | b :m: bs => r <- f a b; loop bs r
+    | b :m: bs => loop bs =<< f a b
     end.
 
 Definition index_of {A} (f : A -> t bool) (l : mlist A) : t (moption nat) :=
-  ''(_, r) <- fold_left (fun (ir : (nat * moption nat)) x =>
-    let (i, r) := ir in
+  ''(_, r) <- fold_left (fun '(i, r) x =>
     match r with
-    | mSome _ => ret ir
+    | mSome _ => ret (i,r)
     | _ => mif f x then ret (i, mSome i) else ret (S i, mNone)
     end
   ) l (0, mNone);
@@ -630,8 +625,7 @@ Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
     | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
       let ty := reduce (RedWhd [rl:RedBeta]) ty in
       binder <- get_binder_name ty;
-      oeq <- unify binder n UniMatchNoRed;
-      if oeq then
+      mif unify binder n UniMatchNoRed then
         oeq' <- unify B T1 UniCoq;
         match oeq' with
         | mSome eq' =>
@@ -671,31 +665,26 @@ Definition unify_or_fail {A} (u : Unification) (x y : A) : t (x =m= y) :=
 (** Unifies [x] with [y] using cumulativity and raises [NotCumul] if it they
     are not unifiable. *)
 Definition cumul_or_fail {A B} (u : Unification) (x: A) (y: B) : t unit :=
-  b <- cumul u x y;
-  if b then ret tt else raise (NotCumul x y).
+  mif cumul u x y then ret tt else raise (NotCumul x y).
 
-Program Definition names_of_hyp : t (mlist string) :=
+Definition names_of_hyp : t (mlist string) :=
   env <- hyps;
-  mfold_left (fun (ns : t (mlist string)) (h:Hyp)=>
-    let (_, var, _) := h in
-    n <- get_binder_name var;
-    r <- ns; ret (n :m: r)) env (ret [m:]).
+  mfold_left (fun (ns : t (mlist string)) '(ahyp var _) =>
+    mcons <$> get_binder_name var <*> ns) env (ret [m:]).
 
 Definition hyps_except {A} (x : A) : t (mlist Hyp) :=
-  l <- M.hyps;
   filter (fun y =>
     mmatch y with
     | [? b] ahyp x b => M.ret false
     | _ => ret true
-    end) l.
+    end) =<< M.hyps.
 
 Definition find_hyp_index {A} (x : A) : t (moption nat) :=
-  l <- M.hyps;
   index_of (fun y =>
     mmatch y with
     | [? b] ahyp x b => M.ret true
     | _ => ret false
-    end) l.
+    end) =<< M.hyps.
 
 (** given a string s it appends a marker to avoid collition with user
     provided names *)
@@ -803,9 +792,8 @@ Definition print_goal (g : goal) : t unit :=
 Definition instantiate {A} (x y : A) : t unit :=
   ''(h, _) <- decompose x;
   let h := rcbv h.(elem) in
-  b <- is_evar h;
-  let t := reduce (RedWhd [rl:RedBeta]) t in
-  if b then
+  mif is_evar h then
+    let t := reduce (RedWhd [rl:RedBeta]) t in
     r <- unify x y UniEvarconv;
     match r with
     | mSome _ => M.ret tt
