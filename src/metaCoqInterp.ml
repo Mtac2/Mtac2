@@ -47,6 +47,8 @@ module MetaCoqRun = struct
     let (istactic, sigma, t) = pretypeT env sigma concl evar c in
     match Run.run (env, sigma) t with
     | Run.Val (sigma, v) ->
+        let open Proofview in let open Proofview.Notations in
+        Unsafe.tclEVARS sigma >>= fun _->
         if not istactic then
           Refine.refine ~unsafe:false {Sigma.run = fun _ ->Sigma.Unsafe.of_pair (v, sigma)}
         else
@@ -55,8 +57,6 @@ module MetaCoqRun = struct
           let goals = List.map (Run.Goal.evar_of_goal sigma env) goals in
           let goals = List.filter Option.has_some goals in
           let goals = List.map Option.get goals in
-          let open Proofview in let open Proofview.Notations in
-          Unsafe.tclEVARS sigma >>= fun _->
           Unsafe.tclSETGOALS goals
 
     | Run.Err (_, e) ->
