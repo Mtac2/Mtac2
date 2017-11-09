@@ -48,7 +48,7 @@ Proof.
 Defined.
 
 Notation reduce_all := (reduce (RedStrong [rl:RedBeta; RedMatch; RedZeta;
-           RedDeltaOnly [rl: Dyn elem; Dyn type; Dyn (@fu); Dyn (@id);
+           RedDeltaOnly [rl: Dyn elem; Dyn type; Dyn (@fu);
              Dyn (@abs_app); Dyn (@meq_rect_r); Dyn (@meq_rect); Dyn (@meq_sym); Dyn (@internal_meq_rew_r);
              Dyn (@match_eq); Dyn (@non_dep_eq)]])).
 
@@ -60,7 +60,7 @@ Definition abstract A B (x : A) (t : B) :=
    else
     mmatch r as r' return M (result x (elem r')) with
     | Dyn x =>
-      ret (R id (meq_refl _))
+      ret (R (fun x=>x) (meq_refl _))
     | [? A' (t1 : A' -> type r) t2] Dyn (t1 t2)  =u>
         r1 <- loop (Dyn t1);
         r2 <- loop (Dyn t2);

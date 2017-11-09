@@ -19,7 +19,9 @@ Definition count_cmd := find_cmd ++ " | wc -l  | tr -d ' '".
    universes we expect to be in the list. currenlty, only those from ex *)
 Definition assert_cmd := "[ $(" ++ count_cmd ++ ") = """ ++ magic_number ++ """ ]".
 
-Goal eval (os_cmd assert_cmd) = Z0.
+Definition cmd := Eval compute in eval (print assert_cmd;; ret assert_cmd).
+
+Goal eval (os_cmd cmd) = Z0.
   reflexivity.
 Qed.
 
