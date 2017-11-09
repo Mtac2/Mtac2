@@ -298,7 +298,7 @@ module ReductionStrategy = struct
 
   let redfuns = [|
     (fun _ _ _ c -> c);
-    (fun _ -> Tacred.simpl);
+    (fun _ env sigma c -> Tacred.simpl env sigma (nf_evar sigma c));
     (fun _ ->one_step);
     (fun fs env sigma c->
        let evars ev = safe_evar_value sigma ev in
