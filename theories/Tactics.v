@@ -160,6 +160,11 @@ Definition bind {A B} (t : gtactic A) (f : A -> gtactic B) : gtactic B := fun g 
   let res := dreduce (@mconcat, mapp) (mconcat r) in
   filter_goals res.
 
+Definition fmap {A B} (f : A -> B) (x : gtactic A) : gtactic B :=
+  bind x (fun a => ret (f a)).
+Definition fapp {A B} (f : gtactic (A -> B)) (x : gtactic A) : gtactic B :=
+  bind f (fun g => fmap g x).
+
 Class Seq (A B C : Type) :=
   seq : gtactic A -> C -> gtactic B.
 Arguments seq {A B C _} _%tactic _%tactic.
@@ -795,6 +800,9 @@ Module notations.
      right associativity, format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
 
   Notation "t >>= f" := (bind t f) (at level 70) : tactic_scope.
+
+  Infix "<$>" := fmap (at level 61, left associativity) : tactic_scope.
+  Infix "<*>" := fapp (at level 61, left associativity) : tactic_scope.
 
   Notation "t1 ';;' t2" := (seq t1 t2)
     (at level 100, t2 at level 200,

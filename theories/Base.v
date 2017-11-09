@@ -389,6 +389,11 @@ Inductive t : Type -> Prop :=
 
 Arguments t _%type.
 
+Definition fmap {A B} (f : A -> B) (x : t A) : t B :=
+  bind x (fun a => ret (f a)).
+Definition fapp {A B} (f : t (A -> B)) (x : t A) : t B :=
+  bind f (fun g => fmap g x).
+
 Definition Cevar (A : Type) (ctx : mlist Hyp) : t A := gen_evar A (mSome ctx).
 Definition evar (A : Type) : t A := gen_evar A mNone.
 
@@ -430,6 +435,9 @@ Module monad_notations.
     (at level 100, t2 at level 200,
      right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : M_scope.
   Notation "t >>= f" := (bind t f) (at level 70) : M_scope.
+
+  Infix "<$>" := fmap (at level 61, left associativity) : M_scope.
+  Infix "<*>" := fapp (at level 61, left associativity) : M_scope.
 
   Notation "'mif' b 'then' t 'else' u" :=
     (cond <- b; if cond then t else u) (at level 200) : M_scope.
