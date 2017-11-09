@@ -799,6 +799,7 @@ Module notations.
     (at level 100, r1 binder, rn binder, t2 at level 200,
      right associativity, format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
 
+  Notation "f =<< t" := (bind t f) (at level 70, only parsing) : tactic_scope.
   Notation "t >>= f" := (bind t f) (at level 70) : tactic_scope.
 
   Infix "<$>" := fmap (at level 61, left associativity) : tactic_scope.

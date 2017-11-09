@@ -434,6 +434,8 @@ Module monad_notations.
   Notation "t1 ';;' t2" := (bind t1 (fun _ => t2%MC))
     (at level 100, t2 at level 200,
      right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : M_scope.
+
+  Notation "f =<< t" := (bind t f) (at level 70, only parsing) : M_scope.
   Notation "t >>= f" := (bind t f) (at level 70) : M_scope.
 
   Infix "<$>" := fmap (at level 61, left associativity) : M_scope.
