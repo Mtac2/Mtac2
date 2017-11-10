@@ -1320,3 +1320,11 @@ let run (env, sigma) t =
       Err (sigma', multi_subst_inv subs (nf_evar sigma' v))
   | Val (sigma', v) ->
       Val (sigma', multi_subst_inv subs (nf_evar sigma' v))
+
+
+(** set the run function in unicoq *)
+let _ = Munify.set_lift_constr (MetaCoqNames.mkConstr "lift")
+let _ = Munify.set_run (fun env sigma t ->
+  match run (env, sigma) t with
+  | Err _ -> None
+  | Val c -> Some c)

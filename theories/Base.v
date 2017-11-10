@@ -812,3 +812,7 @@ Import M.notations.
 
 Notation "t 'mwith' ( m := u )" :=
   (elem (ltac:(mrun (v <- M.mwith t m u; M.ret v)%MC))) (at level 0).
+
+
+(** Execution of tactics at unification *)
+Definition lift {A} (f: M A) (v : A) := A.
