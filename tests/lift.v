@@ -5,21 +5,39 @@ Import M.
 Require Import Lists.List.
 Import ListNotations.
 
+Set Use Unicoq.
 
-Module First.
 Structure execV {A} (f : M A) B := ExecV { value : B } .
 
 Canonical Structure the_value {A} (f : M A) v := ExecV _ f (lift f v) v.
 
 Arguments value {A} f {B} {e}.
 
-Set Use Unicoq.
+
+Definition exec {A} (f : M A) {v:A} : lift f v := v.
+
+
 
 Goal True.
 refine (let H := _ in let _ : value (ret I) = H := eq_refl in H).
 Qed.
 
-End First.
+Goal True.
+refine (exec (print "hola";; ret I)).
+Qed.
+
+Goal True.
+refine (exec (raise exception)).
+Abort. (* note that it doesn't fail, it just silently leaves the goal open
+ (in fact, the proof will contain exec) *)
+
+Notation "'[ex' t ']'" := (exec t) (at level 0).
+
+Goal [ex ret True] = True.
+  unfold exec.
+  reflexivity.
+Qed.
+
 
 (*
 Module Second.
