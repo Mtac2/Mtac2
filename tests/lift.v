@@ -37,7 +37,17 @@ Goal [ex ret True] = True.
   unfold exec.
   reflexivity.
 Qed.
+Import M.notations.
+Definition silly :=
+  fix f (n: nat) : M Prop :=
+    match n with
+    | 0 => ret True
+    | S n' => f n' >>= fun r=>ret (True -> r)
+    end.
 
+Goal [ex silly 3] : _. (* we need the : to make sure it triggers the rule for lift *)
+  unfold exec.
+Abort.
 
 (*
 Module Second.
