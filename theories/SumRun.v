@@ -42,3 +42,27 @@ Notation "'[run'  t ]" :=
 (* Fail Eval compute in 1 + [run M.failwith (A:=nat) ""]. *)
 (* Fail Eval compute in 1 + [run M.ret I]. *)
 (* Eval compute in 1 + [run M.ret 1]. *)
+
+
+Polymorphic Cumulative Structure execV {A} (f : M A) B := ExecV { value : B } .
+
+Canonical Structure the_value {A} (f : M A) v := ExecV _ f (lift f v) v.
+
+Arguments value {A} f {B} {e}.
+
+Global Set Use Unicoq.
+
+Notation "'Σ' x .. y ,  t" :=
+  (sigT (fun x => .. (sigT (fun y => t)) ..)) (at level 200, x binder, y binder).
+
+(* Definition test {T} (t : T) : M (Σ X (x : X) f, f x = t) := *)
+(*   mmatch T return M (Σ X x f, f x = t) with *)
+(*   | [? X] (X -> T) => _ *)
+(*   end. *)
+
+(* Goal True. *)
+(* refine (let H := _ in let _ : value (M.ret I) =m= H := meq_refl in H). *)
+(* Qed. *)
+
+Notation "'[run'  t ]" :=
+  (let H := _ in let _ : value t = H := eq_refl in H).

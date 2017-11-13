@@ -8,7 +8,7 @@ module MetaCoqRun = struct
   open Proofview.Notations
 
   let ifM env sigma concl ty c =
-    let metaCoqType = Lazy.force Run.MetaCoqNames.mkT_lazy in
+    let sigma, metaCoqType = Run.MetaCoqNames.mkT_lazy sigma env in
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
     if EConstr.eq_constr_nounivs sigma metaCoqType h && List.length args = 1 then
       try
@@ -53,7 +53,7 @@ module MetaCoqRun = struct
         if not istactic then
           Refine.refine ~typecheck:false begin fun evd -> evd, v end
         else
-          let goals = Constrs.CoqList.from_coq (env, sigma) v in
+          let goals = Constrs.CoqList.from_coq sigma env v in
           let goals = List.map (fun x -> snd (Constrs.CoqPair.from_coq (env, sigma) x)) goals in
           let goals = List.map (Run.Goal.evar_of_goal sigma env) goals in
           let goals = List.filter Option.has_some goals in

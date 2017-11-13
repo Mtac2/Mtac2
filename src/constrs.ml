@@ -66,31 +66,31 @@ module UConstrBuilder = struct
 end
 
 module CoqOption = struct
-  open ConstrBuilder
+  open UConstrBuilder
 
   let optionBuilder = from_string "Mtac2.Datatypes.moption"
   let noneBuilder = from_string "Mtac2.Datatypes.mNone"
   let someBuilder = from_string "Mtac2.Datatypes.mSome"
 
-  let mkType ty = build_app optionBuilder [|ty|]
-  let mkNone ty = build_app noneBuilder [|ty|]
-  let mkSome ty t = build_app someBuilder [|ty; t|]
+  let mkType sigma env ty = build_app optionBuilder sigma env [|ty|]
+  let mkNone sigma env ty = build_app noneBuilder sigma env [|ty|]
+  let mkSome sigma env ty t = build_app someBuilder sigma env [|ty; t|]
 
   exception NotAnOption
 
-  let from_coq ctx cterm =
-    match from_coq noneBuilder ctx cterm with
+  let from_coq sigma env cterm =
+    match from_coq noneBuilder (env, sigma) cterm with
     | None ->
-        begin match from_coq someBuilder ctx cterm with
+        begin match from_coq someBuilder (env, sigma) cterm with
         | None -> raise NotAnOption
         | Some args -> Some args.(1)
         end
     | Some _ -> None
 
-  let to_coq ty oterm =
+  let to_coq sigma env ty oterm =
     match oterm with
-    | None -> mkNone ty
-    | Some t -> mkSome ty t
+    | None -> mkNone sigma env ty
+    | Some t -> mkSome sigma env ty t
 end
 
 module type ListParams = sig
@@ -100,32 +100,32 @@ module type ListParams = sig
 end
 
 module type LIST = sig
-  val mkNil : types -> constr
-  val mkCons : types -> constr -> constr -> constr
-  val mkType : types -> types
+  val mkNil : Evd.evar_map -> Environ.env -> types -> Evd.evar_map * constr
+  val mkCons : Evd.evar_map -> Environ.env -> types -> constr -> constr -> Evd.evar_map * constr
+  val mkType : Evd.evar_map -> Environ.env -> types -> Evd.evar_map * types
 
   exception NotAList of constr
 
-  val from_coq : (Environ.env * Evd.evar_map) -> constr -> constr list
+  val from_coq : Evd.evar_map -> Environ.env -> constr -> constr list
 
   (** Allows skipping an element in the conversion *)
   exception Skip
-  val from_coq_conv : (Environ.env * Evd.evar_map) -> (constr -> 'a) -> constr -> 'a list
+  val from_coq_conv : Evd.evar_map -> Environ.env -> (Evd.evar_map -> constr -> Evd.evar_map * 'a) -> constr -> Evd.evar_map * 'a list
 
-  val to_coq : types -> ('a -> constr) -> 'a list -> constr
-  val pto_coq : types -> ('a -> Evd.evar_map -> Evd.evar_map * constr) -> 'a list -> Evd.evar_map -> Evd.evar_map * constr
+  val to_coq : Evd.evar_map -> Environ.env -> types -> (Evd.evar_map -> 'a -> Evd.evar_map * constr) -> 'a list -> Evd.evar_map * constr
+  val pto_coq : Environ.env -> types -> ('a -> Evd.evar_map -> Evd.evar_map * constr) -> 'a list -> Evd.evar_map -> Evd.evar_map * constr
 end
 
 module GenericList (LP : ListParams) = struct
-  open ConstrBuilder
+  open UConstrBuilder
 
   let listBuilder = from_string LP.typename
   let nilBuilder  = from_string LP.nilname
   let consBuilder = from_string LP.consname
 
-  let mkType ty = build_app listBuilder [|ty|]
-  let mkNil ty = build_app nilBuilder [|ty|]
-  let mkCons t x xs = build_app consBuilder [| t ; x ; xs |]
+  let mkType sigma env ty = build_app listBuilder sigma env [|ty|]
+  let mkNil sigma env ty = build_app nilBuilder sigma env [|ty|]
+  let mkCons sigma env t x xs = build_app consBuilder sigma env [| t ; x ; xs |]
 
   exception Skip
   exception NotAList of constr
@@ -133,30 +133,38 @@ module GenericList (LP : ListParams) = struct
       it creates a list of elements using the converstion function.
       if fconv raises Skip, that element is not included.
       if the list is ill-formed, an exception NotAList is raised. *)
-  let from_coq_conv ctx (fconv : constr -> 'a) cterm =
-    let rec fcc cterm =
-      match from_coq consBuilder ctx cterm with
+  let from_coq_conv sigma env (fconv : Evd.evar_map -> constr -> Evd.evar_map * 'a) cterm =
+    let rec fcc sigma cterm =
+      match from_coq consBuilder (env, sigma) cterm with
       | None ->
-          begin match from_coq nilBuilder ctx cterm with
+          begin match from_coq nilBuilder (env, sigma) cterm with
           | None -> raise (NotAList cterm)
-          | Some _ -> []
+          | Some _ -> sigma, []
           end
       | Some args ->
-          let tail = fcc args.(2) in
-          try fconv args.(1) :: tail with Skip -> tail
+          let (sigma, tail) = fcc sigma args.(2) in
+          try
+            let (sigma, h) = fconv sigma args.(1) in
+            (sigma, h :: tail)
+          with Skip ->
+            (sigma, tail)
     in
-    fcc cterm
+    fcc sigma cterm
 
-  let from_coq (env, sigma) =
-    from_coq_conv (env, sigma) (fun x->x)
+  let from_coq sigma env t =
+    (* it is safe to throw away sigma here because we are not changing it *)
+    snd (from_coq_conv sigma env (fun sigma (x:constr)->(sigma, x)) t)
 
-  let to_coq ty f l =
-    List.fold_right (fun e l -> mkCons ty (f e) l) l (mkNil ty)
+  let to_coq sigma env ty f l =
+    List.fold_right (fun e (sigma, l) -> let (sigma, t) = f sigma e in
+                      mkCons sigma env ty t l)
+      l
+      (mkNil sigma env ty)
 
-  let pto_coq ty f l sigma =
+  let pto_coq env ty f l sigma =
     List.fold_right (fun e (sigma, l) ->
       let sigma, c = f e sigma in
-      sigma, mkCons ty c l) l (sigma, mkNil ty)
+      mkCons sigma env ty c l) l (mkNil sigma env ty)
 end
 
 module CoqList = GenericList (struct
@@ -166,13 +174,13 @@ module CoqList = GenericList (struct
   end)
 
 module CoqEq = struct
-  open ConstrBuilder
+  open UConstrBuilder
 
   let eqBuilder = from_string "Mtac2.Logic.meq"
   let eqReflBuilder = from_string "Mtac2.Logic.meq_refl"
 
-  let mkType a x y = build_app eqBuilder [|a;x;y|]
-  let mkEqRefl a x = build_app eqReflBuilder [|a;x|]
+  let mkType env sigma a x y = build_app eqBuilder env sigma [|a;x;y|]
+  let mkEqRefl env sigma a x = build_app eqReflBuilder env sigma [|a;x|]
 end
 
 module CoqSigT = struct

@@ -9,6 +9,10 @@
 Require Export Mtac2.Datatypes.
 Set Implicit Arguments.
 
+Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
+Unset Universe Minimization ToSet.
+
 Open Scope mlist_scope.
 
 Module ListNotations.

@@ -4,6 +4,10 @@ Require Import Strings.String.
 Import M.notations.
 Import Mtac2.List.ListNotations.
 
+Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
+Unset Universe Minimization ToSet.
+
 Local Inductive msigT {A} (P : A -> Type) : Type := | mexistT x : P x -> msigT P.
 Local Notation "'{$'  x .. y  &  P }" := (msigT (fun x => .. (msigT (fun y => P)) .. )) (x binder, y binder).
 Local Definition mprojT1 {A} {P} : @msigT A P -> A := fun '(mexistT _ x _) => x.

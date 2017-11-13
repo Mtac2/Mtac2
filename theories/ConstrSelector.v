@@ -2,6 +2,10 @@ From Mtac2 Require Import Datatypes List Mtac2.
 Import T.
 Import Mtac2.List.ListNotations.
 
+Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
+Unset Universe Minimization ToSet.
+
 (** This files defines a useful tactic to kill subgoals on groups
     based on the (position) of the constructors. For instance, for a
     variable x of some inductive type I with constructors c1, ..., cn,
@@ -18,7 +22,7 @@ Import Mtac2.List.ListNotations.
    form A1 -> ... -> An -> I *)
 Definition get_constrs :=
   mfix1 fill (T : Type) : M (mlist dyn) :=
-    mmatch T with
+    mmatch T return M (mlist dyn) with
     | [? A B] A -> B => fill B
     | [? A (P:A->Type)] forall x:A, P x =>
       name <- M.fresh_binder_name T;
@@ -29,7 +33,7 @@ Definition get_constrs :=
       l <- M.constrs T;
       let (_, l') := l in
       M.ret l'
-    end.
+    end%MC.
 
 (** Given a constructor c, it returns its index. *)
 Definition index {A} (c: A) : M _ :=
@@ -38,7 +42,7 @@ Definition index {A} (c: A) : M _ :=
     mmatch l with
     | [? l'] (Dyn c :m: l') => M.ret i
     | [? d' l'] (d' :m: l') => f (S i) l'
-    end) 0 l.
+    end)%MC 0 l.
 
 Definition snth_index {A:Type} (c:A) (t:tactic) : T.selector unit := fun l =>
   (i <- index c; S.nth i t l)%MC.

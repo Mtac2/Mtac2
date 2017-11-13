@@ -6,6 +6,10 @@ Require Import Strings.String.
 Require Import Mtac2.List.
 Import Mtac2.List.ListNotations.
 
+Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
+Unset Universe Minimization ToSet.
+
 Definition qualify s := String.append "Mtac2.ImportedTactics." s.
 
 Ltac trivial := trivial.

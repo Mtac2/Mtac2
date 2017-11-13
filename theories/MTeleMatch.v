@@ -1,10 +1,11 @@
 From Mtac2 Require Import Base Logic Datatypes MTele MTeleMatchDef.
 Import M.notations.
 
+Set Polymorphic Inductive Cumulativity.
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 
-Polymorphic Definition MTele_of {A} (T : A -> Prop) : M (A -> sigT MTele_Ty) :=
+Definition MTele_of {A} (T : A -> Prop) : M (A -> sigT MTele_Ty) :=
   b <- M.fresh_binder_name T;
   M.nu b mNone (fun a =>
   (mfix1 f (T : Prop) : M (sigT MTele_Ty) :=

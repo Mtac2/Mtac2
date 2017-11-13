@@ -15,7 +15,7 @@ val make_evar : evar_map -> env -> constr -> evar_map * constr (* used in metaCo
 val run : (env * evar_map) -> constr -> data
 
 module MetaCoqNames : sig
-  val mkT_lazy : constr Lazy.t
+  val mkT_lazy : Evd.evar_map -> Environ.env -> Evd.evar_map * constr
 end
 
 module Goal : sig

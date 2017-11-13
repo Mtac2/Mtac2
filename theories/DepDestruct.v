@@ -5,6 +5,10 @@ Import M.notations.
 Require Import Strings.String.
 Import Mtac2.List.ListNotations.
 
+Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
+Unset Universe Minimization ToSet.
+
 (** This is the [abs] from [MetaCoq] but first reducing the variable
     [x] (in case it is [id x] or some convertible term to a variable)
     *)
@@ -151,7 +155,7 @@ Fixpoint RTele_Fun {isort rsort} {it : ITele isort} : forall (rt : RTele rsort i
 Notation reduce_novars := (reduce (RedStrong [rl:RedBeta;RedMatch;RedFix;RedDeltaC;RedZeta])).
 
 (* We need to handle Prop (maybe) *)
-Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (G : stype_of rsort) : forall (args : ATele it) ,
+Program Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (G : stype_of rsort) : forall (args : ATele it) ,
   selem_of (ITele_App args) -> M (RTele rsort it) :=
   match it as it' return forall (a' : ATele it'), selem_of (ITele_App a') -> M (RTele rsort it') with
   | iBase T => fun _ => fun t : T =>
@@ -174,10 +178,14 @@ Fixpoint abstract_goal {isort} {rsort} {it : ITele isort} (G : stype_of rsort) :
         let T' := reduce RedHNF (type_of v) in
         r <- @abs T' Gty v r : M (RTele _ (iTele _));
         let r := reduce RedHNF (r) in
-        M.ret r
+        (* M.ret r *)
+        _
       else
         M.failwith "All indices need to be variables"
   end%MC.
+Next Obligation.
+  exact (M.ret r1).
+Defined.
 
 Fixpoint branch_of_CTele {isort} {rsort} {it : ITele isort} (rt : RTele rsort it) (ct : CTele it) : stype_of rsort :=
   match ct with
@@ -194,7 +202,7 @@ Definition branch_of_NDCTele {isort} {rsort} {it : ITele isort} (rt : RTele rsor
 
 (* Get exactly `max` many arguments *)
 Definition NotEnoughArguments : Exception. exact exception. Qed.
-Fixpoint args_of_max (max : nat) : dyn -> M (mlist dyn) :=
+Program Fixpoint args_of_max (max : nat) : dyn -> M (mlist dyn) :=
     match max with
     | 0 => fun _ => M.ret [m:]
     | S max => fun d=>
@@ -229,9 +237,12 @@ Fixpoint get_ATele {isort} (it : ITele isort) (al : mlist dyn) {struct al} : M (
     | _, _ => M.raise NoPatternMatches
     end.
 
+Set Printing Universes.
+
+Set Use Unicoq.
 Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, A -> M (CTele it) :=
   fun isort it nindx =>
-    mfix rec (A : stype_of isort) : A -> M (CTele it) :=
+    mfix rec (A : stype_of isort) : selem_of A -> M (CTele it) :=
     mtmmatch A as A return selem_of A -> M (CTele it) with
     | [? B (F : B -> isort)] ForAll F =u>
         fun f =>

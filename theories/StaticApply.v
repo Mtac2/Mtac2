@@ -73,7 +73,7 @@ Set Printing Universes.
 Definition apply_type_of (P : Type) :
   forall {T} (t : T),
                       M (sigT (funs_of (M P))) :=
-  mfix f T : T -> M (sigT (funs_of (M P))) :=
+  mfix f (T : _) : T -> M (sigT (funs_of (M P))) :=
      mtmmatch T as T' return T' -> M (sigT (funs_of (M P))) with
      | (M P : Type) =c> fun t => M.ret (existT _ [m:] t)
      | [? X F] (forall x : X, F x) =c>

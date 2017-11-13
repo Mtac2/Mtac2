@@ -8,7 +8,9 @@ Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
 
-(* Local Set Universe Polymorphism. *)
+Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
+Unset Universe Minimization ToSet.
 
 (** Exceptions *)
 Eval hnf in new exception NoGoalsLeft.
@@ -200,7 +202,7 @@ Definition goal_type : gtactic Type := with_goal M.goal_type.
     in the context and executes [t n].
     Raises [NotAProduct] if the goal is not a product or a let-binding. *)
 Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := fun g =>
-  mmatch g with
+  mmatch g return M (mlist (B * goal)) with
   | [? B (def: B) P e] @Goal (let x := def in P x) e =n>
     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
     eqBA <- M.unify_or_fail UniCoq B A;

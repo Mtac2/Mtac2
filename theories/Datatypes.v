@@ -8,6 +8,10 @@
 
 Set Implicit Arguments.
 
+Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
+Unset Universe Minimization ToSet.
+
 Require Import Notations.
 (* Require Import Logic. *)
 (* Declare ML Module "nat_syntax_plugin". *)

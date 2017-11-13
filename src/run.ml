@@ -36,13 +36,19 @@ let get_constructor_pos sigma c = let (_, pos), _ = destConstruct sigma c in pos
 module MetaCoqNames = struct
   let metaCoq_module_name = "Mtac2.Base"
   let mkConstr e = Constr.mkConstr (metaCoq_module_name ^ "." ^ e)
+  let mkUConstr e = Constr.mkUConstr (metaCoq_module_name ^ "." ^ e)
   let mkBuilder e = ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
-  let mkT_lazy = mkConstr "M.t"
+  let mkUBuilder e = UConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
+  let mkT_lazy = mkUConstr "M.t"
   let mkUConstr e = Constr.mkUConstr (metaCoq_module_name ^ "." ^ e)
 
   let isConstr sigma e =
     let c = Lazy.force (mkConstr e) in
     eq_constr sigma c
+
+  let isUConstr sigma env e =
+    let sigma, c = mkUConstr e sigma env in
+    eq_constr_nounivs sigma c
 
   let mkCase ind v ret branch sigma env =
     let sigma, c = mkUConstr "mkCase" sigma env in
@@ -85,7 +91,7 @@ module Goal = struct
     (* we are going to wrap the body in a function, so we need to lift
        the indices. we also replace the name with index 1 *)
     let body = replace_term sigma (mkVar name) (mkRel 1) (Vars.lift 1 body) in
-    let odef_coq = CoqOption.to_coq ty odef in
+    let sigma, odef_coq = CoqOption.to_coq sigma env ty odef in
     let sigma, ahyp = mkAHyp sigma env in
     sigma, mkApp (ahyp, [|ty; odef_coq; mkLambda(Name name,ty,body)|])
 
@@ -174,8 +180,8 @@ module Exceptions = struct
 
   (* HACK: we put Prop as the type of the raise. We can put an evar, but
      what's the point anyway? *)
-  let mkRaise e =
-    let c = Lazy.force (mkConstr "raise") in
+  let mkRaise sigma env e =
+    let sigma, c = mkUConstr "raise" sigma env in
     let a = Lazy.force (mkConstr e) in
     mkApp(c, [|mkProp; a|])
 
@@ -193,7 +199,7 @@ module ReductionStrategy = struct
   open CClosure.RedFlags
   open Context
 
-  let isReduce sigma c = isConstr sigma "reduce" c
+  let isReduce sigma env c = isUConstr sigma env "reduce" c
 
   let has_definition ts env sigma t =
     if isVar sigma t then
@@ -261,7 +267,7 @@ module ReductionStrategy = struct
 
   let get_flags (env, sigma as ctx) flags =
     (* we assume flags have the right type and are in nf *)
-    let flags = RedList.from_coq ctx flags in
+    let flags = RedList.from_coq sigma env flags in
     List.fold_right (fun f reds->
       if isConstruct sigma f then
         let ci = get_constructor_pos sigma f in
@@ -284,7 +290,7 @@ module ReductionStrategy = struct
               red_add_transparent reds
                 (Conv_oracle.get_transp_state (Environ.oracle env)),
               red_sub in
-          let ids = RedList.from_coq_conv ctx (get_elem sigma) args.(0) in
+          let (sigma, ids) = RedList.from_coq_conv sigma env (fun sigma x -> sigma, get_elem sigma x) args.(0) in
           List.fold_right (fun e reds->
             if isVar sigma e then
               func reds (fVAR (destVar sigma e))
@@ -444,8 +450,8 @@ let dest_Case (env, sigma) t =
       fun t (sigma,l) ->
         let dyn_type = Retyping.get_type_of env sigma t in
         let sigma, cdyn = mkDyn dyn_type t sigma env in
-        sigma, CoqList.mkCons dyn cdyn l
-    ) branches (sigma, CoqList.mkNil dyn) in
+        CoqList.mkCons sigma env dyn cdyn l
+    ) branches (CoqList.mkNil sigma env dyn) in
     let ind_type = Retyping.get_type_of env sigma discriminant in
     let return_type_type = Retyping.get_type_of env sigma return_type in
     let sigma, ret_dyn = mkDyn return_type_type return_type sigma env in
@@ -464,7 +470,7 @@ let make_Case (env, sigma) case =
   let repr_ind = args.(0) in
   let repr_val = args.(1) in
   let repr_return = get_elem sigma args.(2) in
-  let repr_branches = CoqList.from_coq_conv (env, sigma) (get_elem sigma) args.(3) in
+  let sigma, repr_branches = CoqList.from_coq_conv sigma env (fun sigma x -> sigma, get_elem sigma x) args.(3) in
   let t_type, l = decompose_appvect sigma repr_ind in
   if isInd sigma t_type then
     match kind sigma t_type with
@@ -494,36 +500,37 @@ let get_Constrs (env, sigma) t =
                         let coq_constr = applist (mkConstruct constr, args) in
                         let ty = Retyping.get_type_of env sigma coq_constr in
                         let sigma, dyn_constr = mkDyn ty coq_constr sigma env in
-                        sigma, CoqList.mkCons dyn dyn_constr l
+                        CoqList.mkCons sigma env dyn dyn_constr l
                      )
                      (* this is just a dirty hack to get the indices of constructors *)
                      (Array.mapi (fun i t -> i+1) ind.mind_consnames)
-                     (sigma, CoqList.mkNil dyn)
+                     (CoqList.mkNil sigma env dyn)
     in
     let indty = applist (t_type, args) in
     let indtyty = Retyping.get_type_of env sigma indty in
     let sigma, indtydyn = mkDyn indtyty indty sigma env in
-    let pair = CoqPair.mkPair dyn (CoqList.mkType dyn) indtydyn l in
+    let sigma, listty = CoqList.mkType sigma env dyn in
+    let pair = CoqPair.mkPair dyn listty indtydyn l in
     (sigma, pair)
   else
     Exceptions.block "The argument of Mconstrs is not an inductive type"
 
 module Hypotheses = struct
 
-  let ahyp_constr = mkBuilder "ahyp"
+  let ahyp_constr = mkUBuilder "ahyp"
 
-  let mkAHyp ty n t =
-    let t = match t with
-      | None -> CoqOption.mkNone ty
-      | Some t -> CoqOption.mkSome ty t
-    in ConstrBuilder.build_app ahyp_constr [|ty; n; t|]
+  let mkAHyp sigma env ty n t =
+    let sigma, t = match t with
+      | None -> CoqOption.mkNone sigma env ty
+      | Some t -> CoqOption.mkSome sigma env ty t
+    in UConstrBuilder.build_app ahyp_constr sigma env [|ty; n; t|]
 
-  let mkHypType = mkConstr "Hyp"
+  let mkHypType = mkUConstr "Hyp"
 
   let cons_hyp ty n t renv sigma env =
-    let hyptype = Lazy.force mkHypType in
-    let hyp = mkAHyp ty n t in
-    (sigma, CoqList.mkCons hyptype hyp renv)
+    let (sigma, hyptype) = mkHypType sigma env in
+    let sigma, hyp = mkAHyp sigma env ty n t in
+    CoqList.mkCons sigma env hyptype hyp renv
 
   exception NotAVariable
   exception NotAHyp
@@ -532,14 +539,15 @@ module Hypotheses = struct
       if isVar sigma c then c
       else raise NotAVariable
     in
-    let fdecl = CoqOption.from_coq ctx in
-    let oargs = ConstrBuilder.from_coq ahyp_constr ctx c in
+    let fdecl = CoqOption.from_coq sigma env in
+    let oargs = UConstrBuilder.from_coq ahyp_constr ctx c in
     match oargs with
     | Some args -> (fvar args.(1), fdecl args.(2), args.(0))
     | None -> raise NotAHyp
 
-  let from_coq_list (env, sigma as ctx) =
-    CoqList.from_coq_conv ctx (from_coq ctx)
+  let from_coq_list (env, sigma as ctx) t =
+    (* safe to throw away sigma here as it doesn't change *)
+    snd (CoqList.from_coq_conv sigma env (fun sigma x -> sigma, from_coq (env, sigma) x ) t)
 
 end
 
@@ -679,7 +687,7 @@ let make_evar sigma env ty =
     sigma, evar
 
 let cvar (env, sigma as ctx) ty ohyps =
-  let ohyps = CoqOption.from_coq (env, sigma) ohyps in
+  let ohyps = CoqOption.from_coq sigma env ohyps in
   if Option.has_some ohyps then
     try
       let hyps = Hypotheses.from_coq_list (env, sigma) (Option.get ohyps) in
@@ -741,8 +749,8 @@ let build_hypotheses sigma env =
   (* the list is reversed: [H : x > 0, x : nat] *)
   let rec build renv =
     match renv with
-    | [] -> let ty = Lazy.force Hypotheses.mkHypType in
-        (sigma, CoqList.mkNil ty)
+    | [] -> let (sigma, ty) = Hypotheses.mkHypType sigma env in
+        (CoqList.mkNil sigma env ty)
     | (n, t, ty) :: renv ->
         let (sigma, r) = build renv in
         Hypotheses.cons_hyp ty n t r sigma env
@@ -844,7 +852,7 @@ let run_declare_implicits env sigma gr impls =
   |]
   in
   let gr = Globnames.global_of_constr gr in
-  let impls = CoqList.from_coq (env, sigma) impls in
+  let impls = CoqList.from_coq sigma env impls in
   let impls = List.rev impls in
   let idx = ref (List.length impls) in
   let impls = List.map
@@ -898,7 +906,7 @@ let rec run' ctxt t =
     let open ReductionStrategy in
     let (_, b, _, t) = destLetIn sigma h in
     let (h, args') = decompose_appvect sigma b in
-    if isReduce sigma h && Array.length args' = 3 then
+    if isReduce sigma env h && Array.length args' = 3 then
       try
         let b = reduce sigma env (Array.get args' 0) (Array.get args' 2) in
         run' ctxt (mkApp (Vars.subst1 b t, args))
@@ -910,7 +918,8 @@ let rec run' ctxt t =
     let constr sigma c =
       if isConstruct sigma c then
         let ((m, ix), _) = destConstruct sigma c in
-        if Names.eq_ind m (fst (destInd sigma (Lazy.force mkT_lazy))) then
+        let sigma, ind = (mkT_lazy sigma env) in
+        if Names.eq_ind m (fst (destInd sigma ind)) then
           ix
         else -1
       else -1
@@ -919,10 +928,10 @@ let rec run' ctxt t =
     | -1 ->
         begin
           try
-            let n = Term.destVar h in
+            let n = EConstr.destVar sigma h in
             match Environ.named_body n ctxt.fixpoints with
             | Some fixbody ->
-                let t = (Term.appvect (fixbody,args)) in
+                let t = (EConstr.applist (of_constr fixbody,Array.to_list args)) in
                 run' ctxt t
             | None -> fail sigma (E.mkStuckTerm ())
           with | Term.DestKO ->
@@ -996,7 +1005,7 @@ let rec run' ctxt t =
           fail sigma (Exceptions.mkNameExists s)
         else begin
           let fx = mkApp(f, [|mkVar name|]) in
-          let ot = CoqOption.from_coq (env, sigma) ot in
+          let ot = CoqOption.from_coq sigma env ot in
           let env = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
           let (sigma, renv) = Hypotheses.cons_hyp a (mkVar name) ot ctxt.renv sigma env in
           match run' {ctxt with env; renv; sigma; nus=(ctxt.nus+1)} fx with
@@ -1105,16 +1114,16 @@ let rec run' ctxt t =
         end
     | 28 -> (* munify *)
         let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in
-        let feqT = CoqEq.mkType a x y in
+        let sigma, feqT = CoqEq.mkType sigma env a x y in
         begin
           let r = UnificationStrategy.unify None sigma env uni Reduction.CONV x y in
           match r with
           | Evarsolve.Success sigma, _ ->
-              let feq = CoqEq.mkEqRefl a x in
-              let someFeq = CoqOption.mkSome feqT feq in
+              let sigma, feq = CoqEq.mkEqRefl sigma env a x in
+              let sigma, someFeq = CoqOption.mkSome sigma env feqT feq in
               return sigma someFeq
           | _, _ ->
-              let none = CoqOption.mkNone feqT in
+              let sigma, none = CoqOption.mkNone sigma env feqT in
               return sigma none
         end
 
@@ -1126,9 +1135,11 @@ let rec run' ctxt t =
           match r with
           | Evarsolve.Success sigma, _ ->
               let id = mkLambda(Name.Anonymous,x,mkRel 1) in
-              return sigma (CoqOption.mkSome fT id)
+              let sigma, some = CoqOption.mkSome sigma env fT id in
+              return sigma some
           | _, _ ->
-              return sigma (CoqOption.mkNone fT)
+              let sigma, none = CoqOption.mkNone sigma env fT in
+              return sigma none
         end
 
     | 30 -> (* get_reference *)
@@ -1156,7 +1167,7 @@ let rec run' ctxt t =
 
     | 32 -> (* call_ltac *)
         let concl, name, args = nth 0, nth 1, nth 2 in
-        let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq (env, sigma) args in
+        let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq sigma env args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
         (* let tac = Tacenv.interp_ml_tactic name in *)
         let tac =
@@ -1183,7 +1194,7 @@ let rec run' ctxt t =
             let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
             let new_undef = Evar.Set.elements new_undef in
             let sigma, goal = Goal.mkgoal sigma env in
-            let sigma, goals = CoqList.pto_coq goal (fun e sigma->Goal.goal_of_evar env sigma e) new_undef sigma in
+            let sigma, goals = CoqList.pto_coq env goal (fun e sigma->Goal.goal_of_evar env sigma e) new_undef sigma in
             return sigma (CoqPair.mkPair concl goal (of_constr c) goals)
           with CErrors.UserError(s,ppm) ->
             let expl = string_of_ppcmds ppm in
@@ -1209,9 +1220,9 @@ let rec run' ctxt t =
     | 36 -> (* decompose *)
         let (h, args) = decompose_app sigma (nth 1) in
         let sigma, dyn = mkdyn sigma env in
-        let listdyn = CoqList.mkType dyn in
-        let sigma, dh = mkDyn (get_type_of ctxt h) h sigma env in
-        let sigma, args = CoqList.pto_coq dyn (fun t sigma->mkDyn (get_type_of ctxt t) t sigma env) args sigma in
+        let sigma, listdyn = CoqList.mkType sigma env dyn in
+        let sigma, dh = mkDyn (Retyping.get_type_of env sigma h) h sigma env in
+        let sigma, args = CoqList.pto_coq env dyn (fun t sigma->mkDyn (Retyping.get_type_of env sigma t) t sigma env) args sigma in
         return sigma (CoqPair.mkPair dyn listdyn dh args)
 
     | 37 -> (* solve_typeclass *)
@@ -1219,9 +1230,11 @@ let rec run' ctxt t =
         begin
           try
             let sigma, v = Typeclasses.resolve_one_typeclass ~unique:false env sigma  ty in
-            return sigma (CoqOption.mkSome ty v)
+            let sigma, some = (CoqOption.mkSome sigma env ty v) in
+            return sigma some
           with Not_found ->
-            return sigma (CoqOption.mkNone ty)
+            let sigma, none = (CoqOption.mkNone sigma env ty) in
+            return sigma none
         end
 
     | 38 -> (* declare definition *)
@@ -1266,25 +1279,25 @@ and run_fix ctxt (h: constr) (a: constr array) (b: constr) (s: constr) (i: const
   let sigma, env = ctxt.sigma, ctxt.env in
   (* let fix_type = Retyping.get_type_of env sigma fixbody in *)
   let name =
-    if isVar f then Some (Name (destVar f))
-    else if isLambda f then
-      let (n, _, _) = destLambda f in Some n
-    else if isProd f then
-      let (n, _, _) = destProd f in Some n
-    else if isLetIn f then
-      let (n, _, _, _) = destLetIn f in Some n
+    if isVar sigma f then Some (Name (destVar sigma f))
+    else if isLambda sigma f then
+      let (n, _, _) = destLambda sigma f in Some n
+    else if isProd sigma f then
+      let (n, _, _) = destProd sigma f in Some n
+    else if isLetIn sigma f then
+      let (n, _, _, _) = destLetIn sigma f in Some n
     else None
   in
   let name = match name with | Some (Name i) -> Names.Id.to_string i | Some _ -> "anon" | None -> "impossible" in
 
   let n = Namegen.next_name_away (Name (Names.Id.of_string (concat "mtac_fix_" [name]))) (ids_of_context env) in
   (* let env = push_named (Context.Named.Declaration.of_tuple (n, None, fix_type)) env in *)
-  let fixvar = Term.mkVar n in
+  let fixvar = EConstr.mkVar n in
   let fixf = mkApp(f, [|fixvar|]) in
   (* HACK: we put Prop as the type of fixf in the context, simply because we
      don't care. If it turns out to be problematic, we have to construct its
      type. *)
-  let fixpoints = push_named (Context.Named.Declaration.of_tuple (n, Some (fixf), Term.mkProp)) ctxt.fixpoints in
+  let fixpoints = push_named (Context.Named.Declaration.of_tuple (n, Some (fixf), EConstr.mkProp)) ctxt.fixpoints in
   let c = mkApp (f, Array.append [| fixvar |] x) in
   run' {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} c
 (* run' ctxt c *)
@@ -1344,7 +1357,7 @@ let run (env, sigma) t =
       Val (sigma', v)
 
 (** set the run function in unicoq *)
-let _ = Munify.set_lift_constr (MetaCoqNames.mkConstr "lift")
+let _ = Munify.set_lift_constr (fun env sigma -> (MetaCoqNames.mkUConstr "lift" sigma env))
 let _ = Munify.set_run (fun env sigma t ->
   match run (env, sigma) t with
   | Err _ -> None
