@@ -869,7 +869,9 @@ let run_declare_implicits env sigma gr impls =
 
 
 
-type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option}
+type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option;
+             fixpoints: Environ.env;
+            }
 let rec run' ctxt t =
   let sigma, env = ctxt.sigma, ctxt.env in
   ( match ctxt.hook with
@@ -902,7 +904,21 @@ let rec run' ctxt t =
       else -1
     in
     match constr h with
-    | -1 -> fail sigma (E.mkStuckTerm ())
+    | -1 ->
+        begin
+          try
+            let n = Term.destVar h in
+            let _ = Feedback.msg_debug (Termops.print_constr_env env h) in
+            match Environ.named_body n ctxt.fixpoints with
+            | Some fixbody ->
+                let t = (Term.appvect (fixbody,args)) in
+                (* let _ = Feedback.msg_debug (Termops.print_constr_env env t) in *)
+                run' ctxt t
+            | None -> fail sigma (E.mkStuckTerm ())
+          with | Term.DestKO ->
+            let _ = Feedback.msg_error (Termops.print_constr_env env t) in
+            fail sigma (E.mkStuckTerm ())
+        end
     | 1 -> (* ret *)
         return sigma (nth 1)
 
@@ -1230,9 +1246,33 @@ let rec run' ctxt t =
 
 
 and run_fix ctxt h a b s i f x =
-  let fixf = mkApp(h, Array.append a [|b;s;i;f|]) in
-  let c = mkApp (f, Array.append [| fixf|] x) in
-  run' ctxt c
+  let fixbody = mkApp(h, Array.append a [|b;s;i;f|]) in
+  (* run' ctxt c *)
+  let sigma, env = ctxt.sigma, ctxt.env in
+  let fix_type = Retyping.get_type_of env sigma fixbody in
+  (* let _ = Feedback.msg_debug (Termops.print_constr_env env fix_type) in *)
+
+  let name =
+    if isVar f then Some (Name (destVar f))
+    else if isLambda f then
+      let (n, _, _) = destLambda f in Some n
+    else if isProd f then
+      let (n, _, _) = destProd f in Some n
+    else if isLetIn f then
+      let (n, _, _, _) = destLetIn f in Some n
+    else None
+  in
+  let name = match name with | Some (Name i) -> Names.Id.to_string i | Some _ -> "anon" | None -> "impossible" in
+
+  let n = Namegen.next_name_away (Name (Names.Id.of_string (concat "mtac_fix_" [name]))) (ids_of_context env) in
+  let env = push_named (Context.Named.Declaration.of_tuple (n, None, fix_type)) env in
+  let fixvar = Term.mkVar n in
+  let fixf = mkApp(f, [|fixvar|]) in
+  (* let _ = Feedback.msg_debug (Termops.print_constr_env env fixf) in *)
+  let fixpoints = push_named (Context.Named.Declaration.of_tuple (n, Some (fixf), fix_type)) ctxt.fixpoints in
+  let c = mkApp (f, Array.append [| fixvar |] x) in
+  run' {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} c
+(* run' ctxt c *)
 
 (* Takes a [sigma], a set of evars [metas], and a [term],
    and garbage collects all the [metas] in [sigma] that do not appear in
@@ -1315,12 +1355,11 @@ let run (env, sigma) t =
   let subs, env = db_to_named env in
   let t = multi_subst subs (nf_evar sigma t) in
   let (sigma, renv) = build_hypotheses sigma env in
-  match run' {env; renv; sigma; nus=0;hook=None} t with
+  match run' {env; renv; sigma; nus=0;hook=None; fixpoints=Environ.empty_env} t with
   | Err (sigma', v) ->
       Err (sigma', multi_subst_inv subs (nf_evar sigma' v))
   | Val (sigma', v) ->
       Val (sigma', multi_subst_inv subs (nf_evar sigma' v))
-
 
 (** set the run function in unicoq *)
 let _ = Munify.set_lift_constr (MetaCoqNames.mkConstr "lift")
