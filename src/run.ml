@@ -1265,7 +1265,7 @@ and run_fix ctxt h a b s i f x =
   let name = match name with | Some (Name i) -> Names.Id.to_string i | Some _ -> "anon" | None -> "impossible" in
 
   let n = Namegen.next_name_away (Name (Names.Id.of_string (concat "mtac_fix_" [name]))) (ids_of_context env) in
-  let env = push_named (Context.Named.Declaration.of_tuple (n, None, fix_type)) env in
+  (* let env = push_named (Context.Named.Declaration.of_tuple (n, None, fix_type)) env in *)
   let fixvar = Term.mkVar n in
   let fixf = mkApp(f, [|fixvar|]) in
   (* let _ = Feedback.msg_debug (Termops.print_constr_env env fixf) in *)
