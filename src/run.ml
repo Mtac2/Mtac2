@@ -908,15 +908,12 @@ let rec run' ctxt t =
         begin
           try
             let n = Term.destVar h in
-            let _ = Feedback.msg_debug (Termops.print_constr_env env h) in
             match Environ.named_body n ctxt.fixpoints with
             | Some fixbody ->
                 let t = (Term.appvect (fixbody,args)) in
-                (* let _ = Feedback.msg_debug (Termops.print_constr_env env t) in *)
                 run' ctxt t
             | None -> fail sigma (E.mkStuckTerm ())
           with | Term.DestKO ->
-            let _ = Feedback.msg_error (Termops.print_constr_env env t) in
             fail sigma (E.mkStuckTerm ())
         end
     | 1 -> (* ret *)
@@ -1246,12 +1243,10 @@ let rec run' ctxt t =
 
 
 and run_fix ctxt h a b s i f x =
-  let fixbody = mkApp(h, Array.append a [|b;s;i;f|]) in
+  (* let fixbody = mkApp(h, Array.append a [|b;s;i|]) in *)
   (* run' ctxt c *)
   let sigma, env = ctxt.sigma, ctxt.env in
-  let fix_type = Retyping.get_type_of env sigma fixbody in
-  (* let _ = Feedback.msg_debug (Termops.print_constr_env env fix_type) in *)
-
+  (* let fix_type = Retyping.get_type_of env sigma fixbody in *)
   let name =
     if isVar f then Some (Name (destVar f))
     else if isLambda f then
@@ -1268,8 +1263,7 @@ and run_fix ctxt h a b s i f x =
   (* let env = push_named (Context.Named.Declaration.of_tuple (n, None, fix_type)) env in *)
   let fixvar = Term.mkVar n in
   let fixf = mkApp(f, [|fixvar|]) in
-  (* let _ = Feedback.msg_debug (Termops.print_constr_env env fixf) in *)
-  let fixpoints = push_named (Context.Named.Declaration.of_tuple (n, Some (fixf), fix_type)) ctxt.fixpoints in
+  let fixpoints = push_named (Context.Named.Declaration.of_tuple (n, Some (fixf), Term.mkProp)) ctxt.fixpoints in
   let c = mkApp (f, Array.append [| fixvar |] x) in
   run' {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} c
 (* run' ctxt c *)
