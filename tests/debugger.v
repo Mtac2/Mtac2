@@ -1,14 +1,13 @@
 From Mtac2 Require Import Mtac2 List Debugger.
 Import Mtac2.List.ListNotations.
-
+Import M.
 Import M.notations.
 
-Definition test : unit := ltac:(mrun (debug true [m:] (M.ret I))).
-
+Definition test : True := ltac:(mrun (debug true [m:] (M.ret I))).
 
 Goal True.
 MProof.
-  debugT false [m: (*HAVE FUN Dyn (@M.ret) | Dyn (@M.unify) *)] (T.apply I).
+  debugT true [m: (* Dyn (@M.ret) | Dyn (@M.cumul) *) ] (T.apply I).
 Qed.
 
 Goal unit.

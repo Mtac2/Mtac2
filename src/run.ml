@@ -314,29 +314,21 @@ module ReductionStrategy = struct
     let strategy, args = decompose_appvect strategy in
     redfuns.(get_constructor_pos strategy) args env sigma c
 
-  let whd_betadeltaiota_nolet env sigma c =
-    let evars ev = safe_evar_value sigma ev in
+  let whdfun flags env sigma c =
+    let evars = safe_evar_value sigma in
     whd_val
-      (create_clos_infos ~evars CClosure.allnolet env)
+      (create_clos_infos ~evars flags env)
       (inject c)
 
-  let whd_betadeltaiota env sigma c =
-    let evars ev = safe_evar_value sigma ev in
-    whd_val
-      (create_clos_infos ~evars CClosure.all env)
-      (inject c)
+  let whd_betadeltaiota_nolet = whdfun CClosure.allnolet
 
-  let whd_betadelta env sigma c =
-    let evars ev = safe_evar_value sigma ev in
-    whd_val
-      (create_clos_infos ~evars (red_add beta fDELTA) env)
-      (inject c)
+  let whd_betadeltaiota = whdfun CClosure.all
 
-  let whd_betaiotazeta env sigma c =
-    let evars ev = safe_evar_value sigma ev in
-    whd_val
-      (create_clos_infos ~evars betaiotazeta env)
-      (inject c)
+  let whd_betadelta = whdfun (red_add beta fDELTA)
+
+  let whd_betaiotazeta = whdfun betaiotazeta
+
+  let whd_betaiota = whdfun betaiota
 
 end
 
@@ -872,14 +864,23 @@ let run_declare_implicits env sigma gr impls =
 type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option;
              fixpoints: Environ.env;
             }
+
+(* the intention of this function was to add the fixpoint context to the
+   normal context for retyping. but it seems unnecessary *)
+let get_type_of ctxt t =
+  (* let env = push_named_context (named_context ctxt.fixpoints) ctxt.env in *)
+  Retyping.get_type_of ctxt.env ctxt.sigma t
+
 let rec run' ctxt t =
   let sigma, env = ctxt.sigma, ctxt.env in
   ( match ctxt.hook with
     | Some f ->
-        let ty = Retyping.get_type_of env sigma t in
+        let t = RE.whd_betaiota env sigma t in
+        let ty = get_type_of ctxt t in
         run' {ctxt with hook = None} (Term.mkApp (f, [|ty; t|]))
     | None -> return sigma t
   ) >>= fun (sigma, t) ->
+  let ctxt = {ctxt with sigma = sigma} in
   let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
   let nth = Array.get args in
   if Term.isLetIn h then
@@ -1191,15 +1192,15 @@ let rec run' ctxt t =
         return sigma (CoqString.to_coq (read_line ()))
 
     | 35 -> (* break *)
-        run' {ctxt with hook=Some (nth 2)} (nth 4) >>= fun (sigma, _) ->
-        return sigma CoqUnit.mkTT
+        run' {ctxt with hook=Some (nth 2)} (nth 4)(*  >>= fun (sigma, _) -> *)
+    (* return sigma CoqUnit.mkTT *)
 
     | 36 -> (* decompose *)
         let (h, args) = decompose_app (nth 1) in
         let sigma, dyn = mkdyn sigma env in
         let listdyn = CoqList.mkType dyn in
-        let sigma, dh = mkDyn (Retyping.get_type_of env sigma h) h sigma env in
-        let sigma, args = CoqList.pto_coq dyn (fun t sigma->mkDyn (Retyping.get_type_of env sigma t) t sigma env) args sigma in
+        let sigma, dh = mkDyn (get_type_of ctxt h) h sigma env in
+        let sigma, args = CoqList.pto_coq dyn (fun t sigma->mkDyn (get_type_of ctxt t) t sigma env) args sigma in
         return sigma (CoqPair.mkPair dyn listdyn dh args)
 
     | 37 -> (* solve_typeclass *)
@@ -1241,8 +1242,11 @@ let rec run' ctxt t =
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"
 
-
-and run_fix ctxt h a b s i f x =
+(* h is the mfix operator, a is an array of types of the arguments, b is the
+   return type of the fixpoint, s is the type to embed M in itself (used only to
+   make universes happy), i is the identity to embed S in M, f is the function
+   and x its arguments. *)
+and run_fix ctxt (h: constr) (a: constr array) (b: constr) (s: constr) (i: constr) (f: constr) (x: constr array) =
   (* let fixbody = mkApp(h, Array.append a [|b;s;i|]) in *)
   (* run' ctxt c *)
   let sigma, env = ctxt.sigma, ctxt.env in
@@ -1263,6 +1267,9 @@ and run_fix ctxt h a b s i f x =
   (* let env = push_named (Context.Named.Declaration.of_tuple (n, None, fix_type)) env in *)
   let fixvar = Term.mkVar n in
   let fixf = mkApp(f, [|fixvar|]) in
+  (* HACK: we put Prop as the type of fixf in the context, simply because we
+     don't care. If it turns out to be problematic, we have to construct its
+     type. *)
   let fixpoints = push_named (Context.Named.Declaration.of_tuple (n, Some (fixf), Term.mkProp)) ctxt.fixpoints in
   let c = mkApp (f, Array.append [| fixvar |] x) in
   run' {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} c

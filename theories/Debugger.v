@@ -11,7 +11,7 @@ Definition isReduce {A} (x:A) : M bool :=
   | _ => M.ret false
   end.
 
-Definition debug (trace: bool) {A:Type} (bks : mlist dyn) : M A -> M unit :=
+Definition debug (trace: bool) {A:Type} (bks : mlist dyn) : M A -> M A :=
   let print_if_trace {A} (x:A) := (if trace then M.print_term x else M.ret tt);; M.ret x in
   M.break (fun A (x:M A) =>
              v <- M.decompose x;
@@ -20,8 +20,6 @@ Definition debug (trace: bool) {A:Type} (bks : mlist dyn) : M A -> M unit :=
              mif isReduce hd then (* avoid computation of reduce *)
                print_if_trace x
              else
-               let x := reduce (RedWhd [rl:RedBeta;RedMatch;RedFix;RedZeta]) x in
-               v <- M.decompose x;
                let (hd, _) := v in
                mif M.find (fun d=> M.cumul UniMatchNoRed d hd) bks then
                  M.print_term x;;

@@ -361,7 +361,7 @@ Inductive t : Type -> Prop :=
     transformation of it. *)
 | break' : forall (S : Type -> Prop),
   (forall a : Type, S a -> t a) ->
-  (forall A, S A -> t (S A)) -> forall {A : Type}, S A -> t unit
+  (forall A, S A -> t (S A)) -> forall {A : Type}, S A -> t A
 
 (** [decompose x] decomposes value [x] into a head and a spine of
     arguments. For instance, [decompose (3 + 3)] returns
