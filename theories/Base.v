@@ -426,14 +426,14 @@ Module monad_notations.
   Open Scope M_scope.
 
   Notation "r '<-' t1 ';' t2" := (bind t1 (fun r=> t2%MC))
-    (at level 100, t2 at level 200,
-     right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
+    (at level 20, t1 at level 100, t2 at level 200,
+     format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
   Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2%MC) ..))
-    (at level 100, r1 binder, rn binder, t2 at level 200,
-     right associativity, format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
+    (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200,
+     format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
   Notation "t1 ';;' t2" := (bind t1 (fun _ => t2%MC))
     (at level 100, t2 at level 200,
-     right associativity, format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : M_scope.
+     format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : M_scope.
 
   Notation "f =<< t" := (bind t f) (at level 70, only parsing) : M_scope.
   Notation "t >>= f" := (bind t f) (at level 70) : M_scope.
