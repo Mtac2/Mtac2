@@ -47,10 +47,32 @@ Proof.
   refine (R (fun y=>fuP y -> fuQ y) meq_refl).
 Defined.
 
+Definition non_dep_eqS {A} {P Q:Set} (x:A) (P' : result x P) (Q' : result x Q) :
+  result x (P -> Q).
+Proof.
+  case P' as [fuP eqP]. case Q' as [fuQ eqQ].
+  rewrite eqP, eqQ.
+  refine (R (fun y=>fuP y -> fuQ y) meq_refl).
+Defined.
+
+Definition non_dep_eqP {A} {P Q:Prop} (x:A) (P' : result x P) (Q' : result x Q) :
+  result x (P -> Q).
+Proof.
+  case P' as [fuP eqP]. case Q' as [fuQ eqQ].
+  rewrite eqP, eqQ.
+  refine (R (fun y=>fuP y -> fuQ y) meq_refl).
+Defined.
+
+
+
+Lemma eq_fu (A : Type) (x y : A) (P : Type) (r : result x P) :
+  x = y -> fu r y -> P.
+Proof. elim r. intros f H1 H2. rewrite H1, H2. auto. Qed.
+
 Notation reduce_all := (reduce (RedStrong [rl:RedBeta; RedMatch; RedZeta;
            RedDeltaOnly [rl: Dyn elem; Dyn type; Dyn (@fu);
              Dyn (@abs_app); Dyn (@meq_rect_r); Dyn (@meq_rect); Dyn (@meq_sym); Dyn (@internal_meq_rew_r);
-             Dyn (@match_eq); Dyn (@non_dep_eq)]])).
+             Dyn (@match_eq); Dyn (@non_dep_eq); Dyn (@non_dep_eqS)]])).
 
 Definition abstract A B (x : A) (t : B) :=
    r <-
@@ -65,25 +87,33 @@ Definition abstract A B (x : A) (t : B) :=
         r1 <- loop (Dyn t1);
         r2 <- loop (Dyn t2);
         ret (abs_app r1 r2)
-    | [? b (P:type r) (Q:type r)] Dyn (match b with
-          | true => P
-          | false => Q
-          end)
-      =u>
-      b' <- loop (Dyn b);
+    (* | [? b (P:type r) (Q:type r)] Dyn (match b with *)
+    (*       | true => P *)
+    (*       | false => Q *)
+    (*       end) *)
+    (*   =u> *)
+    (*   b' <- loop (Dyn b); *)
+    (*   P' <- loop (Dyn P); *)
+    (*   Q' <- loop (Dyn Q); *)
+    (*   ret (match_eq B b' P' Q') *)
+    (* | [? P Q:Prop] @Dyn Prop (P -> Q) =n> *)
+    (*   P' <- loop (Dyn P); *)
+    (*   Q' <- loop (Dyn Q); *)
+    (*   ret (non_dep_eqP P' Q') *)
+    | [? P Q:Set] @Dyn Set (P -> Q) =n>
       P' <- loop (Dyn P);
       Q' <- loop (Dyn Q);
-      ret (match_eq B b' P' Q')
-    | [? P Q] Dyn (P -> Q) =u>
-      P' <- loop (Dyn P);
-      Q' <- loop (Dyn Q);
-      ret (non_dep_eq P' Q')
+      ret (non_dep_eqS P' Q')
+    (* | [? P Q] Dyn (P -> Q) =n> *)
+    (*   P' <- loop (Dyn P); *)
+    (*   Q' <- loop (Dyn Q); *)
+    (*   ret (non_dep_eq P' Q') *)
     | [?z] z =>
       ret (R (fun _=>elem z) (meq_refl _))
     end) (Dyn t);
     let reduced := reduce_all r in
     ret reduced.
 
-Lemma eq_fu (A : Type) (x y : A) (P : Type) (r : result x P) :
-  x = y -> fu r y -> P.
-Proof. elim r. intros f H1 H2. rewrite H1, H2. auto. Qed.
+Require Import Vectors.Fin.
+Set Printing All.
+Fail Definition test := fun x => ltac:(mrun (a <- abstract (x+1) (Fin.t (x+1) -> unit); let t:= dreduce (fu) (fu a) in ret t)).
