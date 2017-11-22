@@ -32,3 +32,4 @@ theories/MFix.v
 theories/ConstrSelector.v
 theories/StaticApply.v
 theories/SumRun.v
+theories/Ttactics.v
