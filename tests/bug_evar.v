@@ -53,7 +53,7 @@ Definition Break : Exception. exact exception. Qed.
 
 Require Import Strings.String.
 
-Definition debug (trace: bool) {A:Type} (bks : mlist dyn) : M A -> M unit :=
+Definition debug (trace: bool) {A:Type} (bks : mlist dyn) : M A -> M A :=
   M.break (fun A (x:M A) =>
              v <- M.decompose x;
              let (hd, _) := v in
