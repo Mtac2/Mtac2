@@ -27,7 +27,10 @@ theories/DepDestruct.v
 theories/SubgoalsStrict.v
 theories/Mtac2.v
 theories/Debugger.v
+theories/MTele.v
+theories/MTeleMatchDef.v
 theories/MTeleMatch.v
+theories/MFixDef.v
 theories/MFix.v
 theories/ConstrSelector.v
 theories/StaticApply.v
