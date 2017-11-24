@@ -1,4 +1,5 @@
-From Mtac2 Require Import Mtac2 List Logic MFix Datatypes MTeleMatch.
+From Mtac2 Require Import Base Logic Datatypes List MFix MTeleMatch.
+Import M.notations.
 Import Mtac2.List.ListNotations.
 
 Definition funs_of (T : Prop) : mlist Prop -> Prop :=

@@ -1,4 +1,4 @@
-From Mtac2 Require Import Mtac2 MTeleMatch MFix.
+From Mtac2 Require Import Mtac2 MTeleMatch MFixDef MTeleMatchDef.
 
 
 Definition Mtest : nat -> nat -> nat -> nat -> M nat :=

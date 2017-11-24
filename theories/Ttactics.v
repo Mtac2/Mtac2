@@ -1,4 +1,4 @@
-From Mtac2 Require Import Base Datatypes List MTeleMatch MFix.
+From Mtac2 Require Import Base Datatypes List MTele MTeleMatch MTeleMatchDef MFixDef.
 Import M.notations.
 Import Mtac2.List.ListNotations.
 
