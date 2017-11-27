@@ -212,6 +212,9 @@ Definition to_tactic {A B} (f: M (A |m- B)) : tactic := fun g=>
   else
     failwith "nope".
 
+
+Definition pass := evar.
+
 Module notations.
 Notation "[t: x | .. | y ]" := (TT.compi x (.. (TT.compi y (M.ret I)) ..)).
 End notations.
