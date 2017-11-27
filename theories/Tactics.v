@@ -11,27 +11,22 @@ Require Import NArith.BinNatDef.
 (* Local Set Universe Polymorphism. *)
 
 (** Exceptions *)
-Definition NoGoalsLeft : Exception. exact exception. Qed.
-Definition NotSameSize : Exception. exact exception. Qed.
-
-Definition NotAProduct : Exception. exact exception. Qed.
+Eval hnf in new exception NoGoalsLeft.
+Eval hnf in new exception NotSameSize.
+Eval hnf in new exception NotAProduct.
+Eval hnf in new exception CantFindConstructor.
+Eval hnf in new exception ConstructorsStartsFrom1.
+Eval hnf in new exception Not1Constructor.
+Eval hnf in new exception Not2Constructor.
+Eval hnf in new exception DoesNotMatchGoal.
+Eval hnf in new exception NoPatternMatchesGoal.
+Eval hnf in new exception NotThatType.
+Eval hnf in new exception NoProgress.
 
 Definition SomethingNotRight {A} (t : A) : Exception. exact exception. Qed.
 
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 
-Definition CantFindConstructor : Exception. exact exception. Qed.
-Definition ConstructorsStartsFrom1 : Exception. exact exception. Qed.
-
-Definition Not1Constructor : Exception. exact exception. Qed.
-Definition Not2Constructor : Exception. exact exception. Qed.
-
-Definition DoesNotMatchGoal : Exception. exact exception. Qed.
-Definition NoPatternMatchesGoal : Exception. exact exception. Qed.
-
-Definition NotThatType : Exception. exact exception. Qed.
-
-Definition NoProgress : Exception. constructor. Qed.
 
 (** The type for tactics *)
 Definition gtactic (A : Type) := goal -> M (mlist (A * goal)).
