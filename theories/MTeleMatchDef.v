@@ -29,7 +29,7 @@ Definition mtmmatch' A m (y : A) (ps : mlist (mtpattern A (fun x => MTele_ty M (
                           | mSome eq =>
                             (* eq has type x = t, but for the pattern we need t = x.
          we still want to provide eq_refl though, so we reduce it *)
-                            let h := reduce (RedStrong [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
+                            let h := dreduce (meq_sym) (meq_sym eq) in
                             let 'meq_refl := eq in
                             (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
 
