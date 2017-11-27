@@ -189,6 +189,16 @@ Definition exact {A} (x:A) : tactic := fun g =>
   | _ => M.raise NotAGoal
   end.
 
+Definition eexact {A} (x:A) : tactic := fun g =>
+  match g with
+  | Goal g =>
+    M.cumul_or_fail UniCoq x g;;
+    l <- M.collect_evars g;
+    let red := dreduce (@mmap, M.dyn_to_goal) (mmap (fun d => (tt, M.dyn_to_goal d)) l) in
+    M.ret red
+  | _ => M.raise NotAGoal
+  end.
+
 Definition goal_type : gtactic Type := with_goal M.goal_type.
 
 (** [intro_base n t] introduces variable or definition named [n]

@@ -420,6 +420,9 @@ Hint Extern 20 (runner ?f) =>
 Definition print_term {A} (x : A) : t unit :=
   bind (pretty_print x) (fun s=> print s).
 
+Definition dbg_term {A} (s: string) (x : A) : t unit :=
+  bind (pretty_print x) (fun t=> print (s++t)).
+
 Module monad_notations.
   Bind Scope M_scope with t.
   Delimit Scope M_scope with MC.
@@ -804,6 +807,22 @@ Definition instantiate {A} (x y : A) : t unit :=
 Definition solve_typeclass_or_fail (A : Type) : t A :=
   x <- solve_typeclass A;
   match x with mSome a => M.ret a | mNone => raise (NoClassInstance A) end.
+
+(** Collects obviously visible evars *)
+Definition collect_evars {A} (x: A) :=
+  res <- (mfix1 f (d: dyn) : M (mlist dyn) :=
+    let (_, e) := d in
+    mif M.is_evar e then M.ret [m: d]
+    else
+      let e := reduce (RedWhd [rl: RedBeta; RedMatch; RedZeta]) e in
+      ''(h, l) <- M.decompose e;
+      if is_empty l then M.ret [m:]
+      else
+        f h >>= fun d => M.map f l >>= fun ds => M.ret (mapp d (mconcat ds))
+    ) (Dyn x);
+  let red := dreduce (@mapp, @mconcat) res in
+  ret red.
+
 End M.
 
 Notation M := M.t.
