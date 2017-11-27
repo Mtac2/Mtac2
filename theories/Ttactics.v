@@ -173,6 +173,12 @@ Definition use_tactic {A} (t: tactic) : M A :=
   l' <- T.filter_goals l;
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
 
+Definition try_tactic {A} (t: tactic) : M A :=
+  e <- evar A;
+  t (Goal e);;
+  ret e.
+
+
 Definition is_prod T :=
   mmatch T with
   | [? A B] (A * B)%type => ret true
