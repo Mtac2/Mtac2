@@ -174,6 +174,7 @@ Definition by' {A} (t: tactic) : M A :=
   l <- t (Goal e);
   l' <- T.filter_goals l;
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
+(* The following code just declares [by] which is a reserved keyword *)
 Check ltac:(mrun (r <- M.declare dok_Definition "by" false (@by');
                   M.declare_implicits r [m: ia_Explicit | ia_MaximallyImplicit])).
 
