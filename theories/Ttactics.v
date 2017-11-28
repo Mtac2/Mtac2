@@ -169,13 +169,15 @@ Definition assumption {A} : M A :=
   f l.
 
 (** Solves goal A provided tactic t *)
-Definition by_tactic {A} (t: tactic) : M A :=
+Definition by' {A} (t: tactic) : M A :=
   e <- evar A;
   l <- t (Goal e);
   l' <- T.filter_goals l;
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
+Check ltac:(mrun (r <- M.declare dok_Definition "by" false (@by');
+                  M.declare_implicits r [m: ia_Explicit | ia_MaximallyImplicit])).
 
-Definition use_tactic {A} (t: tactic) : M A :=
+Definition use {A} (t: tactic) : M A :=
   e <- evar A;
   t (Goal e);;
   ret e.
