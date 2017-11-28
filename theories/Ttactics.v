@@ -1,4 +1,6 @@
 From Mtac2 Require Import Base Datatypes List MTele MTeleMatch MTeleMatchDef MFixDef.
+Require Import Strings.String.
+
 Import M.notations.
 Import Mtac2.List.ListNotations.
 
@@ -167,13 +169,13 @@ Definition assumption {A} : M A :=
   f l.
 
 (** Solves goal A provided tactic t *)
-Definition use_tactic {A} (t: tactic) : M A :=
+Definition by_tactic {A} (t: tactic) : M A :=
   e <- evar A;
   l <- t (Goal e);
   l' <- T.filter_goals l;
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
 
-Definition try_tactic {A} (t: tactic) : M A :=
+Definition use_tactic {A} (t: tactic) : M A :=
   e <- evar A;
   t (Goal e);;
   ret e.
@@ -221,8 +223,23 @@ Definition to_tactic {A B} (f: M (A |m- B)) : tactic := fun g=>
 Definition pass := evar.
 Arguments pass {_}.
 
+Import Strings.Ascii.
+Local Open Scope string.
+
+Definition doTT {A:Prop} (x:A) :=
+  s <- pretty_print x;
+  let s :=
+      match String.get 0 s with
+      | Some "@"%char => String.substring 1 (String.length s -1) s
+      | _ => s
+      end  ++ "T" in
+  print s;;
+  do_def s x.
+
 Module notations.
 Notation "[t: x | .. | y ]" := (TT.compi x (.. (TT.compi y (M.ret I)) ..)).
+Notation "'doTT' t" := (ltac:(mrun (doTT t))) (at level 0).
 End notations.
+
 
 End TT.
