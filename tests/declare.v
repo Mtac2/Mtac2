@@ -30,6 +30,12 @@ Module DeclareTest.
   Fail Compute ltac:(mrun (M.declare_implicits (Nat.add) [m:])).
   Fail Compute ltac:(mrun (M.declare_implicits (Nat.add (n:=1)) [m:])).
   Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m:])).
+  Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: ia_Implicit | ia_Implicit])).
+  Definition should_work0 := Nat.add (n:=3) (m:=2).
+  Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: ia_Implicit | ia_Explicit])).
+  Definition should_work2 := Nat.add (n:=3) 2.
+  Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: ia_Explicit | ia_Implicit])).
+  Definition should_work1 := Nat.add (m:=3) 2.
   Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: ia_Explicit | ia_Explicit])).
   Definition should_work := Nat.add 3 2.
 End DeclareTest.

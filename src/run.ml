@@ -837,8 +837,10 @@ let run_declare_implicits env sigma gr impls =
   |]
   in
   let gr = Globnames.global_of_constr gr in
-  let idx = ref 1 in
-  let impls = CoqList.from_coq_conv (env, sigma)
+  let impls = CoqList.from_coq (env, sigma) impls in
+  let impls = List.rev impls in
+  let idx = ref (List.length impls) in
+  let impls = List.map
                 (fun item ->
                    let kind_pos = get_constructor_pos item in
                    let ret = (if kind_pos > 0 then
@@ -851,7 +853,7 @@ let run_declare_implicits env sigma gr impls =
                    (*       let kind_pos = get_constructor_pos item in *)
                    (*       Some (Constrexpr.ExplByPos(!idx, None), impliciteness.(kind_pos)) *)
                    (* in *)
-                   idx := !idx + 1; ret
+                   idx := !idx - 1; ret
                 ) impls in
   let impls = List.map_filter (fun x -> x) impls in
   (* since there is no way to declare something explicit, we clear implicits first *)
