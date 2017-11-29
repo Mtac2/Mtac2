@@ -59,27 +59,30 @@ Definition abstract A B (x : A) (t : B) :=
    if b then raise exception
    else
     mmatch r as r' return M (result x (elem r')) with
-    | Dyn x =>
+    | Dyn x =n>
       ret (R (fun x=>x) (meq_refl _))
-    | [? A' (t1 : A' -> type r) t2] Dyn (t1 t2)  =u>
-        r1 <- loop (Dyn t1);
-        r2 <- loop (Dyn t2);
-        ret (abs_app r1 r2)
-    | [? b (P:type r) (Q:type r)] Dyn (match b with
-          | true => P
-          | false => Q
-          end)
-      =u>
-      b' <- loop (Dyn b);
-      P' <- loop (Dyn P);
-      Q' <- loop (Dyn Q);
-      ret (match_eq B b' P' Q')
-    | [? P Q] Dyn (P -> Q) =u>
+    | [? P Q] Dyn (P -> Q) =n>
       P' <- loop (Dyn P);
       Q' <- loop (Dyn Q);
       ret (non_dep_eq P' Q')
-    | [?z] z =>
-      ret (R (fun _=>elem z) (meq_refl _))
+    | _ =n>
+      let r' := dreduce (type) (type r) in
+      mmatch r as r' return M (result x (elem r')) with
+      | [? A' (t1 : A' -> r') t2] Dyn (t1 t2)  =n>
+          r1 <- loop (Dyn t1);
+          r2 <- loop (Dyn t2);
+          ret (abs_app r1 r2)
+      | [? b (P: r') (Q: r')] Dyn (match b with
+            | true => P
+            | false => Q
+            end)
+        =n>
+        b' <- loop (Dyn b);
+        P' <- loop (Dyn P);
+        Q' <- loop (Dyn Q);
+        ret (match_eq B b' P' Q')
+      | r =n> ret (R (fun _=>elem r) (meq_refl _))
+      end
     end) (Dyn t);
     let reduced := reduce_all r in
     ret reduced.
