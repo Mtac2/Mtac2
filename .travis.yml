@@ -15,6 +15,7 @@ install:
 - travis_wait opam repo add coq-released https://coq.inria.fr/opam/released || echo
 - travis_wait opam pin -y add coq-unicoq git://github.com/unicoq/unicoq#v1.2-coq8.6
 - travis_wait opam update -y
+- travis_wait opam upgrade -y
 - travis_wait opam install -y coq.8.6.1 ocamlfind coq-unicoq
 - opam list
 script:
