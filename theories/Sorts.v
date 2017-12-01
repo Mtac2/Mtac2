@@ -1,3 +1,6 @@
+Set Universe Polymorphism.
+Unset Universe Minimization ToSet.
+
 (** Types that can hold either a [Prop] or a [Type] *)
 Module Sorts.
 
