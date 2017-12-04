@@ -69,7 +69,7 @@ Definition remove_ret {V} {B} {Q : B -> Type} {A} : forall (v : V) b (m : Q b), 
   end
 .
 
-
+Set Printing Universes.
 Definition apply_type_of (P : Type) :
   forall {T} (t : T),
                       M (sigT (funs_of (M P))) :=

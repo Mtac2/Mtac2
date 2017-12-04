@@ -35,6 +35,9 @@ Definition ForAll
   | SType => fun F => forall a : A, F a
   end.
 
+Definition Impl {sort : Sort} A (B : stype_of sort) : stype_of sort :=
+  ForAll (sort := sort) (fun _ : A => B).
+
 Definition Fun {sort} {A : Type} :
   forall {F : A -> stype_of sort}, (forall a, selem_of (F a)) -> selem_of (ForAll F) :=
   match sort as sort' return

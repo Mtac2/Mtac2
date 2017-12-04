@@ -1,24 +1,24 @@
 From Mtac2 Require Import Base Logic Datatypes MTele MTeleMatchDef.
 Import M.notations.
 
-Definition MTele_of {A} (T : A -> Prop) :=
+Set Universe Polymorphism.
+Unset Universe Minimization ToSet.
+
+Polymorphic Definition MTele_of {A} (T : A -> Prop) : M (A -> sigT MTele_Ty) :=
   b <- M.fresh_binder_name T;
   M.nu b mNone (fun a =>
-  (mfix1 f (T : Prop) : M (MTele) :=
-    mmatch T as t' return M MTele with
-    | [?X : Type] M X =u> M.ret (mBase X)
-    (* | [?(X : Prop) (F : forall x:X, Prop)] (forall x:X, F x) =u> *)
-    (*   b <- M.fresh_binder_name F; *)
-    (*   f <- M.nu b None (fun x => *)
-    (*           g <- f (F x); *)
-    (*           M.abs_fun x g); *)
-    (*   M.ret (mTele f) *)
+  (mfix1 f (T : Prop) : M (sigT MTele_Ty) :=
+    mmatch T as t' return M (sigT MTele_Ty) with
+    | [?X : Type] M X =u> M.ret (existT _ mBase X)
     | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =u>
       b <- M.fresh_binder_name F;
-      f <- M.nu b mNone (fun x =>
-              g <- f (F x);
-              M.abs_fun x g);
-      M.ret (mTele f)
+      M.nu b mNone (fun x =>
+                      ''(existT _ n T) <- f (F x);
+                      n' <- M.abs_fun x n;
+                      T' <- M.abs_fun T n;
+                      T' <- M.coerce T;
+                      M.ret (existT _ (mTele n') T')
+                   )
    end
   ) (T a) >>= (M.abs_fun a)).
 
@@ -50,7 +50,7 @@ Notation "'with' p1 | .. | pn 'end'" :=
 
 Delimit Scope with_mtpattern_prog_scope with with_mtpattern_prog.
 
-Class TC_UNIFY {T : Type} (A B : T) := tc_unify : (A =m= B).
+Polymorphic Class TC_UNIFY {T : Type} (A B : T) := tc_unify : (A =m= B).
 Arguments tc_unify {_} _ _ {_}.
 Hint Extern 0 (TC_UNIFY ?A ?B) => mrun (o <- M.unify A B UniCoq; match o with | mSome eq => M.ret eq | mNone => M.failwith "cannot (tc_)unify." end) : typeclass_instances.
 
@@ -73,7 +73,7 @@ Notation "'mtmmatch_prog' x 'as' y 'return' T p" :=
     let m := mt_of (fun y => T) in
     match tc_unify (fun _z => MTele_ty M (m _z))((fun y => T))
           in _ =m= R return mlist (mtpattern _ R) -> R x with
-    | meq_refl => mtmmatch' _ (m) x
+    | meq_refl => mtmmatch' _ (m) (fun y => T) x
     end
     (p%with_mtpattern_prog)
   ) (at level 200, p at level 201).
@@ -90,10 +90,10 @@ Bind Scope mtpattern_scope with mtpattern.
 Delimit Scope mtpattern_scope with mtpattern.
 
 
-Class MTY_OF {A} := MTt_Of { mty_of : A -> Prop }.
+Polymorphic Class MTY_OF {A} := MTt_Of { mty_of : A -> Prop }.
 Arguments MTt_Of [_] _.
 
-Class RET_TY (A : Type) := Ret_Ty { ret_ty : A }.
+Polymorphic Class RET_TY (A : Type) := Ret_Ty { ret_ty : A }.
 Arguments Ret_Ty [_] _.
 Arguments ret_ty [_ _].
 
@@ -124,7 +124,7 @@ Delimit Scope with_mtpattern_scope with with_mtpattern.
 Notation "'mtmmatch' x 'as' y 'return' T p" :=
   (
     let F : RET_TY _ := Ret_Ty (fun y => T) in
-    let m := M.eval (MTele_of (fun y => T)) in
-    let mt : MTY_OF := MTt_Of (fun _z => MTele_ty M (m _z)) in
-    mtmmatch' _ m x p%with_mtpattern
+    let mt1 := M.eval (MTele_of (fun y => T)) in
+    let mt : MTY_OF := MTt_Of (fun _z => MTele_ty M (n:=projT1 (mt1 _z)) (projT2 (mt1 _z))) in
+    mtmmatch' _ (fun y => projT1 (mt1 y)) (fun y => projT2 (mt1 y)) x p%with_mtpattern
   ) (at level 90, p at level 91).
