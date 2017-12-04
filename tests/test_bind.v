@@ -9,3 +9,13 @@ Goal True.
 MProof.
   (r <- M.ret I; M.ret r)%MC.
 Qed.
+
+Goal True.
+MProof.
+  (M.ret tt;; M.ret I)%MC.
+Qed.
+
+Goal True.
+MProof.
+  (M.mtry' (M.ret tt;; M.ret I) (fun _ =>M.ret I))%MC.
+Qed.

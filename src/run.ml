@@ -873,16 +873,49 @@ let get_type_of ctxt t =
   (* let env = push_named_context (named_context ctxt.fixpoints) ctxt.env in *)
   Retyping.get_type_of ctxt.env ctxt.sigma t
 
-let rec run' ctxt t =
+type vm = Code of constr | Bind of (vm * constr) | Try of (vm * constr)
+        | Nu of (vm * Evd.evar_map * Names.Id.t)
+
+let rec constr_of = function
+  | Code c -> c
+  | Bind (a, _) -> constr_of a
+  | Try (a, _) -> constr_of a
+  | Nu (a, _, _) -> constr_of a
+
+let rec update_constr c = function
+  | Code _ -> Code c
+  | Bind (a, b) -> Bind (update_constr c a, b)
+  | Try (a, b) -> Try (update_constr c a, b)
+  | Nu (a, s, n) -> Nu (update_constr c a, s, n)
+
+let rec run' ctxt vm =
   let sigma, env = ctxt.sigma, ctxt.env in
-  ( match ctxt.hook with
-    | Some f ->
-        let t = RE.whd_betaiota env sigma t in
-        let ty = get_type_of ctxt t in
-        run' {ctxt with hook = None} (Term.mkApp (f, [|ty; t|]))
-    | None -> return sigma t
-  ) >>= fun (sigma, t) ->
+  let upd c = update_constr c vm in
+  let return sigma c =
+    match vm with
+    | Code _ -> return sigma c
+    | Bind (_, b) -> run' {ctxt with sigma} (Code (mkApp(b, [|c|])))
+    | Try (_, _) -> return sigma c
+    | Nu (_, sigma', name) ->
+        if occur_var env name c then
+          fail sigma' (E.mkVarAppearsInValue ())
+        else
+          return sigma c
+  in
+  let fail sigma c =
+    match vm with
+    | Try (_, b) -> run' {ctxt with sigma} (Code (mkApp(b, [|c|])))
+    | _ -> fail sigma c
+  in
+  (* ( match ctxt.hook with *)
+  (*   | Some f -> *)
+  (*       let t = RE.whd_betaiota env sigma t in *)
+  (*       let ty = get_type_of ctxt t in *)
+  (*       run' {ctxt with hook = None} (Term.mkApp (f, [|ty; t|])) *)
+  (*   | None -> return sigma t *)
+  (* ) >>= fun (sigma, t) -> *)
   let ctxt = {ctxt with sigma = sigma} in
+  let t = constr_of vm in
   let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
   let nth = Array.get args in
   if Term.isLetIn h then
@@ -892,11 +925,11 @@ let rec run' ctxt t =
     if isReduce h && Array.length args' = 3 then
       try
         let b = reduce sigma env (Array.get args' 0) (Array.get args' 2) in
-        run' ctxt (Term.mkApp (Vars.subst1 b t, args))
+        run' ctxt (upd (Term.mkApp (Vars.subst1 b t, args)))
       with RedList.NotAList l ->
         fail sigma (E.mkNotAList ())
     else
-      run' ctxt (Term.mkApp (Vars.subst1 b t, args))
+      run' ctxt (upd (Term.mkApp (Vars.subst1 b t, args)))
   else
     let constr c =
       if Term.isConstruct c then
@@ -910,31 +943,25 @@ let rec run' ctxt t =
     | -1 ->
         begin
           try
+            (* search for the variable in the fixpoint context *)
             let n = Term.destVar h in
             match Environ.named_body n ctxt.fixpoints with
             | Some fixbody ->
                 let t = (Term.appvect (fixbody,args)) in
-                run' ctxt t
+                run' ctxt (upd t)
             | None -> fail sigma (E.mkStuckTerm ())
           with | Term.DestKO ->
             fail sigma (E.mkStuckTerm ())
         end
+
     | 1 -> (* ret *)
         return sigma (nth 1)
 
     | 2 -> (* bind *)
-        run' ctxt (nth 2) >>= fun (sigma', v) ->
-        let t' = mkApp(nth 3, [|v|]) in
-        run' {ctxt with sigma = sigma'} t'
+        run' ctxt (Bind (Code (nth 2), nth 3))
 
     | 3 -> (* try *)
-        begin
-          match run' ctxt (nth 1) with
-          | Val (sigma, v) -> return sigma v
-          | Err (_, c) ->
-              let t' = mkApp(nth 2, [|c|]) in
-              run' ctxt t'
-        end
+        run' ctxt (Try (Code (nth 1), nth 2))
 
     | 4 -> (* raise *)
         (* we make sure the exception is a closed term: it does not depend on evars or nus *)
@@ -950,27 +977,27 @@ let rec run' ctxt t =
 
     | 5 -> (* fix1 *)
         let a, b, s, i, f, x = nth 0, nth 1, nth 2, nth 3, nth 4, nth 5 in
-        run_fix ctxt h [|a|] b s i f [|x|]
+        run_fix ctxt vm h [|a|] b s i f [|x|]
 
     | 6 -> (* fix 2 *)
         let a1, a2, b, s, i, f, x1, x2 =
           nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7 in
-        run_fix ctxt h [|a1; a2|] b s i f [|x1; x2|]
+        run_fix ctxt vm h [|a1; a2|] b s i f [|x1; x2|]
 
     | 7 -> (* fix 3 *)
         let a1, a2, a3, b, s, i, f, x1, x2, x3 =
           nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9 in
-        run_fix ctxt h [|a1; a2; a3|] b s i f [|x1; x2; x3|]
+        run_fix ctxt vm h [|a1; a2; a3|] b s i f [|x1; x2; x3|]
 
     | 8 -> (* fix 4 *)
         let a1, a2, a3, a4, b, s, i, f, x1, x2, x3, x4 =
           nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9, nth 10, nth 11 in
-        run_fix ctxt h [|a1; a2; a3; a4|] b s i f [|x1; x2; x3; x4|]
+        run_fix ctxt vm h [|a1; a2; a3; a4|] b s i f [|x1; x2; x3; x4|]
 
     | 9 -> (* fix 5 *)
         let a1, a2, a3, a4, a5, b, s, i, f, x1, x2, x3, x4, x5 =
           nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9, nth 10, nth 11, nth 12, nth 13 in
-        run_fix ctxt h [|a1; a2; a3; a4; a5|] b s i f [|x1; x2; x3; x4; x5|]
+        run_fix ctxt vm h [|a1; a2; a3; a4; a5|] b s i f [|x1; x2; x3; x4; x5|]
 
     | 10 -> (* is_var *)
         let e = nth 1 in
@@ -990,14 +1017,7 @@ let rec run' ctxt t =
           let ot = CoqOption.from_coq (env, sigma) ot in
           let env = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
           let (sigma, renv) = Hypotheses.cons_hyp a (Term.mkVar name) ot ctxt.renv sigma env in
-          match run' {ctxt with env; renv; sigma; nus=(ctxt.nus+1)} fx with
-          | Val (sigma', e) ->
-              if occur_var env name e then
-                fail sigma (E.mkVarAppearsInValue ())
-              else
-                return sigma' e
-          | Err (sigma, e) ->
-              fail sigma e
+          run' {ctxt with env; renv; sigma; nus=(ctxt.nus+1)} (Nu (Code fx, sigma, name))
         end
 
     | 12 -> (* abs *)
@@ -1034,7 +1054,7 @@ let rec run' ctxt t =
           if check_dependencies env x t then
             let nus = if is_nu env x ctxt.nus then ctxt.nus-1 else ctxt.nus in
             let env, (sigma, renv) = env_without sigma env ctxt.renv x in
-            run' {ctxt with env; renv; sigma; nus} t
+            run' {ctxt with env; renv; sigma; nus} (upd t)
           else
             fail sigma (E.mkCannotRemoveVar env x)
         else
@@ -1194,7 +1214,7 @@ let rec run' ctxt t =
         return sigma (CoqString.to_coq (read_line ()))
 
     | 35 -> (* break *)
-        run' {ctxt with hook=Some (nth 2)} (nth 4)(*  >>= fun (sigma, _) -> *)
+        run' {ctxt with hook=Some (nth 2)} (upd (nth 4))(*  >>= fun (sigma, _) -> *)
     (* return sigma CoqUnit.mkTT *)
 
     | 36 -> (* decompose *)
@@ -1248,7 +1268,7 @@ let rec run' ctxt t =
    return type of the fixpoint, s is the type to embed M in itself (used only to
    make universes happy), i is the identity to embed S in M, f is the function
    and x its arguments. *)
-and run_fix ctxt (h: constr) (a: constr array) (b: constr) (s: constr) (i: constr) (f: constr) (x: constr array) =
+and run_fix ctxt (vm: vm) (h: constr) (a: constr array) (b: constr) (s: constr) (i: constr) (f: constr) (x: constr array) =
   (* let fixbody = mkApp(h, Array.append a [|b;s;i|]) in *)
   (* run' ctxt c *)
   let sigma, env = ctxt.sigma, ctxt.env in
@@ -1274,7 +1294,7 @@ and run_fix ctxt (h: constr) (a: constr array) (b: constr) (s: constr) (i: const
      type. *)
   let fixpoints = push_named (Context.Named.Declaration.of_tuple (n, Some (fixf), Term.mkProp)) ctxt.fixpoints in
   let c = mkApp (f, Array.append [| fixvar |] x) in
-  run' {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} c
+  run' {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} (update_constr c vm)
 (* run' ctxt c *)
 
 (* Takes a [sigma], a set of evars [metas], and a [term],
@@ -1358,7 +1378,7 @@ let run (env, sigma) t =
   let subs, env = db_to_named env in
   let t = multi_subst subs (nf_evar sigma t) in
   let (sigma, renv) = build_hypotheses sigma env in
-  match run' {env; renv; sigma; nus=0;hook=None; fixpoints=Environ.empty_env} t with
+  match run' {env; renv; sigma; nus=0;hook=None; fixpoints=Environ.empty_env} (Code t) with
   | Err (sigma', v) ->
       Err (sigma', multi_subst_inv subs (nf_evar sigma' v))
   | Val (sigma', v) ->
