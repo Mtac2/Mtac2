@@ -1,17 +1,24 @@
 From Mtac2 Require Import Base Logic Datatypes List MTele.
 Import M.notations.
+Import Sorts.Sorts.
 Import ListNotations.
 
 Inductive mtpattern A (m : A -> Prop)  : Prop :=
-| mtpbase : forall x : A, (m x) -> Unification -> mtpattern A m
+| mtpbase : forall x : A, m x -> Unification -> mtpattern A m
 | mtptele : forall {C}, (forall x : C, mtpattern A m) -> mtpattern A m.
 
-Arguments mtpbase {A m} _ _ _.
+Arguments mtpbase {A m} _ _.
 Arguments mtptele {A m C} _.
 
-Definition mtmmatch' A m (y : A) (ps : mlist (mtpattern A (fun x => MTele_ty M (m x)))) : MTele_ty M.t (m y) :=
+Local Notation MFA T := (MTele_val (MTele_C SType SProp M T)).
+
+Coercion stype_of : Sort >-> Sortclass.
+(* Set Printing Coercions. *)
+(* Set Printing All. *)
+Polymorphic Definition mtmmatch' A m (T : forall x, MTele_Ty (m x)) (y : A)
+           (ps : mlist (mtpattern A (fun x => MFA (T x)))) : selem_of (MFA (T y)) :=
   MTele_open
-    M.t (m y)
+    M.t (T y)
     (fun R acc =>
        (fix mmatch' ps : M.t R :=
           match ps with
@@ -34,7 +41,7 @@ Definition mtmmatch' A m (y : A) (ps : mlist (mtpattern A (fun x => MTele_ty M (
                             (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
 
                             (* M.print "dbg1";; *)
-                            let f' := (match h in _ =m= z return MTele_ty M.t (m z) -> MTele_ty M.t (m y)
+                            let f' := (match h in _ =m= z return MTele_ty M.t (T z) -> MTele_ty M.t (T y)
                                        with
                                        | meq_refl => fun f => f
                                        end f)
@@ -66,16 +73,17 @@ Definition mtmmatch' A m (y : A) (ps : mlist (mtpattern A (fun x => MTele_ty M (
 
 Module TestFin.
 Require Fin.
-Definition mt : nat -> MTele := fun n => mTele (fun _ : Fin.t n => mBase (True)).
-Definition pO u : mtpattern nat _ := @mtpbase _ (fun x => MTele_ty M (mt x)) O (fun x => Fin.case0 (fun _ => M True) x) u.
-Definition p1 u : mtpattern nat _ := @mtpbase _ (fun x => MTele_ty M (mt x)) 1 (fun n => M.ret I) u.
-Definition pi u : mtpattern nat (fun x => MTele_ty M (mt x)) :=
+Polymorphic Definition mt@{i} : nat -> MTele@{i} := fun n => mTele (fun _ : Fin.t n => mBase).
+Definition T : forall n, MTele_Ty (mt n) := fun n _ => True.
+Definition pO u : mtpattern nat _ := @mtpbase _ (fun x => MTele_ty M (n:=mt x) (T x)) 0 ((* ex_intro _ 0 *) (fun x => Fin.case0 (fun _ => M True) x)) u.
+Definition p1 u : mtpattern nat _ := @mtpbase _ (fun x => MTele_ty M (n:=mt x) (T x)) 1 ((* ex_intro _ 1 *) (fun n => M.ret I)) u.
+Definition pi u : mtpattern nat (fun x => MTele_ty M (n:=mt x) (T x)) :=
   mtptele (fun i : nat =>
-             @mtpbase _ _ i (fun n => M.ret I) u
+             @mtpbase _ _  i ((* ex_intro _ i *) (fun n => M.ret I)) u
           ).
 
-Program Example pbeta : mtpattern nat (fun x => MTele_ty M (mt x)) :=
+Program Example pbeta : mtpattern nat (fun x => MTele_ty M (n:=mt x) (T x)) :=
   mtptele (fun i : nat =>
-            @mtpbase _ (* (fun x => MTele_ty M (mt x)) *) _ (i + 1) (fun n : Fin.t (i + 1) => M.ret I) UniCoq
+            @mtpbase _ (* (fun x => MTele_ty M (mt x)) *) _ (i+1) ((* ex_intro _ (i + 1) *) (fun n : Fin.t (i + 1) => M.ret I)) UniCoq
          ).
 End TestFin.

@@ -1,34 +1,42 @@
 From Mtac2 Require Import Base MTele.
+Import Sorts.Sorts.
 Import M.notations.
 
-Notation MFA := (MTele_ty M).
+Local Notation MFA T := (MTele_val (MTele_C SType SProp M T)).
 
 Fixpoint UNCURRY (m : MTele) : Type :=
   match m with
-  | mBase T => unit
+  | mBase => unit
   | mTele f => sigT (fun x => UNCURRY (f x))
   end.
 
-Fixpoint RETURN (m : MTele) : UNCURRY m -> Type :=
+Fixpoint RETURN {m : MTele} : MTele_Ty m -> UNCURRY m -> Type :=
   match m with
-  | mBase T => fun _ => T
-  | mTele f => fun '(existT _ x U) => RETURN _ U
+  | mBase => fun T _ => T
+  | mTele f => fun T '(existT _ x U) => RETURN (T x) U
   end.
 
-Fixpoint uncurry (m : MTele) : MFA m -> forall U : UNCURRY m, M (RETURN _ U) :=
-  match m with
-  | mBase T => fun F _ => F
-  | mTele f => fun F '(existT _ x U) => uncurry (f x) (F x) U
+Fixpoint uncurry {m : MTele} :
+  forall {T : MTele_Ty m},
+  MFA T -> forall U : UNCURRY m, M (RETURN T U) :=
+  match m as m return
+        forall T : MTele_Ty m,
+          MTele_val (MTele_C SType SProp M T) -> forall U : UNCURRY m, M (RETURN _ U)
+  with
+  | mBase => fun T F _ => F
+  | mTele f => fun T F '(existT _ x U) => uncurry (F x) U
   end.
 
-Fixpoint curry (m : MTele) : (forall U : UNCURRY m, M (RETURN _ U)) -> MFA m :=
+Fixpoint curry {m : MTele} :
+  forall {T : MTele_Ty m},
+  (forall U : UNCURRY m, M (RETURN T U)) -> MFA T :=
   match m with
-  | mBase T => fun F => F tt
-  | mTele f => fun F x => curry (f x) (fun U => F (existT _ x U))
+  | mBase => fun T F => F tt
+  | mTele f => fun T F x => curry (fun U => F (existT _ x U))
   end.
 
-Definition mfix' (m : MTele) (F : MFA m -> MFA m) : MFA m :=
-  curry m (mfix1 rec (U : _) : M _ := uncurry m (F (curry m rec)) U).
+Definition mfix' {m : MTele} (T : MTele_Ty m) (F : MFA T -> MFA T) : MFA T :=
+  curry (mfix1 rec (U : _) : M _ := uncurry (F (curry rec)) U).
 
 (* Definition mfix' (m : MTele) (F : MFA m -> MFA m) : MFA m := *)
 (*   curry m (M.fix1 _ (fun rec => uncurry m (F (curry m rec)))). *)
