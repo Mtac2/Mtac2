@@ -1,5 +1,7 @@
-From Mtac2 Require Import List Mtac2 Debugger.
+From Mtac2 Require Import List Base.
 Import ListNotations.
+Import M.
+Import M.notations.
 
 Definition decompose {T} (x : T) :=
   (mfix2 f (d : dyn) (args: mlist dyn) : M (dyn * mlist dyn) :=
@@ -9,8 +11,6 @@ Definition decompose {T} (x : T) :=
     | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :m: args)
     | _ => M.ret (d, args)
     end) (Dyn x) [m:].
-
-Import M.notations.
 
 (* If I'm not mistaken, the problem comes from the unification of
 

@@ -1,4 +1,6 @@
-Require Import Mtac2.Mtac2.
+Require Import Mtac2.Base.
+Import M.
+Import M.notations.
 
 Goal True.
 MProof.
@@ -19,3 +21,8 @@ Goal True.
 MProof.
   (M.mtry' (M.ret tt;; M.ret I) (fun _ =>M.ret I))%MC.
 Qed.
+
+(* Local Variables: *)
+(* coq-prog-name: "~/coq/coq8.6/coq-8.6/bin/coqtop.byte" *)
+(* coq-load-path: nil *)
+(* End: *)

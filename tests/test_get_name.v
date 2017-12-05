@@ -1,4 +1,6 @@
-Require Import Mtac2.Mtac2.
+From Mtac2 Require Import Datatypes List Base.
+Import M.
+Import M.notations.
 
 Goal True.
 MProof.

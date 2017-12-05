@@ -5,7 +5,6 @@
 Axiom proof_admitted : False.
 Tactic Notation "admit" := abstract case proof_admitted.
 Require Mtac2.Sorts.
-Require Mtac2.Debugger.
 Import Mtac2.Datatypes.
 Import Mtac2.List Mtac2.Logic.
 Import Mtac2.Sorts.

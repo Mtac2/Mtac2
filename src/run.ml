@@ -644,35 +644,6 @@ let make_evar sigma env ty =
     let Sigma (evar, sigma, _) = Evarutil.new_evar env sigma ty in
     to_evar_map sigma, evar
 
-let cvar (env, sigma as ctx) ty ohyps =
-  let ohyps = CoqOption.from_coq (env, sigma) ohyps in
-  if Option.has_some ohyps then
-    try
-      let hyps = Hypotheses.from_coq_list (env, sigma) (Option.get ohyps) in
-      let vars = List.map (fun (v, _, _)->v) hyps in
-      if List.distinct vars then
-        try
-          let subs, env = new_env ctx hyps in
-          let ty = multi_subst subs ty in
-          let sigma, evar = make_evar sigma env ty in
-          let (e, _) = destEvar evar in
-          (* the evar created by make_evar has id in the substitution
-             but we need to remap it to the actual variables in hyps *)
-          return sigma (mkEvar (e, Array.of_list vars))
-        with
-        | MissingDep ->
-            fail sigma (E.mkHypMissesDependency ())
-        | Not_found ->
-            fail sigma (E.mkTypeMissesDependency ())
-      else
-        fail sigma (E.mkDuplicatedVariable ())
-    with Hypotheses.NotAVariable ->
-      fail sigma (E.mkNotAVar ())
-  else
-    let sigma, evar = make_evar sigma env ty in
-    return sigma evar
-
-
 let rec get_name (env, sigma) (t: constr) : constr option =
   (* If t is a defined variable it is reducing it *)
   (*  let t = whd_betadeltaiota_nolet env sigma t in *)
@@ -847,7 +818,7 @@ let get_type_of ctxt t =
   Retyping.get_type_of ctxt.env ctxt.sigma t
 
 type vm = Code of constr | Ret of constr | Fail of constr
-        | Bind of constr | Try of constr
+        | Bind of constr | Try of (Evd.evar_map * constr)
         | Nu of (Evd.evar_map * Names.Id.t)
 
 (* let rec constr_of = function *)
@@ -862,22 +833,31 @@ type vm = Code of constr | Ret of constr | Fail of constr
 (*   | Try (a, b) -> Try (update_constr c a, b) *)
 (*   | Nu (a, s, n) -> Nu (update_constr c a, s, n) *)
 
+let vm_to_string = function
+  | Code c -> "Code " ^ constr_to_string c
+  | Bind c -> "Bind " ^ constr_to_string c
+  | Try (_, c) -> "Try " ^ constr_to_string c
+  | Ret c -> "Ret " ^ constr_to_string c
+  | Fail c -> "Fail " ^ constr_to_string c
+  | Nu _ -> "Nu"
+
 let rec run' ctxt (vms: vm list) =
+  (* List.iter (fun vm->Printf.printf "<<< %s :: " (vm_to_string vm)) vms; print_endline ">>>"; *)
   let sigma, env = ctxt.sigma, ctxt.env in
   let vm = hd vms in
   let vms = tl vms in
   match vm, vms with
   | Ret c, [] -> return sigma c
   | Ret c, (Bind b :: vms) -> run' ctxt (Code (mkApp(b, [|c|])) :: vms)
-  | Ret c, (Try b :: vms) -> run' ctxt (Ret c :: vms)
-  | Ret c, Nu (sigma', name) :: vms ->
+  | Ret c, (Try (_, b) :: vms) -> run' ctxt (Ret c :: vms)
+  | Ret c, Nu (sigma', name) :: vms -> (* why the sigma'? *)
       if occur_var env name c then
         run' {ctxt with sigma= sigma'} (Fail (E.mkVarAppearsInValue ()) :: vms)
       else
         run' ctxt (Ret c :: vms)
   | Fail c, [] -> fail sigma c
   | Fail c, (Bind _ :: vms) -> run' ctxt (Fail c :: vms)
-  | Fail c, (Try b :: vms) -> run' ctxt (Code (mkApp(b, [|c|]))::vms)
+  | Fail c, (Try (sigma, b) :: vms) -> run' {ctxt with sigma} (Code (mkApp(b, [|c|]))::vms)
   | Fail c, (Nu _ :: vms) -> run' ctxt (Fail c :: vms)
   | (Bind _ | Fail _ | Nu _ | Try _), _ -> failwith "ouch1"
   | Ret _, (Code _ :: _ | Ret _ :: _ | Fail _ :: _) -> failwith "ouch2"
@@ -937,7 +917,7 @@ let rec run' ctxt (vms: vm list) =
             run' ctxt (Code (nth 2) :: Bind (nth 3) :: vms)
 
         | 3 -> (* try *)
-            run' ctxt (Code (nth 1) :: Try (nth 2) :: vms)
+            run' ctxt (Code (nth 1) :: Try (sigma, nth 2) :: vms)
 
         | 4 -> (* raise *)
             (* we make sure the exception is a closed term: it does not depend on evars or nus *)
@@ -1038,7 +1018,7 @@ let rec run' ctxt (vms: vm list) =
 
         | 18 -> (* evar *)
             let ty, hyp = nth 0, nth 1 in
-            cvar (env, sigma) ty hyp
+            cvar vms ctxt ty hyp
 
         | 19 -> (* is_evar *)
             let e = whd_evar sigma (nth 1) in
@@ -1303,7 +1283,34 @@ and
   else
     run' ctxt (Fail (E.mkNotAVar ()) :: vms)
 
-
+and cvar vms ctxt ty ohyps =
+  let env, sigma = ctxt.env, ctxt.sigma in
+  let ohyps = CoqOption.from_coq (env, sigma) ohyps in
+  if Option.has_some ohyps then
+    try
+      let hyps = Hypotheses.from_coq_list (env, sigma) (Option.get ohyps) in
+      let vars = List.map (fun (v, _, _)->v) hyps in
+      if List.distinct vars then
+        try
+          let subs, env = new_env (env, sigma) hyps in
+          let ty = multi_subst subs ty in
+          let sigma, evar = make_evar sigma env ty in
+          let (e, _) = destEvar evar in
+          (* the evar created by make_evar has id in the substitution
+             but we need to remap it to the actual variables in hyps *)
+          run' {ctxt with sigma} (Ret (mkEvar (e, Array.of_list vars)) :: vms)
+        with
+        | MissingDep ->
+            run' ctxt (Fail (E.mkHypMissesDependency ()) :: vms)
+        | Not_found ->
+            run' ctxt (Fail (E.mkTypeMissesDependency ()) :: vms)
+      else
+        run' ctxt (Fail (E.mkDuplicatedVariable ()) :: vms)
+    with Hypotheses.NotAVariable ->
+      run' ctxt (Fail (E.mkNotAVar ()) :: vms)
+  else
+    let sigma, evar = make_evar sigma env ty in
+    run' {ctxt with sigma} (Ret evar :: vms)
 
 
 

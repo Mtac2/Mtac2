@@ -1,5 +1,7 @@
 From Mtac2
-Require Export Mtac2.
+Require Import Base.
+Import M.
+Import M.notations.
 
 Require Import Strings.String.
 

@@ -1,4 +1,6 @@
-Require Import Mtac2.Datatypes Mtac2.Mtac2.
+Require Import Mtac2.Datatypes Mtac2.Base.
+Import M.
+Import M.notations.
 
 Example nu_new_name_works : forall x:nat, 0 <= x.
 MProof.

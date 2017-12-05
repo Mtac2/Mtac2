@@ -1,4 +1,6 @@
-From Mtac2 Require Import Datatypes Mtac2.
+From Mtac2 Require Import Datatypes Base.
+Import M.
+Import M.notations.
 
 Require Import Lists.List.
 Import ListNotations.

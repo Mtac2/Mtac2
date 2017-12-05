@@ -842,3 +842,7 @@ Definition lift {A} (f: M A) (v : A) := A.
 Definition new_exception name := M.declare dok_Definition name true exception;; M.ret tt.
 Notation "'new' 'exception' n" := (M.eval (h <- M.get_binder_name (fun n=>n);
                                            new_exception h)) (at level 0, n at next level).
+(* Local Variables: *)
+(* coq-prog-name: "~/coq/coq8.6/coq-8.6/bin/coqtop.byte" *)
+(* coq-load-path: nil *)
+(* End: *)

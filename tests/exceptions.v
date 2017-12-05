@@ -1,4 +1,6 @@
-Require Import Mtac2.Mtac2.
+From Mtac2 Require Import Base.
+Import M.
+Import M.notations.
 
 
 Axiom block : M nat.

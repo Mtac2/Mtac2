@@ -1,4 +1,4 @@
-Require Import Mtac2.Mtac2.
+Require Import Mtac2.Base.
 
 Require Import Bool.Bool.
 Import M.notations.

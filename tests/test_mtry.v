@@ -1,4 +1,4 @@
-Require Import Mtac2.Mtac2.
+Require Import Mtac2.Base.
 Import M.
 Import notations.
 
@@ -11,7 +11,6 @@ Definition one : Exception. exact exception. Qed.
 
 Goal True.
 MProof.
-Drop.
   mtry' (unify one one UniCoq;; raise exception) (fun _=>ret I).
 Qed.
 

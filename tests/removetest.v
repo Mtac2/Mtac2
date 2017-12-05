@@ -1,4 +1,6 @@
-Require Import Mtac2.Mtac2.
+Require Import Mtac2.Base.
+Import M.
+Import M.notations.
 
 Example test_remove1 (x y z : nat) : x > y -> x > y.
 MProof.
@@ -31,6 +33,9 @@ MProof.
    r3 <- M.abs_fun (P:= fun x =>forall y : nat, x > y -> x > y) x r2;
    M.abs_fun z r3)%MC.
 Qed.
+
+Require Import Mtac2.Tactics.
+Import T.notations.
 
 Lemma negb_involutive : forall b b2:bool, negb (negb b) = b.
 MProof.
