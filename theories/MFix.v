@@ -24,7 +24,6 @@ Definition MTele_of' :=
                        m' <- M.abs_fun x m;
                        mT' <- (M.abs_fun (P:=fun x => MTele_Ty _) x mT >>= M.coerce (B:=MTele_Ty (mTele m')));
                        (* E' <- (M.abs_fun x E >>= M.coerce (B:=_ =m= MFA mT')); *)
-                       M.print "before E'";;
                        E' <- M.coerce (@meq_refl _ (MFA mT'));
                        M.ret (existT _ (mTele m') (existT _ mT' E'))
                        (* mf <- M.abs_fun (P:=fun x => {m : _ & F x =m= MFA m}) x mf; *)
@@ -81,8 +80,7 @@ Definition mfix_eq {m : MTele} {T: MTele_Ty m} {A : Prop} : forall {Eq : MFA T =
 
 Definition mfix_lift {m : MTele} {A : Prop} {F : (A -> A) -> A}:
   lift (
-      M.print "bla";;
-              ''(existT _ m' (existT _ mT E)) <-mtry  MTele_of' A
+     ''(existT _ m' (existT _ mT E)) <-mtry  MTele_of' A
         with
     | [?E] E =>
       M.print_term E;;
