@@ -819,7 +819,7 @@ let get_type_of ctxt t =
 
 type vm = Code of constr | Ret of constr | Fail of constr
         | Bind of constr | Try of (Evd.evar_map * constr)
-        | Nu of (Evd.evar_map * Names.Id.t)
+        | Nu of Names.Id.t
 
 (* let rec constr_of = function *)
 (*   | Code c -> c *)
@@ -842,6 +842,7 @@ let vm_to_string = function
   | Nu _ -> "Nu"
 
 let rec run' ctxt (vms: vm list) =
+  (* Printf.printf "<<< EVAR: %s >>>" (string_of_ppcmds (Evd.pr_evar_map None ctxt.sigma)); *)
   (* List.iter (fun vm->Printf.printf "<<< %s :: " (vm_to_string vm)) vms; print_endline ">>>"; *)
   let sigma, env = ctxt.sigma, ctxt.env in
   let vm = hd vms in
@@ -850,9 +851,9 @@ let rec run' ctxt (vms: vm list) =
   | Ret c, [] -> return sigma c
   | Ret c, (Bind b :: vms) -> run' ctxt (Code (mkApp(b, [|c|])) :: vms)
   | Ret c, (Try (_, b) :: vms) -> run' ctxt (Ret c :: vms)
-  | Ret c, Nu (sigma', name) :: vms -> (* why the sigma'? *)
+  | Ret c, Nu name :: vms -> (* why the sigma'? *)
       if occur_var env name c then
-        run' {ctxt with sigma= sigma'} (Fail (E.mkVarAppearsInValue ()) :: vms)
+        run' ctxt (Fail (E.mkVarAppearsInValue ()) :: vms)
       else
         run' ctxt (Ret c :: vms)
   | Fail c, [] -> fail sigma c
@@ -872,7 +873,13 @@ let rec run' ctxt (vms: vm list) =
       let upd c = (Code c :: vms) in
       let return sigma c = run' {ctxt with sigma} (Ret c :: vms) in
       let fail sigma c = run' {ctxt with sigma} (Fail c :: vms) in
+      (* Printf.printf "<<< term-before >>>";  *)
+      Printf.printf "hi";
+      let _ = Termops.print_constr t in
+      Printf.printf "ho";
       let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
+      Printf.printf "hu";
+      (* Printf.printf "<<< term: %s >>>" (constr_to_string (RE.whd_betadeltaiota_nolet env sigma t)); *)
       let nth = Array.get args in
       if Term.isLetIn h then
         let open ReductionStrategy in
@@ -973,7 +980,7 @@ let rec run' ctxt (vms: vm list) =
               let ot = CoqOption.from_coq (env, sigma) ot in
               let env = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
               let (sigma, renv) = Hypotheses.cons_hyp a (Term.mkVar name) ot ctxt.renv sigma env in
-              run' {ctxt with env; renv; sigma; nus=(ctxt.nus+1)} (Code fx :: Nu (sigma, name) :: vms)
+              run' {ctxt with env; renv; sigma; nus=(ctxt.nus+1)} (Code fx :: Nu name :: vms)
             end
 
         | 12 -> (* abs *)
