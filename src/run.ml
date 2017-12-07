@@ -1319,50 +1319,17 @@ let clean_unused_metas sigma metas term =
   in
   Evd.restore_future_goals sigma alive principal_goal
 
-(* returns the enviornment and substitution without db rels *)
-let db_to_named env =
-  let open Context in
-  let env' = push_named_context (named_context env) (reset_context env) in
-  let vars = Id.Set.elements (Named.to_vars (named_context env)) in
-  let _, subs, env = CList.fold_right_i (fun n var (vars, subs, env') ->
-    (* the definition might refer to previously defined indices
-       so we perform the substitution *)
-    let (name, odef, ty) = Rel.Declaration.to_tuple var in
-    let odef = Option.map (multi_subst subs) odef in
-    let ty = multi_subst subs ty in
-    (* since the name can be Anonymous, we need to generate a name *)
-    let id =
-      match name with
-      | Anonymous ->
-          Id.of_string ("_MC" ^ string_of_int n)
-      | Name n ->
-          Namegen.next_name_away name vars in
-    let nvar = Named.Declaration.of_tuple (id, odef, ty) in
-    id::vars, (n, mkVar id) :: subs, push_named nvar env'
-  ) 1 (rel_context env) (vars, [], env') in
-  subs, env
-
-(* It replaces each ci by ii in l = [(i1,c1) ... (in, cn)] in c. *)
-let multi_subst_inv l c =
-  let l = List.map (fun (a, b) -> (b, a)) l in
-  let rec substrec depth c = match kind_of_term c with
-    | Var n ->
-        begin
-          try mkRel (List.assoc (mkVar n) l + depth)
-          with Not_found -> mkVar n
-        end
-    | _ -> map_constr_with_binders succ substrec depth c in
-  substrec 0 c
-
 let run (env, sigma) t =
-  let subs, env = db_to_named env in
-  let t = multi_subst subs (nf_evar sigma t) in
+  let nctxval, t, _, csubs, vsubs = Evarutil.push_rel_context_to_named_context env (nf_evar sigma t) in
+  let env = Environ.reset_with_named_context nctxval env in
   let (sigma, renv) = build_hypotheses sigma env in
   match run' {env; renv; sigma; nus=0;hook=None; fixpoints=Environ.empty_env} t with
   | Err (sigma', v) ->
-      Err (sigma', multi_subst_inv subs (nf_evar sigma' v))
+      let v = Vars.replace_vars vsubs v in
+      Err (sigma', v)
   | Val (sigma', v) ->
-      Val (sigma', multi_subst_inv subs (nf_evar sigma' v))
+      let v = Vars.replace_vars vsubs v in
+      Val (sigma', v)
 
 (** set the run function in unicoq *)
 let _ = Munify.set_lift_constr (MetaCoqNames.mkConstr "lift")
