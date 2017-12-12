@@ -933,10 +933,10 @@ let rec run' ctxt t =
     let constr sigma c =
       if isConstruct sigma c then
         let ((m, ix), _) = destConstruct sigma c in
-        let sigma, ind = (mkT_lazy sigma env) in
-        if Names.eq_ind m (fst (destInd sigma ind)) then
-          ix
-        else -1
+        (* let sigma, ind = (mkT_lazy sigma env) in *)
+        (* if Names.eq_ind m (fst (destInd sigma ind)) then *)
+        ix
+        (* else -1 *)
       else -1
     in
     match constr sigma h with
