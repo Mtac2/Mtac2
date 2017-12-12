@@ -148,35 +148,48 @@ let constr_to_string_env env sigma t = string_of_ppcmds (Termops.print_constr_en
 module Exceptions = struct
 
   let mkCannotRemoveVar env sigma x =
+<<<<<<< HEAD
     let varname = CoqString.to_coq (constr_to_string_env env sigma x) in
     mkApp(Lazy.force (mkConstr "CannotRemoveVar"), [|varname|])
+=======
+    let varname = CoqString.to_coq (constr_to_string_env sigma env x) in
+    let sigma, exc = (mkUConstr "CannotRemoveVar" sigma env) in
+    sigma, mkApp(exc, [|varname|])
+>>>>>>> Polymorphic exceptions.
 
-  let mkRefNotFound s =
+  let mkRefNotFound sigma env s =
     let msg = CoqString.to_coq s in
-    mkApp (Lazy.force (mkConstr "RefNotFound"), [|msg|])
+    let sigma, exc = (mkUConstr "RefNotFound" sigma env) in
+    sigma, mkApp (exc, [|msg|])
 
-  let mkTermNotGround () = Lazy.force (mkConstr "TermNotGround")
-  let mkWrongTerm () = Lazy.force (mkConstr "WrongTerm")
-  let mkHypMissesDependency () = Lazy.force (mkConstr "HypMissesDependency")
-  let mkTypeMissesDependency () = Lazy.force (mkConstr "TypeMissesDependency")
-  let mkAbsDependencyError () = Lazy.force (mkConstr "AbsDependencyError")
-  let mkExceptionNotGround () = Lazy.force (mkConstr "ExceptionNotGround")
-  let mkDuplicatedVariable () = Lazy.force (mkConstr "DuplicatedVariable")
-  let mkNotAVar () = Lazy.force (mkConstr "NotAVar")
-  let mkStuckTerm () = Lazy.force (mkConstr "StuckTerm")
-  let mkNotAList () = Lazy.force (mkConstr "NotAList")
-  let mkNotAMatchExp () = Lazy.force (mkConstr "NotAMatchExp")
-  let mkVarAppearsInValue () = Lazy.force (mkConstr "VarAppearsInValue")
-  let mkNotAReference ty t =
-    mkApp (Lazy.force (mkConstr "NotAReference"), [|ty; t|])
-  let mkAlreadyDeclared  name =
-    mkApp (Lazy.force (mkConstr "AlreadyDeclared"), [|name|])
-  let mkTypeErrorUnboundVar () = Lazy.force (mkConstr "UnboundVar")
+  let mkTermNotGround sigma env () = (mkUConstr "TermNotGround" sigma env)
+  let mkWrongTerm sigma env () = (mkUConstr "WrongTerm" sigma env)
+  let mkHypMissesDependency sigma env () = (mkUConstr "HypMissesDependency" sigma env)
+  let mkTypeMissesDependency sigma env () = (mkUConstr "TypeMissesDependency" sigma env)
+  let mkAbsDependencyError sigma env () = (mkUConstr "AbsDependencyError" sigma env)
+  let mkExceptionNotGround sigma env () = (mkUConstr "ExceptionNotGround" sigma env)
+  let mkDuplicatedVariable sigma env () = (mkUConstr "DuplicatedVariable" sigma env)
+  let mkNotAVar sigma env () = (mkUConstr "NotAVar" sigma env)
+  let mkStuckTerm sigma env () = (mkUConstr "StuckTerm" sigma env)
+  let mkNotAList sigma env () = (mkUConstr "NotAList" sigma env)
+  let mkNotAMatchExp sigma env () = (mkUConstr "NotAMatchExp" sigma env)
+  let mkVarAppearsInValue sigma env () = (mkUConstr "VarAppearsInValue" sigma env)
+  let mkNotAReference sigma env ty t =
+    let sigma, exc = (mkUConstr "NotAReference" sigma env) in
+    sigma, mkApp (exc, [|ty; t|])
+  let mkAlreadyDeclared sigma env name =
+    let sigma, exc = (mkUConstr "AlreadyDeclared" sigma env) in
+    sigma, mkApp (exc, [|name|])
+  let mkTypeErrorUnboundVar sigma env () = (mkUConstr "UnboundVar" sigma env)
 
-  let mkLtacError msg =
-    let e = mkConstr "LtacError" in
+  let mkLtacError sigma env msg =
+    let sigma, e = mkUConstr "LtacError" sigma env in
     let coqmsg = CoqString.to_coq msg in
-    mkApp(Lazy.force e, [|coqmsg|])
+    sigma, mkApp(e, [|coqmsg|])
+
+  let mkNameExists sigma env s =
+    let sigma, exc = (mkUConstr "NameExistsInContext" sigma env) in
+    sigma, mkApp (exc, [|s|])
 
   (* HACK: we put Prop as the type of the raise. We can put an evar, but
      what's the point anyway? *)
@@ -184,8 +197,6 @@ module Exceptions = struct
     let sigma, c = mkUConstr "raise" sigma env in
     let a = Lazy.force (mkConstr e) in
     mkApp(c, [|mkProp; a|])
-
-  let mkNameExists s = mkApp (Lazy.force (mkConstr "NameExistsInContext"), [|s|])
 
   let block msg = CErrors.user_err Pp.(str msg)
 end
@@ -642,9 +653,9 @@ let abs case (env, sigma) a p x y n t : data =
       in
       return sigma t
     else
-      fail sigma (E.mkAbsDependencyError ())
+      Err (E.mkAbsDependencyError sigma env ())
   else
-    fail sigma (E.mkNotAVar ())
+    Err (E.mkNotAVar sigma env ())
 
 (** checks if (option) definition od and type ty has named
     vars included in vars *)
@@ -703,13 +714,13 @@ let cvar (env, sigma as ctx) ty ohyps =
           return sigma (mkEvar (e, Array.of_list vars))
         with
         | MissingDep ->
-            fail sigma (E.mkHypMissesDependency ())
+            Err (E.mkHypMissesDependency sigma env ())
         | Not_found ->
-            fail sigma (E.mkTypeMissesDependency ())
+            Err (E.mkTypeMissesDependency sigma env ())
       else
-        fail sigma (E.mkDuplicatedVariable ())
+        Err (E.mkDuplicatedVariable sigma env ())
     with Hypotheses.NotAVariable ->
-      fail sigma (E.mkNotAVar ())
+      Err (E.mkNotAVar sigma env ())
   else
     let sigma, evar = make_evar sigma env ty in
     return sigma evar
@@ -911,7 +922,7 @@ let rec run' ctxt t =
         let b = reduce sigma env (Array.get args' 0) (Array.get args' 2) in
         run' ctxt (mkApp (Vars.subst1 b t, args))
       with RedList.NotAList l ->
-        fail sigma (E.mkNotAList ())
+        Err (E.mkNotAList sigma env ())
     else
       run' ctxt (mkApp (Vars.subst1 b t, args))
   else
@@ -933,9 +944,9 @@ let rec run' ctxt t =
             | Some fixbody ->
                 let t = (EConstr.applist (of_constr fixbody,Array.to_list args)) in
                 run' ctxt t
-            | None -> fail sigma (E.mkStuckTerm ())
+            | None -> Err (E.mkStuckTerm sigma env ())
           with | Term.DestKO ->
-            fail sigma (E.mkStuckTerm ())
+            Err (E.mkStuckTerm sigma env ())
         end
     | 1 -> (* ret *)
         return sigma (nth 1)
@@ -964,7 +975,7 @@ let rec run' ctxt t =
         if closed then
           fail sigma term
         else
-          fail sigma (E.mkExceptionNotGround ())
+          Err (E.mkExceptionNotGround sigma env ())
 
     | 5 -> (* fix1 *)
         let a, b, s, i, f, x = nth 0, nth 1, nth 2, nth 3, nth 4, nth 5 in
@@ -1002,7 +1013,7 @@ let rec run' ctxt t =
         let namestr = CoqString.from_coq (env, sigma) s in
         let name = Names.Id.of_string namestr in
         if Id.Set.mem name (vars_of_env env) then
-          fail sigma (Exceptions.mkNameExists s)
+          Err (Exceptions.mkNameExists sigma env s)
         else begin
           let fx = mkApp(f, [|mkVar name|]) in
           let ot = CoqOption.from_coq sigma env ot in
@@ -1011,7 +1022,7 @@ let rec run' ctxt t =
           match run' {ctxt with env; renv; sigma; nus=(ctxt.nus+1)} fx with
           | Val (sigma', e) ->
               if occur_var env sigma name e then
-                fail sigma (E.mkVarAppearsInValue ())
+                Err (E.mkVarAppearsInValue sigma env ())
               else
                 return sigma' e
           | Err (sigma, e) ->
@@ -1043,7 +1054,8 @@ let rec run' ctxt t =
         begin
           match s with
           | Some s -> return sigma s
-          | None -> fail sigma (Exceptions.mkWrongTerm ())
+          | None ->
+              Err (Exceptions.mkWrongTerm sigma env ())
         end
 
     | 17 -> (* remove *)
@@ -1054,9 +1066,9 @@ let rec run' ctxt t =
             let env, (sigma, renv) = env_without sigma env ctxt.renv x in
             run' {ctxt with env; renv; sigma; nus} t
           else
-            fail sigma (E.mkCannotRemoveVar env sigma x)
+            Err (E.mkCannotRemoveVar env sigma x)
         else
-          fail sigma (E.mkNotAVar ())
+          Err (E.mkNotAVar sigma env ())
 
     | 18 -> (* evar *)
         let ty, hyp = nth 0, nth 1 in
@@ -1095,7 +1107,7 @@ let rec run' ctxt t =
         begin
           match dest_Case (env, sigma) t with
           | Some (sigma', case) -> return sigma' case
-          | _ -> fail sigma (E.mkNotAMatchExp ())
+          | _ -> Err (E.mkNotAMatchExp sigma env ())
         end
 
     | 26 -> (* get constrs *)
@@ -1110,7 +1122,7 @@ let rec run' ctxt t =
             let (sigma', case) = make_Case (env, sigma) case in
             return sigma' case
           with CoqList.NotAList l ->
-            fail sigma (E.mkNotAList ())
+            Err (E.mkNotAList sigma env ())
         end
     | 28 -> (* munify *)
         let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in
@@ -1151,7 +1163,7 @@ let rec run' ctxt t =
             let ty = Retyping.get_type_of env sigma (of_constr v) in
             let sigma, dyn = mkDyn ty (of_constr v) sigma env in
             return sigma dyn
-          with _ -> fail sigma (Exceptions.mkRefNotFound s)
+          with _ -> Err (Exceptions.mkRefNotFound sigma env s)
         end
 
     | 31 -> (* get_var *)
@@ -1162,7 +1174,7 @@ let rec run' ctxt t =
             let var = lookup (Id.of_string s) (named_context env) in
             let sigma, dyn = mkDyn (Declaration.get_type var) (mkVar (Declaration.get_id var)) sigma env in
             return sigma dyn
-          with _ -> fail sigma (Exceptions.mkRefNotFound s)
+          with _ -> Err (Exceptions.mkRefNotFound sigma env s)
         end
 
     | 32 -> (* call_ltac *)
@@ -1199,9 +1211,9 @@ let rec run' ctxt t =
           with CErrors.UserError(s,ppm) ->
             let expl = string_of_ppcmds ppm in
             let s = Option.default "" s in
-            fail sigma (Exceptions.mkLtacError (s ^ ": " ^ expl))
+            Err (Exceptions.mkLtacError sigma env (s ^ ": " ^ expl))
              | e ->
-                 fail sigma (Exceptions.mkLtacError (Printexc.to_string e))
+                 Err (Exceptions.mkLtacError sigma env (Printexc.to_string e))
         end
     (* Tac (sigma, Tacinterp.eval_tactic tac, fun v -> Val v) *)
 
@@ -1246,9 +1258,9 @@ let rec run' ctxt t =
            return sigma (of_constr ret)
          with
          | CErrors.AlreadyDeclared _ ->
-             fail sigma (E.mkAlreadyDeclared name)
+             Err (E.mkAlreadyDeclared sigma env name)
          | Type_errors.TypeError(env, Type_errors.UnboundVar _) ->
-             fail sigma (E.mkTypeErrorUnboundVar ())
+             Err (E.mkTypeErrorUnboundVar sigma env ())
         )
 
     | 39 -> (* declare implicit arguments *)
@@ -1258,7 +1270,7 @@ let rec run' ctxt t =
            let sigma, ret = run_declare_implicits env sigma reference impls in
            return sigma ret
          with Not_found ->
-           fail sigma (E.mkNotAReference (nth 0) reference)
+           Err (E.mkNotAReference sigma env (nth 0) reference)
         )
 
     | 40 -> (* os_cmd *)
