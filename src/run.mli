@@ -25,7 +25,7 @@ end
 
 (** DEBUG **)
 
-type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option; fixpoints: Environ.env}
+type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option; fixpoints: Context.Named.t}
 (* type vm = Code of constr | Ret of constr | Fail of constr *)
 (*         | Bind of constr | Try of constr *)
 (*         | Nu of (Evd.evar_map * Names.Id.t) *)

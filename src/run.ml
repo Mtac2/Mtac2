@@ -135,13 +135,12 @@ module Goal = struct
 
 end
 
-let constr_to_string t = string_of_ppcmds (Termops.print_constr t)
-let constr_to_string_env env t = string_of_ppcmds (Termops.print_constr_env env t)
+let constr_to_string env sigma t = string_of_ppcmds (Printer.pr_constr_env env sigma t)
 
 module Exceptions = struct
 
-  let mkCannotRemoveVar env x =
-    let varname = CoqString.to_coq (constr_to_string_env env x) in
+  let mkCannotRemoveVar env sigma x =
+    let varname = CoqString.to_coq (constr_to_string env sigma x) in
     mkApp(Lazy.force (mkConstr "CannotRemoveVar"), [|varname|])
 
   let mkRefNotFound s =
@@ -808,7 +807,7 @@ let run_declare_implicits env sigma gr impls =
 
 
 type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option;
-             fixpoints: Environ.env;
+             fixpoints: Context.Named.t;
             }
 
 (* the intention of this function was to add the fixpoint context to the
@@ -819,7 +818,8 @@ let get_type_of ctxt t =
 
 type vm = Code of constr | Ret of constr | Fail of constr
         | Bind of constr | Try of (Evd.evar_map * constr)
-        | Nu of Names.Id.t
+        | Nu of (Names.Id.t * Environ.env * constr)
+        | Fix
 
 (* let rec constr_of = function *)
 (*   | Code c -> c *)
@@ -833,35 +833,48 @@ type vm = Code of constr | Ret of constr | Fail of constr
 (*   | Try (a, b) -> Try (update_constr c a, b) *)
 (*   | Nu (a, s, n) -> Nu (update_constr c a, s, n) *)
 
-let vm_to_string = function
-  | Code c -> "Code " ^ constr_to_string c
-  | Bind c -> "Bind " ^ constr_to_string c
-  | Try (_, c) -> "Try " ^ constr_to_string c
-  | Ret c -> "Ret " ^ constr_to_string c
-  | Fail c -> "Fail " ^ constr_to_string c
+let vm_to_string env sigma = function
+  | Code c -> "Code " ^ constr_to_string env sigma c
+  | Bind c -> "Bind " ^ constr_to_string env sigma c
+  | Try (_, c) -> "Try " ^ constr_to_string env sigma c
+  | Ret c -> "Ret " ^ constr_to_string env sigma c
+  | Fail c -> "Fail " ^ constr_to_string env sigma c
   | Nu _ -> "Nu"
+  | Fix -> "Fix"
+
+let debug = ref false
 
 let rec run' ctxt (vms: vm list) =
-  (* Printf.printf "<<< EVAR: %s >>>" (string_of_ppcmds (Evd.pr_evar_map None ctxt.sigma)); *)
-  (* List.iter (fun vm->Printf.printf "<<< %s :: " (vm_to_string vm)) vms; print_endline ">>>"; *)
   let sigma, env = ctxt.sigma, ctxt.env in
+  if !debug then begin
+    print_string "<<< ";
+    List.iter (fun vm->Printf.printf "%s :: " (vm_to_string env sigma vm)) vms;
+    print_endline " >>>"
+  end;
   let vm = hd vms in
   let vms = tl vms in
+  let ctxt_nu1 (_, env, renv) = {ctxt with env; renv; nus = ctxt.nus-1} in
+  let ctxt_fix () = {ctxt with fixpoints = List.tl ctxt.fixpoints} in
   match vm, vms with
   | Ret c, [] -> return sigma c
   | Ret c, (Bind b :: vms) -> run' ctxt (Code (mkApp(b, [|c|])) :: vms)
   | Ret c, (Try (_, b) :: vms) -> run' ctxt (Ret c :: vms)
-  | Ret c, Nu name :: vms -> (* why the sigma'? *)
+  | Ret c, Nu (name, _, _ as p) :: vms -> (* why the sigma'? *)
       if occur_var env name c then
-        run' ctxt (Fail (E.mkVarAppearsInValue ()) :: vms)
+        run' (ctxt_nu1 p) (Fail (E.mkVarAppearsInValue ()) :: vms)
       else
-        run' ctxt (Ret c :: vms)
+        run' (ctxt_nu1 p) (Ret c :: vms)
+  | Ret c, Fix :: vms -> run' (ctxt_fix ()) (Ret c :: vms)
+
   | Fail c, [] -> fail sigma c
   | Fail c, (Bind _ :: vms) -> run' ctxt (Fail c :: vms)
   | Fail c, (Try (sigma, b) :: vms) -> run' {ctxt with sigma} (Code (mkApp(b, [|c|]))::vms)
-  | Fail c, (Nu _ :: vms) -> run' ctxt (Fail c :: vms)
-  | (Bind _ | Fail _ | Nu _ | Try _), _ -> failwith "ouch1"
+  | Fail c, (Nu p :: vms) -> run' (ctxt_nu1 p) (Fail c :: vms)
+  | Fail c, Fix :: vms -> run' (ctxt_fix ()) (Fail c :: vms)
+
+  | (Bind _ | Fail _ | Nu _ | Try _ | Fix), _ -> failwith "ouch1"
   | Ret _, (Code _ :: _ | Ret _ :: _ | Fail _ :: _) -> failwith "ouch2"
+
   | Code t, _ ->
       (* ( match ctxt.hook with *)
       (*   | Some f -> *)
@@ -873,13 +886,7 @@ let rec run' ctxt (vms: vm list) =
       let upd c = (Code c :: vms) in
       let return sigma c = run' {ctxt with sigma} (Ret c :: vms) in
       let fail sigma c = run' {ctxt with sigma} (Fail c :: vms) in
-      (* Printf.printf "<<< term-before >>>";  *)
-      Printf.printf "hi";
-      let _ = Termops.print_constr t in
-      Printf.printf "ho";
       let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
-      Printf.printf "hu";
-      (* Printf.printf "<<< term: %s >>>" (constr_to_string (RE.whd_betadeltaiota_nolet env sigma t)); *)
       let nth = Array.get args in
       if Term.isLetIn h then
         let open ReductionStrategy in
@@ -908,12 +915,13 @@ let rec run' ctxt (vms: vm list) =
               try
                 (* search for the variable in the fixpoint context *)
                 let n = Term.destVar h in
-                match Environ.named_body n ctxt.fixpoints with
+                let open Context.Named in
+                match Declaration.get_value (lookup n ctxt.fixpoints) with
                 | Some fixbody ->
                     let t = (Term.appvect (fixbody,args)) in
                     run' ctxt (upd t)
                 | None -> fail sigma (E.mkStuckTerm ())
-              with | Term.DestKO ->
+              with (Term.DestKO | Not_found ) ->
                 fail sigma (E.mkStuckTerm ())
             end
 
@@ -978,9 +986,9 @@ let rec run' ctxt (vms: vm list) =
             else begin
               let fx = Term.mkApp(f, [|Term.mkVar name|]) in
               let ot = CoqOption.from_coq (env, sigma) ot in
-              let env = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
-              let (sigma, renv) = Hypotheses.cons_hyp a (Term.mkVar name) ot ctxt.renv sigma env in
-              run' {ctxt with env; renv; sigma; nus=(ctxt.nus+1)} (Code fx :: Nu name :: vms)
+              let env' = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
+              let (sigma, renv') = Hypotheses.cons_hyp a (Term.mkVar name) ot ctxt.renv sigma env in
+              run' {ctxt with env=env'; renv=renv'; sigma; nus=(ctxt.nus+1)} (Code fx :: Nu (name, env, ctxt.renv) :: vms)
             end
 
         | 12 -> (* abs *)
@@ -1019,7 +1027,7 @@ let rec run' ctxt (vms: vm list) =
                 let env, (sigma, renv) = env_without sigma env ctxt.renv x in
                 run' {ctxt with env; renv; sigma; nus} (upd t)
               else
-                fail sigma (E.mkCannotRemoveVar env x)
+                fail sigma (E.mkCannotRemoveVar env sigma x)
             else
               fail sigma (E.mkNotAVar ())
 
@@ -1049,7 +1057,7 @@ let rec run' ctxt (vms: vm list) =
         | 23 -> (* pretty_print *)
             let t = nth 1 in
             let t = nf_evar sigma t in
-            let s = string_of_ppcmds (Termops.print_constr_env env t) in
+            let s = constr_to_string env sigma t in
             return sigma (CoqString.to_coq s)
 
         | 24 -> (* hypotheses *)
@@ -1225,6 +1233,13 @@ let rec run' ctxt (vms: vm list) =
             let ret = Sys.command cmd in
             return sigma (CoqZ.to_coq ret)
 
+        | 41 -> (* set_debug *)
+            let b = CoqBool.from_coq (nth 0) in
+            debug := b;
+            return sigma CoqUnit.mkTT
+        | 42 -> (* get_debug *)
+            return sigma (CoqBool.to_coq !debug)
+
         | _ ->
             Exceptions.block "I have no idea what is this construct of T that you have here"
 
@@ -1256,7 +1271,7 @@ and run_fix ctxt (vms: vm list) (h: constr) (a: constr array) (b: constr) (s: co
   (* HACK: we put Prop as the type of fixf in the context, simply because we
      don't care. If it turns out to be problematic, we have to construct its
      type. *)
-  let fixpoints = push_named (Context.Named.Declaration.of_tuple (n, Some (fixf), Term.mkProp)) ctxt.fixpoints in
+  let fixpoints = (Context.Named.Declaration.of_tuple (n, Some (fixf), Term.mkProp)) :: ctxt.fixpoints in
   let c = mkApp (f, Array.append [| fixvar |] x) in
   run' {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} (Code c :: vms)
 (* run' ctxt c *)
@@ -1402,7 +1417,7 @@ let run (env, sigma) t =
   let subs, env = db_to_named env in
   let t = multi_subst subs (nf_evar sigma t) in
   let (sigma, renv) = build_hypotheses sigma env in
-  match run' {env; renv; sigma; nus=0;hook=None; fixpoints=Environ.empty_env} (Code t :: []) with
+  match run' {env; renv; sigma; nus=0;hook=None; fixpoints=[]} (Code t :: []) with
   | Err (sigma', v) ->
       Err (sigma', multi_subst_inv subs (nf_evar sigma' v))
   | Val (sigma', v) ->

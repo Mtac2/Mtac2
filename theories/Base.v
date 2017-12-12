@@ -385,6 +385,9 @@ Inductive t : Type -> Prop :=
 
 (** [os_cmd cmd] executes the command and returns its error number. *)
 | os_cmd : string -> t Z
+
+| set_debug : bool -> t unit
+| get_debug : t bool
 .
 
 Arguments t _%type.
