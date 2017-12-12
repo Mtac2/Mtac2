@@ -1252,19 +1252,7 @@ and run_fix ctxt (vms: vm list) (h: constr) (a: constr array) (b: constr) (s: co
   (* run' ctxt c *)
   let sigma, env = ctxt.sigma, ctxt.env in
   (* let fix_type = Retyping.get_type_of env sigma fixbody in *)
-  let name =
-    if isVar f then Some (Name (destVar f))
-    else if isLambda f then
-      let (n, _, _) = destLambda f in Some n
-    else if isProd f then
-      let (n, _, _) = destProd f in Some n
-    else if isLetIn f then
-      let (n, _, _, _) = destLetIn f in Some n
-    else None
-  in
-  let name = match name with | Some (Name i) -> Names.Id.to_string i | Some _ -> "anon" | None -> "impossible" in
-
-  let n = Namegen.next_name_away (Name (Names.Id.of_string (concat "mtac_fix_" [name]))) (ids_of_context env) in
+  let n = Namegen.next_name_away (Name (Names.Id.of_string ("mtac_fix_" ^ string_of_int (List.length ctxt.fixpoints)))) (ids_of_context env) in
   (* let env = push_named (Context.Named.Declaration.of_tuple (n, None, fix_type)) env in *)
   let fixvar = Term.mkVar n in
   let fixf = mkApp(f, [|fixvar|]) in
