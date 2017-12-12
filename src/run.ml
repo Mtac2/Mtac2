@@ -320,11 +320,13 @@ module ReductionStrategy = struct
     (fun _ env sigma c -> Tacred.simpl env sigma (nf_evar sigma c));
     (fun _ ->one_step);
     (fun fs env sigma c ->
-       let evars ev = safe_evar_value sigma ev in
-       of_constr @@
-       whd_val
-         (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
-         (inject (EConstr.to_constr sigma c)));
+       (* Environ.env -> Evd.evar_map -> EConstr.constr -> EConstr.constr *)
+       Reductionops..clos_whd_flags (get_flags (env, sigma) fs.(0)) env sigma c);
+    (* let evars ev = safe_evar_value sigma ev in *)
+    (* of_constr @@
+     * whd_val
+     *   (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
+     *   (inject (EConstr.to_constr sigma c))); *)
     (fun fs env sigma->
        clos_norm_flags (get_flags (env, sigma) fs.(0)) env sigma);
     (fun _ -> Redexpr.cbv_vm) (* vm_compute *)
@@ -351,9 +353,11 @@ module ReductionStrategy = struct
       (create_clos_infos ~evars flags env)
       (inject c)
 
-  let whd_betadeltaiota_nolet = whdfun CClosure.allnolet
+  (* let whd_betadeltaiota_nolet = whdfun CClosure.allnolet *)
+  let whd_betadeltaiota_nolet = Reductionops.clos_whd_flags CClosure.allnolet
 
-  let whd_betadeltaiota = whdfun CClosure.all
+  (* let whd_betadeltaiota = whdfun CClosure.all *)
+  let whd_betadeltaiota = Reductionops.clos_whd_flags CClosure.all
 
   let whd_betadelta = whdfun (red_add beta fDELTA)
 
@@ -497,8 +501,8 @@ let make_Case (env, sigma) case =
 
 
 let get_Constrs (env, sigma) t =
-  let t = to_constr sigma t in
-  let t_type, args = decompose_app sigma (of_constr @@ RE.whd_betadeltaiota env sigma t) in
+  (* let t = to_constr sigma t in *)
+  let t_type, args = decompose_app sigma ((* of_constr @@ *) RE.whd_betadeltaiota env sigma t) in
   if isInd sigma t_type then
     let (mind, ind_i), _ = destInd sigma t_type in
     let mbody = Environ.lookup_mind mind env in
@@ -627,7 +631,7 @@ type abs = AbsProd | AbsFun | AbsLet | AbsFix
 let rec n_prods env sigma ty = function
   | 0 -> true
   | n ->
-      let ty = of_constr @@ RE.whd_betadeltaiota env sigma (to_constr sigma ty) in
+      let ty = (* of_constr @@ *) RE.whd_betadeltaiota env sigma ((* to_constr sigma *) ty) in
       if isProd sigma ty then
         let _, _, b = destProd sigma ty in
         n_prods env sigma b (n-1)
@@ -910,8 +914,8 @@ let rec run' ctxt t =
     | None -> return sigma t
   ) >>= fun (sigma, t) ->
   let ctxt = {ctxt with sigma = sigma} in
-  let t = to_constr sigma t in
-  let (h, args) = decompose_appvect sigma (of_constr @@ RE.whd_betadeltaiota_nolet env sigma t) in
+  (* let t = to_constr sigma t in *)
+  let (h, args) = decompose_appvect sigma ((* of_constr @@ *) RE.whd_betadeltaiota_nolet env sigma t) in
   let nth = Array.get args in
   if isLetIn sigma h then
     let open ReductionStrategy in
