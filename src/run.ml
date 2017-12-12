@@ -964,9 +964,12 @@ let rec run' ctxt t =
         begin
           match run' ctxt (nth 1) with
           | Val (sigma, v) -> return sigma v
-          | Err (_, c) ->
+          | Err (sigma_err, c) ->
               let t' = mkApp(nth 2, [|c|]) in
-              run' ctxt t'
+              (* let sigma = Evd.add_constraints sigma (snd (Evd.universe_context_set sigma_err)) in *)
+              let sigma = Evd.set_universe_context sigma (Evd.evar_universe_context sigma_err) in
+              (* let sigma, _ = Typing.type_of env sigma t' in *)
+              run' {ctxt with sigma=sigma} t'
         end
 
     | 4 -> (* raise *)
