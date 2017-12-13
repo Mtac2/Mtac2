@@ -5,24 +5,40 @@ Set Polymorphic Inductive Cumulativity.
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 
-Definition MTele_of {A} (T : A -> Prop) : M (A -> sigT MTele_Ty) :=
-  b <- M.fresh_binder_name T;
+Inductive msigT {A : Type} (P : A -> Type) :=
+  mexistT (x : A) : P x -> msigT P.
+Definition mprojT1 {A} {P} : @msigT A P -> A := fun '(mexistT _ x _) => x.
+Definition mprojT2 {A} {P} : forall x : @msigT A P, P (mprojT1 x) := fun '(mexistT _ _ H) => H.
+
+Definition MTele_of {A:Type} (T : A -> Prop) : M (A -> msigT MTele_Ty) :=
+  b <- (mtry M.fresh_binder_name T with | _ => M.fresh_name "x" end);
   M.nu b mNone (fun a =>
-  (mfix1 f (T : Prop) : M (sigT MTele_Ty) :=
-    mmatch T as t' return M (sigT MTele_Ty) with
-    | [?X : Type] M X =u> M.ret (existT _ mBase X)
+  let T' := rone_step (T a) in
+  (mfix1 f (T : Prop) : M (msigT MTele_Ty) :=
+    mmatch T return M (msigT MTele_Ty) with
+    | [?X : Type] M X =u> M.ret (mexistT _ mBase X)
     | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =u>
-      b <- M.fresh_binder_name F;
+      b <- M.fresh_binder_name T;
       M.nu b mNone (fun x =>
-                      ''(existT _ n T) <- f (F x);
+                      let T' := rone_step (F x) in
+                      ''(mexistT _ n T) <- f T';
                       n' <- M.abs_fun x n;
-                      T' <- M.abs_fun T n;
-                      T' <- M.coerce T;
-                      M.ret (existT _ (mTele n') T')
+                      T' <- (M.coerce (B:=MTele_Ty (n' x)) T >>= M.abs_fun x);
+                      M.ret (mexistT _ (mTele n') T')
                    )
    end
-  ) (T a) >>= (M.abs_fun a)).
+  ) (T') >>= (fun t =>
+                (* M.print_term t;; *)
+                t' <- M.abs_fun a t;
+                (* M.print_term t';; *)
+                M.ret t')).
 
+
+Local Example test :=
+fun x => mexistT MTele_Ty (mTele (fun _ : nat => mBase)) (fun y : nat => x = y).
+Eval hnf in ltac:(mrun (MTele_of (fun x : nat => forall y:nat, M (x = y)))).
+Local Example MTele_of_Test : nat -> msigT MTele_Ty :=
+  Eval hnf in ltac:(mrun (MTele_of (fun x : nat => forall y:nat, M (x = y)))).
 
 Bind Scope mtpattern_prog_scope with mtpattern.
 Delimit Scope mtpattern_prog_scope with mtpattern_prog.
@@ -51,9 +67,21 @@ Notation "'with' p1 | .. | pn 'end'" :=
 
 Delimit Scope with_mtpattern_prog_scope with with_mtpattern_prog.
 
-Polymorphic Class TC_UNIFY {T : Type} (A B : T) := tc_unify : (A =m= B).
+Class TC_UNIFY {T : Type} (A B : T) := tc_unify : (A =m= B).
 Arguments tc_unify {_} _ _ {_}.
-Hint Extern 0 (TC_UNIFY ?A ?B) => mrun (o <- M.unify A B UniCoq; match o with | mSome eq => M.ret eq | mNone => M.failwith "cannot (tc_)unify." end) : typeclass_instances.
+Definition tc_unify_mtac T (A B : T) :=
+  (* M.print "tc_unify 1";; *)
+  o <- @M.unify T A B UniCoq;
+  (* M.print "tc_unify 2";; *)
+  match o with
+  | mSome eq => M.ret eq
+  | mNone =>
+    let A := reduce (RedStrong RedAll) A in
+    let B := reduce (RedStrong RedAll) B in
+    (* M.print_term (A,B);; *)
+    M.failwith "cannot (tc_)unify."
+  end.
+Hint Extern 0 (@TC_UNIFY ?T ?A ?B) => mrun (tc_unify_mtac T A B) : typeclass_instances.
 
 Structure CS_UNIFY (T : Type) :=
   CS_Unify {
@@ -62,23 +90,40 @@ Structure CS_UNIFY (T : Type) :=
       cs_unify: cs_unify_A =m= cs_unify_B
     }.
 
-Canonical Structure CS_UNIFY_REFl {T} (A : T) : CS_UNIFY T := CS_Unify _ A A meq_refl.
-Arguments cs_unify [_ _].
-
-Class MT_OF {A} (T : A -> Prop) := mt_of : A -> MTele.
+Class MT_OF {A} (T : A -> Prop) := mt_of : A -> msigT MTele_Ty.
 Arguments mt_of {_} _ {_}.
-Hint Extern 0 (MT_OF ?t) => mrun (MTele_of t) : typeclass_instances.
+Hint Extern 0 (@MT_OF ?A ?t) => mrun (@MTele_of A t) : typeclass_instances.
+
 
 Notation "'mtmmatch_prog' x 'as' y 'return' T p" :=
   (
-    let m := mt_of (fun y => T) in
-    match tc_unify (fun _z => MTele_ty M (m _z))((fun y => T))
+    let mt1 := mt_of (fun y => T) in
+    match tc_unify (fun _z => MTele_ty M (mprojT2 (mt1 _z))) ((fun y => T))
           in _ =m= R return mlist (mtpattern _ R) -> R x with
-    | meq_refl => mtmmatch' _ (m) (fun y => T) x
+    | meq_refl => mtmmatch' _ (fun _z => mprojT1 (mt1 _z)) (fun _z => mprojT2 (mt1 _z)) x
     end
     (p%with_mtpattern_prog)
   ) (at level 200, p at level 201).
 
+Local Example mt_of_test : MT_OF (fun x:nat => forall y:nat, M nat).
+Proof. apply _. Qed.
+(* Set Printing All. *)
+Set Printing Universes.
+Definition bluf := (fun x:(nat:Type) => forall y:(nat:Type), M (nat:Type)).
+Eval hnf in ltac:(mrun (MTele_of (bluf))).
+Local Example test1 :=
+    let mt1 := ltac:(mrun (MTele_of bluf)) in
+    let _ := ltac:(mrun (let mt1 := rone_step mt1 in M.print_term mt1)) in
+    ltac:(mrun(tc_unify_mtac _ (fun _z : (nat:Type) => MTele_ty M (mprojT2 (mt1 _z))) ((fun x:(nat:Type) => forall y:(nat:Type), M (nat:Type))))).
+
+
+Local Program Example mtmmatch_prog_test (x : (nat : Type)) :=
+  mtmmatch_prog x as x return forall y, M (x = y) with
+  | [?i] i =n>  fun y => M.failwith ""
+end.
+
+Canonical Structure CS_UNIFY_REFl {T} (A : T) : CS_UNIFY T := CS_Unify _ A A meq_refl.
+Arguments cs_unify [_ _].
 
 
 Definition mtpbase_eq {A} {m : A -> Prop} (x : A) F (eq : m x =m= F x) : F x -> Unification -> mtpattern A m :=
@@ -126,6 +171,6 @@ Notation "'mtmmatch' x 'as' y 'return' T p" :=
   (
     let F : RET_TY _ := Ret_Ty (fun y => T) in
     let mt1 := M.eval (MTele_of (fun y => T)) in
-    let mt : MTY_OF := MTt_Of (fun _z => MTele_ty M (n:=projT1 (mt1 _z)) (projT2 (mt1 _z))) in
-    mtmmatch' _ (fun y => projT1 (mt1 y)) (fun y => projT2 (mt1 y)) x p%with_mtpattern
+    let mt : MTY_OF := MTt_Of (fun _z => MTele_ty M (n:=mprojT1 (mt1 _z)) (mprojT2 (mt1 _z))) in
+    mtmmatch' _ (fun y => mprojT1 (mt1 y)) (fun y => projT2 (mt1 y)) x p%with_mtpattern
   ) (at level 90, p at level 91).

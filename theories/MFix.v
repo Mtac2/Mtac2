@@ -7,7 +7,7 @@ Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 
 
-Local Notation MFA T := (MTele_val (MTele_C SType SProp M T)).
+Local Definition MFA {n} (T : MTele_Ty n) := (MTele_val (MTele_C SType SProp M T)).
 
 (* Less specific version of MTele_of in MTeleMatch.v *)
 Definition MTele_of' :=
@@ -22,9 +22,10 @@ Definition MTele_of' :=
        M.nu b mNone (fun x =>
                        ''(existT _ m (existT _ mT E)) <- f (F x);
                        m' <- M.abs_fun x m;
-                       mT' <- (M.abs_fun (P:=fun x => MTele_Ty _) x mT >>= M.coerce (B:=MTele_Ty (mTele m')));
+                       mT' <- (M.coerce mT >>=
+                               M.abs_fun (P:=fun x => MTele_Ty (m' x)) x);
                        (* E' <- (M.abs_fun x E >>= M.coerce (B:=_ =m= MFA mT')); *)
-                       E' <- M.coerce (@meq_refl _ (MFA mT'));
+                       E' <- M.coerce (@meq_refl _ (MFA (n:=mTele m') mT'));
                        M.ret (existT _ (mTele m') (existT _ mT' E'))
                        (* mf <- M.abs_fun (P:=fun x => {m : _ & F x =m= MFA m}) x mf; *)
                        (* let g := (fun x => projT1 (mf x)) in *)

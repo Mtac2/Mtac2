@@ -237,13 +237,12 @@ Fixpoint get_ATele {isort} (it : ITele isort) (al : mlist dyn) {struct al} : M (
     | _, _ => M.raise NoPatternMatches
     end.
 
-Set Printing Universes.
 
 Set Use Unicoq.
-Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, A -> M (CTele it) :=
+Program Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, A -> M (CTele it) :=
   fun isort it nindx =>
     mfix rec (A : stype_of isort) : selem_of A -> M (CTele it) :=
-    mtmmatch A as A return selem_of A -> M (CTele it) with
+    mtmmatch_prog A as A return selem_of A -> M (CTele it) with
     | [? B (F : B -> isort)] ForAll F =u>
         fun f =>
         n <- M.fresh_binder_name F;
@@ -258,7 +257,7 @@ Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : 
         atele <- get_ATele it args;
         a' <- @M.coerce _ (ITele_App atele) a ;
         M.ret (cBase atele a')
-end.
+    end.
 
 Definition get_CTele :=
   fun {isort} =>
@@ -268,10 +267,10 @@ Definition get_CTele :=
     end.
 
 
-Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (NDCTele it) :=
+Program Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (NDCTele it) :=
   fun isort it nindx =>
     mfix rec (A : isort) : A -> M (NDCTele it) :=
-    mtmmatch A as A return selem_of A -> M (NDCTele it) with
+    mtmmatch_prog A as A return selem_of A -> M (NDCTele it) with
     | [? B (F : B -> isort)] ForAll F =u>
         fun f =>
         n <- M.fresh_binder_name F;
@@ -299,10 +298,10 @@ Definition get_NDCTele :=
 
 
 (** Given a goal, it returns its sorted version *)
-Definition sort_goal {T : Type} : T -> M (sigT stype_of) :=
-  mtmmatch T as T return T -> M (sigT stype_of) with
-  | Prop =u> fun A_Prop => M.ret (existT _ SProp A_Prop)
-  | Type =u> fun A_Type => M.ret (existT _ SType A_Type)
+Program Definition sort_goal {T : Type} : T -> M (sigT stype_of) :=
+  mtmmatch_prog T as T return T -> M (sigT stype_of) with
+  | Prop =u> fun A_Prop => M.ret (existT stype_of SProp A_Prop)
+  | Type =u> fun A_Type => M.ret (existT stype_of SType A_Type)
   end.
 
 From Mtac2 Require Import MFix MTeleMatch.
@@ -323,9 +322,9 @@ From Mtac2 Require Import MFix MTeleMatch.
 (*         M.ret (0, iBase (sort := sort) indProp) *)
 (*     end. *)
 
-Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele)) :=
+Program Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele)) :=
   mfix f (T : _) : T -> M (nat * sigT ITele)%type :=
-    mtmmatch T as T return T -> M (nat * sigT ITele)%type with
+    mtmmatch_prog T as T return T -> M (nat * sigT ITele)%type with
     | [? (A : Type) (F : A -> Type)] forall a, F a =m>
       fun indFun =>
       name <- M.fresh_binder_name T;

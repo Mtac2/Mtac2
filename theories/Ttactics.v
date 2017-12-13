@@ -51,11 +51,13 @@ Local Fixpoint TTele_bind' {X : Prop} (x : X) {t} : (TTele_ty (fun T => msigT (f
 
 Definition lift_lemma : forall (A : Prop), A ->
       M (msigT tty) :=
-  mfix' ([tele  (A : Prop) (a:A), msigT tty])
+  let m := (mTele (fun (A : Prop) => (mTele (fun (a:A) => mBase)))) in
+  @mfix' m
+         (fun A (a:A) => msigT tty)
         (fun rec (A : Prop) =>
-           let m (A : Prop) := [tele (a:A), _] in
+           let m (A : Prop) := mTele (fun a:A => mBase) in
            mtmmatch'
-             _ m A
+             _ m (fun A a => msigT tty) A
              [m:
               (mtptele (fun B:Prop => mtptele (fun (C:Prop) => (mtpbase (m:=fun A:Prop => A -> M _)) _ (
               fun (f : B -> C) =>
@@ -162,15 +164,15 @@ Definition compi {A} {B} (g : M A) (h : M B) : M (A * B) :=
   g >>= fun xg=> h >>= fun xh => ret (xg, xh).
 
 (** A typed assumption tactic *)
-Definition assumption {A} : M A :=
-  l <- hyps;
-  let f := mfix1 f (l : mlist Hyp) : M A :=
-    mmatch l with
-    | [? x d l'] (@ahyp A x d :m: l') => M.ret x
-    | [? ah l'] (ah :m: l') => f l'
-    | _ => failwith "no ass"
-    end in
-  f l.
+(* Definition assumption {A} : M A := *)
+(*   l <- hyps; *)
+(*   let f := mfix1 f (l : mlist Hyp) : M A := *)
+(*     mmatch l with *)
+(*     | [? x d l'] (@ahyp A x d :m: l') => M.ret x *)
+(*     | [? ah l'] (ah :m: l') => f l' *)
+(*     | _ => failwith "no ass" *)
+(*     end in *)
+(*   f l. *)
 
 (** Solves goal A provided tactic t *)
 Definition by' {A} (t: tactic) : M A :=

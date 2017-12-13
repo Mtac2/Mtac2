@@ -16,9 +16,10 @@ Inductive MTele : Type :=
 .
 
 (** MTele_Sort: compute `∀ x .. z, Type` from a given MTele *)
+Set Printing Universes.
 Fixpoint MTele_Sort (s : Sort) (n : MTele) : Type :=
   match n with
-  | mBase => s
+  | mBase => stype_of s
   | mTele F => forall x, MTele_Sort s (F x)
   end.
 
@@ -124,6 +125,8 @@ Fixpoint MTele_Map (s so : Sort) {n : MTele} :
   | mBase => fun f A => f A
   | mTele F => fun f A t => @MTele_Map s so (F t) (f t) (A t)
   end.
+
+Eval cbn in MTele_In (SType).
 
 (** MTele_C: MTele_map with a constant function *)
 Fixpoint MTele_C (s so : Sort) {n : MTele} :
