@@ -1359,16 +1359,20 @@ let clean_unused_metas sigma metas term =
   in
   Evd.restore_future_goals sigma alive principal_goal
 
-let run (env, sigma) t =
-  let nctxval, t, _, csubs, vsubs = Evarutil.push_rel_context_to_named_context env (nf_evar sigma t) in
-  let env = Environ.reset_with_named_context nctxval env in
+let run (env0, sigma) t =
+  let nctxval, t, _, csubs, vsubs = Evarutil.push_rel_context_to_named_context env0 sigma t in
+  let env = Environ.reset_with_named_context nctxval env0 in
   let (sigma, renv) = build_hypotheses sigma env in
   match run' {env; renv; sigma; nus=0;hook=None; fixpoints=Environ.empty_env} t with
   | Err (sigma', v) ->
+      let sigma', _ = Typing.type_of env0 sigma' v in
       let v = Vars.replace_vars vsubs v in
       Err (sigma', v)
   | Val (sigma', v) ->
       let v = Vars.replace_vars vsubs v in
+      let _ = Feedback.msg_debug (Termops.print_env env0) in
+      let _ = Feedback.msg_debug (Termops.print_constr_env env0 sigma' v) in
+      let sigma', _ = Typing.type_of env0 sigma' v in
       Val (sigma', v)
 
 (** set the run function in unicoq *)
