@@ -321,7 +321,7 @@ module ReductionStrategy = struct
     (fun _ ->one_step);
     (fun fs env sigma c ->
        (* Environ.env -> Evd.evar_map -> EConstr.constr -> EConstr.constr *)
-       Reductionops..clos_whd_flags (get_flags (env, sigma) fs.(0)) env sigma c);
+       Reductionops.clos_whd_flags (get_flags (env, sigma) fs.(0)) env sigma c);
     (* let evars ev = safe_evar_value sigma ev in *)
     (* of_constr @@
      * whd_val
