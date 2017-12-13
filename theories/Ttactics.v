@@ -176,7 +176,7 @@ Definition by' {A} (t: tactic) : M A :=
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
 (* The following code just declares [by] which is a reserved keyword *)
 Check ltac:(mrun (r <- M.declare dok_Definition "by" false (@by');
-                  M.declare_implicits r [m: ia_Explicit | ia_MaximallyImplicit])).
+                  M.declare_implicits r [m: ia_MaximallyImplicit | ia_Explicit])).
 
 Definition use {A} (t: tactic) : M A :=
   e <- evar A;
