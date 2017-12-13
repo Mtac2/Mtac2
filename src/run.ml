@@ -148,14 +148,9 @@ let constr_to_string_env env sigma t = string_of_ppcmds (Termops.print_constr_en
 module Exceptions = struct
 
   let mkCannotRemoveVar env sigma x =
-<<<<<<< HEAD
     let varname = CoqString.to_coq (constr_to_string_env env sigma x) in
-    mkApp(Lazy.force (mkConstr "CannotRemoveVar"), [|varname|])
-=======
-    let varname = CoqString.to_coq (constr_to_string_env sigma env x) in
     let sigma, exc = (mkUConstr "CannotRemoveVar" sigma env) in
     sigma, mkApp(exc, [|varname|])
->>>>>>> Polymorphic exceptions.
 
   let mkRefNotFound sigma env s =
     let msg = CoqString.to_coq s in
