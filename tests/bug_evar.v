@@ -77,5 +77,5 @@ Goal unit.
 MProof.
 Set Printing All.
   (* No idea why this is failing horribly (just when debugging) *)
-  (* debugT true [m:] (@get_ITele (nat -> Prop) (eq 0)). *)
+  debugT true [m:] (@get_ITele (nat -> Prop) (eq 0)).
 Abort.

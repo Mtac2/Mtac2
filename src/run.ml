@@ -135,13 +135,12 @@ module Goal = struct
 
 end
 
-let constr_to_string t = string_of_ppcmds (Termops.print_constr t)
-let constr_to_string_env env t = string_of_ppcmds (Termops.print_constr_env env t)
+let constr_to_string_env env sigma t = string_of_ppcmds (Printer.pr_constr_env env sigma t)
 
 module Exceptions = struct
 
-  let mkCannotRemoveVar env x =
-    let varname = CoqString.to_coq (constr_to_string_env env x) in
+  let mkCannotRemoveVar env sigma x =
+    let varname = CoqString.to_coq (constr_to_string_env env sigma x) in
     mkApp(Lazy.force (mkConstr "CannotRemoveVar"), [|varname|])
 
   let mkRefNotFound s =
@@ -1036,7 +1035,7 @@ let rec run' ctxt t =
             let env, (sigma, renv) = env_without sigma env ctxt.renv x in
             run' {ctxt with env; renv; sigma; nus} t
           else
-            fail sigma (E.mkCannotRemoveVar env x)
+            fail sigma (E.mkCannotRemoveVar env sigma x)
         else
           fail sigma (E.mkNotAVar ())
 
@@ -1066,7 +1065,7 @@ let rec run' ctxt t =
     | 23 -> (* pretty_print *)
         let t = nth 1 in
         let t = nf_evar sigma t in
-        let s = string_of_ppcmds (Termops.print_constr_env env t) in
+        let s = constr_to_string_env env sigma t in
         return sigma (CoqString.to_coq s)
 
     | 24 -> (* hypotheses *)
