@@ -149,7 +149,7 @@ module Exceptions = struct
 
   let mkCannotRemoveVar env sigma x =
     let varname = CoqString.to_coq (constr_to_string_env env sigma x) in
-    let sigma, exc = (mkUConstr "CannotRemoveVar" sigma env) in
+    let sigma, exc = (mkUConstr "CannotRemoveVar" env sigma) in
     sigma, mkApp(exc, [|varname|])
 
   let mkRefNotFound sigma env s =
@@ -354,11 +354,14 @@ module ReductionStrategy = struct
   (* let whd_betadeltaiota = whdfun CClosure.all *)
   let whd_betadeltaiota = Reductionops.clos_whd_flags CClosure.all
 
-  let whd_betadelta = whdfun (red_add beta fDELTA)
+  (* let whd_betadelta = whdfun (red_add beta fDELTA) *)
+  let whd_betadelta = Reductionops.clos_whd_flags (red_add beta fDELTA)
 
-  let whd_betaiotazeta = whdfun betaiotazeta
+  (* let whd_betaiotazeta = whdfun betaiotazeta *)
+  let whd_betaiotazeta = Reductionops.clos_whd_flags betaiotazeta
 
-  let whd_betaiota = whdfun betaiota
+  (* let whd_betaiota = whdfun betaiota *)
+  let whd_betaiota = Reductionops.clos_whd_flags betaiota
 
 end
 
@@ -453,8 +456,7 @@ let name_occurn_env env n =
 let dest_Case (env, sigma) t =
   let sigma, dyn = mkdyn sigma env in
   try
-    let t = to_constr sigma t in
-    let t = of_constr @@ RE.whd_betadelta env sigma t in
+    let t = RE.whd_betadelta env sigma t in
     let (info, return_type, discriminant, branches) = destCase sigma t in
     let sigma, branch_dyns = Array.fold_right (
       fun t (sigma,l) ->
@@ -903,9 +905,8 @@ let rec run' ctxt t =
   ( match ctxt.hook with
     | Some f ->
         let t = RE.whd_betaiota env sigma t in
-        let t = of_constr t in
         let ty = get_type_of ctxt t in
-        run' {ctxt with hook = None} (Term.mkApp (f, [|ty; t|]))
+        run' {ctxt with hook = None} (mkApp (f, [|ty; t|]))
     | None -> return sigma t
   ) >>= fun (sigma, t) ->
   let ctxt = {ctxt with sigma = sigma} in
@@ -1068,7 +1069,7 @@ let rec run' ctxt t =
             let env, (sigma, renv) = env_without sigma env ctxt.renv x in
             run' {ctxt with env; renv; sigma; nus} t
           else
-            Err (E.mkCannotRemoveVar env sigma x)
+            Err (E.mkCannotRemoveVar sigma env x)
         else
           Err (E.mkNotAVar sigma env ())
 
@@ -1098,7 +1099,7 @@ let rec run' ctxt t =
     | 23 -> (* pretty_print *)
         let t = nth 1 in
         let t = nf_evar sigma t in
-        let s = constr_to_string_env env sigma t in
+        let s = constr_to_string_env sigma env t in
         return sigma (CoqString.to_coq s)
 
     | 24 -> (* hypotheses *)
