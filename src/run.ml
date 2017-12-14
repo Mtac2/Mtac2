@@ -1359,19 +1359,58 @@ let clean_unused_metas sigma metas term =
   in
   Evd.restore_future_goals sigma alive principal_goal
 
+
+(* returns the enviornment and substitution without db rels *)
+let db_to_named sigma env =
+  let open Context in
+  let env' = push_named_context (named_context env) (reset_context env) in
+  let vars = Id.Set.elements (Named.to_vars (named_context env)) in
+  let _, subs, env = CList.fold_right_i (fun n var (vars, subs, env') ->
+    (* the definition might refer to previously defined indices
+       so we perform the substitution *)
+    let (name, odef, ty) = Rel.Declaration.to_tuple var in
+    let odef = Option.map (multi_subst sigma subs) odef in
+    let ty = multi_subst sigma subs ty in
+    (* since the name can be Anonymous, we need to generate a name *)
+    let id =
+      match name with
+      | Anonymous ->
+          Id.of_string ("_MC" ^ string_of_int n)
+      | Name n ->
+          Namegen.next_name_away name vars in
+    let nvar = Named.Declaration.of_tuple (id, odef, ty) in
+    id::vars, (n, mkVar id) :: subs, push_named nvar env'
+  ) 1 (rel_context env) (vars, [], env') in
+  subs, env
+
+(* It replaces each ci by ii in l = [(i1,c1) ... (in, cn)] in c. *)
+let multi_subst_inv sigma l c =
+  let l = List.map (fun (a, b) -> (b, a)) l in
+  let rec substrec depth c =
+    begin
+      try let n = destVar sigma c in
+        begin
+          try mkRel (List.assoc (mkVar n) l + depth)
+          with Not_found -> mkVar n
+        end
+      with | Term.DestKO ->
+        map_with_binders sigma succ substrec depth c
+    end
+  in substrec 0 c
+
+
 let run (env0, sigma) t =
-  let nctxval, t, _, csubs, vsubs = Evarutil.push_rel_context_to_named_context env0 sigma t in
-  let env = Environ.reset_with_named_context nctxval env0 in
+  let subs, env = db_to_named sigma env0 in
+  let t = multi_subst sigma subs t in
   let (sigma, renv) = build_hypotheses sigma env in
   match run' {env; renv; sigma; nus=0;hook=None; fixpoints=Environ.empty_env} t with
   | Err (sigma', v) ->
+      (* let v = Vars.replace_vars vsubs v in *)
+      let v = multi_subst_inv sigma' subs v in
       let sigma', _ = Typing.type_of env0 sigma' v in
-      let v = Vars.replace_vars vsubs v in
       Err (sigma', v)
   | Val (sigma', v) ->
-      let v = Vars.replace_vars vsubs v in
-      let _ = Feedback.msg_debug (Termops.print_env env0) in
-      let _ = Feedback.msg_debug (Termops.print_constr_env env0 sigma' v) in
+      let v = multi_subst_inv sigma' subs v in
       let sigma', _ = Typing.type_of env0 sigma' v in
       Val (sigma', v)
 
