@@ -1,41 +1,6 @@
+FLG -rectypes -thread -w @1..50@59-4 -safe-string
+
 S src
 B src
 
-FLG -rectypes
-
-PKG camlp4.lib
-
-# Locates Coq's library
-B /home/beta/.opam/4.04.2/lib/coq/config
-B /home/beta/.opam/4.04.2/lib/coq/engine
-B /home/beta/.opam/4.04.2/lib/coq/grammar
-B /home/beta/.opam/4.04.2/lib/coq/interp
-B /home/beta/.opam/4.04.2/lib/coq/intf
-B /home/beta/.opam/4.04.2/lib/coq/kernel
-B /home/beta/.opam/4.04.2/lib/coq/lib
-B /home/beta/.opam/4.04.2/lib/coq/library
-B /home/beta/.opam/4.04.2/lib/coq/parsing
-B /home/beta/.opam/4.04.2/lib/coq/plugins
-B /home/beta/.opam/4.04.2/lib/coq/plugins/btauto
-B /home/beta/.opam/4.04.2/lib/coq/plugins/cc
-B /home/beta/.opam/4.04.2/lib/coq/plugins/decl_mode
-B /home/beta/.opam/4.04.2/lib/coq/plugins/derive
-B /home/beta/.opam/4.04.2/lib/coq/plugins/extraction
-B /home/beta/.opam/4.04.2/lib/coq/plugins/firstorder
-B /home/beta/.opam/4.04.2/lib/coq/plugins/fourier
-B /home/beta/.opam/4.04.2/lib/coq/plugins/funind
-B /home/beta/.opam/4.04.2/lib/coq/plugins/micromega
-B /home/beta/.opam/4.04.2/lib/coq/plugins/nsatz
-B /home/beta/.opam/4.04.2/lib/coq/plugins/omega
-B /home/beta/.opam/4.04.2/lib/coq/plugins/quote
-B /home/beta/.opam/4.04.2/lib/coq/plugins/romega
-B /home/beta/.opam/4.04.2/lib/coq/plugins/rtauto
-B /home/beta/.opam/4.04.2/lib/coq/plugins/setoid_ring
-B /home/beta/.opam/4.04.2/lib/coq/plugins/syntax
-B /home/beta/.opam/4.04.2/lib/coq/plugins/xml
-B /home/beta/.opam/4.04.2/lib/coq/pretyping
-B /home/beta/.opam/4.04.2/lib/coq/printing
-B /home/beta/.opam/4.04.2/lib/coq/proofs
-B /home/beta/.opam/4.04.2/lib/coq/stm
-B /home/beta/.opam/4.04.2/lib/coq/tactics
-B /home/beta/.opam/4.04.2/lib/coq/toplevel
+PKG threads threads.posix coq.intf coq.ltac coq.idetop
