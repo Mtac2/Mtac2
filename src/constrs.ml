@@ -405,11 +405,11 @@ module MCTactics = struct
 end
 
 module CoqPair = struct
-  open ConstrBuilder
+  open UConstrBuilder
 
-  let pairBuilder = from_string "Coq.Init.Datatypes.pair"
+  let pairBuilder = from_string "Mtac2.Datatypes.mpair"
 
-  let mkPair tya tyb a b = build_app pairBuilder [|tya;tyb;a;b|]
+  let mkPair sigma env tya tyb a b = build_app pairBuilder sigma env [|tya;tyb;a;b|]
 
   exception NotAPair
 

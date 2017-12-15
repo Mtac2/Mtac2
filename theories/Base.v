@@ -217,7 +217,8 @@ Set Printing Universes.
 Unset Printing Notations.
 
 Module M.
-Inductive t@{H I J} : Type@{I} -> Prop :=
+Import ProdNotations.
+Inductive t@{H I J K L} : Type@{I} -> Prop :=
 | ret : forall {A : Type@{I}}, A -> t A
 | bind : forall {A : Type@{I}} {B : Type@{I}},
    t A -> (A -> t B) -> t B
@@ -332,7 +333,7 @@ Inductive t@{H I J} : Type@{I} -> Prop :=
 (** Given an inductive type A, applied to all its parameters (but not *)
 (*     necessarily indices), it returns the type applied to exactly the *)
 (*     parameters, and a list of constructors (applied to the parameters). *)
-| constrs : forall {A : Type@{I}} (a : A), t (prod dyn@{H} (mlist@{I} dyn@{J}))
+| constrs : forall {A : Type@{I}} (a : A), t (mprod@{K L} dyn@{H} (mlist@{I} dyn@{J}))
 | makecase : forall (C : Case@{H H I J}), t dyn@{J}
 
 (** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
@@ -352,7 +353,7 @@ Inductive t@{H I J} : Type@{I} -> Prop :=
 (** [get_var s] returns the var named after s. *)
 | get_var : string -> t dyn@{J}
 
-| call_ltac : forall {A : Type@{I}}, string -> mlist@{I} dyn@{J} -> t (prod A (mlist@{I} goal@{H H J}))
+| call_ltac : forall {A : Type@{I}}, string -> mlist@{I} dyn@{J} -> t (mprod@{K L} A (mlist@{I} goal@{H H J}))
 | list_ltac : t unit
 
 (** [read_line] returns the string from stdin. *)
@@ -368,7 +369,7 @@ Inductive t@{H I J} : Type@{I} -> Prop :=
 (** [decompose x] decomposes value [x] into a head and a spine of
     arguments. For instance, [decompose (3 + 3)] returns
     [(Dyn add, [Dyn 3; Dyn 3])] *)
-| decompose : forall {A : Type@{I}}, A -> t (prod dyn@{J} (mlist@{I} dyn@{J}))
+| decompose : forall {A : Type@{I}}, A -> t (mprod@{K L} dyn@{J} (mlist@{I} dyn@{J}))
 
 (** [solve_typeclass A] calls type classes resolution for [A] and returns the result or fail. *)
 | solve_typeclass : forall (A:Type@{I}), t (moption A)
@@ -795,7 +796,7 @@ Definition print_goal (g : goal) : t unit :=
     [CantInstantiate] if it fails to find a suitable instantiation. [t] is beta-reduced
     to avoid false dependencies. *)
 Definition instantiate {A} (x y : A) : t unit :=
-  ''(h, _) <- decompose x;
+  ''(m: h, _) <- decompose x;
   let h := rcbv h.(elem) in
   mif is_evar h then
     let t := reduce (RedWhd [rl:RedBeta]) t in
@@ -817,7 +818,7 @@ Definition collect_evars {A} (x: A) :=
     mif M.is_evar e then M.ret [m: d]
     else
       let e := reduce (RedWhd [rl: RedBeta; RedMatch; RedZeta]) e in
-      ''(h, l) <- M.decompose e;
+      ''(m: h, l) <- M.decompose e;
       if is_empty l then M.ret [m:]
       else
         f h >>= fun d => M.map f l >>= fun ds => M.ret (mapp d (mconcat ds))

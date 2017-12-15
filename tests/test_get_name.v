@@ -12,6 +12,7 @@ Qed.
 Goal forall x:nat, True.
 MProof.
   M.ret (fun name=>_).
+  Unshelve.
   (s <- M.get_binder_name name;
   match String.string_dec s "name" with
   | Specif.left _ => M.ret I

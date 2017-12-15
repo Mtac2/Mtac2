@@ -1,16 +1,15 @@
 From Mtac2 Require Import List Mtac2 Debugger.
 Import ListNotations.
-
+Import M.
+Import M.notations.
 Definition decompose {T} (x : T) :=
-  (mfix2 f (d : dyn) (args: mlist dyn) : M (dyn * mlist dyn) :=
+  (mfix2 f (d : dyn) (args: mlist dyn) : M (dyn *m mlist dyn) :=
     M.print_term d;;
     mmatch d with
     | [? A B (t1: A -> B) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :m: args)
     | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :m: args)
-    | _ => M.ret (d, args)
+    | _ => M.ret (m: d, args)
     end) (Dyn x) [m:].
-
-Import M.notations.
 
 (* If I'm not mistaken, the problem comes from the unification of
 

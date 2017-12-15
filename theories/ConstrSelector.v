@@ -1,6 +1,7 @@
 From Mtac2 Require Import Datatypes List Mtac2.
 Import T.
 Import Mtac2.List.ListNotations.
+Import ProdNotations.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
@@ -50,12 +51,12 @@ Definition snth_index {A:Type} (c:A) (t:tactic) : T.selector unit := fun l =>
 Notation "'case' c 'do' t" := (snth_index c t) (at level 40).
 
 Definition snth_indices (l : mlist dyn) (t : tactic) : selector unit := fun goals=>
-  M.fold_left (fun (accu : mlist (unit * goal)) (d : dyn)=>
+  M.fold_left (fun (accu : mlist (unit *m goal)) (d : dyn)=>
     let (_, c) := d in
     i <- index c;
     let ogoal := mnth_error goals i in
     match ogoal with
-    | mSome (_, g) =>
+    | mSome (m: _, g) =>
       newgoals <- open_and_apply t g;
       let res := dreduce (@mapp, @mmap) (accu +m+ newgoals) in
       T.filter_goals res

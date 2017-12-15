@@ -3,6 +3,7 @@ Require Import Strings.String.
 
 Import M.notations.
 Import Mtac2.List.ListNotations.
+Import ProdNotations.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
@@ -59,7 +60,7 @@ Definition lift_lemma : forall (A : Prop), A ->
            mtmmatch'
              _ m (fun A a => msigT tty) A
              [m:
-              (mtptele (fun B:Prop => mtptele (fun (C:Prop) => (mtpbase (m:=fun A:Prop => A -> M _)) _ (
+              (mtptele (fun B:Prop => mtptele (fun (C:Prop) => (mtpbase ( m:=fun A:Prop => A -> M _)) _ (
               fun (f : B -> C) =>
                 n <- M.fresh_binder_name A;
                 M.nu n mNone (fun b : B =>
@@ -79,7 +80,7 @@ Definition lift_lemma : forall (A : Prop), A ->
                      )
               ) UniMatchNoRed)))%mtpattern
              |
-             (mtptele (fun B:Type => mtptele (fun (C:B -> Prop) => (mtpbase (m:=fun A:Prop => A -> M _)) _ (
+             (mtptele (fun B:Type => mtptele (fun (C:B -> Prop) => (mtpbase ( m:=fun A:Prop => A -> M _)) _ (
               fun (f : forall b:B, C b) =>
                 n <- M.fresh_binder_name A;
                 M.nu n mNone (fun b : B =>
@@ -91,7 +92,7 @@ Definition lift_lemma : forall (A : Prop), A ->
                      )
               ) UniMatchNoRed)))%mtpattern
               |
-              (mtpbase (m:=fun A:Prop => A -> M _) A
+              (mtpbase ( m:=fun A:Prop => A -> M _) A
                        (fun a:A =>
                           M.ret (mexistT tty (ttbase A) (mexistT _ mnil (M.ret (I,a))))
                        )
@@ -203,9 +204,9 @@ Definition dest_pair {T} (x:T) : M (dyn * dyn) :=
 
 (** Given an element with type of the form (A1 * ... * An),
     it generates a goal for each unsolved variable in the pair. *)
-Definition to_goals : forall {A}, A -> M (mlist (unit * goal)) :=
+Definition to_goals : forall {A}, A -> M (mlist (unit *m goal)) :=
   mfix2 to_goals (A: Type) (a: A) : M _ :=
-  mif is_evar a then ret [m: (tt, Goal a)]
+  mif is_evar a then ret [m: (m: tt, Goal a)]
   else
     mif is_prod A then
       ''(d1, d2) <- dest_pair a;

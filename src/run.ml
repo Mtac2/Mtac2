@@ -522,7 +522,7 @@ let get_Constrs (env, sigma) t =
     let indtyty = Retyping.get_type_of env sigma indty in
     let sigma, indtydyn = mkDyn indtyty indty sigma env in
     let sigma, listty = CoqList.mkType sigma env dyn in
-    let pair = CoqPair.mkPair dyn listty indtydyn l in
+    let sigma, pair = CoqPair.mkPair sigma env dyn listty indtydyn l in
     (sigma, pair)
   else
     Exceptions.block "The argument of Mconstrs is not an inductive type"
@@ -1210,7 +1210,8 @@ let rec run' ctxt t =
             let new_undef = Evar.Set.elements new_undef in
             let sigma, goal = Goal.mkgoal sigma env in
             let sigma, goals = CoqList.pto_coq env goal (fun e sigma->Goal.goal_of_evar env sigma e) new_undef sigma in
-            return sigma (CoqPair.mkPair concl goal (of_constr c) goals)
+            let sigma, pair = CoqPair.mkPair sigma env concl goal (of_constr c) goals in
+            return sigma pair
           with CErrors.UserError(s,ppm) ->
             let expl = string_of_ppcmds ppm in
             let s = Option.default "" s in
@@ -1238,7 +1239,8 @@ let rec run' ctxt t =
         let sigma, listdyn = CoqList.mkType sigma env dyn in
         let sigma, dh = mkDyn (Retyping.get_type_of env sigma h) h sigma env in
         let sigma, args = CoqList.pto_coq env dyn (fun t sigma->mkDyn (Retyping.get_type_of env sigma t) t sigma env) args sigma in
-        return sigma (CoqPair.mkPair dyn listdyn dh args)
+        let sigma, pair =CoqPair.mkPair sigma env dyn listdyn dh args in
+        return sigma pair
 
     | 37 -> (* solve_typeclass *)
         let ty = nth 0 in

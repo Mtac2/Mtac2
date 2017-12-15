@@ -1,6 +1,7 @@
-From Mtac2 Require Import Base Tactics List.
+From Mtac2 Require Import Base Tactics Datatypes List.
 Import ListNotations.
 Set Implicit Arguments.
+Import ProdNotations.
 
 (** This is a simple example tighting up a bit the types of tactics in order to
     ensure a property.  In this case, we make sure that a variation of `apply`
@@ -13,7 +14,7 @@ Set Implicit Arguments.
 (** For that reason, we use the following record instead of a Vector.t: we want
     to easily embed tactics into ntactics and back. *)
 Record PackedVec (A: Type) (count: nat) := mkPackedVec {
-  goals : mlist (A * goal)
+  goals : mlist (A *m goal)
 }.
 
 Definition ntactic A n := goal -> M (PackedVec A n).
@@ -33,7 +34,7 @@ Import Mtac2.List.
 
 Instance nseq_list {A B} n (nt: ntactic A n) (l: mlist (gtactic B)) pf: NSeq nt l pf := fun g =>
   gs <- nt g;
-  ls <- T.gmap l (mmap snd gs.(goals));
+  ls <- T.gmap l (mmap msnd gs.(goals));
   let res := dreduce (@mconcat, @mapp) (mconcat ls) in
   T.filter_goals res.
 
@@ -46,14 +47,14 @@ Import Datatypes.
     It generates a subgoal for each non-dependent hypothesis in the theorem. *)
 Definition max_apply {T} (c : T) : tactic := fun g=>
   match g with Goal eg =>
-    (mfix1 go (d : dyn) : M (mlist (unit * goal)) :=
+    (mfix1 go (d : dyn) : M (mlist (unit *m goal)) :=
       (* let (_, el) := d in *)
       (* mif M.unify_cumul el eg UniCoq then M.ret [m:] else *)
-        mmatch d return M (mlist (unit * goal)) with
+        mmatch d return M (mlist (unit *m goal)) with
         | [? T1 T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
-          M.ret ((tt, Goal e) :m: r)
+          M.ret ((m: tt, Goal e) :m: r)
         | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));

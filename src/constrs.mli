@@ -127,7 +127,7 @@ end
 module CoqPair : sig
   exception NotAPair
 
-  val mkPair : types -> types -> constr -> constr -> constr
+  val mkPair : Evd.evar_map -> Environ.env -> types -> types -> constr -> constr -> Evd.evar_map * constr
 
   val from_coq : (Environ.env * Evd.evar_map) -> constr -> constr * constr
 end

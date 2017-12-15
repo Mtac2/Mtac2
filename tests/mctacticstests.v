@@ -367,13 +367,40 @@ Qed.
 
 Require Import Mtac2.ImportedTactics.
 
+Import M.
+Import M.notations.
+
+Definition ltac (t : String.string) (args : mlist dyn) : tactic := fun g =>
+  ''(@Dyn ty el) <- M.goal_to_dyn g;
+  ''(m: v, l) <- @M.call_ltac ty t args;
+  M.unify_or_fail UniCoq v el;;
+  mif M.is_evar v then
+    M.ret [m:(m: tt, Goal v)] (* it wasn't solved *)
+  else
+    let l' := dreduce (@mmap) (mmap (mpair tt) l) in
+    print_term l';;
+    M.ret l'.
+Import T.
+Import T.notations.
+
 Example ex_destr_not_var (b c: bool) : (if b && c then c else c) = c.
 MProof.
   pose (H := b && c).
   assert (Heq : H = b && c).
   - reflexivity.
-  - (rewrite <- Heq);; destruct H;; reflexivity.
-Qed.
+(* Set Printing All. *)
+(*   - pose (T := tactic). *)
+(*     pose (r := rewrite <- Heq : T). *)
+(*     pose (d := destruct H : tactic). *)
+(* Set Printing Universes. *)
+(*     pose (K := seq_one r d). *)
+(*     pose (K:=(rewrite <- Heq);; destruct H). *)
+(*     let K' := dreduce (K, (@seq)) K in *)
+(*     pose (K'':= K'). *)
+(* K. ;; destruct H. ;; reflexivity. *)
+(*   - (rewrite <- Heq);; destruct H;; reflexivity. *)
+(* Qed. *)
+Abort.
 
 Example fix_tac_ex: forall x:nat, 0 <= x.
 MProof.

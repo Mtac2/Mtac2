@@ -6,7 +6,7 @@ Require Import Coq.Numbers.BinNums.
 Require Import Strings.String.
 
 Definition file := "universes-mtac2.txt".
-Definition magic_number := "2".
+Definition magic_number := "0".
 
 (* we look for whaterever universes from Coq is < or <= than one of Mtac's *)
 Definition find_cmd := "egrep ""Coq.*Mtac2"" " ++ file.

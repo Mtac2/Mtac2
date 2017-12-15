@@ -50,26 +50,28 @@ Definition moption_map (A B:Type) (f:A->B) (o : moption A) : moption B :=
 (* (** [prod A B], written [A * B], is the product of [A] and [B]; *)
 (*     the pair [pair A B a b] of [a] and [b] is abbreviated [(a,b)] *) *)
 
-(* Inductive prod (A B:Type) : Type := *)
-(*   pair : A -> B -> prod A B. *)
+Inductive mprod (A B:Type) : Type :=
+  mpair : A -> B -> mprod A B.
 
 (* Add Printing Let prod. *)
+Module ProdNotations.
+Infix "*m" := (mprod) (at level 40) : type_scope.
+Notation "(m: x , y , .. , z )" := (mpair .. (mpair x y) .. z) : core_scope.
+End ProdNotations.
 
-(* Notation "x * y" := (prod x y) : type_scope. *)
-(* Notation "( x , y , .. , z )" := (pair .. (pair x y) .. z) : core_scope. *)
+Arguments mpair {A B} _ _.
 
-(* Arguments pair {A B} _ _. *)
+Section projections.
+  Import ProdNotations.
+  Context {A : Type} {B : Type}.
 
-(* Section projections. *)
-(*   Context {A : Type} {B : Type}. *)
-
-(*   Definition fst (p:A * B) := match p with *)
-(* 				| (x, y) => x *)
-(*                               end. *)
-(*   Definition snd (p:A * B) := match p with *)
-(* 				| (x, y) => y *)
-(*                               end. *)
-(* End projections. *)
+  Definition mfst (p:A *m B) := match p with
+				| (m: x, y) => x
+                              end.
+  Definition msnd (p:A *m B) := match p with
+				| (m: x, y) => y
+                              end.
+End projections.
 
 (* Hint Resolve pair inl inr: core. *)
 

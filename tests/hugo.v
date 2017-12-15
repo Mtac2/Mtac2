@@ -22,7 +22,7 @@ Fixpoint prove_leq n m : M (n < m) :=
 
 Definition to_fin_MP : T.selector unit := (fun l=>
   let n := mlength l in
-  M.mapi (fun i '(_,g) =>
+  M.mapi (fun i '(m: _, g) =>
     H <- prove_leq i n;
     let v := rcbv (of_nat_lt H) in
     T.exact v g) l;;

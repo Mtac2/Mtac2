@@ -1,6 +1,7 @@
 From Mtac2 Require Import Logic Datatypes List Sorts Base Tactics ImportedTactics MTeleMatch MFix.
 Import Sorts.
 Import M.notations.
+Import ProdNotations.
 
 Require Import Strings.String.
 Import Mtac2.List.ListNotations.
@@ -79,7 +80,7 @@ Arguments cProd {_ _%IT _%type} _.
 
 (** Represents a constructor of an inductive type where all arguments are non-dependent *)
 Notation NDCfold it := (fun l =>
-                        mfold_right (fun T b => T * b)%type unit l -> {a : ATele it & ITele_App a}).
+                        mfold_right (fun T b => T *m b)%type unit l -> {a : ATele it & ITele_App a}).
 Definition NDCTele {sort} (it : ITele sort) : Type :=
   { l : mlist Type & NDCfold it l }.
 
@@ -197,7 +198,7 @@ Definition branch_of_NDCTele {isort} {rsort} {it : ITele isort} (rt : RTele rsor
   (fix rec l :=
      match l as l' return NDCfold it l' -> rsort with
      | [m:] => fun f => RTele_App (projT1 (f tt)) rt (projT2 (f tt))
-     | T :m: l => fun f => ForAll (fun t : T => rec l (fun y => f(t,y)))
+     | T :m: l => fun f => ForAll (fun t : T => rec l (fun y => f(m: t,y)))
      end) (projT1 ct) (projT2 ct).
 
 (* Get exactly `max` many arguments *)
@@ -278,7 +279,7 @@ Program Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : 
                       r <- rec (F b) (App f b);
                       let '(existT _ l F) := r in
                       r' <- (M.abs_fun b F) : M (B -> _);
-                      M.ret (existT (NDCfold _) (B:m:l) (fun '(b,y) => r' b y))
+                      M.ret (existT (NDCfold _) (B:m:l) (fun '(m: b,y) => r' b y))
                     )
     | A =n>
         fun a =>
@@ -322,9 +323,9 @@ From Mtac2 Require Import MFix MTeleMatch.
 (*         M.ret (0, iBase (sort := sort) indProp) *)
 (*     end. *)
 
-Program Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele)) :=
-  mfix f (T : _) : T -> M (nat * sigT ITele)%type :=
-    mtmmatch_prog T as T return T -> M (nat * sigT ITele)%type with
+Program Definition get_ITele : forall {T : Type} (ind : T), M (nat *m (sigT ITele)) :=
+  mfix f (T : _) : T -> M (nat *m sigT ITele)%type :=
+    mtmmatch_prog T as T return T -> M (nat *m sigT ITele)%type with
     | [? (A : Type) (F : A -> Type)] forall a, F a =m>
       fun indFun =>
       name <- M.fresh_binder_name T;
@@ -333,27 +334,27 @@ Program Definition get_ITele : forall {T : Type} (ind : T), M (nat * (sigT ITele
         let (n, sit) := r in
         let (sort, it) := sit in
         f <- abs a it;
-        M.ret (S n, existT _ sort (iTele f)))
+        M.ret (m: S n, existT _ sort (iTele f)))
     | Prop =m>
       fun indProp =>
-      M.ret (0, existT _ SProp (iBase (sort := SProp) indProp))
+      M.ret (m: 0, existT _ SProp (iBase (sort := SProp) indProp))
     | Type =m>
       fun indType =>
-      M.ret (0, existT _ (SType) (iBase (sort := SType) indType))
+      M.ret (m: 0, existT _ (SType) (iBase (sort := SType) indType))
     | Set =m>
       fun indType =>
-      M.ret (0, existT _ (SType) (iBase (sort := SType) indType))
+      M.ret (m: 0, existT _ (SType) (iBase (sort := SType) indType))
     | T =n> fun _=> M.failwith "Impossible ITele"
     end.
 
 Definition get_ind (A : Type) :
-  M (nat * sigT (fun s => (ITele s)) * mlist dyn) :=
+  M (nat *m sigT (fun s => (ITele s)) *m mlist dyn) :=
   r <- M.constrs A;
   let (indP, constrs) := r in
-  sortit <- get_ITele (elem indP) : M (nat * sigT ITele);
-  let nindx : nat := fst sortit in
-  let (isort, it) := snd sortit in
-  M.ret (nindx, existT _ _ it, constrs).
+  sortit <- get_ITele (elem indP) : M (nat *m sigT ITele);
+  let nindx : nat := mfst sortit in
+  let (isort, it) := msnd sortit in
+  M.ret (m: nindx, existT _ _ it, constrs).
 
 (* Compute ind type ATele *)
 Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) : M (ATele it) :=
@@ -404,5 +405,5 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
                      |};
           let gterm := M.dyn_to_goal caseterm in
           M.unify_or_fail UniCoq gterm g;;
-          let goals' := dreduce (@mmap) (mmap (pair tt) goals) in
+          let goals' := dreduce (@mmap) (mmap (mpair tt) goals) in
           M.ret goals'.
