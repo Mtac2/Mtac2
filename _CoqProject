@@ -1,5 +1,5 @@
 CAMLC = "ocamlc -c -rectypes -thread -warn-error +a"
--I "$(COQLIB)user-contrib/Unicoq"
+-I "~/.opam/4.04.2/lib/coq/user-contrib/Unicoq/"
 -I src
 -R theories Mtac2
 src/metaCoqInit.ml4

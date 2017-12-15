@@ -8,7 +8,9 @@ MProof.
   Fail M.Cevar _ [m:ahyp x mNone| ahyp H mNone| ahyp y mNone].
   (* dup variable *)
   Fail M.Cevar _ [m:ahyp x mNone| ahyp x mNone| ahyp y mNone].
+  Unshelve.
   M.Cevar _ [m:ahyp H mNone| ahyp y (mSome 0)| ahyp x mNone].
+  Unshelve.
   T.exact I.
 Qed.
 
@@ -38,8 +40,8 @@ MProof.
     e <- M.Cevar _ [m:ahyp H mNone| ahyp y (mSome x)| ahyp x mNone];
     T.exact e
   -}.
-  (* not a variable *)
-  Fail M.Cevar _ [m:ahyp (x > y) mNone| ahyp y (mSome x)| ahyp x mNone].
   Unshelve.
+    (* not a variable *)
+  Fail M.Cevar _ [m:ahyp (x > y) mNone| ahyp y (mSome x)| ahyp x mNone].
   T.exact I.
 Qed.

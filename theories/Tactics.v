@@ -33,7 +33,7 @@ Set Printing Universes.
 Import ProdNotations.
 Set Printing All.
 (** The type for tactics *)
-Definition gtactic (A : Type) := goal -> M (mlist (A *m goal)).
+Definition gtactic@{H I J L1 L2 M M1 M2} (A : Type@{I}) := goal@{L1 L2} -> M@{H I J} (mlist@{I} (mprod@{I M} A goal@{M1 M2})).
 Definition tactic := gtactic unit.
 
 Delimit Scope tactic_scope with tactic.

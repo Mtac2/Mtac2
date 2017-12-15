@@ -1,4 +1,4 @@
-Require Import Mtac2.Mtac2.
+From Mtac2 Require Import Mtac2 IntroPatt.
 
 Goal True -> True -> True.
 MProof.

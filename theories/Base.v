@@ -154,10 +154,10 @@ Notation "'dreduce' ( l1 , .. , ln )" :=
   (at level 0).
 
 (** goal type *)
-Inductive goal :=
-  | Goal : forall {A}, A -> goal
-  | AHyp : forall {A}, moption A -> (A -> goal) -> goal
-  | HypRem : forall {A}, A -> goal -> goal.
+Inductive goal@{K L} :=
+  | Goal : forall {A:Type@{K}}, A -> goal
+  | AHyp : forall {A:Type@{L}}, moption@{L} A -> (A -> goal) -> goal
+  | HypRem : forall {A:Type@{L}}, A -> goal -> goal.
 
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
@@ -218,7 +218,7 @@ Unset Printing Notations.
 
 Module M.
 Import ProdNotations.
-Inductive t@{H I J K L} : Type@{I} -> Prop :=
+Inductive t@{H I J} : Type@{I} -> Prop :=
 | ret : forall {A : Type@{I}}, A -> t A
 | bind : forall {A : Type@{I}} {B : Type@{I}},
    t A -> (A -> t B) -> t B
@@ -333,7 +333,7 @@ Inductive t@{H I J K L} : Type@{I} -> Prop :=
 (** Given an inductive type A, applied to all its parameters (but not *)
 (*     necessarily indices), it returns the type applied to exactly the *)
 (*     parameters, and a list of constructors (applied to the parameters). *)
-| constrs : forall {A : Type@{I}} (a : A), t (mprod@{K L} dyn@{H} (mlist@{I} dyn@{J}))
+| constrs : forall {A : Type@{I}} (a : A), t (mprod@{I I} dyn@{H} (mlist@{I} dyn@{J}))
 | makecase : forall (C : Case@{H H I J}), t dyn@{J}
 
 (** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
@@ -353,7 +353,7 @@ Inductive t@{H I J K L} : Type@{I} -> Prop :=
 (** [get_var s] returns the var named after s. *)
 | get_var : string -> t dyn@{J}
 
-| call_ltac : forall {A : Type@{I}}, string -> mlist@{I} dyn@{J} -> t (mprod@{K L} A (mlist@{I} goal@{H H J}))
+| call_ltac : forall {A : Type@{I}}, string -> mlist@{I} dyn@{J} -> t (mprod@{I I} A (mlist@{I} goal@{H J}))
 | list_ltac : t unit
 
 (** [read_line] returns the string from stdin. *)
@@ -369,7 +369,7 @@ Inductive t@{H I J K L} : Type@{I} -> Prop :=
 (** [decompose x] decomposes value [x] into a head and a spine of
     arguments. For instance, [decompose (3 + 3)] returns
     [(Dyn add, [Dyn 3; Dyn 3])] *)
-| decompose : forall {A : Type@{I}}, A -> t (mprod@{K L} dyn@{J} (mlist@{I} dyn@{J}))
+| decompose : forall {A : Type@{I}}, A -> t (mprod@{I I} dyn@{J} (mlist@{I} dyn@{J}))
 
 (** [solve_typeclass A] calls type classes resolution for [A] and returns the result or fail. *)
 | solve_typeclass : forall (A:Type@{I}), t (moption A)
