@@ -976,7 +976,7 @@ let rec run' ctxt t =
         let intersect = Id.Set.inter vars nuvars in
         let closed = Id.Set.is_empty intersect && Evar.Set.is_empty (Evarutil.undefined_evars_of_term sigma term) in
         if closed then
-          fail sigma term
+          fail sigma (Evarutil.nf_evar sigma term)
         else
           Err (E.mkExceptionNotGround sigma env ())
 
