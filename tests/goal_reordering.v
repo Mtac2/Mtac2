@@ -3,11 +3,15 @@ Require Import Mtac2.Mtac2.
 Goal True.
 MProof.
   (M.evar nat;; M.evar bool;; M.ret _)%MC. (* FIXME: why are all evars shelved when we do this in the tactic monad? *)
+  Unshelve.
   M.ret _.
+  Unshelve.
   M.ret _.
+  Unshelve.
+  M.ret true.
+  Unshelve.
   M.ret I.
   M.ret 0.
-  M.ret true.
 Qed.
 
 Definition ThrowANat (n : nat) : Exception. exact exception. Qed.

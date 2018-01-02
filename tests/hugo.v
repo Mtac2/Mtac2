@@ -31,7 +31,7 @@ Definition to_fin_MP : T.selector unit := (fun l=>
 Goal my_enum_type -> Fin.t 3.
 MProof.
   intro H.
-  T.destruct H &> to_fin_MP.
+  T.destruct H &> to_fin_MP : gtactic unit. (* HACK: why do we need to specify the return type? *)
 Qed.
 
 Goal my_enum_type.

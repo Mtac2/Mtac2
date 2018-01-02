@@ -47,6 +47,7 @@ Qed.
 Example is_not_breaking_letins : True.
 MProof.
   let x := M.ret _ in x.
+  Unshelve.
   let x := id I in M.ret x.
 Qed.
 Print is_not_breaking_letins.
@@ -112,6 +113,7 @@ MProof.
   let x := reduce (RedStrong [rl:RedDeltaOnly [rl:Dyn (@id)]])
     (id ((fun x:nat=>x) n)) in
   assert_eq x ((fun A (x:A)=>x) nat ((fun x:nat=>x) n)))%MC.
+  Unshelve.
   M.ret tt.
   M.ret 0.
 Qed.
@@ -129,6 +131,7 @@ MProof.
   let x := reduce (RedStrong [rl:RedBeta; RedDeltaOnly [rl:Dyn (@id)]])
     (id ((fun x=>x)) (n+0)) in
   M.ret tt)%MC.
+  Unshelve.
   M.ret tt.
 MQed.
 
@@ -139,6 +142,7 @@ MProof.
   let x := reduce (RedStrong [rl:RedBeta;RedMatch;RedFix;RedDeltaBut [rl:Dyn (@id)]])
     (id (fun x=>x) ((fun x=>x) (0 + n))) in
   assert_eq x (id (fun x=>x) n))%MC.
+  Unshelve.
   M.ret tt. M.ret 0.
 Qed.
 

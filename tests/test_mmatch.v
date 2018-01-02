@@ -13,6 +13,7 @@ MProof.
   (mmatch _ with
   [? i] i => M.ret i : M True
   end)%MC.
+  Unshelve.
   (mmatch (fun x=>x) I with
   [? i] (fun x=>x) i => M.ret i : M True
   end)%MC.
@@ -28,6 +29,7 @@ MProof.
   Fail (mmatch I with
   [? i] (fun x=>x) i => M.ret i : M True
   end)%MC.
+  Unshelve.
   (mmatch I with
   | [? i] (fun x=>x) i => M.ret i : M True
   | [? i] i => M.ret i : M True
@@ -43,6 +45,9 @@ Definition NotFound : Exception. exact exception. Qed.
 
 Require Import Init.Datatypes.
 Require Import Lists.List.
+Import Base.M.
+Import M.notations.
+
 Definition inlist A (x : A) : forall l : list A, M (In x l) :=
   mfix1 f (l : list A) : M (In x l) :=
   mmatch l with
