@@ -857,20 +857,20 @@ let rec run' ctxt (vms: vm list) =
   let ctxt_fix () = {ctxt with fixpoints = List.tl ctxt.fixpoints} in
   match vm, vms with
   | Ret c, [] -> return sigma c
-  | Ret c, (Bind b :: vms) -> run' ctxt (Code (mkApp(b, [|c|])) :: vms)
-  | Ret c, (Try (_, b) :: vms) -> run' ctxt (Ret c :: vms)
+  | Ret c, (Bind b :: vms) -> (run'[@tailcall]) ctxt (Code (mkApp(b, [|c|])) :: vms)
+  | Ret c, (Try (_, b) :: vms) -> (run'[@tailcall]) ctxt (Ret c :: vms)
   | Ret c, Nu (name, _, _ as p) :: vms -> (* why the sigma'? *)
       if occur_var env name c then
-        run' (ctxt_nu1 p) (Fail (E.mkVarAppearsInValue ()) :: vms)
+        (run'[@tailcall]) (ctxt_nu1 p) (Fail (E.mkVarAppearsInValue ()) :: vms)
       else
-        run' (ctxt_nu1 p) (Ret c :: vms)
-  | Ret c, Fix :: vms -> run' (ctxt_fix ()) (Ret c :: vms)
+        (run'[@tailcall]) (ctxt_nu1 p) (Ret c :: vms)
+  | Ret c, Fix :: vms -> (run'[@tailcall]) (ctxt_fix ()) (Ret c :: vms)
 
   | Fail c, [] -> fail sigma c
-  | Fail c, (Bind _ :: vms) -> run' ctxt (Fail c :: vms)
-  | Fail c, (Try (sigma, b) :: vms) -> run' {ctxt with sigma} (Code (mkApp(b, [|c|]))::vms)
-  | Fail c, (Nu p :: vms) -> run' (ctxt_nu1 p) (Fail c :: vms)
-  | Fail c, Fix :: vms -> run' (ctxt_fix ()) (Fail c :: vms)
+  | Fail c, (Bind _ :: vms) -> (run'[@tailcall]) ctxt (Fail c :: vms)
+  | Fail c, (Try (sigma, b) :: vms) -> (run'[@tailcall]) {ctxt with sigma} (Code (mkApp(b, [|c|]))::vms)
+  | Fail c, (Nu p :: vms) -> (run'[@tailcall]) (ctxt_nu1 p) (Fail c :: vms)
+  | Fail c, Fix :: vms -> (run'[@tailcall]) (ctxt_fix ()) (Fail c :: vms)
 
   | (Bind _ | Fail _ | Nu _ | Try _ | Fix), _ -> failwith "ouch1"
   | Ret _, (Code _ :: _ | Ret _ :: _ | Fail _ :: _) -> failwith "ouch2"
@@ -884,8 +884,8 @@ let rec run' ctxt (vms: vm list) =
       (*   | None -> return sigma t *)
       (* ) >>= fun (sigma, t) -> *)
       let upd c = (Code c :: vms) in
-      let return sigma c = run' {ctxt with sigma} (Ret c :: vms) in
-      let fail sigma c = run' {ctxt with sigma} (Fail c :: vms) in
+      let return sigma c = (run'[@tailcall]) {ctxt with sigma} (Ret c :: vms) in
+      let fail sigma c = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
       let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
       let nth = Array.get args in
       if Term.isLetIn h then
@@ -895,11 +895,11 @@ let rec run' ctxt (vms: vm list) =
         if isReduce h && Array.length args' = 3 then
           try
             let b = reduce sigma env (Array.get args' 0) (Array.get args' 2) in
-            run' ctxt (upd (Term.mkApp (Vars.subst1 b t, args)))
+            (run'[@tailcall]) ctxt (upd (Term.mkApp (Vars.subst1 b t, args)))
           with RedList.NotAList l ->
             fail sigma (E.mkNotAList ())
         else
-          run' ctxt (upd (Term.mkApp (Vars.subst1 b t, args)))
+          (run'[@tailcall]) ctxt (upd (Term.mkApp (Vars.subst1 b t, args)))
       else
         let constr c =
           if Term.isConstruct c then
@@ -919,7 +919,7 @@ let rec run' ctxt (vms: vm list) =
                 match Declaration.get_value (lookup n ctxt.fixpoints) with
                 | Some fixbody ->
                     let t = (Term.appvect (fixbody,args)) in
-                    run' ctxt (upd t)
+                    (run'[@tailcall]) ctxt (upd t)
                 | None -> fail sigma (E.mkStuckTerm ())
               with (Term.DestKO | Not_found ) ->
                 fail sigma (E.mkStuckTerm ())
@@ -929,10 +929,10 @@ let rec run' ctxt (vms: vm list) =
             return sigma (nth 1)
 
         | 2 -> (* bind *)
-            run' ctxt (Code (nth 2) :: Bind (nth 3) :: vms)
+            (run'[@tailcall]) ctxt (Code (nth 2) :: Bind (nth 3) :: vms)
 
         | 3 -> (* try *)
-            run' ctxt (Code (nth 1) :: Try (sigma, nth 2) :: vms)
+            (run'[@tailcall]) ctxt (Code (nth 1) :: Try (sigma, nth 2) :: vms)
 
         | 4 -> (* raise *)
             (* we make sure the exception is a closed term: it does not depend on evars or nus *)
@@ -988,7 +988,7 @@ let rec run' ctxt (vms: vm list) =
               let ot = CoqOption.from_coq (env, sigma) ot in
               let env' = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
               let (sigma, renv') = Hypotheses.cons_hyp a (Term.mkVar name) ot ctxt.renv sigma env in
-              run' {ctxt with env=env'; renv=renv'; sigma; nus=(ctxt.nus+1)} (Code fx :: Nu (name, env, ctxt.renv) :: vms)
+              (run'[@tailcall]) {ctxt with env=env'; renv=renv'; sigma; nus=(ctxt.nus+1)} (Code fx :: Nu (name, env, ctxt.renv) :: vms)
             end
 
         | 12 -> (* abs *)
@@ -1025,7 +1025,7 @@ let rec run' ctxt (vms: vm list) =
               if check_dependencies env x t then
                 let nus = if is_nu env x ctxt.nus then ctxt.nus-1 else ctxt.nus in
                 let env, (sigma, renv) = env_without sigma env ctxt.renv x in
-                run' {ctxt with env; renv; sigma; nus} (upd t)
+                (run'[@tailcall]) {ctxt with env; renv; sigma; nus} (upd t)
               else
                 fail sigma (E.mkCannotRemoveVar env sigma x)
             else
@@ -1186,7 +1186,7 @@ let rec run' ctxt (vms: vm list) =
             return sigma (CoqString.to_coq (read_line ()))
 
         | 35 -> (* break *)
-            run' {ctxt with hook=Some (nth 2)} (upd (nth 4))(*  >>= fun (sigma, _) -> *)
+            (run'[@tailcall]) {ctxt with hook=Some (nth 2)} (upd (nth 4))(*  >>= fun (sigma, _) -> *)
         (* return sigma CoqUnit.mkTT *)
 
         | 36 -> (* decompose *)
@@ -1261,7 +1261,7 @@ and run_fix ctxt (vms: vm list) (h: constr) (a: constr array) (b: constr) (s: co
      type. *)
   let fixpoints = (Context.Named.Declaration.of_tuple (n, Some (fixf), Term.mkProp)) :: ctxt.fixpoints in
   let c = mkApp (f, Array.append [| fixvar |] x) in
-  run' {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} (Code c :: vms)
+  (run'[@tailcall]) {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} (Code c :: vms)
 (* run' ctxt c *)
 
 and
@@ -1287,11 +1287,11 @@ and
         | AbsLet -> Term.mkLetIn (Name name, t, a, y')
         | AbsFix -> Term.mkFix (([|n-1|], 0), ([|Name name|], [|a|], [|y'|]))
       in
-      run' ctxt (Ret t :: vms)
+      (run'[@tailcall]) ctxt (Ret t :: vms)
     else
-      run' ctxt (Fail (E.mkAbsDependencyError ()) :: vms)
+      (run'[@tailcall]) ctxt (Fail (E.mkAbsDependencyError ()) :: vms)
   else
-    run' ctxt (Fail (E.mkNotAVar ()) :: vms)
+    (run'[@tailcall]) ctxt (Fail (E.mkNotAVar ()) :: vms)
 
 and cvar vms ctxt ty ohyps =
   let env, sigma = ctxt.env, ctxt.sigma in
@@ -1308,19 +1308,19 @@ and cvar vms ctxt ty ohyps =
           let (e, _) = destEvar evar in
           (* the evar created by make_evar has id in the substitution
              but we need to remap it to the actual variables in hyps *)
-          run' {ctxt with sigma} (Ret (mkEvar (e, Array.of_list vars)) :: vms)
+          (run'[@tailcall]) {ctxt with sigma} (Ret (mkEvar (e, Array.of_list vars)) :: vms)
         with
         | MissingDep ->
-            run' ctxt (Fail (E.mkHypMissesDependency ()) :: vms)
+            (run'[@tailcall]) ctxt (Fail (E.mkHypMissesDependency ()) :: vms)
         | Not_found ->
-            run' ctxt (Fail (E.mkTypeMissesDependency ()) :: vms)
+            (run'[@tailcall]) ctxt (Fail (E.mkTypeMissesDependency ()) :: vms)
       else
-        run' ctxt (Fail (E.mkDuplicatedVariable ()) :: vms)
+        (run'[@tailcall]) ctxt (Fail (E.mkDuplicatedVariable ()) :: vms)
     with Hypotheses.NotAVariable ->
-      run' ctxt (Fail (E.mkNotAVar ()) :: vms)
+      (run'[@tailcall]) ctxt (Fail (E.mkNotAVar ()) :: vms)
   else
     let sigma, evar = make_evar sigma env ty in
-    run' {ctxt with sigma} (Ret evar :: vms)
+    (run'[@tailcall]) {ctxt with sigma} (Ret evar :: vms)
 
 
 
