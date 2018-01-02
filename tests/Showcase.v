@@ -121,6 +121,7 @@ MProof.
   Time intros;; T.repeat (apply_one_of [m:Dyn in_eq| Dyn in_cons]).
 Qed.
 Import Coq.Lists.List.ListNotations.
+
 Example trans_eq_example' : forall (a b c d e f : nat),
      [a;b] = [c;d] ->
      [c;d] = [e;f] ->
