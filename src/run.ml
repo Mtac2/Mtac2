@@ -860,6 +860,26 @@ let run_declare_implicits env sigma gr impls =
   let () = Impargs.maybe_declare_manual_implicits false gr impls in
   (sigma, CoqUnit.mkTT)
 
+let koft t =
+  let open MetaCoqNames in
+  let lf n = Lazy.force (mkConstr n) in
+  match kind_of_term t with
+  | Var _ -> lf "tmVar"
+  | Evar _ -> lf "tmEvar"
+  | Sort _ -> lf "tmSort"
+  | Const _ -> lf "tmConst"
+  | Construct _ -> lf "tmConstruct"
+  | Lambda _ -> lf "tmLambda"
+  | Prod _ -> lf "tmProd"
+  | LetIn _ -> lf "tmLetIn"
+  | App _ -> lf "tmApp"
+  | Cast _ -> lf "tmCast"
+  | Ind _ -> lf "tmInd"
+  | Case _ -> lf "tmCase"
+  | Fix _ -> lf "tmFix"
+  | CoFix _ -> lf "tmCoFix"
+  | _ -> failwith "unsupported"
+
 
 
 type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option;
@@ -1239,6 +1259,9 @@ let rec run' ctxt t =
         let cmd = CoqString.from_coq (env, sigma) (nth 0) in
         let ret = Sys.command cmd in
         return sigma (CoqZ.to_coq ret)
+
+    | 41 -> (* kind_of_term *)
+        return sigma (koft (nth 1))
 
     | _ ->
         Exceptions.block "I have no idea what is this construct of T that you have here"

@@ -157,6 +157,25 @@ Inductive goal :=
   | AHyp : forall {A}, moption A -> (A -> goal) -> goal
   | HypRem : forall {A}, A -> goal -> goal.
 
+(** term kind *)
+Inductive tm_kind :=
+  | tmVar
+  | tmEvar
+  | tmSort
+  | tmConst
+  | tmConstruct
+  | tmProd
+  | tmLambda
+  | tmLetIn
+  | tmApp
+  | tmCast
+  | tmInd
+  | tmCase
+  | tmFix
+  | tmCoFix.
+
+
+
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
 we could make it part of the B, but then higher order unification will fail. *)
@@ -385,6 +404,9 @@ Inductive t : Type -> Prop :=
 
 (** [os_cmd cmd] executes the command and returns its error number. *)
 | os_cmd : string -> t Z
+
+(** [kind_of_term t] returns the term kind of t *)
+| kind_of_term: forall{A: Type}, A -> t tm_kind
 .
 
 Arguments t _%type.
@@ -822,6 +844,70 @@ Definition collect_evars {A} (x: A) :=
     ) (Dyn x);
   let red := dreduce (@mapp, @mconcat) res in
   ret red.
+
+(** Query functions *)
+Definition isVar {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmVar => ret true
+  | _ => ret false
+  end.
+
+Definition isEvar {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmEvar => ret true
+  | _ => ret false
+  end.
+
+Definition isConst {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmConst => ret true
+  | _ => ret false
+  end.
+
+Definition isConstruct {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmConstruct => ret true
+  | _ => ret false
+  end.
+
+Definition isApp {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmApp => ret true
+  | _ => ret false
+  end.
+
+Definition isLambda {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmLambda => ret true
+  | _ => ret false
+  end.
+
+Definition isProd {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmProd => ret true
+  | _ => ret false
+  end.
+
+Definition isCast {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmCast => ret true
+  | _ => ret false
+  end.
+
+Definition isSort {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmSort => ret true
+  | _ => ret false
+  end.
 
 End M.
 
