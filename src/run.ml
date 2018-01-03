@@ -641,6 +641,10 @@ let abs case (env, sigma) a p x y n t : data =
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
+  let a = nf_evar sigma a in
+  let p = nf_evar sigma p in
+  let x = nf_evar sigma x in
+  let y = nf_evar sigma y in
   if isVar sigma x then
     if check_abs_deps env sigma x y p then
       let name = destVar sigma x in
