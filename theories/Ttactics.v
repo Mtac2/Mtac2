@@ -5,9 +5,9 @@ Import M.notations.
 Import Mtac2.List.ListNotations.
 Import ProdNotations.
 
-Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
-Unset Universe Minimization ToSet.
+(* Set Universe Polymorphism. *)
+(* Set Polymorphic Inductive Cumulativity. *)
+(* Unset Universe Minimization ToSet. *)
 
 Local Inductive msigT {A} (P : A -> Type) : Type := | mexistT x : P x -> msigT P.
 Local Notation "'{$'  x .. y  &  P }" := (msigT (fun x => .. (msigT (fun y => P)) .. )) (x binder, y binder).
@@ -165,15 +165,16 @@ Definition compi {A} {B} (g : M A) (h : M B) : M (A * B) :=
   g >>= fun xg=> h >>= fun xh => ret (xg, xh).
 
 (** A typed assumption tactic *)
-(* Definition assumption {A} : M A := *)
-(*   l <- hyps; *)
-(*   let f := mfix1 f (l : mlist Hyp) : M A := *)
-(*     mmatch l with *)
-(*     | [? x d l'] (@ahyp A x d :m: l') => M.ret x *)
-(*     | [? ah l'] (ah :m: l') => f l' *)
-(*     | _ => failwith "no ass" *)
-(*     end in *)
-(*   f l. *)
+Set Printing Universes.
+Program Definition assumption {A} :=
+  l <- hyps;
+  let f := mfix1 f (l : mlist Hyp) : M A :=
+    mmatch l return M A with
+    | [? x d l'] (@ahyp A x d :m: l') => M.ret x
+    | [? ah l'] (ah :m: l') => f l'
+    (* | _ => failwith "no ass" *)
+    end in
+  f l.
 
 (** Solves goal A provided tactic t *)
 Definition by' {A} (t: tactic) : M A :=

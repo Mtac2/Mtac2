@@ -1,9 +1,9 @@
 From Mtac2 Require Import Sorts.
 Import Sorts.
 
-Set Polymorphic Inductive Cumulativity.
-Set Universe Polymorphism.
-Unset Universe Minimization ToSet.
+(* Set Polymorphic Inductive Cumulativity. *)
+(* Set Universe Polymorphism. *)
+(* Unset Universe Minimization ToSet. *)
 
 (** MTele: a telescope which represent nested binder
 

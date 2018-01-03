@@ -3,9 +3,9 @@ Import Mtac2.List.ListNotations.
 Import M.notations.
 Import T.notations.
 
-Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
-Unset Universe Minimization ToSet.
+(* Set Universe Polymorphism. *)
+(* Set Polymorphic Inductive Cumulativity. *)
+(* Unset Universe Minimization ToSet. *)
 
 Inductive IPB := .
 

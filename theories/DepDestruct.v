@@ -6,9 +6,9 @@ Import ProdNotations.
 Require Import Strings.String.
 Import Mtac2.List.ListNotations.
 
-Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
-Unset Universe Minimization ToSet.
+(* Set Universe Polymorphism. *)
+(* Set Polymorphic Inductive Cumulativity. *)
+(* Unset Universe Minimization ToSet. *)
 
 (** This is the [abs] from [MetaCoq] but first reducing the variable
     [x] (in case it is [id x] or some convertible term to a variable)

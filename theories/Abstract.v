@@ -5,9 +5,9 @@ Import M. Import M.notations.
 Set Implicit Arguments.
 Unset Strict Implicit.
 
-Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
-Unset Universe Minimization ToSet.
+(* Set Universe Polymorphism. *)
+(* Set Polymorphic Inductive Cumulativity. *)
+(* Unset Universe Minimization ToSet. *)
 
 Structure result A B x t := R { fu : A -> B; pf : t =m= fu x }.
 Implicit Arguments R [A B x t].

@@ -1,9 +1,9 @@
 From Mtac2 Require Import Base Logic Datatypes MTele MTeleMatchDef.
 Import M.notations.
 
-Set Polymorphic Inductive Cumulativity.
-Set Universe Polymorphism.
-Unset Universe Minimization ToSet.
+(* Set Polymorphic Inductive Cumulativity. *)
+(* Set Universe Polymorphism. *)
+(* Unset Universe Minimization ToSet. *)
 
 Inductive msigT {A : Type} (P : A -> Type) :=
   mexistT (x : A) : P x -> msigT P.

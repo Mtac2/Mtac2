@@ -2,9 +2,9 @@ Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 
 (** Types that can hold either a [Prop] or a [Type] *)
-Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
-Unset Universe Minimization ToSet.
+(* Set Universe Polymorphism. *)
+(* Set Polymorphic Inductive Cumulativity. *)
+(* Unset Universe Minimization ToSet. *)
 
 Module Sorts.
 

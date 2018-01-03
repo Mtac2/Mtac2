@@ -8,9 +8,10 @@ Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
 
-Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
-Unset Universe Minimization ToSet.
+(* Set Universe Polymorphism. *)
+(* Set Polymorphic Inductive Cumulativity. *)
+(* Unset Universe Minimization ToSet. *)
+Local Set Universe Polymorphism.
 
 (** Exceptions *)
 Eval hnf in new exception NoGoalsLeft.
@@ -29,11 +30,10 @@ Definition SomethingNotRight {A} (t : A) : Exception. exact exception. Qed.
 
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 
-Set Printing Universes.
 Import ProdNotations.
-Set Printing All.
+
 (** The type for tactics *)
-Definition gtactic@{H I J L1 L2 M M1 M2} (A : Type@{I}) := goal@{L1 L2} -> M@{H I J} (mlist@{I} (mprod@{I M} A goal@{M1 M2})).
+Definition gtactic(* @{H I J L1 L2 M M1 M2} *) (A : Type(* @{I} *)) := goal(* @{L1 L2} *) -> M(* @{H I J} *) (mlist(* @{I} *) (mprod(* @{I M} *) A goal(* @{M1 M2} *))).
 Definition tactic := gtactic unit.
 
 Delimit Scope tactic_scope with tactic.

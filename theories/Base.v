@@ -9,8 +9,8 @@ Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
 Import Mtac2.List.ListNotations.
 
-Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
+(* Set Universe Polymorphism. *)
+(* Set Polymorphic Inductive Cumulativity. *)
 Unset Universe Minimization ToSet.
 
 Inductive Exception : Type := exception : Exception.
@@ -154,10 +154,10 @@ Notation "'dreduce' ( l1 , .. , ln )" :=
   (at level 0).
 
 (** goal type *)
-Inductive goal@{K L} :=
-  | Goal : forall {A:Type@{K}}, A -> goal
-  | AHyp : forall {A:Type@{L}}, moption@{L} A -> (A -> goal) -> goal
-  | HypRem : forall {A:Type@{L}}, A -> goal -> goal.
+Inductive goal(* @{K L} *) :=
+  | Goal : forall {A:Type(* @{K} *)}, A -> goal
+  | AHyp : forall {A:Type(* @{L} *)}, moption(* @{L} *) A -> (A -> goal) -> goal
+  | HypRem : forall {A:Type(* @{L} *)}, A -> goal -> goal.
 
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
@@ -218,65 +218,65 @@ Unset Printing Notations.
 
 Module M.
 Import ProdNotations.
-Inductive t@{H I J} : Type@{I} -> Prop :=
-| ret : forall {A : Type@{I}}, A -> t A
-| bind : forall {A : Type@{I}} {B : Type@{I}},
+Inductive t(* @{H I J} *) : Type(* @{I} *) -> Prop :=
+| ret : forall {A : Type(* @{I} *)}, A -> t A
+| bind : forall {A : Type(* @{I} *)} {B : Type(* @{I} *)},
    t A -> (A -> t B) -> t B
-| mtry' : forall {A : Type@{I}}, t A -> (Exception@{I} -> t A) -> t A
-| raise : forall {A : Type@{I}}, Exception@{I} -> t A
-| fix1' : forall {A : Type@{I}} {B : A -> Type@{I}} (S : Type@{I} -> Prop),
-  (forall a : Type@{I}, S a -> t a) ->
+| mtry' : forall {A : Type(* @{I} *)}, t A -> (Exception(* @{I} *) -> t A) -> t A
+| raise : forall {A : Type(* @{I} *)}, Exception(* @{I} *) -> t A
+| fix1' : forall {A : Type(* @{I} *)} {B : A -> Type(* @{I} *)} (S : Type(* @{I} *) -> Prop),
+  (forall a : Type(* @{I} *), S a -> t a) ->
   ((forall x : A, S (B x)) -> (forall x : A, S (B x))) ->
   forall x : A, t (B x)
-| fix2' : forall {A1 : Type@{I}} {A2 : A1 -> Type@{I}} {B : forall (a1 : A1), A2 a1 -> Type@{I}} (S : Type@{I} -> Prop),
-  (forall a : Type@{I}, S a -> t a) ->
+| fix2' : forall {A1 : Type(* @{I} *)} {A2 : A1 -> Type(* @{I} *)} {B : forall (a1 : A1), A2 a1 -> Type(* @{I} *)} (S : Type(* @{I} *) -> Prop),
+  (forall a : Type(* @{I} *), S a -> t a) ->
   ((forall (x1 : A1) (x2 : A2 x1), S (B x1 x2)) ->
     (forall (x1 : A1) (x2 : A2 x1), S (B x1 x2))) ->
   forall (x1 : A1) (x2 : A2 x1), t (B x1 x2)
-| fix3' : forall {A1 : Type@{I}} {A2 : A1 -> Type@{I}}  {A3 : forall (a1 : A1), A2 a1 -> Type@{I}} {B : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type@{I}} (S : Type@{I} -> Prop),
-  (forall a : Type@{I}, S a -> t a) ->
+| fix3' : forall {A1 : Type(* @{I} *)} {A2 : A1 -> Type(* @{I} *)}  {A3 : forall (a1 : A1), A2 a1 -> Type(* @{I} *)} {B : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type(* @{I} *)} (S : Type(* @{I} *) -> Prop),
+  (forall a : Type(* @{I} *), S a -> t a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), S (B x1 x2 x3)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), S (B x1 x2 x3))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), t (B x1 x2 x3)
-| fix4' : forall {A1 : Type@{I}} {A2 : A1 -> Type@{I}} {A3 : forall (a1 : A1), A2 a1 -> Type@{I}} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type@{I}} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type@{I}} (S : Type@{I} -> Prop),
-  (forall a : Type@{I}, S a -> t a) ->
+| fix4' : forall {A1 : Type(* @{I} *)} {A2 : A1 -> Type(* @{I} *)} {A3 : forall (a1 : A1), A2 a1 -> Type(* @{I} *)} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type(* @{I} *)} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type(* @{I} *)} (S : Type(* @{I} *) -> Prop),
+  (forall a : Type(* @{I} *), S a -> t a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), t (B x1 x2 x3 x4)
-| fix5' : forall {A1 : Type@{I}} {A2 : A1 -> Type@{I}} {A3 : forall (a1 : A1), A2 a1 -> Type@{I}} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type@{I}} {A5 : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type@{I}} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2) (a4 : A4 a1 a2 a3), A5 a1 a2 a3 a4 -> Type@{I}} (S : Type@{I} -> Prop),
-  (forall a : Type@{I}, S a -> t a) ->
+| fix5' : forall {A1 : Type(* @{I} *)} {A2 : A1 -> Type(* @{I} *)} {A3 : forall (a1 : A1), A2 a1 -> Type(* @{I} *)} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type(* @{I} *)} {A5 : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type(* @{I} *)} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2) (a4 : A4 a1 a2 a3), A5 a1 a2 a3 a4 -> Type(* @{I} *)} (S : Type(* @{I} *) -> Prop),
+  (forall a : Type(* @{I} *), S a -> t a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), t (B x1 x2 x3 x4 x5)
 
 (** [is_var e] returns if [e] is a variable. *)
-| is_var : forall {A : Type@{I}}, A -> t bool
+| is_var : forall {A : Type(* @{I} *)}, A -> t bool
 
 (* [nu x od f] executes [f x] where variable [x] is added to the local context,
    optionally with definition [d] with [od = Some d].  It raises
    [NameExistsInContext] if the name "x" is in the context, or
    [VarAppearsInValue] if executing [f x] results in a term containing variable
    [x]. *)
-| nu : forall {A : Type@{I}} {B : Type@{I}}, string -> moption A -> (A -> t B) -> t B
+| nu : forall {A : Type(* @{I} *)} {B : Type(* @{I} *)}, string -> moption A -> (A -> t B) -> t B
 
 (** [abs_fun x e] abstracts variable [x] from [e]. It raises [NotAVar] if [x]
     is not a variable, or [AbsDependencyError] if [e] or its type [P] depends on
     a variable also depending on [x]. *)
-| abs_fun : forall {A : Type@{I}} {P : A -> Type@{I}} (x : A), P x -> t (forall x, P x)
+| abs_fun : forall {A : Type(* @{I} *)} {P : A -> Type(* @{I} *)} (x : A), P x -> t (forall x, P x)
 
 (** [abs_let x d e] returns [let x := d in e]. It raises [NotAVar] if [x] is not
     a variable, or [AbsDependencyError] if [e] or its type [P] depends on a
     variable also depending on [x]. *)
-| abs_let : forall {A : Type@{I}} {P : A -> Type@{I}} (x: A) (y: A), P x -> t (let x := y in P x)
+| abs_let : forall {A : Type(* @{I} *)} {P : A -> Type(* @{I} *)} (x: A) (y: A), P x -> t (let x := y in P x)
 
 (** [abs_prod x e] returns [forall x, e]. It raises [NotAVar] if [x] is not a
     variable, or [AbsDependencyError] if [e] or its type [P] depends on a
     variable also depending on [x]. *)
-| abs_prod : forall {A : Type@{I}} (x : A), Type@{I} -> t Type@{J}
+| abs_prod : forall {A : Type(* @{I} *)} (x : A), Type(* @{I} *) -> t Type(* @{J} *)
 
 (** [abs_fix f t n] returns [fix f {struct n} := t].
     [f]'s type must have n products, that is, be [forall x1, ..., xn, T] *)
-| abs_fix : forall {A : Type@{I}}, A -> A -> N -> t A
+| abs_fix : forall {A : Type(* @{I} *)}, A -> A -> N -> t A
 
 (** [get_binder_name t] returns the name of variable [x] if:
     - [t = x],
@@ -285,12 +285,12 @@ Inductive t@{H I J} : Type@{I} -> Prop :=
     - [t = let x := d in b].
     It raises [WrongTerm] in any other case.
 *)
-| get_binder_name : forall {A : Type@{I}}, A -> t string
+| get_binder_name : forall {A : Type(* @{I} *)}, A -> t string
 
 (** [remove x t] executes [t] in a context without variable [x].
     Raises [NotAVar] if [x] is not a variable, and
     [CannotRemoveVar "x"] if [t] or the environment depends on [x]. *)
-| remove : forall {A : Type@{I}} {B : Type@{I}}, A -> t B -> t B
+| remove : forall {A : Type(* @{I} *)} {B : Type(* @{I} *)}, A -> t B -> t B
 
 (** [gen_evar A ohyps] creates a meta-variable with type [A] and,
     optionally, in the context resulting from [ohyp].
@@ -303,18 +303,18 @@ Inductive t@{H I J} : Type@{I} -> Prop :=
     [ [ahyp H None; ahyp x None] ]
 
     If the type [A] is referring to variables not in the list of
-    hypotheses, it raise [Type@{I}MissesDependency]. If the list contains
+    hypotheses, it raise [Type(* @{I} *)MissesDependency]. If the list contains
     something that is not a variable, it raises [NotAVar]. If it contains duplicated
     occurrences of a variable, it raises a [DuplicatedVariable].
 *)
-| gen_evar : forall (A : Type@{I}), moption (mlist@{I} Hyp@{J}) -> t A
+| gen_evar : forall (A : Type(* @{I} *)), moption (mlist(* @{I} *) Hyp(* @{J} *)) -> t A
 
 (** [is_evar e] returns if [e] is a meta-variable. *)
-| is_evar : forall {A : Type@{I}}, A -> t bool
+| is_evar : forall {A : Type(* @{I} *)}, A -> t bool
 
 (** [hash e n] returns a number smaller than [n] representing
     a hash of term [e] *)
-| hash : forall {A : Type@{I}}, A -> N -> t N
+| hash : forall {A : Type(* @{I} *)}, A -> N -> t N
 
 (** [solve_typeclasses] calls type classes resolution. *)
 | solve_typeclasses : t unit
@@ -323,37 +323,37 @@ Inductive t@{H I J} : Type@{I} -> Prop :=
 | print : string -> t unit
 
 (** [pretty_print e] converts term [e] to string. *)
-| pretty_print : forall {A : Type@{I}}, A -> t string
+| pretty_print : forall {A : Type(* @{I} *)}, A -> t string
 
 (** [hyps] returns the list of hypotheses. *)
-| hyps : t (mlist@{I} Hyp@{J})
+| hyps : t (mlist(* @{I} *) Hyp(* @{J} *))
 
-| destcase : forall {A : Type@{I}} (a : A), t (Case@{H H I J})
+| destcase : forall {A : Type(* @{I} *)} (a : A), t (Case(* @{H H I J} *))
 
 (** Given an inductive type A, applied to all its parameters (but not *)
 (*     necessarily indices), it returns the type applied to exactly the *)
 (*     parameters, and a list of constructors (applied to the parameters). *)
-| constrs : forall {A : Type@{I}} (a : A), t (mprod@{I I} dyn@{H} (mlist@{I} dyn@{J}))
-| makecase : forall (C : Case@{H H I J}), t dyn@{J}
+| constrs : forall {A : Type(* @{I} *)} (a : A), t (mprod(* @{I I} *) dyn(* @{H} *) (mlist(* @{I} *) dyn(* @{J} *)))
+| makecase : forall (C : Case(* @{H H I J} *)), t dyn(* @{J} *)
 
 (** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
     It uses convertibility of universes, meaning that it fails if [x]
-    is [Prop] and [y] is [Type@{I}]. If they are both types, it will
+    is [Prop] and [y] is [Type(* @{I} *)]. If they are both types, it will
     try to equate its leveles. *)
-| unify {A : Type@{I}} (x y : A) : Unification -> t (moption@{I} (x =m= y))
+| unify {A : Type(* @{I} *)} (x y : A) : Unification -> t (moption(* @{I} *) (x =m= y))
 
 (** [munify_univ A B r] uses reduction strategy [r] to equate universes
     [A] and [B].  It uses cumulativity of universes, e.g., it succeeds if
-    [x] is [Prop] and [y] is [Type@{I}]. *)
-| unify_univ (A B : Type@{I}) : Unification -> t (moption (A -> B))
+    [x] is [Prop] and [y] is [Type(* @{I} *)]. *)
+| unify_univ (A B : Type(* @{I} *)) : Unification -> t (moption (A -> B))
 
 (** [get_reference s] returns the constant that is reference by s. *)
-| get_reference : string -> t dyn@{J}
+| get_reference : string -> t dyn(* @{J} *)
 
 (** [get_var s] returns the var named after s. *)
-| get_var : string -> t dyn@{J}
+| get_var : string -> t dyn(* @{J} *)
 
-| call_ltac : forall {A : Type@{I}}, string -> mlist@{I} dyn@{J} -> t (mprod@{I I} A (mlist@{I} goal@{H J}))
+| call_ltac : forall {A : Type(* @{I} *)}, string -> mlist(* @{I} *) dyn(* @{J} *) -> t (mprod(* @{I I} *) A (mlist(* @{I} *) goal(* @{H J} *)))
 | list_ltac : t unit
 
 (** [read_line] returns the string from stdin. *)
@@ -362,29 +362,29 @@ Inductive t@{H I J} : Type@{I} -> Prop :=
 (** [break f t] calls [f] at each step of the computation of [t]. [f]
     is expcted to return the term that receives as argument, or any
     transformation of it. *)
-| break' : forall (S : Type@{I} -> Prop),
-  (forall a : Type@{I}, S a -> t a) ->
-  (forall A : Type@{I}, S A -> t (S A)) -> forall {A : Type@{I}}, S A -> t A
+| break' : forall (S : Type(* @{I} *) -> Prop),
+  (forall a : Type(* @{I} *), S a -> t a) ->
+  (forall A : Type(* @{I} *), S A -> t (S A)) -> forall {A : Type(* @{I} *)}, S A -> t A
 
 (** [decompose x] decomposes value [x] into a head and a spine of
     arguments. For instance, [decompose (3 + 3)] returns
     [(Dyn add, [Dyn 3; Dyn 3])] *)
-| decompose : forall {A : Type@{I}}, A -> t (mprod@{I I} dyn@{J} (mlist@{I} dyn@{J}))
+| decompose : forall {A : Type(* @{I} *)}, A -> t (mprod(* @{I I} *) dyn(* @{J} *) (mlist(* @{I} *) dyn(* @{J} *)))
 
 (** [solve_typeclass A] calls type classes resolution for [A] and returns the result or fail. *)
-| solve_typeclass : forall (A:Type@{I}), t (moption A)
+| solve_typeclass : forall (A:Type(* @{I} *)), t (moption A)
 
 (** [declare dok name opaque t] defines [name] as definition kind
     [dok] with content [t] and opacity [opaque] *)
 | declare : forall (dok : definition_object_kind)
                    (name : string)
                    (opaque : bool),
-    forall {A : Type@{I}}, A -> t A
+    forall {A : Type(* @{I} *)}, A -> t A
 
 (** [declare_implicits r l] declares implicit arguments for global
     reference [r] according to [l] *)
-| declare_implicits : forall {A : Type@{I}} (a : A),
-    mlist@{I} implicit_arguments -> t unit
+| declare_implicits : forall {A : Type(* @{I} *)} (a : A),
+    mlist(* @{I} *) implicit_arguments -> t unit
 
 (** [os_cmd cmd] executes the command and returns its error number. *)
 | os_cmd : string -> t Z
