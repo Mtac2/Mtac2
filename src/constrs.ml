@@ -29,14 +29,14 @@ module Constr = struct
 end
 
 module ConstrBuilder = struct
-  type t = string
+  type t = (constr Lazy.t * string)
 
-  let from_string (s:string) : t = s
+  let from_string (s:string) : t = (Constr.mkConstr s, s)
 
-  let build s = Lazy.force (Constr.mkConstr s)
-  let build_app s args = mkApp (Lazy.force (Constr.mkConstr s), args)
+  let build (lc, _) = Lazy.force lc
+  let build_app (lc, _) args = mkApp (Lazy.force lc, args)
 
-  let equal s = Constr.isConstr (Constr.mkConstr s)
+  let equal (lc, _) = Constr.isConstr lc
 
   let from_coq s _ cterm =
     let (head, args) = decompose_appvect cterm in
@@ -185,15 +185,20 @@ module CoqSig = struct
 end
 
 module CoqNat = struct
-  let mkZero = Constr.mkConstr "Coq.Init.Datatypes.O"
-  let mkSucc = Constr.mkConstr "Coq.Init.Datatypes.S"
+  open ConstrBuilder
 
-  let isZero = Constr.isConstr mkZero
-  let isSucc = Constr.isConstr mkSucc
+  let zBuilder = from_string "Coq.Init.Datatypes.O"
+  let sBuilder = from_string "Coq.Init.Datatypes.S"
+
+  let mkZero = build zBuilder
+  let mkSucc n = build_app sBuilder [|n|]
+
+  let isZero = equal zBuilder
+  let isSucc = equal sBuilder
 
   let rec to_coq = function
-    | 0 -> Lazy.force mkZero
-    | n -> Term.mkApp (Lazy.force mkSucc, [| to_coq (pred n) |])
+    | 0 -> mkZero
+    | n -> mkSucc (to_coq (pred n))
 
   let from_coq (env, evd) c =
     let rec fc c =
@@ -213,13 +218,19 @@ module CoqNat = struct
 end
 
 module CoqPositive = struct
-  let xI = Constr.mkConstr "Coq.Numbers.BinNums.xI"
-  let xO = Constr.mkConstr "Coq.Numbers.BinNums.xO"
-  let xH = Constr.mkConstr "Coq.Numbers.BinNums.xH"
+  open ConstrBuilder
 
-  let isH = Constr.isConstr xH
-  let isI = Constr.isConstr xI
-  let isO = Constr.isConstr xO
+  let xIBuilder = from_string "Coq.Numbers.BinNums.xI"
+  let xOBuilder = from_string "Coq.Numbers.BinNums.xO"
+  let xHBuilder = from_string "Coq.Numbers.BinNums.xH"
+
+  let xI n = build_app xIBuilder [|n|]
+  let xO n = build_app xOBuilder [|n|]
+  let xH () = build xHBuilder
+
+  let isH = equal xHBuilder
+  let isI = equal xIBuilder
+  let isO = equal xOBuilder
 
   let from_coq (env, evd) c =
     let rec fc i c =
@@ -241,20 +252,26 @@ module CoqPositive = struct
 
   let rec to_coq n =
     if n = 1 then
-      Lazy.force xH
+      xH ()
     else if n mod 2 = 0 then
-      mkApp(Lazy.force xO, [|to_coq (n / 2)|])
+      xO (to_coq (n / 2))
     else
-      mkApp(Lazy.force xI, [|to_coq ((n-1)/2)|])
+      xI (to_coq ((n-1)/2))
 end
 
 module CoqN = struct
-  let tN = Constr.mkConstr "Coq.Numbers.BinNums.N"
-  let h0 = Constr.mkConstr "Coq.Numbers.BinNums.N0"
-  let hP = Constr.mkConstr "Coq.Numbers.BinNums.Npos"
+  open ConstrBuilder
 
-  let is0 = Constr.isConstr h0
-  let isP = Constr.isConstr hP
+  let tNBuilder = from_string "Coq.Numbers.BinNums.N"
+  let h0Builder = from_string "Coq.Numbers.BinNums.N0"
+  let hPBuilder = from_string "Coq.Numbers.BinNums.Npos"
+
+  let tN () = build tNBuilder
+  let h0 () = build h0Builder
+  let hP n = build_app hPBuilder [|n|]
+
+  let is0 = equal h0Builder
+  let isP = equal hPBuilder
 
   exception NotAnN
 
@@ -276,23 +293,29 @@ module CoqN = struct
 
   let to_coq n =
     if n = 0 then
-      Lazy.force h0
+      h0 ()
     else
-      mkApp(Lazy.force hP, [|CoqPositive.to_coq n|])
+      hP (CoqPositive.to_coq n)
 end
 
 module CoqZ = struct
-  let z0 = Constr.mkConstr "Coq.Numbers.BinNums.Z0"
-  let zpos = Constr.mkConstr "Coq.Numbers.BinNums.Zpos"
-  let zneg = Constr.mkConstr "Coq.Numbers.BinNums.Zneg"
+  open ConstrBuilder
+
+  let z0Builder =   from_string "Coq.Numbers.BinNums.Z0"
+  let zposBuilder = from_string "Coq.Numbers.BinNums.Zpos"
+  let znegBuilder = from_string "Coq.Numbers.BinNums.Zneg"
+
+  let z0 ()  = build z0Builder
+  let zpos n = build_app zposBuilder [|n|]
+  let zneg n = build_app znegBuilder [|n|]
 
   let to_coq n =
     if n = 0 then
-      Lazy.force z0
+      z0 ()
     else if n > 0 then
-      mkApp(Lazy.force zpos, [|CoqPositive.to_coq n|])
+      zpos (CoqPositive.to_coq n)
     else
-      mkApp(Lazy.force zneg, [|CoqPositive.to_coq n|])
+      zneg (CoqPositive.to_coq n)
 end
 
 module CoqBool = struct

@@ -191,7 +191,9 @@ module ReductionStrategy = struct
   open CClosure.RedFlags
   open Context
 
-  let isReduce c = isConstr "reduce" c
+  let reduce_l = mkConstr "reduce"
+
+  let isReduce c = eq_constr c (Lazy.force reduce_l)
 
   let has_definition ts env t =
     if isVar t then
