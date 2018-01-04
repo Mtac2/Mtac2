@@ -908,10 +908,8 @@ let rec run' ctxt (vms: vm list) =
       else
         let constr c =
           if Term.isConstruct c then
-            let ((m, ix), _) = Term.destConstruct c in
-            if Names.eq_ind m (fst (Term.destInd (Lazy.force mkT_lazy))) then
-              ix
-            else -1
+            let ((_, ix), _) = Term.destConstruct c in
+            ix
           else -1
         in
         match constr h with
