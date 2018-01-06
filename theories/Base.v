@@ -13,7 +13,7 @@ Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
-Inductive Exception : Type := exception : Exception.
+Inductive Exception : Prop := exception : Exception.
 
 Definition StuckTerm : Exception. exact exception. Qed.
 
@@ -106,18 +106,18 @@ Arguments rlcons {_} _ _.
 Notation "[]rl" := rlnil.
 Notation "[rl: x ; .. ; y ]" := (rlcons x (.. (rlcons y rlnil) ..)).
 
-Inductive RedFlags :=
+Inductive RedFlags@{I J} : Prop :=
 | RedBeta | RedDelta | RedMatch | RedFix | RedZeta
 | RedDeltaC | RedDeltaX
-| RedDeltaOnly : redlist dyn -> RedFlags
-| RedDeltaBut : redlist dyn -> RedFlags.
+| RedDeltaOnly : redlist@{I} dyn@{J} -> RedFlags
+| RedDeltaBut : redlist@{I} dyn@{J} -> RedFlags.
 
-Inductive Reduction :=
+Inductive Reduction@{I J} : Prop :=
 | RedNone
 | RedSimpl
 | RedOneStep
-| RedWhd : redlist RedFlags -> Reduction
-| RedStrong : redlist RedFlags -> Reduction
+| RedWhd : redlist@{I} RedFlags@{I J} -> Reduction
+| RedStrong : redlist@{I} RedFlags@{I J} -> Reduction
 | RedVmCompute.
 
 Inductive Unification : Type :=
@@ -138,7 +138,7 @@ Record Case :=
         }.
 
 (* Reduction primitive. It throws [NotAList] if the list of flags is not a list.  *)
-Definition reduce (r : Reduction) {A} (x : A) := x.
+Definition reduce@{I J K} (r : Reduction@{I J}) {A:Type@{K}} (x : A) := x.
 
 Notation RedAll := ([rl:RedBeta;RedDelta;RedZeta;RedMatch;RedFix]).
 Notation RedNF := (RedStrong RedAll).
@@ -222,8 +222,8 @@ Inductive t@{H I J} : Type@{I} -> Prop :=
 | ret : forall {A : Type@{I}}, A -> t A
 | bind : forall {A : Type@{I}} {B : Type@{I}},
    t A -> (A -> t B) -> t B
-| mtry' : forall {A : Type@{I}}, t A -> (Exception@{I} -> t A) -> t A
-| raise : forall {A : Type@{I}}, Exception@{I} -> t A
+| mtry' : forall {A : Type@{I}}, t A -> (Exception -> t A) -> t A
+| raise : forall {A : Type@{I}}, Exception -> t A
 | fix1' : forall {A : Type@{I}} {B : A -> Type@{I}} (S : Type@{I} -> Prop),
   (forall a : Type@{I}, S a -> t a) ->
   ((forall x : A, S (B x)) -> (forall x : A, S (B x))) ->
@@ -392,7 +392,7 @@ Inductive t@{H I J} : Type@{I} -> Prop :=
 
 Arguments t _%type.
 
-Definition fmap {A B} (f : A -> B) (x : t A) : t B :=
+Definition fmap {A:Type} {B:Type} (f : A -> B) (x : t A) : t B :=
   bind x (fun a => ret (f a)).
 Definition fapp {A B} (f : t (A -> B)) (x : t A) : t B :=
   bind f (fun g => fmap g x).
