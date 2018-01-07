@@ -453,7 +453,7 @@ End monad_notations.
 
 Import monad_notations.
 
-Fixpoint open_pattern@{a1 a2 a4 a5 I J K} {A P y} (p : pattern@{a1 a2 a4 a5} t A P y) : t@{I J K} (P y) :=
+Fixpoint open_pattern@{a1 a2 a4 a5 I K} {A P y} (p : pattern@{a1 a2 a4 a5} t A P y) : t@{I a1 K} (P y) :=
   match p with
   | pbase x f u =>
     oeq <- unify x y u;
@@ -461,7 +461,7 @@ Fixpoint open_pattern@{a1 a2 a4 a5 I J K} {A P y} (p : pattern@{a1 a2 a4 a5} t A
     | mSome eq =>
       (* eq has type x =m= t, but for the pattern we need t = x.
          we still want to provide eq_refl though, so we reduce it *)
-      let h := (* reduce@{b1 b2 b3} (RedWhd [rl:RedBeta;RedDelta;RedMatch]) *) (meq_sym@{J K} eq) in
+      let h := (* reduce@{b1 b2 b3} (RedWhd [rl:RedBeta;RedDelta;RedMatch]) *) (meq_sym@{a1 K} eq) in
       let 'meq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
       let b := (* reduce@{b1 b2 b3} (RedWhd [rl:RedBeta]) *) (f h) in b
@@ -470,11 +470,11 @@ Fixpoint open_pattern@{a1 a2 a4 a5 I J K} {A P y} (p : pattern@{a1 a2 a4 a5} t A
   | @ptele _ _ _ _ C f => e <- evar C; open_pattern (f e)
   end.
 
-Fixpoint mmatch' {A P} (y : A) (ps : mlist (pattern t A P y)) : t (P y) :=
+Fixpoint mmatch'@{a1 a2 a4 a5 I K J} {A:Type@{a1}} {P:A->Type@{a4}} (y : A) (ps : mlist@{J} (pattern@{a1 a2 a4 a5} t A P y)) : t@{I a1 K} (P y) :=
   match ps with
   | [m:] => raise NoPatternMatches
   | p :m: ps' =>
-    mtry' (open_pattern p) (fun e =>
+    mtry' (open_pattern@{a1 a2 a4 a5 I K} p) (fun e =>
       mif unify e DoesNotMatch UniMatchNoRed then mmatch' y ps' else raise e)
   end.
 
