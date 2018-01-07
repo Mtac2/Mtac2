@@ -162,9 +162,9 @@ Inductive goal@{K L} :=
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
 we could make it part of the B, but then higher order unification will fail. *)
-Inductive pattern (M : Type -> Type) (A : Type) (B : A -> Type) (y : A) : Prop :=
+Inductive pattern@{a b d e} (M : Type@{a} -> Type@{b}) (A : Type@{a}) (B : A -> Type@{d}) (y : A) : Prop :=
   | pbase : forall x : A, (y =m= x -> M (B x)) -> Unification -> pattern M A B y
-  | ptele : forall {C}, (forall x : C, pattern M A B y) -> pattern M A B y.
+  | ptele : forall {C:Type@{e}}, (forall x : C, pattern M A B y) -> pattern M A B y.
 
 Arguments pbase {M A B y} _ _ _.
 Arguments ptele {M A B y C} _.
@@ -453,7 +453,7 @@ End monad_notations.
 
 Import monad_notations.
 
-Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
+Fixpoint open_pattern@{a1 a2 a4 a5 I J K} {A P y} (p : pattern@{a1 a2 a4 a5} t A P y) : t@{I J K} (P y) :=
   match p with
   | pbase x f u =>
     oeq <- unify x y u;
@@ -461,10 +461,10 @@ Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
     | mSome eq =>
       (* eq has type x =m= t, but for the pattern we need t = x.
          we still want to provide eq_refl though, so we reduce it *)
-      let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
+      let h := (* reduce@{b1 b2 b3} (RedWhd [rl:RedBeta;RedDelta;RedMatch]) *) (meq_sym@{J K} eq) in
       let 'meq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
-      let b := reduce (RedWhd [rl:RedBeta]) (f h) in b
+      let b := (* reduce@{b1 b2 b3} (RedWhd [rl:RedBeta]) *) (f h) in b
     | mNone => raise DoesNotMatch
     end
   | @ptele _ _ _ _ C f => e <- evar C; open_pattern (f e)
