@@ -392,9 +392,9 @@ Inductive t@{H I J} : Type@{I} -> Prop :=
 
 Arguments t _%type.
 
-Definition fmap {A:Type} {B:Type} (f : A -> B) (x : t A) : t B :=
+Definition fmap@{H I J} {A:Type@{I}} {B:Type@{I}} (f : A -> B) (x : t@{H I J} A) : t@{H I J} B :=
   bind x (fun a => ret (f a)).
-Definition fapp {A B} (f : t (A -> B)) (x : t A) : t B :=
+Definition fapp@{H I J} {A:Type@{I}} {B:Type@{I}} (f : t@{H I J} (A -> B)) (x : t A) : t@{H I J} B :=
   bind f (fun g => fmap g x).
 
 Definition Cevar (A : Type) (ctx : mlist Hyp) : t A := gen_evar A (mSome ctx).
@@ -673,10 +673,10 @@ Definition unify_or_fail {A} (u : Unification) (x y : A) : t (x =m= y) :=
 Definition cumul_or_fail {A B} (u : Unification) (x: A) (y: B) : t unit :=
   mif cumul u x y then ret tt else raise (NotCumul x y).
 
-Definition names_of_hyp : t (mlist string) :=
-  env <- hyps;
-  mfold_left (fun (ns : t (mlist string)) '(ahyp var _) =>
-    mcons <$> get_binder_name var <*> ns) env (ret [m:]).
+Definition names_of_hyp@{H I J} : t@{H I J} (mlist@{Set} string) :=
+  env <- hyps@{H I J};
+  mfold_left@{Set I} (fun (ns : t@{H I J} (mlist@{Set} string)) '(ahyp var _) =>
+    fmap mcons@{Set} (get_binder_name@{H I J} var) <*> ns) env (ret@{H I J} [m:]).
 
 Definition hyps_except {A} (x : A) : t (mlist Hyp) :=
   filter (fun y =>
@@ -698,21 +698,21 @@ Definition anonymize (s : string) : t string :=
   let s' := rcbv ("__" ++ s)%string in
   ret s'.
 
-Definition fresh_name (name: string) : t string :=
-  names <- names_of_hyp;
-  let find name : t bool :=
-    let res := reduce RedNF (mfind (fun n => dec_bool (string_dec name n)) names) in
+Definition fresh_name@{H I J R1 R2} (name: string) : t@{H I J} string :=
+  names <- names_of_hyp@{H I J};
+  let find name : t@{H I J} bool :=
+    let res := reduce@{R1 R2 Set} RedNF (mfind (fun n => dec_bool (string_dec name n)) names) in
     match res with mNone => ret false | _ => ret true end
   in
   (mfix1 f (name: string) : M string :=
      mif find name then
-       let name := reduce RedNF (name ++ "_")%string in
+       let name := reduce@{R1 R2 Set} RedNF (name ++ "_")%string in
        f name
      else ret name) name.
 
-Definition fresh_binder_name {A} (x : A) : t string :=
-  name <- mtry get_binder_name x with WrongTerm => ret "x"%string end;
-  fresh_name name.
+Definition fresh_binder_name@{H I J R1 R2} {A:Type@{I}} (x : A) : t@{H I J} string :=
+  bind@{H I J} (mtry'@{H I J} (get_binder_name@{H I J} x) (fun _ => ret "x"%string)) (fun name=>
+  fresh_name@{H I J R1 R2} name).
 
 Definition unfold_projection {A} (y : A) : t A :=
   let x := rone_step y in
