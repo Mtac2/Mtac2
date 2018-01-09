@@ -725,7 +725,7 @@ Definition unify_or_fail {A} (u : Unification) (x y : A) : t (x =m= y) :=
 Definition cumul_or_fail {A B} (u : Unification) (x: A) (y: B) : t unit :=
   mif cumul u x y then ret tt else raise (NotCumul x y).
 
-Definition names_of_hyp@{I J} : t@{I} (mlist@{Set} string) :=
+Definition names_of_hyp@{I J} : t@{Set} (mlist@{Set} string) :=
   env <- hyps@{I J};
   mfold_left@{Set J} (fun (ns : t@{Set} (mlist@{Set} string)) '(ahyp var _) =>
     fmap mcons@{Set} (get_binder_name@{J} var) <*> ns) env (ret@{Set} [m:]).
@@ -750,21 +750,22 @@ Definition anonymize (s : string) : t string :=
   let s' := rcbv ("__" ++ s)%string in
   ret s'.
 
-Definition fresh_name(*@{H I J R1 R2}*) (name: string) : t(*@{H I J}*) string :=
-  names <- names_of_hyp(*@{H I J}*);
-  let find name : t(*@{H I J}*) bool :=
-    let res := reduce(*@{R1 R2 Set}*) RedNF (mfind (fun n => dec_bool (string_dec name n)) names) in
+Definition fresh_name@{I J} (name: string) : t@{Set} string :=
+  names <- names_of_hyp@{I J};
+  let find name : t@{Set} bool :=
+    let res := reduce@{Set Set} RedNF (mfind (fun n => dec_bool (string_dec name n)) names) in
     match res with mNone => ret false | _ => ret true end
   in
-  (mfix1 f (name: string) : M string :=
-     mif find name then
-       let name := reduce(*@{R1 R2 Set}*) RedNF (name ++ "_")%string in
-       f name
-     else ret name) name.
+  fix1@{Set Set} _ (fun f (name: string) =>
+     bind@{Set Set} (find name) (fun b=>
+     if b then
+       let name := reduce@{Set Set} RedNF (name ++ "_")%string in
+       f name : t@{Set} string
+     else ret@{Set} name)) name.
 
-Definition fresh_binder_name(*@{H I J R1 R2}*) {A:Type(*(*@{I}*)*)} (x : A) : t(*@{H I J}*) string :=
-  bind(*@{H I J}*) (mtry'(*@{H I J}*) (get_binder_name(*@{H I J}*) x) (fun _ => ret "x"%string)) (fun name=>
-  fresh_name(*@{H I J R1 R2}*) name).
+Definition fresh_binder_name@{a I J} {A:Type@{a}} (x : A) : t@{Set} string :=
+  bind(*@{H I J}*) (mtry'@{Set} (get_binder_name@{a} x) (fun _ => ret "x"%string)) (fun name=>
+  fresh_name@{I J} name).
 
 Definition unfold_projection {A} (y : A) : t A :=
   let x := rone_step y in

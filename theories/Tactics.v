@@ -122,9 +122,9 @@ Definition close_goals {A B} (y : B) : mlist (A *m goal) -> M (mlist (A *m goal)
 
 (** [let_close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] with its definition to each of them (it assumes it is defined). *)
-Definition let_close_goals {A B} (y : B) : mlist (A *m goal) -> M (mlist (A *m goal)) :=
-  let t := rone_step y in (* to obtain x's definition *)
-  M.map (fun '(m: x,g') => r <- M.abs_fun y g'; M.ret (m: x, @AHyp B (mSome t) r)).
+Definition let_close_goals@{a b g1 g2 l} {A: Type@{a}} {B:Type@{b}} (y : B) : mlist@{l} (A *m goal@{g1 g2}) -> M (mlist@{l} (mprod@{a l} A goal@{g1 g2})) :=
+  let t := reduce@{Set b} RedOneStep y in (* to obtain x's definition *)
+  M.map (fun '(m: x,g') => r <- M.abs_fun@{b l l} y g'; M.ret (m: x, @AHyp B (mSome t) r)).
 
 (** [rem_hyp x l] "removes" hypothesis [x] from the list of goals [l]. *)
 Definition rem_hyp {A B} (x : B) (l: mlist (A *m goal)) : M (mlist (A *m goal)) :=
@@ -149,16 +149,16 @@ Definition filter_goals {A} : mlist (A *m goal) -> M (mlist (A *m goal)) :=
 (** [open_and_apply t] is a tactic that "opens" the current goal
     (pushes all the hypotheses in the context) and applies tactic [t]
     to the so-opened goal. The result is "closed" back. *)
-Definition open_and_apply@{a g1 g2 rg1 rg2 l} {A} (t : gtactic@{a g1 g2 rg1 rg2 l} A) : gtactic@{a g1 g2 rg1 rg2 l} A :=
+Definition open_and_apply@{a g1 g2 rg1 rg2 l I J c} {A} (t : gtactic@{a g1 g2 rg1 rg2 l} A) : gtactic@{a g1 g2 rg1 rg2 l} A :=
   fix open g :=
     match g return M _ with
     | Goal _ => t g
     | @AHyp C mNone f =>
-      x <- M.fresh_binder_name f;
+      x <- M.fresh_binder_name@{c I J} f;
       M.nu x mNone (fun x : C =>
         open (f x) >>= close_goals x)
     | @AHyp C (mSome t) f =>
-      x <- M.fresh_binder_name f;
+      x <- M.fresh_binder_name@{c I J} f;
       M.nu x (mSome t) (fun x : C =>
         open (f x) >>= let_close_goals x)
     | HypRem x f =>
