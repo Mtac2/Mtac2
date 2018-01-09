@@ -12,6 +12,7 @@ Import Mtac2.List.ListNotations.
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
+Set Printing Universes.
 
 Inductive Exception : Prop := exception : Exception.
 
@@ -95,8 +96,9 @@ Inductive implicit_arguments :=
 | ia_Implicit
 | ia_MaximallyImplicit.
 
-Polymorphic Record dyn := Dyn { type : Type; elem :> type }.
-Arguments Dyn {_} _.
+Inductive dyn@{a} : Prop := Dyn : forall {type : Type@{a}} (elem : type), dyn.
+Record dynr := Dynr { typer: Type; elemr:> typer }.
+Arguments Dynr {_} _.
 
 Inductive redlist A := rlnil | rlcons : A -> redlist A -> redlist A.
 
@@ -106,18 +108,18 @@ Arguments rlcons {_} _ _.
 Notation "[]rl" := rlnil.
 Notation "[rl: x ; .. ; y ]" := (rlcons x (.. (rlcons y rlnil) ..)).
 
-Inductive RedFlags@{I J} : Prop :=
+Inductive RedFlags@{a} : Prop :=
 | RedBeta | RedDelta | RedMatch | RedFix | RedZeta
 | RedDeltaC | RedDeltaX
-| RedDeltaOnly : redlist@{I} dyn@{J} -> RedFlags
-| RedDeltaBut : redlist@{I} dyn@{J} -> RedFlags.
+| RedDeltaOnly : redlist@{a} dyn@{a} -> RedFlags
+| RedDeltaBut : redlist@{a} dyn@{a} -> RedFlags.
 
-Inductive Reduction@{I J} : Prop :=
+Inductive Reduction@{a} : Prop :=
 | RedNone
 | RedSimpl
 | RedOneStep
-| RedWhd : redlist@{I} RedFlags@{I J} -> Reduction
-| RedStrong : redlist@{I} RedFlags@{I J} -> Reduction
+| RedWhd : redlist@{a} RedFlags@{a} -> Reduction
+| RedStrong : redlist@{a} RedFlags@{a} -> Reduction
 | RedVmCompute.
 
 Inductive Unification : Type :=
@@ -129,16 +131,16 @@ Inductive Unification : Type :=
 Inductive Hyp : Type :=
 | ahyp : forall {A}, A -> moption A -> Hyp.
 
-Record Case :=
+Record Case@{a c} :=
     mkCase {
-        case_ind : Type;
+        case_ind : Type@{a};
         case_val : case_ind;
-        case_return : dyn;
-        case_branches : mlist dyn
+        case_return : dyn@{c};
+        case_branches : mlist@{c} dyn@{c}
         }.
 
 (* Reduction primitive. It throws [NotAList] if the list of flags is not a list.  *)
-Definition reduce@{I J K} (r : Reduction@{I J}) {A:Type@{K}} (x : A) := x.
+Definition reduce@{r a} (r : Reduction@{r}) {A:Type@{a}} (x : A) := x.
 
 Notation RedAll := ([rl:RedBeta;RedDelta;RedZeta;RedMatch;RedFix]).
 Notation RedNF := (RedStrong RedAll).
@@ -162,8 +164,8 @@ Inductive goal@{K L} :=
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
 we could make it part of the B, but then higher order unification will fail. *)
-Inductive pattern@{a b d e} (M : Type@{a} -> Type@{b}) (A : Type@{a}) (B : A -> Type@{d}) (y : A) : Prop :=
-  | pbase : forall x : A, (y =m= x -> M (B x)) -> Unification -> pattern M A B y
+Inductive pattern@{a b e} (M : Type@{b} -> Type@{b}) (A : Type@{a}) (B : A -> Type@{b}) (y : A) : Prop :=
+  | pbase : forall x : A, (y =m= x ->M (B x)) -> Unification -> pattern M A B y
   | ptele : forall {C:Type@{e}}, (forall x : C, pattern M A B y) -> pattern M A B y.
 
 Arguments pbase {M A B y} _ _ _.
@@ -213,71 +215,92 @@ Notation "'with' p1 | .. | pn 'end'" :=
 Delimit Scope with_pattern_scope with with_pattern.
 
 (** THE definition of the monad *)
-Set Printing Universes.
 Unset Printing Notations.
 
 Module M.
 Import ProdNotations.
-Inductive t@{t} : Type@{t} -> Prop := mkt : forall a, t a.
+Inductive t@{t} : Type@{t} -> Prop := mkt : forall{a}, t a.
 
-Definition ret@{a} : forall {A : Type@{a}}, A -> t@{a} A. refine (fun a _=>mkt a). Qed.
-Definition bind@{a b} : forall {A : Type@{a}} {B : Type@{b}},
-   t A -> (A -> t B) -> t@{b} B. refine (fun a b _ _=>mkt b). Qed.
-Definition mtry'@{a} : forall {A : Type@{a}}, t@{a} A -> (Exception -> t@{a} A) -> t@{a} A. refine (fun A _ _ => mkt A). Qed.
-Definition raise : forall {A : Type@{I}}, Exception -> t A
-| fix1' : forall {A : Type@{I}} {B : A -> Type@{I}} (S : Type@{I} -> Prop),
-  (forall a : Type@{I}, S a -> t a) ->
-  ((forall x : A, S (B x)) -> (forall x : A, S (B x))) ->
-  forall x : A, t (B x)
-| fix2' : forall {A1 : Type@{I}} {A2 : A1 -> Type@{I}} {B : forall (a1 : A1), A2 a1 -> Type@{I}} (S : Type@{I} -> Prop),
-  (forall a : Type@{I}, S a -> t a) ->
-  ((forall (x1 : A1) (x2 : A2 x1), S (B x1 x2)) ->
-    (forall (x1 : A1) (x2 : A2 x1), S (B x1 x2))) ->
-  forall (x1 : A1) (x2 : A2 x1), t (B x1 x2)
-| fix3' : forall {A1 : Type@{I}} {A2 : A1 -> Type@{I}}  {A3 : forall (a1 : A1), A2 a1 -> Type@{I}} {B : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type@{I}} (S : Type@{I} -> Prop),
-  (forall a : Type@{I}, S a -> t a) ->
-  ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), S (B x1 x2 x3)) ->
-    (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), S (B x1 x2 x3))) ->
-  forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), t (B x1 x2 x3)
-| fix4' : forall {A1 : Type@{I}} {A2 : A1 -> Type@{I}} {A3 : forall (a1 : A1), A2 a1 -> Type@{I}} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type@{I}} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type@{I}} (S : Type@{I} -> Prop),
-  (forall a : Type@{I}, S a -> t a) ->
+Definition ret@{a} : forall {A : Type@{a}}, A -> t@{a} A.
+  refine (fun a _=>mkt). Qed.
+
+Definition bind@{a b} : forall {A : Type@{a}} {B : Type@{b}}, t A -> (A -> t B) -> t@{b} B.
+  refine (fun a b _ _=>mkt). Qed.
+
+Definition mtry'@{a} : forall {A : Type@{a}}, t@{a} A -> (Exception -> t@{a} A) -> t@{a} A.
+  refine (fun A _ _ => mkt). Qed.
+
+Definition raise@{a} : forall {A : Type@{a}}, Exception -> t@{a} A.
+  refine (fun A _ => mkt). Qed.
+
+Definition fix1'@{a b} : forall{A: Type@{a}} {B: A->Type@{b}} (S: Type@{b}->Prop),
+  (forall a: Type@{b}, S a->t a) ->
+  ((forall x: A, S (B x))->(forall x: A, S (B x))) ->
+  forall x: A, t@{b} (B x).
+  refine (fun A B _ _ _ x=>mkt). Qed.
+
+Definition fix2'@{a1 a2 b} : forall {A1: Type@{a1}} {A2: A1->Type@{a2}} {B: forall (a1 : A1), A2 a1->Type@{b}} (S: Type@{b}->Prop),
+  (forall a: Type@{b}, S a -> t a) ->
+  ((forall (x1: A1) (x2: A2 x1), S (B x1 x2)) ->
+    (forall (x1: A1) (x2: A2 x1), S (B x1 x2))) ->
+  forall (x1: A1) (x2: A2 x1), t (B x1 x2).
+  refine (fun A1 A2 B _ _ _ x1 x2=>mkt). Qed.
+
+Definition fix3'@{a1 a2 a3 b} : forall {A1: Type@{a1}} {A2: A1->Type@{a2}} {A3 : forall (a1: A1), A2 a1->Type@{a3}} {B: forall (a1: A1) (a2: A2 a1), A3 a1 a2->Type@{b}} (S : Type@{b}->Prop),
+  (forall a: Type@{b}, S a -> t a) ->
+  ((forall (x1: A1) (x2: A2 x1) (x3: A3 x1 x2), S (B x1 x2 x3)) ->
+    (forall (x1: A1) (x2: A2 x1) (x3: A3 x1 x2), S (B x1 x2 x3))) ->
+  forall (x1: A1) (x2: A2 x1) (x3: A3 x1 x2), t (B x1 x2 x3).
+  refine (fun A1 A2 A3 B _ _ _ x1 x2 x3=>mkt). Qed.
+
+Definition fix4'@{a1 a2 a3 a4 b} : forall {A1: Type@{a1}} {A2: A1->Type@{a2}} {A3: forall (a1: A1), A2 a1->Type@{a3}} {A4: forall (a1: A1) (a2: A2 a1), A3 a1 a2->Type@{a4}} {B: forall (a1: A1) (a2: A2 a1) (a3: A3 a1 a2), A4 a1 a2 a3->Type@{b}} (S : Type@{b} -> Prop),
+  (forall a: Type@{b}, S a->t a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4))) ->
-  forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), t (B x1 x2 x3 x4)
-| fix5' : forall {A1 : Type@{I}} {A2 : A1 -> Type@{I}} {A3 : forall (a1 : A1), A2 a1 -> Type@{I}} {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type@{I}} {A5 : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type@{I}} {B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2) (a4 : A4 a1 a2 a3), A5 a1 a2 a3 a4 -> Type@{I}} (S : Type@{I} -> Prop),
-  (forall a : Type@{I}, S a -> t a) ->
+  forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), t (B x1 x2 x3 x4).
+  refine (fun A1 A2 A3 A4 B _ _ _ x1 x2 x3 x4=>mkt). Qed.
+
+Definition fix5'@{a1 a2 a3 a4 a5 b}: forall{A1: Type@{a1}} {A2: A1->Type@{a2}} {A3: forall(a1: A1), A2 a1->Type@{a3}} {A4: forall(a1: A1)(a2: A2 a1), A3 a1 a2->Type@{a4}} {A5: forall(a1: A1)(a2: A2 a1)(a3: A3 a1 a2), A4 a1 a2 a3->Type@{a5}} {B: forall(a1: A1)(a2: A2 a1)(a3: A3 a1 a2)(a4: A4 a1 a2 a3), A5 a1 a2 a3 a4->Type@{b}} (S : Type@{b}->Prop),
+  (forall a : Type@{b}, S a -> t a) ->
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5))) ->
-  forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), t (B x1 x2 x3 x4 x5)
+  forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), t (B x1 x2 x3 x4 x5).
+  refine (fun A1 A2 A3 A4 A5 B _ _ _ x1 x2 x3 x4 x5=>mkt). Qed.
 
 (** [is_var e] returns if [e] is a variable. *)
-| is_var : forall {A : Type@{I}}, A -> t bool
+Definition is_var@{a}: forall{A : Type@{a}}, A->t@{Set} bool.
+  refine (fun _ _=>mkt). Qed.
 
 (* [nu x od f] executes [f x] where variable [x] is added to the local context,
    optionally with definition [d] with [od = Some d].  It raises
    [NameExistsInContext] if the name "x" is in the context, or
    [VarAppearsInValue] if executing [f x] results in a term containing variable
    [x]. *)
-| nu : forall {A : Type@{I}} {B : Type@{I}}, string -> moption A -> (A -> t B) -> t B
+Definition nu@{a b}: forall{A: Type@{a}}{B: Type@{b}}, string -> moption@{a} A -> (A -> t@{b} B) -> t@{b} B.
+  refine (fun _ _ _ _ _ =>mkt). Qed.
 
 (** [abs_fun x e] abstracts variable [x] from [e]. It raises [NotAVar] if [x]
     is not a variable, or [AbsDependencyError] if [e] or its type [P] depends on
     a variable also depending on [x]. *)
-| abs_fun : forall {A : Type@{I}} {P : A -> Type@{I}} (x : A), P x -> t (forall x, P x)
+Definition abs_fun@{a b c}: forall{A: Type@{a}} {P: A->Type@{b}} (x: A), P x -> t@{c} (forall x, P x).
+  refine (fun _ _ _ _ => mkt). Qed.
 
 (** [abs_let x d e] returns [let x := d in e]. It raises [NotAVar] if [x] is not
     a variable, or [AbsDependencyError] if [e] or its type [P] depends on a
     variable also depending on [x]. *)
-| abs_let : forall {A : Type@{I}} {P : A -> Type@{I}} (x: A) (y: A), P x -> t (let x := y in P x)
+Definition abs_let@{a b c}: forall{A: Type@{a}} {P: A->Type@{b}} (x: A) (y: A), P x -> t@{c} (let x := y in P x).
+  refine (fun _ _ _ _ _=> mkt). Qed.
 
 (** [abs_prod x e] returns [forall x, e]. It raises [NotAVar] if [x] is not a
     variable, or [AbsDependencyError] if [e] or its type [P] depends on a
     variable also depending on [x]. *)
-| abs_prod : forall {A : Type@{I}} (x : A), Type@{I} -> t Type@{J}
+Definition abs_prod@{a b c}: forall{A: Type@{a}} (x : A), Type@{a} -> t@{c} Type@{b}.
+  refine (fun _ _ _=> mkt). Qed.
 
 (** [abs_fix f t n] returns [fix f {struct n} := t].
     [f]'s type must have n products, that is, be [forall x1, ..., xn, T] *)
-| abs_fix : forall {A : Type@{I}}, A -> A -> N -> t A
+Definition abs_fix@{a}: forall{A: Type@{a}}, A -> A -> N -> t@{a} A.
+  refine (fun _ _ _ _=> mkt). Qed.
 
 (** [get_binder_name t] returns the name of variable [x] if:
     - [t = x],
@@ -286,12 +309,14 @@ Definition raise : forall {A : Type@{I}}, Exception -> t A
     - [t = let x := d in b].
     It raises [WrongTerm] in any other case.
 *)
-| get_binder_name : forall {A : Type@{I}}, A -> t string
+Definition get_binder_name@{a}: forall{A: Type@{a}}, A -> t@{Set} string.
+  refine (fun _ _=> mkt). Qed.
 
 (** [remove x t] executes [t] in a context without variable [x].
     Raises [NotAVar] if [x] is not a variable, and
     [CannotRemoveVar "x"] if [t] or the environment depends on [x]. *)
-| remove : forall {A : Type@{I}} {B : Type@{I}}, A -> t B -> t B
+Definition remove@{a b} : forall{A: Type@{a}} {B: Type@{b}}, A -> t@{b} B -> t@{b} B.
+  refine (fun _ _ _ _=> mkt). Qed.
 
 (** [gen_evar A ohyps] creates a meta-variable with type [A] and,
     optionally, in the context resulting from [ohyp].
@@ -308,98 +333,123 @@ Definition raise : forall {A : Type@{I}}, Exception -> t A
     something that is not a variable, it raises [NotAVar]. If it contains duplicated
     occurrences of a variable, it raises a [DuplicatedVariable].
 *)
-| gen_evar : forall (A : Type@{I}), moption (mlist@{I} Hyp@{J}) -> t A
+Definition gen_evar@{a b c}: forall(A: Type@{a}), moption@{c} (mlist@{c} Hyp@{b}) -> t@{a} A.
+  refine (fun _ _=>mkt). Qed.
 
 (** [is_evar e] returns if [e] is a meta-variable. *)
-| is_evar : forall {A : Type@{I}}, A -> t bool
+Definition is_evar@{a}: forall{A: Type@{a}}, A -> t@{Set} bool.
+  refine (fun _ _=>mkt). Qed.
 
 (** [hash e n] returns a number smaller than [n] representing
     a hash of term [e] *)
-| hash : forall {A : Type@{I}}, A -> N -> t N
+Definition hash@{a}: forall{A: Type@{a}}, A -> N -> t@{Set} N.
+  refine (fun _ _ _=>mkt). Qed.
 
 (** [solve_typeclasses] calls type classes resolution. *)
-| solve_typeclasses : t unit
+Definition solve_typeclasses : t@{Set} unit.
+  refine mkt. Qed.
 
 (** [print s] prints string [s] to stdout. *)
-| print : string -> t unit
+Definition print : string -> t@{Set} unit.
+  refine (fun _=>mkt). Qed.
 
 (** [pretty_print e] converts term [e] to string. *)
-| pretty_print : forall {A : Type@{I}}, A -> t string
+Definition pretty_print@{a} : forall{A: Type@{a}}, A -> t@{Set} string.
+  refine (fun _ _ =>mkt). Qed.
 
 (** [hyps] returns the list of hypotheses. *)
-| hyps : t (mlist@{I} Hyp@{J})
+Definition hyps@{b c}: t@{c} (mlist@{c} Hyp@{b}).
+  refine mkt. Qed.
 
-| destcase : forall {A : Type@{I}} (a : A), t (Case@{H H I J})
+Definition destcase@{a c1 c2 d}: forall{A: Type@{a}} (a: A), t@{d} (Case@{c1 c2}).
+  refine (fun _ _ =>mkt). Qed.
 
-(** Given an inductive type A, applied to all its parameters (but not *)
-(*     necessarily indices), it returns the type applied to exactly the *)
-(*     parameters, and a list of constructors (applied to the parameters). *)
-| constrs : forall {A : Type@{I}} (a : A), t (mprod@{I I} dyn@{H} (mlist@{I} dyn@{J}))
-| makecase : forall (C : Case@{H H I J}), t dyn@{J}
+(** Given an inductive type A, applied to all its parameters (but not
+    necessarily indices), it returns the type applied to exactly the
+    parameters, and a list of constructors (applied to the parameters). *)
+Definition constrs@{a c}: forall{A: Type@{a}} (a: A), t@{c} (mprod@{c c} dyn@{c} (mlist@{c} dyn@{c})).
+  refine (fun _ _ =>mkt). Qed.
+
+Definition makecase@{c1 c2}: forall(C: Case@{c1 c2}), t@{c2} dyn@{c2}.
+  refine (fun _ =>mkt). Qed.
 
 (** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
     It uses convertibility of universes, meaning that it fails if [x]
     is [Prop] and [y] is [Type@{I}]. If they are both types, it will
     try to equate its leveles. *)
-| unify {A : Type@{I}} (x y : A) : Unification -> t (moption@{I} (x =m= y))
+Definition unify@{a} {A: Type@{a}} (x y: A) : Unification -> t@{a} (moption@{a} (meq@{a} x y)).
+  refine (fun _=>mkt). Qed.
 
 (** [munify_univ A B r] uses reduction strategy [r] to equate universes
     [A] and [B].  It uses cumulativity of universes, e.g., it succeeds if
     [x] is [Prop] and [y] is [Type@{I}]. *)
-| unify_univ (A B : Type@{I}) : Unification -> t (moption (A -> B))
+Definition unify_univ@{a b c} (A: Type@{a}) (B: Type@{b}) : Unification -> t@{c} (moption@{c} (A->B)).
+  refine (fun _=>mkt). Qed.
 
 (** [get_reference s] returns the constant that is reference by s. *)
-| get_reference : string -> t dyn@{J}
+Definition get_reference@{a}: string -> t@{a} dyn@{a}.
+  refine (fun _=>mkt). Qed.
 
 (** [get_var s] returns the var named after s. *)
-| get_var : string -> t dyn@{J}
+Definition get_var@{a}: string -> t@{a} dyn@{a}.
+  refine (fun _=>mkt). Qed.
 
-| call_ltac : forall {A : Type@{I}}, string -> mlist@{I} dyn@{J} -> t (mprod@{I I} A (mlist@{I} goal@{H J}))
-| list_ltac : t unit
+Definition call_ltac : forall{A: Type}, string->mlist dyn -> t (mprod A (mlist goal)).
+  refine (fun _ _ _ =>mkt). Qed.
+
+Definition list_ltac: t@{Set} unit.
+  refine mkt. Qed.
 
 (** [read_line] returns the string from stdin. *)
-| read_line : t string
+Definition read_line: t@{Set} string.
+  refine mkt. Qed.
 
 (** [break f t] calls [f] at each step of the computation of [t]. [f]
     is expcted to return the term that receives as argument, or any
     transformation of it. *)
-| break' : forall (S : Type@{I} -> Prop),
-  (forall a : Type@{I}, S a -> t a) ->
-  (forall A : Type@{I}, S A -> t (S A)) -> forall {A : Type@{I}}, S A -> t A
+Definition break' : forall (S : Type -> Prop),
+  (forall a : Type, S a -> t a) ->
+  (forall A : Type, S A -> t (S A)) -> forall {A : Type}, S A -> t A.
+  refine (fun _ _ _ _ _ =>mkt). Qed.
+
 
 (** [decompose x] decomposes value [x] into a head and a spine of
     arguments. For instance, [decompose (3 + 3)] returns
     [(Dyn add, [Dyn 3; Dyn 3])] *)
-| decompose : forall {A : Type@{I}}, A -> t (mprod@{I I} dyn@{J} (mlist@{I} dyn@{J}))
+Definition decompose@{a} : forall {A: Type@{a}}, A -> t@{a} (mprod@{a a} dyn@{a} (mlist@{a} dyn@{a})).
+  refine (fun _ _  =>mkt). Qed.
 
 (** [solve_typeclass A] calls type classes resolution for [A] and returns the result or fail. *)
-| solve_typeclass : forall (A:Type@{I}), t (moption A)
+Definition solve_typeclass@{a} : forall (A:Type@{a}), t@{a} (moption@{a} A).
+  refine (fun _  =>mkt). Qed.
 
 (** [declare dok name opaque t] defines [name] as definition kind
     [dok] with content [t] and opacity [opaque] *)
-| declare : forall (dok : definition_object_kind)
-                   (name : string)
-                   (opaque : bool),
-    forall {A : Type@{I}}, A -> t A
+Definition declare@{a}: forall (dok: definition_object_kind)
+                   (name: string)
+                   (opaque: bool),
+    forall{A : Type@{a}}, A -> t@{a} A.
+  refine (fun _ _ _ _ _ =>mkt). Qed.
 
 (** [declare_implicits r l] declares implicit arguments for global
     reference [r] according to [l] *)
-| declare_implicits : forall {A : Type@{I}} (a : A),
-    mlist@{I} implicit_arguments -> t unit
+Definition declare_implicits@{a}: forall {A: Type@{a}} (a : A),
+    mlist@{Set} implicit_arguments -> t@{Set} unit.
+  refine (fun _ _ _ => mkt). Qed.
 
 (** [os_cmd cmd] executes the command and returns its error number. *)
-| os_cmd : string -> t Z
-.
+Definition os_cmd: string -> t@{Set} Z.
+  refine (fun _ => mkt). Qed.
 
 Arguments t _%type.
 
-Definition fmap@{H I J} {A:Type@{I}} {B:Type@{I}} (f : A -> B) (x : t@{H I J} A) : t@{H I J} B :=
+Definition fmap@{a b} {A:Type@{a}} {B:Type@{b}} (f : A -> B) (x : t@{a} A) : t@{b} B :=
   bind x (fun a => ret (f a)).
-Definition fapp@{H I J} {A:Type@{I}} {B:Type@{I}} (f : t@{H I J} (A -> B)) (x : t A) : t@{H I J} B :=
+Definition fapp@{a b} {A:Type@{a}} {B:Type@{b}} (f : t@{b} (A -> B)) (x : t@{b} A) : t@{b} B :=
   bind f (fun g => fmap g x).
 
 Definition Cevar (A : Type) (ctx : mlist Hyp) : t A := gen_evar A (mSome ctx).
-Definition evar (A : Type) : t A := gen_evar A mNone.
+Definition evar@{a b} (A : Type@{a}) : t@{a} A := gen_evar@{a Set b} A mNone.
 
 Definition failwith {A} (s : string) : t A := raise (Failure s).
 
@@ -454,7 +504,7 @@ End monad_notations.
 
 Import monad_notations.
 
-Fixpoint open_pattern@{a1 a2 a4 a5 I K} {A P y} (p : pattern@{a1 a2 a4 a5} t A P y) : t@{I a1 K} (P y) :=
+Fixpoint open_pattern@{a1 a2 a3 I K a b} {A P y} (p : pattern@{a1 a2 a3} t A P y) : t@{a2} (P y) :=
   match p with
   | pbase x f u =>
     oeq <- unify x y u;
@@ -468,15 +518,16 @@ Fixpoint open_pattern@{a1 a2 a4 a5 I K} {A P y} (p : pattern@{a1 a2 a4 a5} t A P
       let b := (* reduce@{b1 b2 b3} (RedWhd [rl:RedBeta]) *) (f h) in b
     | mNone => raise DoesNotMatch
     end
-  | @ptele _ _ _ _ C f => e <- evar C; open_pattern (f e)
+  | @ptele _ _ _ _ C f => e <- evar@{a b} C; open_pattern (f e)
   end.
 
-Fixpoint mmatch'@{a1 a2 a4 a5 I K J} {A:Type@{a1}} {P:A->Type@{a4}} (y : A) (ps : mlist@{J} (pattern@{a1 a2 a4 a5} t A P y)) : t@{I a1 K} (P y) :=
+Fixpoint mmatch'@{a1 a2 a3 a b I K J} {A:Type@{a1}} {P:A->Type@{a2}} (y : A) (ps : mlist@{J} (pattern@{a1 a2 a3} t A P y)) : t@{a2} (P y) :=
   match ps with
   | [m:] => raise NoPatternMatches
   | p :m: ps' =>
-    mtry' (open_pattern@{a1 a2 a4 a5 I K} p) (fun e =>
-      mif unify e DoesNotMatch UniMatchNoRed then mmatch' y ps' else raise e)
+    mtry'@{a1} (open_pattern@{a1 a2 a3 a b I K} p) (fun e =>
+      bind@{Set a1} (unify e DoesNotMatch UniMatchNoRed) (fun b=>
+      if b then mmatch' y ps' else raise e))
   end.
 
 Module notations.
@@ -625,11 +676,11 @@ Definition iterate {A} (f : A -> t unit) : mlist A -> t unit :=
     end.
 
 (** More utilitie *)
-Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
-  (mfix1 app (d : dyn) : M _ :=
+Definition mwith {A B} (c : A) (n : string) (v : B) : t dynr :=
+  (mfix1 app (d : dynr) : M _ :=
     let (ty, el) := d in
     mmatch d with
-    | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
+    | [? T1 T2 f] @Dynr (forall x:T1, T2 x) f =>
       let ty := reduce (RedWhd [rl:RedBeta]) ty in
       binder <- get_binder_name ty;
       mif unify binder n UniMatchNoRed then
@@ -637,15 +688,15 @@ Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
         match oeq' with
         | mSome eq' =>
           let v' := reduce (RedWhd [rl:RedMatch]) match eq' as x in _ =m= x with meq_refl=> v end in
-          ret (Dyn (f v'))
+          ret (Dynr (f v'))
         | _ => raise (WrongType T1)
         end
       else
         e <- evar T1;
-        app (Dyn (f e))
+        app (Dynr (f e))
     | _ => raise (NameNotFound n)
     end
-  ) (Dyn c).
+  ) (Dynr c).
 
 Definition type_of {A} (x : A) : Type := A.
 Definition type_inside {A} (x : t A) : Type := A.
@@ -674,10 +725,10 @@ Definition unify_or_fail {A} (u : Unification) (x y : A) : t (x =m= y) :=
 Definition cumul_or_fail {A B} (u : Unification) (x: A) (y: B) : t unit :=
   mif cumul u x y then ret tt else raise (NotCumul x y).
 
-Definition names_of_hyp@{H I J} : t@{H I J} (mlist@{Set} string) :=
-  env <- hyps@{H I J};
-  mfold_left@{Set I} (fun (ns : t@{H I J} (mlist@{Set} string)) '(ahyp var _) =>
-    fmap mcons@{Set} (get_binder_name@{H I J} var) <*> ns) env (ret@{H I J} [m:]).
+Definition names_of_hyp@{I J} : t@{I} (mlist@{Set} string) :=
+  env <- hyps@{I J};
+  mfold_left@{Set J} (fun (ns : t@{Set} (mlist@{Set} string)) '(ahyp var _) =>
+    fmap mcons@{Set} (get_binder_name@{J} var) <*> ns) env (ret@{Set} [m:]).
 
 Definition hyps_except {A} (x : A) : t (mlist Hyp) :=
   filter (fun y =>
@@ -699,21 +750,21 @@ Definition anonymize (s : string) : t string :=
   let s' := rcbv ("__" ++ s)%string in
   ret s'.
 
-Definition fresh_name@{H I J R1 R2} (name: string) : t@{H I J} string :=
-  names <- names_of_hyp@{H I J};
-  let find name : t@{H I J} bool :=
-    let res := reduce@{R1 R2 Set} RedNF (mfind (fun n => dec_bool (string_dec name n)) names) in
+Definition fresh_name(*@{H I J R1 R2}*) (name: string) : t(*@{H I J}*) string :=
+  names <- names_of_hyp(*@{H I J}*);
+  let find name : t(*@{H I J}*) bool :=
+    let res := reduce(*@{R1 R2 Set}*) RedNF (mfind (fun n => dec_bool (string_dec name n)) names) in
     match res with mNone => ret false | _ => ret true end
   in
   (mfix1 f (name: string) : M string :=
      mif find name then
-       let name := reduce@{R1 R2 Set} RedNF (name ++ "_")%string in
+       let name := reduce(*@{R1 R2 Set}*) RedNF (name ++ "_")%string in
        f name
      else ret name) name.
 
-Definition fresh_binder_name@{H I J R1 R2} {A:Type@{I}} (x : A) : t@{H I J} string :=
-  bind@{H I J} (mtry'@{H I J} (get_binder_name@{H I J} x) (fun _ => ret "x"%string)) (fun name=>
-  fresh_name@{H I J R1 R2} name).
+Definition fresh_binder_name(*@{H I J R1 R2}*) {A:Type(*(*@{I}*)*)} (x : A) : t(*@{H I J}*) string :=
+  bind(*@{H I J}*) (mtry'(*@{H I J}*) (get_binder_name(*@{H I J}*) x) (fun _ => ret "x"%string)) (fun name=>
+  fresh_name(*@{H I J R1 R2}*) name).
 
 Definition unfold_projection {A} (y : A) : t A :=
   let x := rone_step y in
@@ -745,9 +796,9 @@ Definition goal_type (g : goal) : t Type :=
   end.
 
 (** Convertion functions from [dyn] to [goal]. *)
-Definition dyn_to_goal (d : dyn) : goal :=
-  match d with
-  | Dyn x => Goal x
+Definition dyn_to_goal (d : dyn) : t goal :=
+  mmatch d with
+  | [? A x] @Dyn A x => ret (Goal x)
   end.
 
 Definition goal_to_dyn (g : goal) : t dyn :=
@@ -797,8 +848,7 @@ Definition print_goal (g : goal) : t unit :=
     [CantInstantiate] if it fails to find a suitable instantiation. [t] is beta-reduced
     to avoid false dependencies. *)
 Definition instantiate {A} (x y : A) : t unit :=
-  ''(m: h, _) <- decompose x;
-  let h := rcbv h.(elem) in
+  ''(m: (Dyn h), _) <- decompose x;
   mif is_evar h then
     let t := reduce (RedWhd [rl:RedBeta]) t in
     r <- unify x y UniEvarconv;
@@ -834,7 +884,7 @@ Notation M := M.t.
 Import M.notations.
 
 Notation "t 'mwith' ( k := u )" :=
-  (elem (ltac:(mrun (M.mwith t k u)))) (at level 0).
+  (elemr (ltac:(mrun (M.mwith t k u)))) (at level 0).
 
 
 (** Execution of tactics at unification *)

@@ -13,17 +13,29 @@ Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 (** Exceptions *)
-Eval hnf in new exception NoGoalsLeft.
-Eval hnf in new exception NotSameSize.
-Eval hnf in new exception NotAProduct.
-Eval hnf in new exception CantFindConstructor.
-Eval hnf in new exception ConstructorsStartsFrom1.
-Eval hnf in new exception Not1Constructor.
-Eval hnf in new exception Not2Constructor.
-Eval hnf in new exception DoesNotMatchGoal.
-Eval hnf in new exception NoPatternMatchesGoal.
-Eval hnf in new exception NotThatType.
-Eval hnf in new exception NoProgress.
+(* Eval hnf in new exception NoGoalsLeft. *)
+(* Eval hnf in new exception NotSameSize. *)
+(* Eval hnf in new exception NotAProduct. *)
+(* Eval hnf in new exception CantFindConstructor. *)
+(* Eval hnf in new exception ConstructorsStartsFrom1. *)
+(* Eval hnf in new exception Not1Constructor. *)
+(* Eval hnf in new exception Not2Constructor. *)
+(* Eval hnf in new exception DoesNotMatchGoal. *)
+(* Eval hnf in new exception NoPatternMatchesGoal. *)
+(* Eval hnf in new exception NotThatType. *)
+(* Eval hnf in new exception NoProgress. *)
+
+Definition NoGoalsLeft: Exception. exact exception. Qed.
+Definition NotSameSize: Exception. exact exception. Qed.
+Definition NotAProduct: Exception. exact exception. Qed.
+Definition CantFindConstructor: Exception. exact exception. Qed.
+Definition ConstructorsStartsFrom1: Exception. exact exception. Qed.
+Definition Not1Constructor: Exception. exact exception. Qed.
+Definition Not2Constructor: Exception. exact exception. Qed.
+Definition DoesNotMatchGoal: Exception. exact exception. Qed.
+Definition NoPatternMatchesGoal: Exception. exact exception. Qed.
+Definition NotThatType: Exception. exact exception. Qed.
+Definition NoProgress: Exception. exact exception. Qed.
 
 Definition SomethingNotRight {A} (t : A) : Exception. exact exception. Qed.
 
@@ -33,7 +45,7 @@ Set Printing Universes.
 Import ProdNotations.
 Set Printing All.
 (** The type for tactics *)
-Definition gtactic@{H I J L1 L2 M M1 M2} (A : Type@{I}) := goal@{L1 L2} -> M@{H I J} (mlist@{I} (mprod@{I M} A goal@{M1 M2})).
+Definition gtactic@{a g1 g2 rg1 rg2 l} (A: Type@{a}) := goal@{g1 g2} -> M.t@{l} (mlist@{l} (mprod@{l l} A goal@{rg1 rg2})).
 Definition tactic := gtactic unit.
 
 Delimit Scope tactic_scope with tactic.
@@ -137,7 +149,7 @@ Definition filter_goals {A} : mlist (A *m goal) -> M (mlist (A *m goal)) :=
 (** [open_and_apply t] is a tactic that "opens" the current goal
     (pushes all the hypotheses in the context) and applies tactic [t]
     to the so-opened goal. The result is "closed" back. *)
-Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
+Definition open_and_apply@{a g1 g2 rg1 rg2 l} {A} (t : gtactic@{a g1 g2 rg1 rg2 l} A) : gtactic@{a g1 g2 rg1 rg2 l} A :=
   fix open g :=
     match g return M _ with
     | Goal _ => t g
@@ -187,14 +199,13 @@ Definition exact {A} (x:A) : tactic := fun g =>
   | Goal g => M.cumul_or_fail UniCoq x g;; M.ret [m:]
   | _ => M.raise NotAGoal
   end.
-
+Set Printing All. Set Printing Universes.
 Definition eexact {A} (x:A) : tactic := fun g =>
   match g with
   | Goal g =>
     M.cumul_or_fail UniCoq x g;;
     l <- M.collect_evars g;
-    let red := dreduce (@mmap, M.dyn_to_goal) (mmap (fun d => (m: tt, M.dyn_to_goal d)) l) in
-    M.ret red
+    M.map (fun d => g <- M.dyn_to_goal d; M.ret (m: tt, g)) l
   | _ => M.raise NotAGoal
   end.
 
@@ -344,18 +355,17 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
        (forall x, ... y, P (c x .. y)) *)
     t' <- copy_ctx P d;
     e <- M.Cevar t' ctx;
-    M.ret {| elem := e |}) (msnd l);
+    M.ret (Dyn e)) (msnd l);
   let c := {| case_ind := A;
               case_val := n;
-              case_return := {| elem := P |};
+              case_return := Dyn P;
               case_branches := l
            |} in
   case <- M.makecase c;
-  case <- M.unfold_projection (elem case);
-  exact case g;;
-  let res := dreduce (@mmap, M.dyn_to_goal)
-                     (mmap (fun d => (m: tt, M.dyn_to_goal d)) l) in
-  M.ret res.
+  mmatch case with
+  | [? A e] @Dyn A e => exact case g
+  end;;
+  M.map (fun d => g <- M.dyn_to_goal d; M.ret (m: tt, g)) l.
 
 (** Destructs the n-th hypotheses in the goal (counting from 0) *)
 Definition destructn (n : nat) : tactic :=

@@ -13,7 +13,7 @@ Structure result A B x t := R { fu : A -> B; pf : t =m= fu x }.
 Implicit Arguments R [A B x t].
 
 Lemma abs_app
-  (A : Type) (x : A) (A' : Type) r (t1 : A' -> type r) (t2 : A') (r1 : result x t1) (r2 : result x t2):
+  (A : Type) (x : A) (A' : Type) r (t1 : A' -> typer r) (t2 : A') (r1 : result x t1) (r2 : result x t2):
   result x (t1 t2).
 Proof.
 elim r1. intros f1 p1.
@@ -27,7 +27,7 @@ Defined.
 Lemma match_eq :
    forall A B : Type,
    forall x : A,
-   forall (r : dyn) (b : bool) (P Q : type r),
+   forall (r : dynr) (b : bool) (P Q : typer r),
    result x b ->
    result x P ->
    result x Q ->
@@ -52,42 +52,42 @@ Proof.
 Defined.
 
 Notation reduce_all := (reduce (RedStrong [rl:RedBeta; RedMatch; RedZeta;
-           RedDeltaOnly [rl: Dyn elem; Dyn type; Dyn (@fu);
+           RedDeltaOnly [rl: Dyn elemr; Dyn typer; Dyn (@fu);
              Dyn (@abs_app); Dyn (@meq_rect_r); Dyn (@meq_rect); Dyn (@meq_sym); Dyn (@internal_meq_rew_r);
              Dyn (@match_eq); Dyn (@non_dep_eq)]])).
 
 Definition abstract A B (x : A) (t : B) :=
    r <-
-   (mfix1 loop (r : dyn) : M (result x (elem r)) :=
-   b <- is_evar (elem r);
+   (mfix1 loop (r : dynr) : M (result x (elemr r)) :=
+   b <- is_evar (elemr r);
    if b then raise exception
    else
-    mmatch r as r' return M (result x (elem r')) with
-    | Dyn x =n>
+    mmatch r as r' return M (result x (elemr r')) with
+    | Dynr x =n>
       ret (R (fun x=>x) (meq_refl _))
-    | [? P Q] Dyn (P -> Q) =n>
-      P' <- loop (Dyn P);
-      Q' <- loop (Dyn Q);
+    | [? P Q] Dynr (P -> Q) =n>
+      P' <- loop (Dynr P);
+      Q' <- loop (Dynr Q);
       ret (non_dep_eq P' Q')
     | _ =n>
-      let r' := dreduce (type) (type r) in
-      mmatch r as r' return M (result x (elem r')) with
-      | [? A' (t1 : A' -> r') t2] Dyn (t1 t2)  =n>
-          r1 <- loop (Dyn t1);
-          r2 <- loop (Dyn t2);
+      let r' := dreduce (typer) (typer r) in
+      mmatch r as r' return M (result x (elemr r')) with
+      | [? A' (t1 : A' -> r') t2] Dynr (t1 t2)  =n>
+          r1 <- loop (Dynr t1);
+          r2 <- loop (Dynr t2);
           ret (abs_app r1 r2)
-      | [? b (P: r') (Q: r')] Dyn (match b with
+      | [? b (P: r') (Q: r')] Dynr (match b with
             | true => P
             | false => Q
             end)
         =n>
-        b' <- loop (Dyn b);
-        P' <- loop (Dyn P);
-        Q' <- loop (Dyn Q);
+        b' <- loop (Dynr b);
+        P' <- loop (Dynr P);
+        Q' <- loop (Dynr Q);
         ret (match_eq B b' P' Q')
-      | r =n> ret (R (fun _=>elem r) (meq_refl _))
+      | r =n> ret (R (fun _=>elemr r) (meq_refl _))
       end
-    end) (Dyn t);
+    end) (Dynr t);
     let reduced := reduce_all r in
     ret reduced.
 
