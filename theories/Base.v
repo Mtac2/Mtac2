@@ -218,12 +218,13 @@ Unset Printing Notations.
 
 Module M.
 Import ProdNotations.
-Inductive t@{H I J} : Type@{I} -> Prop :=
-| ret : forall {A : Type@{I}}, A -> t A
-| bind : forall {A : Type@{I}} {B : Type@{I}},
-   t A -> (A -> t B) -> t B
-| mtry' : forall {A : Type@{I}}, t A -> (Exception -> t A) -> t A
-| raise : forall {A : Type@{I}}, Exception -> t A
+Inductive t@{t} : Type@{t} -> Prop := mkt : forall a, t a.
+
+Definition ret@{a} : forall {A : Type@{a}}, A -> t@{a} A. refine (fun a _=>mkt a). Qed.
+Definition bind@{a b} : forall {A : Type@{a}} {B : Type@{b}},
+   t A -> (A -> t B) -> t@{b} B. refine (fun a b _ _=>mkt b). Qed.
+Definition mtry'@{a} : forall {A : Type@{a}}, t@{a} A -> (Exception -> t@{a} A) -> t@{a} A. refine (fun A _ _ => mkt A). Qed.
+Definition raise : forall {A : Type@{I}}, Exception -> t A
 | fix1' : forall {A : Type@{I}} {B : A -> Type@{I}} (S : Type@{I} -> Prop),
   (forall a : Type@{I}, S a -> t a) ->
   ((forall x : A, S (B x)) -> (forall x : A, S (B x))) ->
