@@ -16,7 +16,7 @@ Definition debug (trace: bool) {A:Type} (bks : mlist dyn) : M A -> M A :=
   M.break (fun A (x:M A) =>
              v <- M.decompose x;
              let (hd, _) := v in
-             let (_, hd) := hd : dyn in
+             dcase hd as hd in
              mif isReduce hd then (* avoid computation of reduce *)
                print_if_trace x
              else

@@ -1091,28 +1091,28 @@ let rec run' ctxt t =
           Err (E.mkExceptionNotGround sigma env ())
 
     | _ when isfix1 h ->
-        let a, b, s, i, f, x = nth 0, nth 1, nth 2, nth 3, nth 4, nth 5 in
-        run_fix ctxt h [|a|] b s i f [|x|]
+        let a, b, f, x = nth 0, nth 1, nth 2, nth 3 in
+        run_fix ctxt h [|a|] b f [|x|]
 
     | _ when isfix2 h ->
-        let a1, a2, b, s, i, f, x1, x2 =
-          nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7 in
-        run_fix ctxt h [|a1; a2|] b s i f [|x1; x2|]
+        let a1, a2, b, f, x1, x2 =
+          nth 0, nth 1, nth 2, nth 3, nth 4, nth 5 in
+        run_fix ctxt h [|a1; a2|] b f [|x1; x2|]
 
     | _ when isfix3 h ->
-        let a1, a2, a3, b, s, i, f, x1, x2, x3 =
-          nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9 in
-        run_fix ctxt h [|a1; a2; a3|] b s i f [|x1; x2; x3|]
+        let a1, a2, a3, b, f, x1, x2, x3 =
+          nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7 in
+        run_fix ctxt h [|a1; a2; a3|] b f [|x1; x2; x3|]
 
     | _ when isfix4 h ->
-        let a1, a2, a3, a4, b, s, i, f, x1, x2, x3, x4 =
-          nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9, nth 10, nth 11 in
-        run_fix ctxt h [|a1; a2; a3; a4|] b s i f [|x1; x2; x3; x4|]
+        let a1, a2, a3, a4, b, f, x1, x2, x3, x4 =
+          nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9 in
+        run_fix ctxt h [|a1; a2; a3; a4|] b f [|x1; x2; x3; x4|]
 
     | _ when isfix5 h ->
-        let a1, a2, a3, a4, a5, b, s, i, f, x1, x2, x3, x4, x5 =
-          nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9, nth 10, nth 11, nth 12, nth 13 in
-        run_fix ctxt h [|a1; a2; a3; a4; a5|] b s i f [|x1; x2; x3; x4; x5|]
+        let a1, a2, a3, a4, a5, b, f, x1, x2, x3, x4, x5 =
+          nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9, nth 10, nth 11 in
+        run_fix ctxt h [|a1; a2; a3; a4; a5|] b f [|x1; x2; x3; x4; x5|]
 
     | _ when isis_var h ->
         let e = nth 1 in
@@ -1341,7 +1341,7 @@ let rec run' ctxt t =
         return sigma (CoqString.to_coq (read_line ()))
 
     | _ when isbreak h ->
-        run' {ctxt with hook=Some (nth 2)} (nth 4)(*  >>= fun (sigma, _) -> *)
+        run' {ctxt with hook=Some (nth 0)} (nth 2)(*  >>= fun (sigma, _) -> *)
     (* return sigma CoqUnit.mkTT *)
 
     | _ when isdecompose h ->
@@ -1408,10 +1408,9 @@ let rec run' ctxt t =
         end
 
 (* h is the mfix operator, a is an array of types of the arguments, b is the
-   return type of the fixpoint, s is the type to embed M in itself (used only to
-   make universes happy), i is the identity to embed S in M, f is the function
+   return type of the fixpoint, f is the function
    and x its arguments. *)
-and run_fix ctxt (h: constr) (a: constr array) (b: constr) (s: constr) (i: constr) (f: constr) (x: constr array) =
+and run_fix ctxt (h: constr) (a: constr array) (b: constr) (f: constr) (x: constr array) =
   (* let fixbody = mkApp(h, Array.append a [|b;s;i|]) in *)
   (* run' ctxt c *)
   let sigma, env = ctxt.sigma, ctxt.env in

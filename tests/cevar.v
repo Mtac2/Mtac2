@@ -5,10 +5,10 @@ Example ex1 (x y: nat) (H: x>y) (z: nat) : True.
 MProof.
   M.Cevar _ [m:ahyp H mNone | ahyp y mNone | ahyp x mNone].
   (* wrong order of variables *)
+  Unshelve.
   Fail M.Cevar _ [m:ahyp x mNone| ahyp H mNone| ahyp y mNone].
   (* dup variable *)
   Fail M.Cevar _ [m:ahyp x mNone| ahyp x mNone| ahyp y mNone].
-  Unshelve.
   M.Cevar _ [m:ahyp H mNone| ahyp y (mSome 0)| ahyp x mNone].
   Unshelve.
   T.exact I.
