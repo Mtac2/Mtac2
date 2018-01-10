@@ -96,7 +96,9 @@ Inductive implicit_arguments :=
 | ia_Implicit
 | ia_MaximallyImplicit.
 
-Inductive dyn@{a} : Prop := Dyn : forall {type : Type@{a}} (elem : type), dyn.
+Inductive dyn : Prop := mkdyn.
+Definition Dyn@{a} : forall {type : Type@{a}} (elem : type), dyn. refine (fun _ _=> mkdyn). Qed.
+
 Record dynr := Dynr { typer: Type; elemr:> typer }.
 Arguments Dynr {_} _.
 
@@ -108,18 +110,18 @@ Arguments rlcons {_} _ _.
 Notation "[]rl" := rlnil.
 Notation "[rl: x ; .. ; y ]" := (rlcons x (.. (rlcons y rlnil) ..)).
 
-Inductive RedFlags@{a} : Prop :=
+Inductive RedFlags : Prop :=
 | RedBeta | RedDelta | RedMatch | RedFix | RedZeta
 | RedDeltaC | RedDeltaX
-| RedDeltaOnly : redlist@{a} dyn@{a} -> RedFlags
-| RedDeltaBut : redlist@{a} dyn@{a} -> RedFlags.
+| RedDeltaOnly : redlist@{Set} dyn -> RedFlags
+| RedDeltaBut : redlist@{Set} dyn -> RedFlags.
 
-Inductive Reduction@{a} : Prop :=
+Inductive Reduction : Prop :=
 | RedNone
 | RedSimpl
 | RedOneStep
-| RedWhd : redlist@{a} RedFlags@{a} -> Reduction
-| RedStrong : redlist@{a} RedFlags@{a} -> Reduction
+| RedWhd : redlist@{Set} RedFlags -> Reduction
+| RedStrong : redlist@{Set} RedFlags -> Reduction
 | RedVmCompute.
 
 Inductive Unification : Type :=
@@ -131,16 +133,16 @@ Inductive Unification : Type :=
 Inductive Hyp : Type :=
 | ahyp : forall {A}, A -> moption A -> Hyp.
 
-Record Case@{a c} :=
+Record Case@{a} :=
     mkCase {
         case_ind : Type@{a};
         case_val : case_ind;
-        case_return : dyn@{c};
-        case_branches : mlist@{c} dyn@{c}
+        case_return : dyn;
+        case_branches : mlist@{Set} dyn
         }.
 
 (* Reduction primitive. It throws [NotAList] if the list of flags is not a list.  *)
-Definition reduce@{r a} (r : Reduction@{r}) {A:Type@{a}} (x : A) := x.
+Definition reduce@{a} (r : Reduction) {A:Type@{a}} (x : A) := x.
 
 Notation RedAll := ([rl:RedBeta;RedDelta;RedZeta;RedMatch;RedFix]).
 Notation RedNF := (RedStrong RedAll).
@@ -361,16 +363,16 @@ Definition pretty_print@{a} : forall{A: Type@{a}}, A -> t@{Set} string.
 Definition hyps@{b c}: t@{c} (mlist@{c} Hyp@{b}).
   refine mkt. Qed.
 
-Definition destcase@{a c1 c2 d}: forall{A: Type@{a}} (a: A), t@{d} (Case@{c1 c2}).
+Definition destcase@{a c1 d}: forall{A: Type@{a}} (a: A), t@{d} (Case@{c1}).
   refine (fun _ _ =>mkt). Qed.
 
 (** Given an inductive type A, applied to all its parameters (but not
     necessarily indices), it returns the type applied to exactly the
     parameters, and a list of constructors (applied to the parameters). *)
-Definition constrs@{a c}: forall{A: Type@{a}} (a: A), t@{c} (mprod@{c c} dyn@{c} (mlist@{c} dyn@{c})).
+Definition constrs@{a c}: forall{A: Type@{a}} (a: A), t@{c} (mprod@{c c} dyn (mlist@{c} dyn)).
   refine (fun _ _ =>mkt). Qed.
 
-Definition makecase@{c1 c2}: forall(C: Case@{c1 c2}), t@{c2} dyn@{c2}.
+Definition makecase@{c1 d}: forall(C: Case@{c1}), t@{d} dyn.
   refine (fun _ =>mkt). Qed.
 
 (** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
@@ -387,11 +389,11 @@ Definition unify_univ@{a b c} (A: Type@{a}) (B: Type@{b}) : Unification -> t@{c}
   refine (fun _=>mkt). Qed.
 
 (** [get_reference s] returns the constant that is reference by s. *)
-Definition get_reference@{a}: string -> t@{a} dyn@{a}.
+Definition get_reference@{a}: string -> t@{a} dyn.
   refine (fun _=>mkt). Qed.
 
 (** [get_var s] returns the var named after s. *)
-Definition get_var@{a}: string -> t@{a} dyn@{a}.
+Definition get_var@{a}: string -> t@{a} dyn.
   refine (fun _=>mkt). Qed.
 
 Definition call_ltac : forall{A: Type}, string->mlist dyn -> t (mprod A (mlist goal)).
@@ -416,7 +418,7 @@ Definition break' : forall (S : Type -> Prop),
 (** [decompose x] decomposes value [x] into a head and a spine of
     arguments. For instance, [decompose (3 + 3)] returns
     [(Dyn add, [Dyn 3; Dyn 3])] *)
-Definition decompose@{a} : forall {A: Type@{a}}, A -> t@{a} (mprod@{a a} dyn@{a} (mlist@{a} dyn@{a})).
+Definition decompose@{a} : forall {A: Type@{a}}, A -> t@{a} (mprod@{a a} dyn (mlist@{Set} dyn)).
   refine (fun _ _  =>mkt). Qed.
 
 (** [solve_typeclass A] calls type classes resolution for [A] and returns the result or fail. *)
@@ -590,6 +592,10 @@ Module notations.
       (@mmatch' _ (fun _ => _) e
                    (mapp ls%with_pattern [m:([? x] x => raise x)%pattern]))))
       (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
+
+
+  Notation "'dcase' v 'as' A ',' x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200).
+  Notation "'dcase' v 'as' x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200).
 End notations.
 
 Import notations.
@@ -753,13 +759,13 @@ Definition anonymize (s : string) : t string :=
 Definition fresh_name@{I J} (name: string) : t@{Set} string :=
   names <- names_of_hyp@{I J};
   let find name : t@{Set} bool :=
-    let res := reduce@{Set Set} RedNF (mfind (fun n => dec_bool (string_dec name n)) names) in
+    let res := reduce@{Set} RedNF (mfind (fun n => dec_bool (string_dec name n)) names) in
     match res with mNone => ret false | _ => ret true end
   in
   fix1@{Set Set} _ (fun f (name: string) =>
      bind@{Set Set} (find name) (fun b=>
      if b then
-       let name := reduce@{Set Set} RedNF (name ++ "_")%string in
+       let name := reduce@{Set} RedNF (name ++ "_")%string in
        f name : t@{Set} string
      else ret@{Set} name)) name.
 
@@ -849,15 +855,17 @@ Definition print_goal (g : goal) : t unit :=
     [CantInstantiate] if it fails to find a suitable instantiation. [t] is beta-reduced
     to avoid false dependencies. *)
 Definition instantiate {A} (x y : A) : t unit :=
-  ''(m: (Dyn h), _) <- decompose x;
-  mif is_evar h then
-    let t := reduce (RedWhd [rl:RedBeta]) t in
-    r <- unify x y UniEvarconv;
-    match r with
-    | mSome _ => M.ret tt
-    | _ => raise (CantInstantiate x y)
-    end
-  else raise (NotAnEvar h).
+  ''(m: h, _) <- decompose x;
+  dcase h as e in
+    mif is_evar e then
+      let t := reduce (RedWhd [rl:RedBeta]) t in
+      r <- unify x y UniEvarconv;
+      match r with
+      | mSome _ => M.ret tt
+      | _ => raise (CantInstantiate x y)
+      end
+    else raise (NotAnEvar h)
+  .
 
 Definition solve_typeclass_or_fail (A : Type) : t A :=
   x <- solve_typeclass A;
@@ -866,7 +874,7 @@ Definition solve_typeclass_or_fail (A : Type) : t A :=
 (** Collects obviously visible evars *)
 Definition collect_evars {A} (x: A) :=
   res <- (mfix1 f (d: dyn) : M (mlist dyn) :=
-    let (_, e) := d in
+    dcase d as e in
     mif M.is_evar e then M.ret [m: d]
     else
       let e := reduce (RedWhd [rl: RedBeta; RedMatch; RedZeta]) e in

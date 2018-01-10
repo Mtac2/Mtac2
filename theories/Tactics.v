@@ -123,7 +123,7 @@ Definition close_goals {A B} (y : B) : mlist (A *m goal) -> M (mlist (A *m goal)
 (** [let_close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] with its definition to each of them (it assumes it is defined). *)
 Definition let_close_goals@{a b g1 g2 l} {A: Type@{a}} {B:Type@{b}} (y : B) : mlist@{l} (A *m goal@{g1 g2}) -> M (mlist@{l} (mprod@{a l} A goal@{g1 g2})) :=
-  let t := reduce@{Set b} RedOneStep y in (* to obtain x's definition *)
+  let t := reduce@{b} RedOneStep y in (* to obtain x's definition *)
   M.map (fun '(m: x,g') => r <- M.abs_fun@{b l l} y g'; M.ret (m: x, @AHyp B (mSome t) r)).
 
 (** [rem_hyp x l] "removes" hypothesis [x] from the list of goals [l]. *)
@@ -149,16 +149,16 @@ Definition filter_goals {A} : mlist (A *m goal) -> M (mlist (A *m goal)) :=
 (** [open_and_apply t] is a tactic that "opens" the current goal
     (pushes all the hypotheses in the context) and applies tactic [t]
     to the so-opened goal. The result is "closed" back. *)
-Definition open_and_apply@{a g1 g2 rg1 rg2 l I J c} {A} (t : gtactic@{a g1 g2 rg1 rg2 l} A) : gtactic@{a g1 g2 rg1 rg2 l} A :=
+Definition open_and_apply(* @{a g1 g2 rg1 rg2 l I J c} *) {A} (t : gtactic(* @{a g1 g2 rg1 rg2 l} *) A) : gtactic(* @{a g1 g2 rg1 rg2 l} *) A :=
   fix open g :=
     match g return M _ with
     | Goal _ => t g
     | @AHyp C mNone f =>
-      x <- M.fresh_binder_name@{c I J} f;
+      x <- M.fresh_binder_name(* @{c I J} *) f;
       M.nu x mNone (fun x : C =>
         open (f x) >>= close_goals x)
     | @AHyp C (mSome t) f =>
-      x <- M.fresh_binder_name@{c I J} f;
+      x <- M.fresh_binder_name(* @{c I J} *) f;
       M.nu x (mSome t) (fun x : C =>
         open (f x) >>= let_close_goals x)
     | HypRem x f =>
@@ -382,7 +382,7 @@ Definition destructn (n : nat) : tactic :=
 Definition apply {T} (c : T) : tactic := fun g=>
   match g with Goal eg =>
     (mfix1 go (d : dyn) : M (mlist (unit *m goal)) :=
-      let (_, el) := d in
+      dcase d as el in
       mif M.cumul UniCoq el eg then M.ret [m:] else
         mmatch d return M (mlist (unit *m goal)) with
         | [? T1 T2 f] @Dyn (T1 -> T2) f =>
@@ -406,17 +406,6 @@ Definition apply_ : tactic := fun g =>
      x <- M.solve_typeclass_or_fail G; M.cumul_or_fail UniCoq x g;; M.ret [m:]
   | _ => M.raise NotAGoal
   end.
-
-(** Given a list of dyn's, it applies each of them until one
-succeeds. Throws NoProgress if none apply *)
-Definition apply_one_of (l : mlist dyn) : tactic :=
-  mfold_left (fun a '(Dyn e) => or a (apply e)) l (T.raise NoProgress).
-
-(** Tries to apply each constructor of the goal type *)
-Definition constructor : tactic := fun g=>
-  ''(m: _, l) <- M.constrs =<< M.goal_type g;
-  apply_one_of l g.
-
 
 Definition change (P : Type) : tactic := fun g =>
   gT <- M.goal_type g;
@@ -479,16 +468,17 @@ Fixpoint match_goal_base {B} (u : Unification)
     mtry match_goal_pattern u p g
     with DoesNotMatchGoal => match_goal_base u ps' g end
   end.
-
+Import M.notations.
 Definition ltac (t : string) (args : mlist dyn) : tactic := fun g =>
-  ''(@Dyn ty el) <- M.goal_to_dyn g;
+  d <- M.goal_to_dyn g;
+  (dcase d as ty, el in
   ''(m: v, l) <- @M.call_ltac ty t args;
   M.unify_or_fail UniCoq v el;;
   mif M.is_evar v then
     M.ret [m:(m: tt, Goal v)] (* it wasn't solved *)
   else
     let l' := dreduce (@mmap) (mmap (mpair tt) l) in
-    M.ret l'.
+    M.ret l').
 
 Definition destruct_all (T : Type) : tactic := fun g=>
   l <- M.filter (fun '(@ahyp Th _ _) =>
@@ -636,22 +626,22 @@ Definition print_goal : tactic := with_goal M.print_goal.
     and returns its eta-expansion: [fun x1, ..., xn=>f x1 .. xn].
     Raises [NotAProduct] if there aren't that many absractions. *)
 Definition n_etas (n : nat) {A} (f : A) : M A :=
-  (fix loop (n : nat) (d : dyn) : M (type d) :=
+  (fix loop (n : nat) (d : dynr) : M (typer d) :=
     match n with
     | 0 =>
       (* we remove the wrapper of the element in [d] *)
-      M.unfold_projection (elem d)
+      M.unfold_projection (elemr d)
     | S n' =>
        mmatch d with
-       | [? B (T:B->Type) f] @Dyn (forall x:B, T x) f =>
-         ty <- M.unfold_projection (type d);
+       | [? B (T:B->Type) f] @Dynr (forall x:B, T x) f =>
+         ty <- M.unfold_projection (typer d);
          name <- M.get_binder_name ty;
          M.nu name mNone (fun x:B =>
-           loop n' (Dyn (f x)) >>= M.abs_fun x
+           loop n' (Dynr (f x)) >>= M.abs_fun x
          )
        | _ => M.raise NotAProduct
        end
-    end) n (Dyn f).
+    end) n (Dynr f).
 
 (** [fix_tac f n] is like Coq's [fix] tactic: it generates a fixpoint
     with a new goal as body, containing a variable named [f] with
@@ -701,23 +691,23 @@ Definition repeat (t : tactic) : tactic :=
     | _ => M.ret r
     end).
 
-Definition map_term (f : forall d:dyn, M d.(type)) : forall d : dyn, M d.(type) :=
-  mfix1 rec (d : dyn) : M d.(type) :=
+Definition map_term (f : forall d:dynr, M d.(typer)) : forall d : dynr, M d.(typer) :=
+  mfix1 rec (d : dynr) : M d.(typer) :=
     let (ty, el) := d in
-    mmatch d as d return M d.(type) with
-    | [? B A (b: B) (a: B -> A)] Dyn (a b) =n>
-      d1 <- rec (Dyn a);
-      d2 <- rec (Dyn b);
+    mmatch d as d return M d.(typer) with
+    | [? B A (b: B) (a: B -> A)] Dynr (a b) =n>
+      d1 <- rec (Dynr a);
+      d2 <- rec (Dynr b);
       M.ret (d1 d2)
-    | [? B (A: B -> Type) (a: forall x, A x)] Dyn (fun x:B=>a x) =n>
+    | [? B (A: B -> Type) (a: forall x, A x)] Dynr (fun x:B=>a x) =n>
       n <- M.get_binder_name el;
       M.nu n mNone (fun x : B =>
-        d1 <- rec (Dyn (a x));
+        d1 <- rec (Dynr (a x));
         M.abs_fun x d1)
-    | [? B (A: B -> Type) a] Dyn (forall x:B, a x) =n>
+    | [? B (A: B -> Type) a] Dynr (forall x:B, a x) =n>
       n <- M.get_binder_name el;
       M.nu n mNone (fun x : B =>
-        d1 <- rec (Dyn (a x));
+        d1 <- rec (Dynr (a x));
         M.abs_prod x d1)
     | [? d'] d' =n> f d'
     end.
@@ -727,10 +717,10 @@ Definition unfold_slow {A} (x : A) : tactic := fun g =>
   gT <- M.goal_type g;
   gT' <- map_term (fun d =>
     let (ty, el) := d in
-    mmatch d as d return M d.(type) with
-    | Dyn x =n> M.ret def
-    | [? A (d': A)] Dyn d' =n> M.ret d'
-    end) (Dyn gT);
+    mmatch d as d return M d.(typer) with
+    | Dynr x =n> M.ret def
+    | [? A (d': A)] Dynr d' =n> M.ret d'
+    end) (Dynr gT);
   e <- M.evar gT';
   exact e g;;
   M.ret [m:(m: tt,Goal e)].
@@ -960,11 +950,27 @@ Module notations.
   Notation "t1 'l>' t2" :=
     (t1 &> S.last t2)
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
+
+
+  Notation "'dcase' v 'as' x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200).
+  Notation "'dcase' v 'as' A, x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200).
+
 End notations.
 
 Import notations.
 
 (* Some derived tactics *)
+
+(** Given a list of dyn's, it applies each of them until one
+succeeds. Throws NoProgress if none apply *)
+Definition apply_one_of (l : mlist dyn) : tactic :=
+  mfold_left (fun a d => dcase d as e in (or a (apply e))) l (T.raise NoProgress).
+
+(** Tries to apply each constructor of the goal type *)
+Definition constructor : tactic :=
+  ''(m: _, l) <- M.constrs =<< goal_type;
+  apply_one_of l.
+
 Definition apply_in {P Q} (c : P -> Q) (H : P) : tactic :=
   change_hyp H (c H).
 
@@ -987,7 +993,7 @@ Definition nconstructor (n : nat) : tactic :=
   | S n =>
     l <- M.constrs A;
     match mnth_error (msnd l) n with
-    | mSome (@Dyn A x) => apply x
+    | mSome d => dcase d as x in apply x
     | mNone => raise CantFindConstructor
     end
   end.
@@ -1004,7 +1010,7 @@ Definition left : tactic :=
   A <- goal_type;
   l <- M.constrs A;
   match msnd l with
-  | Dyn x :m: [m: _ ] => apply x
+  | d :m: [m: _ ] => dcase d as x in apply x
   | _ => raise Not2Constructor
   end.
 
@@ -1012,7 +1018,7 @@ Definition right : tactic :=
   A <- goal_type;
   l <- M.constrs A;
   match msnd l with
-  | _ :m: [m: Dyn x] => apply x
+  | _ :m: [m: d] => dcase d as x in apply x
   | _ => raise Not2Constructor
   end.
 
