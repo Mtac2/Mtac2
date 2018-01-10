@@ -362,9 +362,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
               case_branches := l
            |} in
   case <- M.makecase c;
-  mmatch case with
-  | [? A e] @Dyn A e => exact case g
-  end;;
+  dcase case as e in exact e g;;
   M.map (fun d => g <- M.dyn_to_goal d; M.ret (m: tt, g)) l.
 
 (** Destructs the n-th hypotheses in the goal (counting from 0) *)

@@ -61,7 +61,7 @@ Definition max_apply {T} (c : T) : tactic := fun g=>
           M.ret r
         | Dyn eg => M.ret [m:]
         | _ =>
-          let (ty, _) := d in
+          dcase d as ty, el in
           gT <- M.goal_type g;
           M.raise (CantApply ty gT)
         end) (Dyn c)

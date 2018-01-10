@@ -216,7 +216,7 @@ Program Fixpoint args_of_max (max : nat) : dyn -> M (mlist dyn) :=
         P <- M.evar (T -> Type);
         f <- M.evar (forall x:T, P x);
         t <- M.evar T;
-        let el := rhnf (d.(elem)) in
+        dcase d as el in
         b <- M.cumul UniCoq el (f t);
         if b then
           r <- args_of_max max (Dyn f); M.ret (mapp r [m: Dyn t])
@@ -232,7 +232,8 @@ Fixpoint get_ATele {isort} (it : ITele isort) (al : mlist dyn) {struct al} : M (
     | iBase T, [m:] => M.ret tt
     | iTele f, t_dyn :m: al =>
       (* We coerce the type of the element in [t_dyn] to match that expected by f *)
-      t <- M.coerce (elem t_dyn);
+      dcase t_dyn as el in
+      t <- M.coerce el;
       r <- get_ATele (f t) al;
       M.ret (existT _ t r)
     | _, _ => M.raise NoPatternMatches
@@ -347,11 +348,14 @@ Program Definition get_ITele : forall {T : Type} (ind : T), M (nat *m (sigT ITel
     | T =n> fun _=> M.failwith "Impossible ITele"
     end.
 
+Obligation Tactic := idtac.
+Program
 Definition get_ind (A : Type) :
   M (nat *m sigT (fun s => (ITele s)) *m mlist dyn) :=
   r <- M.constrs A;
   let (indP, constrs) := r in
-  sortit <- get_ITele (elem indP) : M (nat *m sigT ITele);
+  dcase indP as el in
+  sortit <- get_ITele el : M (nat *m sigT ITele);
   let nindx : nat := mfst sortit in
   let (isort, it) := msnd sortit in
   M.ret (m: nindx, existT _ _ it, constrs).
@@ -363,6 +367,7 @@ Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) : M
   M.ret atele.
 
 Import T.notations.
+Program
 Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
     ind <- get_ind A;
       let (nsortit, constrs) := ind in
@@ -371,7 +376,7 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
       atele <- get_ind_atele it nindx A;
                  (* Compute CTeles *)
         cts <- M.map (fun c_dyn : dyn =>
-                       let (dtype, delem) := c_dyn in
+                       dcase c_dyn as dtype, delem in
                        ty <- M.evar (stype_of isort);
                        b <- M.cumul UniCoq ty dtype;
                        if b then
@@ -403,7 +408,7 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
                        case_return := Dyn rrf;
                        case_branches := branches
                      |};
-          let gterm := M.dyn_to_goal caseterm in
+          gterm <- M.dyn_to_goal caseterm;
           M.unify_or_fail UniCoq gterm g;;
           let goals' := dreduce (@mmap) (mmap (mpair tt) goals) in
           M.ret goals'.

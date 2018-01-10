@@ -25,7 +25,7 @@ Definition get_constrs :=
   mfix1 fill (T : Type) : M (mlist dyn) :=
     mmatch T return M (mlist dyn) with
     | [? A B] A -> B => fill B
-    | [? A (P:A->Type)] forall x:A, P x =>
+    | [? A (P:A->Type)] forall x, P x =>
       name <- M.fresh_binder_name T;
       M.nu name mNone (fun x=>
         fill (P x)
@@ -49,10 +49,10 @@ Definition snth_index {A:Type} (c:A) (t:tactic) : T.selector unit := fun l =>
   (i <- index c; S.nth i t l)%MC.
 
 Notation "'case' c 'do' t" := (snth_index c t) (at level 40).
-
+Import M.notations.
 Definition snth_indices (l : mlist dyn) (t : tactic) : selector unit := fun goals=>
   M.fold_left (fun (accu : mlist (unit *m goal)) (d : dyn)=>
-    let (_, c) := d in
+    dcase d as c in
     i <- index c;
     let ogoal := mnth_error goals i in
     match ogoal with
