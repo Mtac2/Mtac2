@@ -70,6 +70,132 @@ end
 
 open MetaCoqNames
 
+module TConstr = struct
+  let mkconstr s = lazy (let (_, c) = mkUConstr ("M." ^ s) Evd.empty (Global.env ()) in c)
+  let isconstr c h = eq_constr_nounivs Evd.empty (Lazy.force c) h
+
+  let mkret = mkconstr "ret"
+  let isret  = isconstr mkret
+
+  let mkbind = mkconstr "bind"
+  let isbind  = isconstr mkbind
+
+  let mktry' = mkconstr "mtry'"
+  let istry'  = isconstr mktry'
+
+  let mkraise = mkconstr "raise"
+  let israise  = isconstr mkraise
+
+  let mkfix1 = mkconstr "fix1"
+  let isfix1  = isconstr mkfix1
+
+  let mkfix2 = mkconstr "fix2"
+  let isfix2  = isconstr mkfix2
+
+  let mkfix3 = mkconstr "fix3"
+  let isfix3  = isconstr mkfix3
+
+  let mkfix4 = mkconstr "fix4"
+  let isfix4  = isconstr mkfix4
+
+  let mkfix5 = mkconstr "fix5"
+  let isfix5  = isconstr mkfix5
+
+  let mkis_var = mkconstr "is_var"
+  let isis_var  = isconstr mkis_var
+
+  let mknu = mkconstr "nu"
+  let isnu  = isconstr mknu
+
+  let mkabs_fun = mkconstr "abs_fun"
+  let isabs_fun  = isconstr mkabs_fun
+
+  let mkabs_let = mkconstr "abs_let"
+  let isabs_let  = isconstr mkabs_let
+
+  let mkabs_prod = mkconstr "abs_prod"
+  let isabs_prod  = isconstr mkabs_prod
+
+  let mkabs_fix = mkconstr "abs_fix"
+  let isabs_fix  = isconstr mkabs_fix
+
+  let mkget_binder_name = mkconstr "get_binder_name"
+  let isget_binder_name  = isconstr mkget_binder_name
+
+  let mkremove = mkconstr "remove"
+  let isremove  = isconstr mkremove
+
+  let mkgen_evar = mkconstr "gen_evar"
+  let isgen_evar  = isconstr mkgen_evar
+
+  let mkis_evar = mkconstr "is_evar"
+  let isis_evar  = isconstr mkis_evar
+
+  let mkhash = mkconstr "hash"
+  let ishash  = isconstr mkhash
+
+  let mksolve_typeclasses = mkconstr "solve_typeclasses"
+  let issolve_typeclasses  = isconstr mksolve_typeclasses
+
+  let mkprint = mkconstr "print"
+  let isprint  = isconstr mkprint
+
+  let mkpretty_print = mkconstr "pretty_print"
+  let ispretty_print  = isconstr mkpretty_print
+
+  let mkhyps = mkconstr "hyps"
+  let ishyps  = isconstr mkhyps
+
+  let mkdestcase = mkconstr "destcase"
+  let isdestcase  = isconstr mkdestcase
+
+  let mkconstrs = mkconstr "constrs"
+  let isconstrs  = isconstr mkconstrs
+
+  let mkmakecase = mkconstr "makecase"
+  let ismakecase  = isconstr mkmakecase
+
+  let mkunify = mkconstr "unify"
+  let isunify  = isconstr mkunify
+
+  let mkunify_univ = mkconstr "unify_univ"
+  let isunify_univ  = isconstr mkunify_univ
+
+  let mkget_reference = mkconstr "get_reference"
+  let isget_reference  = isconstr mkget_reference
+
+  let mkget_var = mkconstr "get_var"
+  let isget_var  = isconstr mkget_var
+
+  let mkcall_ltac = mkconstr "call_ltac"
+  let iscall_ltac  = isconstr mkcall_ltac
+
+  let mklist_ltac = mkconstr "list_ltac"
+  let islist_ltac  = isconstr mklist_ltac
+
+  let mkread_line = mkconstr "read_line"
+  let isread_line  = isconstr mkread_line
+
+  let mkbreak = mkconstr "break"
+  let isbreak  = isconstr mkbreak
+
+  let mkdecompose = mkconstr "decompose"
+  let isdecompose  = isconstr mkdecompose
+
+  let mksolve_typeclass = mkconstr "solve_typeclass"
+  let issolve_typeclass  = isconstr mksolve_typeclass
+
+  let mkdeclare = mkconstr "declare"
+  let isdeclare  = isconstr mkdeclare
+
+  let mkdeclare_implicits = mkconstr "declare_implicits"
+  let isdeclare_implicits  = isconstr mkdeclare_implicits
+
+  let mkos_cmd = mkconstr "os_cmd"
+  let isos_cmd  = isconstr mkos_cmd
+
+end
+
 module RedList = GenericList (struct
     let nilname = metaCoq_module_name ^ ".rlnil"
     let consname = metaCoq_module_name ^ ".rlcons"
@@ -731,7 +857,7 @@ let cvar (env, sigma as ctx) ty ohyps =
     return sigma evar
 
 
-let rec get_name (env, sigma) (t: constr) : constr option =
+let get_name (env, sigma) (t: constr) : constr option =
   (* If t is a defined variable it is reducing it *)
   (*  let t = whd_betadeltaiota_nolet env sigma t in *)
   let name =
@@ -905,6 +1031,7 @@ let get_type_of ctxt t =
   Retyping.get_type_of ctxt.env ctxt.sigma t
 
 let rec run' ctxt t =
+  let open TConstr in
   let sigma, env = ctxt.sigma, ctxt.env in
   ( match ctxt.hook with
     | Some f ->
@@ -930,37 +1057,16 @@ let rec run' ctxt t =
     else
       run' ctxt (mkApp (Vars.subst1 b t, args))
   else
-    let constr sigma c =
-      if isConstruct sigma c then
-        let ((m, ix), _) = destConstruct sigma c in
-        (* let sigma, ind = (mkT_lazy sigma env) in *)
-        (* if Names.eq_ind m (fst (destInd sigma ind)) then *)
-        ix
-        (* else -1 *)
-      else -1
-    in
-    match constr sigma h with
-    | -1 ->
-        begin
-          try
-            let n = EConstr.destVar sigma h in
-            match Environ.named_body n ctxt.fixpoints with
-            | Some fixbody ->
-                let t = (EConstr.applist (of_constr fixbody,Array.to_list args)) in
-                run' ctxt t
-            | None -> Err (E.mkStuckTerm sigma env ())
-          with | Term.DestKO ->
-            Err (E.mkStuckTerm sigma env ())
-        end
-    | 1 -> (* ret *)
+    match h with
+    | _ when isret h ->
         return sigma (nth 1)
 
-    | 2 -> (* bind *)
+    | _ when isbind h ->
         run' ctxt (nth 2) >>= fun (sigma', v) ->
         let t' = mkApp(nth 3, [|v|]) in
         run' {ctxt with sigma = sigma'} t'
 
-    | 3 -> (* try *)
+    | _ when istry' h ->
         begin
           match run' ctxt (nth 1) with
           | Val (sigma, v) -> return sigma v
@@ -972,7 +1078,7 @@ let rec run' ctxt t =
               run' {ctxt with sigma=sigma} t'
         end
 
-    | 4 -> (* raise *)
+    | _ when israise h ->
         (* we make sure the exception is a closed term: it does not depend on evars or nus *)
         let term = nth 1 in
         let vars = collect_vars sigma term in
@@ -984,38 +1090,38 @@ let rec run' ctxt t =
         else
           Err (E.mkExceptionNotGround sigma env ())
 
-    | 5 -> (* fix1 *)
+    | _ when isfix1 h ->
         let a, b, s, i, f, x = nth 0, nth 1, nth 2, nth 3, nth 4, nth 5 in
         run_fix ctxt h [|a|] b s i f [|x|]
 
-    | 6 -> (* fix 2 *)
+    | _ when isfix2 h ->
         let a1, a2, b, s, i, f, x1, x2 =
           nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7 in
         run_fix ctxt h [|a1; a2|] b s i f [|x1; x2|]
 
-    | 7 -> (* fix 3 *)
+    | _ when isfix3 h ->
         let a1, a2, a3, b, s, i, f, x1, x2, x3 =
           nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9 in
         run_fix ctxt h [|a1; a2; a3|] b s i f [|x1; x2; x3|]
 
-    | 8 -> (* fix 4 *)
+    | _ when isfix4 h ->
         let a1, a2, a3, a4, b, s, i, f, x1, x2, x3, x4 =
           nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9, nth 10, nth 11 in
         run_fix ctxt h [|a1; a2; a3; a4|] b s i f [|x1; x2; x3; x4|]
 
-    | 9 -> (* fix 5 *)
+    | _ when isfix5 h ->
         let a1, a2, a3, a4, a5, b, s, i, f, x1, x2, x3, x4, x5 =
           nth 0, nth 1, nth 2, nth 3, nth 4, nth 5, nth 6, nth 7, nth 8, nth 9, nth 10, nth 11, nth 12, nth 13 in
         run_fix ctxt h [|a1; a2; a3; a4; a5|] b s i f [|x1; x2; x3; x4; x5|]
 
-    | 10 -> (* is_var *)
+    | _ when isis_var h ->
         let e = nth 1 in
         if isVar sigma e then
           return sigma CoqBool.mkTrue
         else
           return sigma CoqBool.mkFalse
 
-    | 11 -> (* nu *)
+    | _ when isnu h ->
         let a, s, ot, f = nth 0, nth 2, nth 3, nth 4 in
         let namestr = CoqString.from_coq (env, sigma) s in
         let name = Names.Id.of_string namestr in
@@ -1036,26 +1142,26 @@ let rec run' ctxt t =
               fail sigma e
         end
 
-    | 12 -> (* abs *)
+    | _ when isabs_fun h ->
         let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
         abs AbsFun (env, sigma) a p x y 0 mkProp
 
-    | 13 -> (* abs_let *)
+    | _ when isabs_let h ->
         let a, p, x, t, y = nth 0, nth 1, nth 2, nth 3, nth 4 in
         abs AbsLet (env, sigma) a p x y 0 t
 
-    | 14 -> (* abs_prod *)
+    | _ when isabs_prod h ->
         let a, x, y = nth 0, nth 1, nth 2 in
         (* HACK: put mkProp as returning type *)
         abs AbsProd (env, sigma) a mkProp x y 0 mkProp
 
-    | 15 -> (* abs_fix *)
+    | _ when isabs_fix h ->
         let a, f, t, n = nth 0, nth 1, nth 2, nth 3 in
         let n = CoqN.from_coq (env, sigma) n in
         (* HACK: put mkProp as returning type *)
         abs AbsFix (env, sigma) a mkProp f t n mkProp
 
-    | 16 -> (* get_binder_name *)
+    | _ when isget_binder_name h ->
         let t = nth 1 in
         let s = get_name (env, sigma) t in
         begin
@@ -1065,7 +1171,7 @@ let rec run' ctxt t =
               Err (Exceptions.mkWrongTerm sigma env ())
         end
 
-    | 17 -> (* remove *)
+    | _ when isremove h ->
         let x, t = nth 2, nth 3 in
         if isVar sigma x then
           if check_dependencies env sigma x t then
@@ -1077,39 +1183,39 @@ let rec run' ctxt t =
         else
           Err (E.mkNotAVar sigma env ())
 
-    | 18 -> (* evar *)
+    | _ when isgen_evar h->
         let ty, hyp = nth 0, nth 1 in
         cvar (env, sigma) ty hyp
 
-    | 19 -> (* is_evar *)
+    | _ when isis_evar h ->
         let e = whd_evar sigma (nth 1) in
         if isEvar sigma e || (isApp sigma e && isEvar sigma (fst (destApp sigma e))) then
           return sigma CoqBool.mkTrue
         else
           return sigma CoqBool.mkFalse
 
-    | 20 -> (* hash *)
+    | _ when ishash h ->
         return sigma (hash env sigma (nth 1) (nth 2))
 
-    | 21 -> (* solve_typeclasses *)
+    | _ when issolve_typeclass h ->
         let evd' = Typeclasses.resolve_typeclasses ~fail:false env sigma in
         return evd' CoqUnit.mkTT
 
-    | 22 -> (* print *)
+    | _ when isprint h ->
         let s = nth 0 in
         print env sigma s;
         return sigma CoqUnit.mkTT
 
-    | 23 -> (* pretty_print *)
+    | _ when ispretty_print h ->
         let t = nth 1 in
         let t = nf_evar sigma t in
         let s = constr_to_string_env sigma env t in
         return sigma (CoqString.to_coq s)
 
-    | 24 -> (* hypotheses *)
+    | _ when ishyps h ->
         return sigma ctxt.renv
 
-    | 25 -> (* dest case *)
+    | _ when isdestcase h ->
         let t = nth 1 in
         begin
           match dest_Case (env, sigma) t with
@@ -1117,12 +1223,12 @@ let rec run' ctxt t =
           | _ -> Err (E.mkNotAMatchExp sigma env ())
         end
 
-    | 26 -> (* get constrs *)
+    | _ when isconstrs h ->
         let t = nth 1 in
         let (sigma', constrs) = get_Constrs (env, sigma) t in
         return sigma' constrs
 
-    | 27 -> (* make case *)
+    | _ when ismakecase h ->
         let case = nth 0 in
         begin
           try
@@ -1131,7 +1237,8 @@ let rec run' ctxt t =
           with CoqList.NotAList l ->
             Err (E.mkNotAList sigma env ())
         end
-    | 28 -> (* munify *)
+
+    | _ when isunify h ->
         let a, x, y, uni = nth 0, nth 1, nth 2, nth 3 in
         let sigma, feqT = CoqEq.mkType sigma env a x y in
         begin
@@ -1146,7 +1253,7 @@ let rec run' ctxt t =
               return sigma none
         end
 
-    | 29 -> (* munify_univ *)
+    | _ when isunify_univ h ->
         let x, y, uni = nth 0, nth 1, nth 2 in
         let fT = mkProd(Name.Anonymous, x, y) in
         begin
@@ -1161,7 +1268,7 @@ let rec run' ctxt t =
               return sigma none
         end
 
-    | 30 -> (* get_reference *)
+    | _ when isget_reference h ->
         let s = CoqString.from_coq (env, sigma) (nth 0) in
         let open Nametab in let open Libnames in
         begin
@@ -1173,7 +1280,7 @@ let rec run' ctxt t =
           with _ -> Err (Exceptions.mkRefNotFound sigma env s)
         end
 
-    | 31 -> (* get_var *)
+    | _ when isget_var h ->
         let s = CoqString.from_coq (env, sigma) (nth 0) in
         let open Context.Named in
         begin
@@ -1184,7 +1291,7 @@ let rec run' ctxt t =
           with _ -> Err (Exceptions.mkRefNotFound sigma env s)
         end
 
-    | 32 -> (* call_ltac *)
+    | _ when iscall_ltac h ->
         let concl, name, args = nth 0, nth 1, nth 2 in
         let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq sigma env args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
@@ -1225,19 +1332,19 @@ let rec run' ctxt t =
         end
     (* Tac (sigma, Tacinterp.eval_tactic tac, fun v -> Val v) *)
 
-    | 33 -> (* list_ltac *)
+    | _ when islist_ltac h ->
         let aux k _ = Feedback.msg_info (Pp.str (Names.KerName.to_string k)) in
         KNmap.iter aux (Tacenv.ltac_entries ());
         return sigma CoqUnit.mkTT
 
-    | 34 -> (* read_line *)
+    | _ when isread_line h ->
         return sigma (CoqString.to_coq (read_line ()))
 
-    | 35 -> (* break *)
+    | _ when isbreak h ->
         run' {ctxt with hook=Some (nth 2)} (nth 4)(*  >>= fun (sigma, _) -> *)
     (* return sigma CoqUnit.mkTT *)
 
-    | 36 -> (* decompose *)
+    | _ when isdecompose h ->
         let (h, args) = decompose_app sigma (nth 1) in
         let sigma, dyn = mkdyn sigma env in
         let sigma, listdyn = CoqList.mkType sigma env dyn in
@@ -1246,7 +1353,7 @@ let rec run' ctxt t =
         let sigma, pair =CoqPair.mkPair sigma env dyn listdyn dh args in
         return sigma pair
 
-    | 37 -> (* solve_typeclass *)
+    | _ when issolve_typeclass h ->
         let ty = nth 0 in
         begin
           try
@@ -1258,7 +1365,7 @@ let rec run' ctxt t =
             return sigma none
         end
 
-    | 38 -> (* declare definition *)
+    | _ when isdeclare h ->
         let kind, name, opaque, ty, bod = nth 0, nth 1, nth 2, nth 3, nth 4 in
         (try
            let ty = to_constr sigma ty in
@@ -1272,7 +1379,7 @@ let rec run' ctxt t =
              Err (E.mkTypeErrorUnboundVar sigma env ())
         )
 
-    | 39 -> (* declare implicit arguments *)
+    | _ when isdeclare_implicits h ->
         let reference, impls = (*nth 0 is the type *) nth 1, nth 2 in
         (try
            let reference = to_constr sigma reference in
@@ -1282,13 +1389,23 @@ let rec run' ctxt t =
            Err (E.mkNotAReference sigma env (nth 0) reference)
         )
 
-    | 40 -> (* os_cmd *)
+    | _ when isos_cmd h ->
         let cmd = CoqString.from_coq (env, sigma) (nth 0) in
         let ret = Sys.command cmd in
         return sigma (CoqZ.to_coq ret)
 
     | _ ->
-        Exceptions.block "I have no idea what is this construct of T that you have here"
+        begin
+          try
+            let n = EConstr.destVar sigma h in
+            match Environ.named_body n ctxt.fixpoints with
+            | Some fixbody ->
+                let t = (EConstr.applist (of_constr fixbody,Array.to_list args)) in
+                run' ctxt t
+            | None -> Err (E.mkStuckTerm sigma env ())
+          with | Term.DestKO ->
+            Err (E.mkStuckTerm sigma env ())
+        end
 
 (* h is the mfix operator, a is an array of types of the arguments, b is the
    return type of the fixpoint, s is the type to embed M in itself (used only to

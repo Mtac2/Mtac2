@@ -235,39 +235,34 @@ Definition mtry'@{a} : forall {A : Type@{a}}, t@{a} A -> (Exception -> t@{a} A) 
 Definition raise@{a} : forall {A : Type@{a}}, Exception -> t@{a} A.
   refine (fun A _ => mkt). Qed.
 
-Definition fix1'@{a b} : forall{A: Type@{a}} {B: A->Type@{b}} (S: Type@{b}->Prop),
-  (forall a: Type@{b}, S a->t a) ->
-  ((forall x: A, S (B x))->(forall x: A, S (B x))) ->
+Definition fix1@{a b} : forall{A: Type@{a}} (B: A->Type@{b}),
+  ((forall x: A, t (B x))->(forall x: A, t (B x))) ->
   forall x: A, t@{b} (B x).
-  refine (fun A B _ _ _ x=>mkt). Qed.
+  refine (fun A B _ x=>mkt). Qed.
 
-Definition fix2'@{a1 a2 b} : forall {A1: Type@{a1}} {A2: A1->Type@{a2}} {B: forall (a1 : A1), A2 a1->Type@{b}} (S: Type@{b}->Prop),
-  (forall a: Type@{b}, S a -> t a) ->
-  ((forall (x1: A1) (x2: A2 x1), S (B x1 x2)) ->
-    (forall (x1: A1) (x2: A2 x1), S (B x1 x2))) ->
+Definition fix2@{a1 a2 b} : forall {A1: Type@{a1}} {A2: A1->Type@{a2}} (B: forall (a1 : A1), A2 a1->Type@{b}),
+  ((forall (x1: A1) (x2: A2 x1), t (B x1 x2)) ->
+    (forall (x1: A1) (x2: A2 x1), t (B x1 x2))) ->
   forall (x1: A1) (x2: A2 x1), t (B x1 x2).
-  refine (fun A1 A2 B _ _ _ x1 x2=>mkt). Qed.
+  refine (fun A1 A2 B _ x1 x2=>mkt). Qed.
 
-Definition fix3'@{a1 a2 a3 b} : forall {A1: Type@{a1}} {A2: A1->Type@{a2}} {A3 : forall (a1: A1), A2 a1->Type@{a3}} {B: forall (a1: A1) (a2: A2 a1), A3 a1 a2->Type@{b}} (S : Type@{b}->Prop),
-  (forall a: Type@{b}, S a -> t a) ->
-  ((forall (x1: A1) (x2: A2 x1) (x3: A3 x1 x2), S (B x1 x2 x3)) ->
-    (forall (x1: A1) (x2: A2 x1) (x3: A3 x1 x2), S (B x1 x2 x3))) ->
+Definition fix3@{a1 a2 a3 b} : forall {A1: Type@{a1}} {A2: A1->Type@{a2}} {A3 : forall (a1: A1), A2 a1->Type@{a3}} (B: forall (a1: A1) (a2: A2 a1), A3 a1 a2->Type@{b}),
+  ((forall (x1: A1) (x2: A2 x1) (x3: A3 x1 x2), t (B x1 x2 x3)) ->
+    (forall (x1: A1) (x2: A2 x1) (x3: A3 x1 x2), t (B x1 x2 x3))) ->
   forall (x1: A1) (x2: A2 x1) (x3: A3 x1 x2), t (B x1 x2 x3).
-  refine (fun A1 A2 A3 B _ _ _ x1 x2 x3=>mkt). Qed.
+  refine (fun A1 A2 A3 B _ x1 x2 x3=>mkt). Qed.
 
-Definition fix4'@{a1 a2 a3 a4 b} : forall {A1: Type@{a1}} {A2: A1->Type@{a2}} {A3: forall (a1: A1), A2 a1->Type@{a3}} {A4: forall (a1: A1) (a2: A2 a1), A3 a1 a2->Type@{a4}} {B: forall (a1: A1) (a2: A2 a1) (a3: A3 a1 a2), A4 a1 a2 a3->Type@{b}} (S : Type@{b} -> Prop),
-  (forall a: Type@{b}, S a->t a) ->
-  ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4)) ->
-    (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), S (B x1 x2 x3 x4))) ->
+Definition fix4@{a1 a2 a3 a4 b} : forall {A1: Type@{a1}} {A2: A1->Type@{a2}} {A3: forall (a1: A1), A2 a1->Type@{a3}} {A4: forall (a1: A1) (a2: A2 a1), A3 a1 a2->Type@{a4}} (B: forall (a1: A1) (a2: A2 a1) (a3: A3 a1 a2), A4 a1 a2 a3->Type@{b}),
+  ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), t (B x1 x2 x3 x4)) ->
+    (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), t (B x1 x2 x3 x4))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), t (B x1 x2 x3 x4).
-  refine (fun A1 A2 A3 A4 B _ _ _ x1 x2 x3 x4=>mkt). Qed.
+  refine (fun A1 A2 A3 A4 B _ x1 x2 x3 x4=>mkt). Qed.
 
-Definition fix5'@{a1 a2 a3 a4 a5 b}: forall{A1: Type@{a1}} {A2: A1->Type@{a2}} {A3: forall(a1: A1), A2 a1->Type@{a3}} {A4: forall(a1: A1)(a2: A2 a1), A3 a1 a2->Type@{a4}} {A5: forall(a1: A1)(a2: A2 a1)(a3: A3 a1 a2), A4 a1 a2 a3->Type@{a5}} {B: forall(a1: A1)(a2: A2 a1)(a3: A3 a1 a2)(a4: A4 a1 a2 a3), A5 a1 a2 a3 a4->Type@{b}} (S : Type@{b}->Prop),
-  (forall a : Type@{b}, S a -> t a) ->
-  ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5)) ->
-    (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), S (B x1 x2 x3 x4 x5))) ->
+Definition fix5@{a1 a2 a3 a4 a5 b}: forall{A1: Type@{a1}} {A2: A1->Type@{a2}} {A3: forall(a1: A1), A2 a1->Type@{a3}} {A4: forall(a1: A1)(a2: A2 a1), A3 a1 a2->Type@{a4}} {A5: forall(a1: A1)(a2: A2 a1)(a3: A3 a1 a2), A4 a1 a2 a3->Type@{a5}} (B: forall(a1: A1)(a2: A2 a1)(a3: A3 a1 a2)(a4: A4 a1 a2 a3), A5 a1 a2 a3 a4->Type@{b}),
+  ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), t (B x1 x2 x3 x4 x5)) ->
+    (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), t (B x1 x2 x3 x4 x5))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), t (B x1 x2 x3 x4 x5).
-  refine (fun A1 A2 A3 A4 A5 B _ _ _ x1 x2 x3 x4 x5=>mkt). Qed.
+  refine (fun A1 A2 A3 A4 A5 B _ x1 x2 x3 x4 x5=>mkt). Qed.
 
 (** [is_var e] returns if [e] is a variable. *)
 Definition is_var@{a}: forall{A : Type@{a}}, A->t@{Set} bool.
@@ -409,10 +404,9 @@ Definition read_line: t@{Set} string.
 (** [break f t] calls [f] at each step of the computation of [t]. [f]
     is expcted to return the term that receives as argument, or any
     transformation of it. *)
-Definition break' : forall (S : Type -> Prop),
-  (forall a : Type, S a -> t a) ->
-  (forall A : Type, S A -> t (S A)) -> forall {A : Type}, S A -> t A.
-  refine (fun _ _ _ _ _ =>mkt). Qed.
+Definition break :
+  (forall A : Type, t A -> t (t A)) -> forall {A : Type}, t A -> t A.
+  refine (fun _ _ _ =>mkt). Qed.
 
 
 (** [decompose x] decomposes value [x] into a head and a spine of
@@ -454,14 +448,6 @@ Definition Cevar (A : Type) (ctx : mlist Hyp) : t A := gen_evar A (mSome ctx).
 Definition evar@{a b} (A : Type@{a}) : t@{a} A := gen_evar@{a Set b} A mNone.
 
 Definition failwith {A} (s : string) : t A := raise (Failure s).
-
-Definition fix1 {A} B := @fix1' A B t (fun _ x => x).
-Definition fix2 {A1 A2} B := @fix2' A1 A2 B t (fun _ x => x).
-Definition fix3 {A1 A2 A3} B := @fix3' A1 A2 A3 B t (fun _ x => x).
-Definition fix4 {A1 A2 A3 A4} B := @fix4' A1 A2 A3 A4 B t (fun _ x => x).
-Definition fix5 {A1 A2 A3 A4 A5} B := @fix5' A1 A2 A3 A4 A5 B t (fun _ x => x).
-
-Definition break {A} f := @break' t (fun _ x => x) f A.
 
 (** Defines [eval f] to execute after elaboration the Mtactic [f].
     It allows e.g. [rewrite (eval f)]. *)
