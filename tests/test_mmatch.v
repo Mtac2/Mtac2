@@ -48,7 +48,7 @@ Require Import Lists.List.
 Import Base.M.
 Import M.notations.
 
-Definition inlist A (x : A) : forall l : list A, M (In x l) :=
+Definition inlist A (x : A) : forall (l : list A), M (In x l) :=
   mfix1 f (l : list A) : M (In x l) :=
   mmatch l with
   | [? l r] l ++ r =>
@@ -112,7 +112,7 @@ Definition test_return_in (t : nat) : M (t = t) :=
 
 (* testing no reducing patterns *)
 (* note that in this case we change the order (it doesn't matter) *)
-Definition inlist_nored A (x : A) : forall l : list A, M (In x l) :=
+Definition inlist_nored A (x : A) : forall (l : list A), M (In x l) :=
   mfix1 f (l : list A) : M (In x l) :=
   mmatch l with
   | [? s] (x :: s) =n> M.ret (in_eq _ _)
@@ -145,7 +145,7 @@ Proof. reflexivity. Qed.
 
 (* if instead we use reduction (in the first two patterns),
    the proof is not the same: *)
-Definition inlist_redcons A (x : A) : forall l : list A, M (In x l) :=
+Definition inlist_redcons A (x : A) : forall (l : list A), M (In x l) :=
   mfix1 f (l : list A) : M (In x l) :=
   mmatch l with
   | [? s] (x :: s) => M.ret (in_eq _ _)

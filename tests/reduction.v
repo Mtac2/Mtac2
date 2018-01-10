@@ -66,7 +66,7 @@ Qed.
 
 Example reduce_BetaDeltaIota : unit.
 MProof.
-let x := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (elem (Dyn (let t := tt in t))) in
+let x := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (elemr (Dynr (let t := tt in t))) in
 assert_eq x (let t := tt in t).
 Qed.
 
@@ -75,32 +75,32 @@ Section ASection.
 
 Example reduce_BetaDeltaIotaP : unit.
 MProof.
-let x := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (elem (Dyn (fst (p, tt)))) in
+let x := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (elemr (Dynr (fst (p, tt)))) in
 assert_eq x 0.
 Qed.
 
 Example reduce_OneStepDyn : nat.
 MProof.
-let x := rone_step (elem (Dyn p)) in
+let x := rone_step (elemr (Dynr p)) in
 let x := reduce (RedWhd [rl:RedBeta;RedMatch]) x in M.ret x.
 Qed.
 
 Example reduce_deltac : unit.
 MProof.
-let x := reduce (RedWhd [rl:RedBeta;RedMatch;RedDeltaC]) (elem (Dyn (fst (p, tt)))) in
+let x := reduce (RedWhd [rl:RedBeta;RedMatch;RedDeltaC]) (elemr (Dynr (fst (p, tt)))) in
 assert_eq x p.
 Qed.
 
 Example reduce_deltax : unit.
 MProof.
-let x := reduce (RedStrong [rl:RedBeta;RedMatch;RedDeltaX]) (elem (Dyn (fst (p, tt)))) in
-assert_eq x (elem (Dyn (fst (0, tt)))).
+let x := reduce (RedStrong [rl:RedBeta;RedMatch;RedDeltaX]) (elemr (Dynr (fst (p, tt)))) in
+assert_eq x (elemr (Dynr (fst (0, tt)))).
 Qed.
 
 Definition test_opaque : nat. exact 0. Qed.
 Example reduce_deltac_opaque : unit.
 MProof.
-let x := reduce (RedWhd [rl:RedBeta;RedMatch;RedDeltaC]) (elem (Dyn (fst (test_opaque, tt)))) in
+let x := reduce (RedWhd [rl:RedBeta;RedMatch;RedDeltaC]) (elemr (Dynr (fst (test_opaque, tt)))) in
 assert_eq x test_opaque.
 Qed.
 

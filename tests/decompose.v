@@ -7,7 +7,7 @@ Definition decompose {T} (x : T) :=
     M.print_term d;;
     mmatch d with
     | [? A B (t1: A -> B) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :m: args)
-    | [? A B (t1: forall x:A, B x) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :m: args)
+    | [? A B (t1: forall (x:A), B x) t2] Dyn (t1 t2) => f (Dyn t1) (Dyn t2 :m: args)
     | _ => M.ret (m: d, args)
     end) (Dyn x) [m:].
 

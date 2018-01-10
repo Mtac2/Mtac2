@@ -14,8 +14,8 @@ Definition fail_solve_tc A :=
   | mSome v => M.ret v
   | mNone => M.raise CouldntFindTC
   end.
-
-Definition zero := ltac: (mrun (fail_solve_tc Test >>= fun x=>M.ret (@val x))).
+Require Import Debugger.
+Definition zero := ltac:(mrun (debug true mnil (fail_solve_tc Test >>= fun x=>M.ret (@val x)))).
 
 Goal zero = 0.
 MProof.

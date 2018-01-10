@@ -105,20 +105,20 @@ Qed.
 Require Import Lists.ListTactics.
 
 Ltac apply_one_of l :=
-  list_fold_left ltac:(fun a b => (b || apply (elem a))) fail l.
+  list_fold_left ltac:(fun a b => (b || apply (elemr a))) fail l.
 
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 Proof.
   intros.
-  repeat (apply_one_of (Dyn in_eq :: Dyn in_cons :: nil)).
+  repeat (apply_one_of (Dynr in_eq :: Dynr in_cons :: nil)).
 Qed.
 
 Definition apply_one_of l : tactic :=
-  mfold_left (fun a b=>a || (apply (elem b)))%tactic l (raise exception).
+  mfold_left (fun a b=>a || (apply (elemr b)))%tactic l (raise exception).
 
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 MProof.
-  Time intros;; T.repeat (apply_one_of [m:Dyn in_eq| Dyn in_cons]).
+  Time intros;; T.repeat (apply_one_of [m:Dynr in_eq| Dynr in_cons]).
 Qed.
 Import Coq.Lists.List.ListNotations.
 

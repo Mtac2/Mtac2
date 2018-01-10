@@ -232,7 +232,7 @@ Definition bind@{a b} : forall {A : Type@{a}} {B : Type@{b}}, t A -> (A -> t B) 
 Definition mtry'@{a} : forall {A : Type@{a}}, t@{a} A -> (Exception -> t@{a} A) -> t@{a} A.
   refine (fun A _ _ => mkt). Qed.
 
-Definition raise@{a} : forall {A : Type@{a}}, Exception -> t@{a} A.
+Definition raise'@{a} : forall {A : Type@{a}}, Exception -> t@{a} A.
   refine (fun A _ => mkt). Qed.
 
 Definition fix1@{a b} : forall{A: Type@{a}} (B: A->Type@{b}),
@@ -437,6 +437,11 @@ Definition declare_implicits@{a}: forall {A: Type@{a}} (a : A),
 Definition os_cmd: string -> t@{Set} Z.
   refine (fun _ => mkt). Qed.
 
+Definition get_debug: t@{Set} bool.
+  refine mkt. Qed.
+Definition set_debug: bool -> t@{Set} unit.
+  refine (fun _ => mkt). Qed.
+
 Arguments t _%type.
 
 Definition fmap@{a b} {A:Type@{a}} {B:Type@{b}} (f : A -> B) (x : t@{a} A) : t@{b} B :=
@@ -446,6 +451,16 @@ Definition fapp@{a b} {A:Type@{a}} {B:Type@{b}} (f : t@{b} (A -> B)) (x : t@{b} 
 
 Definition Cevar (A : Type) (ctx : mlist Hyp) : t A := gen_evar A (mSome ctx).
 Definition evar@{a b} (A : Type@{a}) : t@{a} A := gen_evar@{a Set b} A mNone.
+
+
+Definition raise@{a} {A:Type@{a}} (e: Exception): t@{a} A :=
+  bind get_debug (fun b=>
+  if b then
+    bind (pretty_print@{Set} e) (fun s=>
+    bind (print ("raise " ++ s)) (fun _ =>
+    raise' e))
+  else
+    raise' e).
 
 Definition failwith {A} (s : string) : t A := raise (Failure s).
 

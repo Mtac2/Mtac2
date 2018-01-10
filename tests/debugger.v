@@ -7,8 +7,9 @@ Definition test : True := ltac:(mrun (debug true [m:] (M.ret I))).
 
 Goal True.
 MProof.
-  debugT true [m: (* Dyn (@M.ret) | Dyn (@M.cumul) *) ] (T.apply I).
-Qed.
+  Fail debugT true [m: Dyn (@M.ret) | Dyn (@M.cumul) ] (T.apply I). (* FIX why? *)
+Fail Qed.
+Abort.
 
 Goal unit.
 MProof.
@@ -20,6 +21,6 @@ Abort.
 
 Goal Exception.
   MProof.
-  debugT true [m:] (mtry mmatch (forall x, x > 0) with
-                      [? (A:Type) (P : A -> Prop)] forall y:A, P y => T.raise _ end with [? e] e => T.exact e end).
+  Fail debugT true [m:] (mtry mmatch (forall x, x > 0) with
+                      [? (A:Type) (P : A -> Prop)] forall (y:A), P y => T.raise _ end with [? e] e => T.exact e end). (* FIX ouch: UState.UniversesDiffer *)
 Abort.

@@ -83,7 +83,7 @@ module TConstr = struct
   let mktry' = mkconstr "mtry'"
   let istry'  = isconstr mktry'
 
-  let mkraise = mkconstr "raise"
+  let mkraise = mkconstr "raise'"
   let israise  = isconstr mkraise
 
   let mkfix1 = mkconstr "fix1"
@@ -193,6 +193,12 @@ module TConstr = struct
 
   let mkos_cmd = mkconstr "os_cmd"
   let isos_cmd  = isconstr mkos_cmd
+
+  let mkget_debug = mkconstr "get_debug"
+  let isget_debug  = isconstr mkget_debug
+
+  let mkset_debug = mkconstr "set_debug"
+  let isset_debug  = isconstr mkset_debug
 
 end
 
@@ -1030,6 +1036,8 @@ let get_type_of ctxt t =
   (* let env = push_named_context (named_context ctxt.fixpoints) ctxt.env in *)
   Retyping.get_type_of ctxt.env ctxt.sigma t
 
+let debug = ref false
+
 let rec run' ctxt t =
   let open TConstr in
   let sigma, env = ctxt.sigma, ctxt.env in
@@ -1197,7 +1205,7 @@ let rec run' ctxt t =
     | _ when ishash h ->
         return sigma (hash env sigma (nth 1) (nth 2))
 
-    | _ when issolve_typeclass h ->
+    | _ when issolve_typeclasses h ->
         let evd' = Typeclasses.resolve_typeclasses ~fail:false env sigma in
         return evd' CoqUnit.mkTT
 
@@ -1393,6 +1401,12 @@ let rec run' ctxt t =
         let cmd = CoqString.from_coq (env, sigma) (nth 0) in
         let ret = Sys.command cmd in
         return sigma (CoqZ.to_coq ret)
+
+    | _ when isget_debug h ->
+        return sigma (CoqBool.to_coq !debug)
+    | _ when isset_debug h ->
+        debug := CoqBool.from_coq sigma (nth 0);
+        return sigma CoqUnit.mkTT
 
     | _ ->
         begin
