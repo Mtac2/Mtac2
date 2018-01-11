@@ -904,5 +904,5 @@ Polymorphic Definition lift {A} (f: M A) (v : A) := A.
 
 (** creation of exceptions *)
 Definition new_exception name := M.declare dok_Definition name true exception;; M.ret tt.
-Notation "'New' 'Exception' n" := (h <- M.get_binder_name (fun n=>n);
-                                   new_exception h) (at level 0, n at next level).
+Definition binder_exception (f: unit->unit) := M.get_binder_name f >>= new_exception.
+Notation "'New' 'Exception' n" := (binder_exception (fun n=>n)) (at level 0, n at next level).
