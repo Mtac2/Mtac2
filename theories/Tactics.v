@@ -13,29 +13,17 @@ Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 (** Exceptions *)
-(* Eval hnf in new exception NoGoalsLeft. *)
-(* Eval hnf in new exception NotSameSize. *)
-(* Eval hnf in new exception NotAProduct. *)
-(* Eval hnf in new exception CantFindConstructor. *)
-(* Eval hnf in new exception ConstructorsStartsFrom1. *)
-(* Eval hnf in new exception Not1Constructor. *)
-(* Eval hnf in new exception Not2Constructor. *)
-(* Eval hnf in new exception DoesNotMatchGoal. *)
-(* Eval hnf in new exception NoPatternMatchesGoal. *)
-(* Eval hnf in new exception NotThatType. *)
-(* Eval hnf in new exception NoProgress. *)
-
-Definition NoGoalsLeft: Exception. exact exception. Qed.
-Definition NotSameSize: Exception. exact exception. Qed.
-Definition NotAProduct: Exception. exact exception. Qed.
-Definition CantFindConstructor: Exception. exact exception. Qed.
-Definition ConstructorsStartsFrom1: Exception. exact exception. Qed.
-Definition Not1Constructor: Exception. exact exception. Qed.
-Definition Not2Constructor: Exception. exact exception. Qed.
-Definition DoesNotMatchGoal: Exception. exact exception. Qed.
-Definition NoPatternMatchesGoal: Exception. exact exception. Qed.
-Definition NotThatType: Exception. exact exception. Qed.
-Definition NoProgress: Exception. exact exception. Qed.
+Mtac Do New Exception NoGoalsLeft.
+Mtac Do New Exception NotSameSize.
+Mtac Do New Exception NotAProduct.
+Mtac Do New Exception CantFindConstructor.
+Mtac Do New Exception ConstructorsStartsFrom1.
+Mtac Do New Exception Not1Constructor.
+Mtac Do New Exception Not2Constructor.
+Mtac Do New Exception DoesNotMatchGoal.
+Mtac Do New Exception NoPatternMatchesGoal.
+Mtac Do New Exception NotThatType.
+Mtac Do New Exception NoProgress.
 
 Definition SomethingNotRight {A} (t : A) : Exception. exact exception. Qed.
 

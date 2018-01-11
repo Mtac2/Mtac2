@@ -107,6 +107,14 @@ module MetaCoqRun = struct
       run env sigma concl (EConstr.of_constr evar) t
     end
 
+  let run_cmd t =
+    let (sigma, env) = Pfedit.get_current_context () in
+    let sigma', c = Constrintern.interp_open_constr env sigma t in
+    match Run.run (env, sigma) c with
+    | Run.Val (sigma, v) -> ()
+    | Run.Err (_, e) ->
+        CErrors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
+
 end
 
 (**
