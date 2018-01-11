@@ -167,18 +167,18 @@ Definition compi {A} {B} (g : M A) (h : M B) : M (A * B) :=
 (** A typed assumption tactic *)
 Set Print Universes.
 Open Scope pattern_scope.
-Polymorphic Definition find@{i j k k1 k2 k3 a1 a2 a3 a4 a5 a6 a7} {A:Type@{i}} :=
+Polymorphic Definition find@{i j k k1 a1 a2 a3 a4 a5 a6 a7 a8} {A:Type@{i}} :=
   mfix1 f (l : mlist@{j} Hyp@{k}) : M A :=
-    mmatch'@{a1 a2 a3 a4 a5 a6 a7} l (mcons@{j}
+    mmatch'@{a1 a2 a3 a4 a5 a6 a7 a8} l (mcons@{j}
       ([? x d (l': mlist@{j} Hyp@{k})] (mcons@{j} (@ahyp@{k} A x d) l') => M.ret x)
       (mcons@{j} ([? (ah:Hyp@{k}) (l': mlist@{j} Hyp@{k})] (mcons@{j} ah l') => f l')
-      (mcons@{j} ([? l': mlist@{j} Hyp@{k}] l' => M.raise@{k1 k2 k3} exception)
+      (mcons@{j} ([? l': mlist@{j} Hyp@{k}] l' => M.raise@{k1} exception)
        mnil@{j})))
     .
 
-Polymorphic Definition assumption@{i j k k1 k2 k3 a1 a2 a3 a4 a5 a6 a7} {A:Type@{i}} : M.t@{a3 j k} A :=
+Polymorphic Definition assumption@{i j k k1 a1 a2 a3 a4 a5 a6 a7 a8} {A:Type@{i}} : M.t A :=
   l <- hyps;
-  @find@{i j k k1 k2 k3 a1 a2 a3 a4 a5 a6 a7} A l.
+  @find@{i j k k1 a1 a2 a3 a4 a5 a6 a7 a8} A l.
 
 (** Solves goal A provided tactic t *)
 Definition by' {A} (t: tactic) : M A :=
@@ -187,8 +187,9 @@ Definition by' {A} (t: tactic) : M A :=
   l' <- T.filter_goals l;
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
 (* The following code just declares [by] which is a reserved keyword *)
-Check ltac:(mrun (r <- M.declare dok_Definition "by" false (@by');
-                  M.declare_implicits r [m: ia_Explicit | ia_MaximallyImplicit])).
+Check ltac:(mrun (M.declare dok_Definition "by" false (@by');; M.ret tt)).
+Check ltac:(mrun (r <- M.get_reference "by";
+                  dcase r as e in M.declare_implicits e [m: ia_Explicit | ia_MaximallyImplicit])).
 
 Definition use {A} (t: tactic) : M A :=
   e <- evar A;
@@ -209,14 +210,14 @@ Definition dest_pair {T} (x:T) : M (dyn * dyn) :=
 
 (** Given an element with type of the form (A1 * ... * An),
     it generates a goal for each unsolved variable in the pair. *)
-Definition to_goals : forall {A}, A -> M (mlist (unit *m goal)) :=
+Program Definition to_goals : forall {A}, A -> M (mlist (unit *m goal)) :=
   mfix2 to_goals (A: Type) (a: A) : M _ :=
   mif is_evar a then ret [m: (m: tt, Goal a)]
   else
     mif is_prod A then
       ''(d1, d2) <- dest_pair a;
-      let 'Dyn x := d1 in
-      let 'Dyn y := d2 in
+      dcase d1 as x in
+      dcase d2 as y in
       t1s <- to_goals _ x;
       t2s <- to_goals _ y;
       ret (t1s +m+ t2s)
