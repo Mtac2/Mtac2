@@ -62,37 +62,37 @@ Fixpoint mmap_plist (f: LIP -> tactic) (l: mlist LIP) : mlist tactic :=
   | a :m: l' => f a :m: mmap_plist f l'
   end.
 
-(* Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic := *)
-(*   match ip return tactic with *)
-(*   | IntroNoOp => T.idtac *)
-(*   | IntroB binder => *)
-(*     var <- M.get_binder_name binder; *)
-(*     T.intro_simpl var *)
-(*   | IntroC [m:] => T.destructn 0 *)
-(*   | IntroC ips => *)
-(*     T.destructn 0 &> mmap_plist do_intro ips *)
-(*   | IntroR d => *)
-(*     T.introsn 1;; *)
-(*     l <- M.hyps; *)
-(*     h <- M.hd l; *)
-(*     let (_, var, _) := h : Hyp in *)
-(*     trewrite d [m:Dyn var];; *)
-(*     T.clear var *)
-(*   | IntroDone => done *)
-(*   | IntroSimpl => simpl *)
-(*   end. *)
+Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
+  match ip return tactic with
+  | IntroNoOp => T.idtac
+  | IntroB binder =>
+    var <- M.get_binder_name binder;
+    T.intro_simpl var
+  | IntroC [m:] => T.destructn 0
+  | IntroC ips =>
+    T.destructn 0 &> mmap_plist do_intro ips
+  | IntroR d =>
+    T.introsn 1;;
+    l <- M.hyps;
+    h <- M.hd l;
+    let (_, var, _) := h : Hyp in
+    trewrite d [m:Dyn var];;
+    T.clear var
+  | IntroDone => done
+  | IntroSimpl => simpl
+  end.
+Import ProdNotations.
+Definition do_intro :  LIP -> tactic :=
+  mfix2 do_intro (lip : LIP) (g : goal) : M (mlist (unit *m goal)) :=
+  (match lip return tactic with
+  | lnil => T.idtac
+  | lcons ip lnil => to_tactic ip do_intro
+  | lcons ip lip => to_tactic ip do_intro ;; do_intro lip
+  end%tactic) g.
 
-(* Definition do_intro :  LIP -> tactic := *)
-(*   mfix2 do_intro (lip : LIP) (g : goal) : M (mlist (unit * goal)) := *)
-(*   (match lip return tactic with *)
-(*   | lnil => T.idtac *)
-(*   | lcons ip lnil => to_tactic ip do_intro *)
-(*   | lcons ip lip => to_tactic ip do_intro ;; do_intro lip *)
-(*   end%tactic) g. *)
+Notation "'pintro' s" := (do_intro s%IP) (at level 100).
+Notation "'pintros' l1 .. ln" := (do_intro (LIP_app l1%IP .. (LIP_app ln%IP lnil) ..)) (at level 0).
 
-(* Notation "'pintro' s" := (do_intro s%IP) (at level 100). *)
-(* Notation "'pintros' l1 .. ln" := (do_intro (LIP_app l1%IP .. (LIP_app ln%IP lnil) ..)) (at level 0). *)
+Notation "[i: l1 | .. | ln ]" := (mcons (pintros l1) ( .. (mcons (pintros ln) mnil) ..)) (at level 0).
 
-(* Notation "[i: l1 | .. | ln ]" := (mcons (pintros l1) ( .. (mcons (pintros ln) mnil) ..)) (at level 0). *)
-
-(* Close Scope IP. *)
+Close Scope IP.
