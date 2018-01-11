@@ -3,7 +3,7 @@ From Mtac2 Require Import Mtac2 Ttactics.
 
 From Coq Require Import String.
 
-Check ltac:(mrun (do_def "tt_lt_trans" (@PeanoNat.Nat.lt_trans))).
+Mtac Do (do_def "tt_lt_trans" (@PeanoNat.Nat.lt_trans)).
 Check tt_lt_trans.
 
 Arguments tt_lt_trans {_ _ _}.

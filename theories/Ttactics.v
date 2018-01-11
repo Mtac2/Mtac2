@@ -186,10 +186,6 @@ Definition by' {A} (t: tactic) : M A :=
   l <- t (Goal e);
   l' <- T.filter_goals l;
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
-(* The following code just declares [by] which is a reserved keyword *)
-Check ltac:(mrun (M.declare dok_Definition "by" false (@by');; M.ret tt)).
-Check ltac:(mrun (r <- M.get_reference "by";
-                  dcase r as e in M.declare_implicits e [m: ia_Explicit | ia_MaximallyImplicit])).
 
 Definition use {A} (t: tactic) : M A :=
   e <- evar A;
