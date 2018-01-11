@@ -102,29 +102,29 @@ Definition Dyn@{a} : forall {type : Type@{a}} (elem : type), dyn. refine (fun _ 
 Record dynr := Dynr { typer: Type; elemr:> typer }.
 Arguments Dynr {_} _.
 
-Inductive redlist A := rlnil | rlcons : A -> redlist A -> redlist A.
+Monomorphic Inductive redlist A := rlnil | rlcons : A -> redlist A -> redlist A.
 
 Arguments rlnil {_}.
 Arguments rlcons {_} _ _.
 
-Notation "[]rl" := rlnil.
+Notation "[rl: ]" := rlnil.
 Notation "[rl: x ; .. ; y ]" := (rlcons x (.. (rlcons y rlnil) ..)).
 
-Inductive RedFlags : Prop :=
+Monomorphic Inductive RedFlags : Set :=
 | RedBeta | RedDelta | RedMatch | RedFix | RedZeta
 | RedDeltaC | RedDeltaX
-| RedDeltaOnly : redlist@{Set} dyn -> RedFlags
-| RedDeltaBut : redlist@{Set} dyn -> RedFlags.
+| RedDeltaOnly : redlist dyn -> RedFlags
+| RedDeltaBut : redlist dyn -> RedFlags.
 
-Inductive Reduction : Prop :=
+Monomorphic Inductive Reduction : Set :=
 | RedNone
 | RedSimpl
 | RedOneStep
-| RedWhd : redlist@{Set} RedFlags -> Reduction
-| RedStrong : redlist@{Set} RedFlags -> Reduction
+| RedWhd : redlist RedFlags -> Reduction
+| RedStrong : redlist RedFlags -> Reduction
 | RedVmCompute.
 
-Inductive Unification : Type :=
+Monomorphic Inductive Unification : Set :=
 | UniCoq : Unification
 | UniMatch : Unification
 | UniMatchNoRed : Unification
@@ -906,3 +906,6 @@ Polymorphic Definition lift {A} (f: M A) (v : A) := A.
 Definition new_exception name := M.declare dok_Definition name true exception;; M.ret tt.
 Definition binder_exception (f: unit->unit) := M.get_binder_name f >>= new_exception.
 Notation "'New' 'Exception' n" := (binder_exception (fun n=>n)) (at level 0, n at next level).
+
+Definition Check {A} (x:A) := M.print_term A.
+Notation "'Check' n" := (Check n) (at level 0).

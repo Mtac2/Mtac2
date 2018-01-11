@@ -10,8 +10,10 @@ Mtac Do (print_term tt).
 (* open terms are OK *)
 Mtac Do (ret _).
 Fail Mtac Do _. (* Stuck term *)
-
+Set Printing Universes.
 Mtac Do New Exception Pum.
 Check Pum.
 
 Fail Mtac Do (raise Pum).
+
+Mtac Do Check (_ + _).
