@@ -33,7 +33,7 @@ Set Printing Universes.
 Import ProdNotations.
 Set Printing All.
 (** The type for tactics *)
-Definition gtactic@{a g1 g2 rg1 rg2 l} (A: Type@{a}) := goal@{g1 g2} -> M.t@{l} (mlist@{l} (mprod@{l l} A goal@{rg1 rg2})).
+Definition gtactic(*@{a g1 g2 rg1 rg2 l}*) (A: Type(*@{a}*)) := goal(*@{g1 g2}*) -> M.t(*@{l}*) (mlist(*@{l}*) (mprod(*@{l l}*) A goal(*@{rg1 rg2}*))).
 Definition tactic := gtactic unit.
 
 Delimit Scope tactic_scope with tactic.
@@ -110,9 +110,9 @@ Definition close_goals {A B} (y : B) : mlist (A *m goal) -> M (mlist (A *m goal)
 
 (** [let_close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] with its definition to each of them (it assumes it is defined). *)
-Definition let_close_goals@{a b g1 g2 l} {A: Type@{a}} {B:Type@{b}} (y : B) : mlist@{l} (A *m goal@{g1 g2}) -> M (mlist@{l} (mprod@{a l} A goal@{g1 g2})) :=
-  let t := reduce@{b} RedOneStep y in (* to obtain x's definition *)
-  M.map (fun '(m: x,g') => r <- M.abs_fun@{b l l} y g'; M.ret (m: x, @AHyp B (mSome t) r)).
+Definition let_close_goals(*@{a b g1 g2 l}*) {A: Type(*@{a}*)} {B:Type(*@{b}*)} (y : B) : mlist(*@{l}*) (A *m goal(*@{g1 g2}*)) -> M (mlist(*@{l}*) (mprod(*@{a l}*) A goal(*@{g1 g2}*))) :=
+  let t := reduce(*@{b}*) RedOneStep y in (* to obtain x's definition *)
+  M.map (fun '(m: x,g') => r <- M.abs_fun(*@{b l l}*) y g'; M.ret (m: x, @AHyp B (mSome t) r)).
 
 (** [rem_hyp x l] "removes" hypothesis [x] from the list of goals [l]. *)
 Definition rem_hyp {A B} (x : B) (l: mlist (A *m goal)) : M (mlist (A *m goal)) :=

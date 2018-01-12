@@ -158,10 +158,10 @@ Notation "'dreduce' ( l1 , .. , ln )" :=
   (at level 0).
 
 (** goal type *)
-Inductive goal@{K L} :=
-  | Goal : forall {A:Type@{K}}, A -> goal
-  | AHyp : forall {A:Type@{L}}, moption@{L} A -> (A -> goal) -> goal
-  | HypRem : forall {A:Type@{L}}, A -> goal -> goal.
+Inductive goal(*@{K L}*) :=
+  | Goal : forall {A:Type(*@{K}*)}, A -> goal
+  | AHyp : forall {A:Type(*@{L}*)}, moption(*@{L}*) A -> (A -> goal) -> goal
+  | HypRem : forall {A:Type(*@{L}*)}, A -> goal -> goal.
 
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,

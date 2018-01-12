@@ -186,9 +186,7 @@ MProof.
   clear return_type.
   (* TODO: figure out why `unfold` above doesn't work anymore. *)
   (* clear rG. *)
-  match c with
-  | Dyn c => exact c
-  end.
+  dcase c as c in exact c.
 Abort.
 
 
@@ -228,16 +226,16 @@ Proof.
   (* unfold eval in c'. *)
   pose (c := M.eval mc).
   unfold M.eval in c.
-  exact (elem c).
+  mrun (dcase c as c in exact c).
 Qed.
 End VectorExample.
 
 
 Example get_reflect_ITele := Eval compute in ltac:(mrun (get_ITele (reflect True)))%MC.
 Example reflect_nindx := Eval compute in let (n, _) := get_reflect_ITele in n.
-Example reflect_sort := Eval compute in let (sort, _) := snd get_reflect_ITele in sort.
+Example reflect_sort := Eval compute in let (sort, _) := msnd get_reflect_ITele in sort.
 Example reflect_itele : ITele reflect_sort :=
   Eval compute in
-  match snd get_reflect_ITele as pair return let (sort, _) := pair in ITele sort with
+  match msnd get_reflect_ITele as pair return let (sort, _) := pair in ITele sort with
   | existT _ s it => it
   end.
