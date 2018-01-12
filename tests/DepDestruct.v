@@ -140,7 +140,7 @@ Qed.
     compute in mc.
     pose (c := M.eval mc).
     unfold M.eval in c.
-    exact (elem c).
+    mrun (dcase c as e in exact e).
   Qed.
 
 Notation "'mpose' ( x := t )" := (r <- t; cpose r (fun x=>idtac))
@@ -166,7 +166,7 @@ Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
 Goal forall P b, reflect P b -> P <-> b = true.
 MProof.
   intros P b r.
-  mpose (rG := abstract_goal (rsort := SType) (P <-> b = true) (reflect_args P b)  r).
+  mpose (rG := abstract_goal (rsort := SProp) (P <-> b = true) (reflect_args P b)  r).
   simpl.
   assert (T : branch_of_CTele rG (reflect_RTrue P)).
   { simpl. cintros x {- split&> [m:cintros xP {- reflexivity -} | cintros notP {- assumption -}] -}. (* it doesn't work if intros is put outside *) }

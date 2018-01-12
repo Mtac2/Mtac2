@@ -40,7 +40,7 @@ Notation "~~" := (lcons IntroNoOp lnil) : IP_scope.
 Notation "r>" := (lcons (IntroR RightRewrite) lnil) : IP_scope.
 Notation "<l" := (lcons (IntroR LeftRewrite) lnil) : IP_scope.
 
-Notation "[| ]" := (lcons (IntroC nil) lnil) : IP_scope.
+Notation "[| ]" := (lcons (IntroC mnil) lnil) : IP_scope.
 Notation "[| x | .. | y ]" := (lcons (IntroC (mcons x .. (mcons y mnil) .. )) lnil) : IP_scope.
 
 Close Scope IP.

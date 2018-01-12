@@ -166,9 +166,9 @@ Inductive goal@{K L} :=
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
 we could make it part of the B, but then higher order unification will fail. *)
-Inductive pattern@{a b e} (M : Type@{b} -> Type@{b}) (A : Type@{a}) (B : A -> Type@{b}) (y : A) : Prop :=
+Inductive pattern(*@{a b e}*) (M : Type(*@{b}*) -> Type(*@{b}*)) (A : Type(*@{a}*)) (B : A -> Type(*@{b}*)) (y : A) : Prop :=
   | pbase : forall x : A, (y =m= x ->M (B x)) -> Unification -> pattern M A B y
-  | ptele : forall {C:Type@{e}}, (forall x : C, pattern M A B y) -> pattern M A B y.
+  | ptele : forall {C:Type(*@{e}*)}, (forall x : C, pattern M A B y) -> pattern M A B y.
 
 Arguments pbase {M A B y} _ _ _.
 Arguments ptele {M A B y C} _.
@@ -507,7 +507,7 @@ End monad_notations.
 
 Import monad_notations.
 
-Fixpoint open_pattern@{a1 a2 a3 I K a b} {A P y} (p : pattern@{a1 a2 a3} t A P y) : t@{a2} (P y) :=
+Fixpoint open_pattern(*@{a1 a2 a3 I K a b}*) {A P y} (p : pattern(*@{a1 a2 a3}*) t A P y) : t(*@{a2}*) (P y) :=
   match p with
   | pbase x f u =>
     oeq <- unify x y u;
@@ -515,21 +515,21 @@ Fixpoint open_pattern@{a1 a2 a3 I K a b} {A P y} (p : pattern@{a1 a2 a3} t A P y
     | mSome eq =>
       (* eq has type x =m= t, but for the pattern we need t = x.
          we still want to provide eq_refl though, so we reduce it *)
-      let h := (* reduce@{b1 b2 b3} (RedWhd [rl:RedBeta;RedDelta;RedMatch]) *) (meq_sym@{a1 K} eq) in
+      let h := (* reduce(*@{b1 b2 b3}*) (RedWhd [rl:RedBeta;RedDelta;RedMatch]) *) (meq_sym(*@{a1 K}*) eq) in
       let 'meq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
-      let b := (* reduce@{b1 b2 b3} (RedWhd [rl:RedBeta]) *) (f h) in b
+      let b := (* reduce(*@{b1 b2 b3}*) (RedWhd [rl:RedBeta]) *) (f h) in b
     | mNone => raise DoesNotMatch
     end
-  | @ptele _ _ _ _ C f => e <- evar@{a b} C; open_pattern (f e)
+  | @ptele _ _ _ _ C f => e <- evar(*@{a b}*) C; open_pattern (f e)
   end.
 
-Fixpoint mmatch'@{a1 a2 a3 a b I K J} {A:Type@{a1}} {P:A->Type@{a2}} (y : A) (ps : mlist@{J} (pattern@{a1 a2 a3} t A P y)) : t@{a2} (P y) :=
+Fixpoint mmatch'(*@{a1 a2 a3 a b I K J}*) {A:Type(*@{a1}*)} {P:A->Type(*@{a2}*)} (y : A) (ps : mlist(*@{J}*) (pattern(*@{a1 a2 a3}*) t A P y)) : t(*@{a2}*) (P y) :=
   match ps with
   | [m:] => raise NoPatternMatches
   | p :m: ps' =>
-    mtry'@{a1} (open_pattern@{a1 a2 a3 a b I K} p) (fun e =>
-      bind@{Set a1} (unify e DoesNotMatch UniMatchNoRed) (fun b=>
+    mtry'(*@{a1}*) (open_pattern(*@{a1 a2 a3 a b I K}*) p) (fun e =>
+      bind(*@{Set a1}*) (unify e DoesNotMatch UniMatchNoRed) (fun b=>
       if b then mmatch' y ps' else raise e))
   end.
 
