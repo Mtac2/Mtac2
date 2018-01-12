@@ -57,7 +57,7 @@ Definition debug (trace: bool) {A:Type} (bks : mlist dyn) : M A -> M A :=
   M.break (fun A (x:M A) =>
              v <- M.decompose x;
              let (hd, _) := v in
-             let (_, hd) := hd : dyn in
+             dcase hd as hd in
                let x := reduce (RedWhd [rl:RedBeta;RedMatch;RedFix;RedZeta]) x in
                v <- M.decompose x;
                let (hd, _) := v in
@@ -76,6 +76,6 @@ Definition debugT {A} (trace: bool) (bks : mlist dyn) (t: gtactic A) : gtactic u
 Goal unit.
 MProof.
 Set Printing All.
-  (* No idea why this is failing horribly (just when debugging) *)
+  (* this was failing horribly (just when tracing) because of the wrong printer *)
   debugT true [m:] (@get_ITele (nat -> Prop) (eq 0)).
 Abort.

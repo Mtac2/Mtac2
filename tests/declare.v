@@ -3,11 +3,11 @@ Import M.notations.
 Definition test := c <- M.declare dok_Definition "bla" false 1; M.print_term c.
 Goal unit.
   MProof.
-  Fail c <- M.declare dok_Definition "ble" false 1; M.print_term c. (* Univ inconsistency??? *)
-  test.
+  c <- M.declare dok_Definition "ble" false 1; M.print_term c.
 Qed.
 
-
+Goal unit.
+MProof. test. Qed.
 
 Typeclasses eauto := debug.
 Structure ST := mkS { s : nat }.
@@ -87,9 +87,9 @@ Compute fun x y =>
                       with | UnboundVar => M.ret tt end
                )).
 
-Fail Compute M.eval (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c). (* FIX *)
+Compute M.eval (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c).
 
-Fail Print blu. (* FIX *)
+Print blu.
 
 
 Definition backtracking_test :=
