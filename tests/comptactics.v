@@ -29,7 +29,8 @@ Require Import Arith.
 
 Example exif (x : nat) : if beq_nat (S x) 1 then x = 0 : Type else True.
 MProof.
-variabilize (beq_nat _ _) "t".
+Set Printing All.
+variabilize (beq_nat (S x) (S 0)) "t".
 assert (B:t = beq_nat (S x) 1).
 reflexivity.
 Abort.

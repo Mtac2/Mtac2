@@ -588,7 +588,6 @@ let name_occurn_env env n =
 let dest_Case (env, sigma) t =
   let sigma, dyn = mkdyn sigma env in
   try
-    let t = RE.whd_betadelta env sigma t in
     let (info, return_type, discriminant, branches) = destCase sigma t in
     let sigma, branch_dyns = Array.fold_right (
       fun t (sigma,l) ->
@@ -1142,8 +1141,8 @@ let rec run' ctxt t =
           let (sigma, renv) = Hypotheses.cons_hyp a (mkVar name) ot ctxt.renv sigma env in
           match run' {ctxt with env; renv; sigma; nus=(ctxt.nus+1)} fx with
           | Val (sigma', e) ->
-              if occur_var env sigma name e then
-                Err (E.mkVarAppearsInValue sigma env ())
+              if occur_var env sigma' name e then
+                Err (E.mkVarAppearsInValue sigma' env ())
               else
                 return sigma' e
           | Err (sigma, e) ->
