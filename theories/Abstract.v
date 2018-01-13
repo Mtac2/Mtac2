@@ -92,7 +92,7 @@ Definition abstract A B (x : A) (t : B) :=
    if b then raise exception
    else
     mmatch r as r' return M (result x (elemr r')) with
-    | Dynr x =n>
+    | Dynr x =c>
       ret (R (fun x=>x) (meq_refl _))
     (* | [? b (P:type r) (Q:type r)] Dyn (match b with *)
     (*       | true => P *)

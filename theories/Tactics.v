@@ -330,8 +330,8 @@ Definition cclear {A B} (x:A) (cont : gtactic B) : gtactic B := fun g=>
 Definition clear {A} (x : A) : tactic := cclear x idtac.
 
 Definition destruct {A : Type} (n : A) : tactic := fun g=>
-  let A := rhnf A in
-  b <- let n := rcbv n in M.is_var n;
+  let A := reduce (RedWhd [rl:RedBeta]) A in
+  b <- M.is_var n;
   ctx <- if b then M.hyps_except n else M.hyps;
   P <- M.Cevar (A->Type) ctx;
   let Pn := P n in

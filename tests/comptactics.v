@@ -2,6 +2,8 @@ From Mtac2 Require Import Mtac2 CompoundTactics.
 
 Import T.
 Import T.notations.
+Import CT.
+Import CT.notations.
 Example exabs (x : nat) : x = 1 -> 1 = x.
 MProof.
 intro H.
@@ -20,7 +22,7 @@ Require Import Strings.String.
 Example exabs2' (x : nat) : S x = 1 -> 1 = S x.
 MProof.
 intro H.
-variabilize (S x) "t".
+variabilize (S x) as t.
 assert (B:t = S x).
 reflexivity.
 Abort.
@@ -29,8 +31,7 @@ Require Import Arith.
 
 Example exif (x : nat) : if beq_nat (S x) 1 then x = 0 : Type else True.
 MProof.
-Set Printing All.
-variabilize (beq_nat (S x) (S 0)) "t".
+variabilize (beq_nat (S x) (S 0)) as t.
 assert (B:t = beq_nat (S x) 1).
 reflexivity.
 Abort.
@@ -44,11 +45,11 @@ Theorem sillyfun_false : forall (n : nat),
   (sillyfun n = false) : Type.
 MProof.
   intros n. unfold sillyfun.
-  variabilize (beq_nat n 3) "t3".
+  variabilize (beq_nat n 3) as t3.
   destruct t3.
   simpl. reflexivity.
   simpl.
-  variabilize (beq_nat _ _) "t5".
+  variabilize (beq_nat _ _) as t5.
   destruct t5 &> reflexivity.
 Qed.
 
@@ -73,7 +74,7 @@ Theorem sillyfun1_odd : forall (n : nat),
      oddb n = true) : Type .
 MProof.
   intros n. unfold sillyfun1.
-  variabilize (beq_nat n 3) "t".
+  variabilize (beq_nat n 3) as t.
   assert (Heqe3 : t = (n =? 3)) |1> reflexivity.
   move_back Heqe3.
   destruct t &> intro Heqe3.
