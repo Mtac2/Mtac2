@@ -437,9 +437,14 @@ Definition declare_implicits(*@{a}*): forall {A: Type(*@{a}*)} (a : A),
 Definition os_cmd: string -> t(*@{Set}*) Z.
   refine (fun _ => mkt). Qed.
 
-Definition get_debug: t(*@{Set}*) bool.
+Definition get_debug_exceptions: t(*@{Set}*) bool.
   refine mkt. Qed.
-Definition set_debug: bool -> t(*@{Set}*) unit.
+Definition set_debug_exceptions: bool -> t(*@{Set}*) unit.
+  refine (fun _ => mkt). Qed.
+
+Definition get_trace: t(*@{Set}*) bool.
+  refine mkt. Qed.
+Definition set_trace: bool -> t(*@{Set}*) unit.
   refine (fun _ => mkt). Qed.
 
 Arguments t _%type.
@@ -454,7 +459,7 @@ Definition evar(*@{a b}*) (A : Type(*@{a}*)) : t(*@{a}*) A := gen_evar(*@{a Set 
 
 
 Definition raise(*@{a}*) {A:Type(*@{a}*)} (e: Exception): t(*@{a}*) A :=
-  bind get_debug (fun b=>
+  bind get_debug_exceptions (fun b=>
   if b then
     bind (pretty_print(*@{Set}*) e) (fun s=>
     bind (print ("raise " ++ s)) (fun _ =>
@@ -909,3 +914,15 @@ Notation "'New' 'Exception' n" := (binder_exception (fun n=>n)) (at level 0, n a
 
 Definition Check {A} (x:A) := M.print_term A.
 Notation "'Check' n" := (Check n) (at level 0).
+
+Definition Set_Debug_Exceptions := M.set_debug_exceptions true.
+Notation "'Set' 'Debug' Exceptions'" := (Set_Debug_Exceptions) (at level 0).
+
+Definition Unset_Debug_Exceptions := M.set_debug_exceptions false.
+Notation "'Unset' 'Debug' 'Exceptions'" := (Unset_Debug_Exceptions) (at level 0).
+
+Definition Set_Trace := M.set_trace true.
+Notation "'Set' 'Trace'" := (Set_Trace) (at level 0).
+
+Definition Unset_Trace := M.set_trace false.
+Notation "'Unset' 'Trace'" := (Unset_Trace) (at level 0).

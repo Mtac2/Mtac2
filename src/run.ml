@@ -33,6 +33,11 @@ let get_ts env = Conv_oracle.get_transp_state (Environ.oracle env)
 (** returns the i-th position of constructor c (starting from 0) *)
 let get_constructor_pos sigma c = let (_, pos), _ = destConstruct sigma c in pos-1
 
+(** print informative exceptions *)
+let debug_ex = ref false
+(** traces execution *)
+let trace = ref false
+
 module MetaCoqNames = struct
   let metaCoq_module_name = "Mtac2.Base"
   let mkConstr e = Constr.mkConstr (metaCoq_module_name ^ "." ^ e)
@@ -194,11 +199,17 @@ module TConstr = struct
   let mkos_cmd = mkconstr "os_cmd"
   let isos_cmd  = isconstr mkos_cmd
 
-  let mkget_debug = mkconstr "get_debug"
-  let isget_debug  = isconstr mkget_debug
+  let mkget_debug_ex = mkconstr "get_debug_exceptions"
+  let isget_debug_ex  = isconstr mkget_debug_ex
 
-  let mkset_debug = mkconstr "set_debug"
-  let isset_debug  = isconstr mkset_debug
+  let mkset_debug_ex = mkconstr "set_debug_exceptions"
+  let isset_debug_ex  = isconstr mkset_debug_ex
+
+  let mkget_trace = mkconstr "get_trace"
+  let isget_trace  = isconstr mkget_trace
+
+  let mkset_trace = mkconstr "set_trace"
+  let isset_trace  = isconstr mkset_trace
 
 end
 
@@ -275,13 +286,13 @@ module Goal = struct
 
 end
 
-let constr_to_string_env env sigma t = string_of_ppcmds (Termops.print_constr_env sigma env t)
+let constr_to_string_env (sigma: Evd.evar_map) env t = string_of_ppcmds (Termops.print_constr_env env sigma t)
 
 module Exceptions = struct
 
-  let mkCannotRemoveVar env sigma x =
-    let varname = CoqString.to_coq (constr_to_string_env env sigma x) in
-    let sigma, exc = (mkUConstr "CannotRemoveVar" env sigma) in
+  let mkCannotRemoveVar sigma env x =
+    let varname = CoqString.to_coq (constr_to_string_env sigma env x) in
+    let sigma, exc = (mkUConstr "CannotRemoveVar" sigma env) in
     sigma, mkApp(exc, [|varname|])
 
   let mkRefNotFound sigma env s =
@@ -555,9 +566,12 @@ let return s t = Val (s, t)
 
 let fail s t = Err (s, t)
 
-let print env sigma s =
+let print (sigma: Evd.evar_map) env s =
   Feedback.msg_notice (app (str "[DEBUG] ")
                          (str (CoqString.from_coq (env, sigma) s)))
+
+let print_constr (sigma: Evd.evar_map) env t =
+  Feedback.msg_notice (app (str "[DEBUG] ") (Termops.print_constr_env env sigma t))
 
 let mysubstn sigma t n c =
   let rec substrec in_arr depth c = match kind sigma c with
@@ -1028,8 +1042,6 @@ let get_type_of ctxt t =
   (* let env = push_named_context (named_context ctxt.fixpoints) ctxt.env in *)
   Retyping.get_type_of ctxt.env ctxt.sigma t
 
-let debug = ref false
-
 let rec run' ctxt t =
   let open TConstr in
   let sigma, env = ctxt.sigma, ctxt.env in
@@ -1042,21 +1054,26 @@ let rec run' ctxt t =
   ) >>= fun (sigma, t) ->
   let ctxt = {ctxt with sigma = sigma} in
   (* let t = to_constr sigma t in *)
-  let (h, args) = decompose_appvect sigma ((* of_constr @@ *) RE.whd_betadeltaiota_nolet env sigma t) in
+  let reduced_term = RE.whd_betadeltaiota_nolet env sigma t in
+  let (h, args) = decompose_appvect sigma ((* of_constr @@ *) reduced_term) in
   let nth = Array.get args in
   if isLetIn sigma h then
     let open ReductionStrategy in
     let (_, b, _, t) = destLetIn sigma h in
     let (h, args') = decompose_appvect sigma b in
     if isReduce sigma env h && Array.length args' = 3 then
-      try
-        let b = reduce sigma env (Array.get args' 0) (Array.get args' 2) in
-        run' ctxt (mkApp (Vars.subst1 b t, args))
-      with RedList.NotAList l ->
-        Err (E.mkNotAList sigma env ())
+      begin
+        if !trace then print_constr sigma env reduced_term;
+        try
+          let b = reduce sigma env (Array.get args' 0) (Array.get args' 2) in
+          run' ctxt (mkApp (Vars.subst1 b t, args))
+        with RedList.NotAList l ->
+          Err (E.mkNotAList sigma env ())
+      end
     else
       run' ctxt (mkApp (Vars.subst1 b t, args))
-  else
+  else begin
+    if !trace then print_constr sigma env reduced_term;
     match h with
     | _ when isret h ->
         return sigma (nth 1)
@@ -1203,7 +1220,7 @@ let rec run' ctxt t =
 
     | _ when isprint h ->
         let s = nth 0 in
-        print env sigma s;
+        print sigma env s;
         return sigma CoqUnit.mkTT
 
     | _ when ispretty_print h ->
@@ -1394,10 +1411,16 @@ let rec run' ctxt t =
         let ret = Sys.command cmd in
         return sigma (CoqZ.to_coq ret)
 
-    | _ when isget_debug h ->
-        return sigma (CoqBool.to_coq !debug)
-    | _ when isset_debug h ->
-        debug := CoqBool.from_coq sigma (nth 0);
+    | _ when isget_debug_ex h ->
+        return sigma (CoqBool.to_coq !debug_ex)
+    | _ when isset_debug_ex h ->
+        debug_ex := CoqBool.from_coq sigma (nth 0);
+        return sigma CoqUnit.mkTT
+
+    | _ when isget_trace h ->
+        return sigma (CoqBool.to_coq !trace)
+    | _ when isset_trace h ->
+        trace := CoqBool.from_coq sigma (nth 0);
         return sigma CoqUnit.mkTT
 
     | _ ->
@@ -1412,6 +1435,7 @@ let rec run' ctxt t =
           with | Term.DestKO ->
             Err (E.mkStuckTerm sigma env ())
         end
+  end
 
 (* h is the mfix operator, a is an array of types of the arguments, b is the
    return type of the fixpoint, f is the function
