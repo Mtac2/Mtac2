@@ -7,9 +7,9 @@ Qed.
 Import M.notations.
 Goal forall P:Type, forall x: P, P.
 MProof.
-  Mtac Do Set Trace.
+  Mtac Do Set_Trace.
   M.nu "P" mNone (fun P:Type=>M.nu "x" mNone (fun x:P=> M.abs_fun x x >>= M.abs_fun P)).
-  Mtac Do Unset Trace.
+  Mtac Do Unset_Trace.
 Qed.
 
 Goal True.

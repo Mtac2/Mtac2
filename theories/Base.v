@@ -916,13 +916,6 @@ Definition Check {A} (x:A) := M.print_term A.
 Notation "'Check' n" := (Check n) (at level 0).
 
 Definition Set_Debug_Exceptions := M.set_debug_exceptions true.
-Notation "'Set' 'Debug' Exceptions'" := (Set_Debug_Exceptions) (at level 0).
-
 Definition Unset_Debug_Exceptions := M.set_debug_exceptions false.
-Notation "'Unset' 'Debug' 'Exceptions'" := (Unset_Debug_Exceptions) (at level 0).
-
 Definition Set_Trace := M.set_trace true.
-Notation "'Set' 'Trace'" := (Set_Trace) (at level 0).
-
 Definition Unset_Trace := M.set_trace false.
-Notation "'Unset' 'Trace'" := (Unset_Trace) (at level 0).
