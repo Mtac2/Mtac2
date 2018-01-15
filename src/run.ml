@@ -318,13 +318,6 @@ module Exceptions = struct
     let sigma, exc = (mkUConstr "NameExistsInContext" sigma env) in
     sigma, mkApp (exc, [|s|])
 
-  (* HACK: we put Prop as the type of the raise. We can put an evar, but
-     what's the point anyway? *)
-  let mkRaise sigma env e =
-    let sigma, c = mkUConstr "raise" sigma env in
-    let a = Lazy.force (mkConstr e) in
-    mkApp(c, [|mkProp; a|])
-
   let block msg = CErrors.user_err Pp.(str msg)
 end
 
