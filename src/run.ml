@@ -517,26 +517,31 @@ module ReductionStrategy = struct
      `Reductionops.clos_whd_flags`, however @SkySkimmer notes that
      it catches anomalies so a minor difference may exist.
   *)
-  let whdfun flags env sigma c =
-    let evars = safe_evar_value sigma in
-    whd_val
-      (create_clos_infos ~evars flags env)
-      (inject c)
+  let whdfun flags env fixs sigma c =
+    let open Machine in
+    let state = (c, Stack.empty) in
+    let (s, _) = whd_state_gen false false flags env fixs sigma state in
+    Stack.zip sigma s
+  (* let evars = safe_evar_value sigma in *)
+  (* whd_val *)
+  (* (create_clos_infos ~evars flags env) *)
+  (* (inject c) *)
 
-  (* let whd_betadeltaiota_nolet = whdfun CClosure.allnolet *)
-  let whd_betadeltaiota_nolet = Reductionops.clos_whd_flags CClosure.allnolet
 
-  (* let whd_betadeltaiota = whdfun CClosure.all *)
-  let whd_betadeltaiota = Reductionops.clos_whd_flags CClosure.all
+  let whd_betadeltaiota_nolet = whdfun CClosure.allnolet
+  (* let whd_betadeltaiota_nolet = Reductionops.clos_whd_flags CClosure.allnolet *)
 
-  (* let whd_betadelta = whdfun (red_add beta fDELTA) *)
-  let whd_betadelta = Reductionops.clos_whd_flags (red_add beta fDELTA)
+  let whd_betadeltaiota = whdfun CClosure.all
+  (* let whd_betadeltaiota = Reductionops.clos_whd_flags CClosure.all *)
 
-  (* let whd_betaiotazeta = whdfun betaiotazeta *)
-  let whd_betaiotazeta = Reductionops.clos_whd_flags betaiotazeta
+  let whd_betadelta = whdfun (red_add beta fDELTA)
+  (* let whd_betadelta = Reductionops.clos_whd_flags (red_add beta fDELTA) *)
 
-  (* let whd_betaiota = whdfun betaiota *)
-  let whd_betaiota = Reductionops.clos_whd_flags betaiota
+  let whd_betaiotazeta = whdfun betaiotazeta
+  (* let whd_betaiotazeta = Reductionops.clos_whd_flags betaiotazeta *)
+
+  let whd_betaiota = whdfun betaiota
+  (* let whd_betaiota = Reductionops.whd_state_gen betaiota *)
 
 end
 
@@ -667,9 +672,9 @@ let make_Case (env, sigma) case =
     Exceptions.block "case_type is not an inductive type"
 
 
-let get_Constrs (env, sigma) t =
+let get_Constrs (env, fixs, sigma) t =
   (* let t = to_constr sigma t in *)
-  let t_type, args = decompose_app sigma ((* of_constr @@ *) RE.whd_betadeltaiota env sigma t) in
+  let t_type, args = decompose_app sigma ((* of_constr @@ *) RE.whd_betadeltaiota env fixs sigma t) in
   if isInd sigma t_type then
     let (mind, ind_i), _ = destInd sigma t_type in
     let mbody = Environ.lookup_mind mind env in
@@ -795,13 +800,13 @@ let check_dependencies env sigma x t =
 (** Abstract *)
 type abs = AbsProd | AbsFun | AbsLet | AbsFix
 
-let rec n_prods env sigma ty = function
+let rec n_prods env fixs sigma ty = function
   | 0 -> true
   | n ->
-      let ty = (* of_constr @@ *) RE.whd_betadeltaiota env sigma ((* to_constr sigma *) ty) in
+      let ty = (* of_constr @@ *) RE.whd_betadeltaiota env fixs sigma ((* to_constr sigma *) ty) in
       if isProd sigma ty then
         let _, _, b = destProd sigma ty in
-        n_prods env sigma b (n-1)
+        n_prods env fixs sigma b (n-1)
       else
         false
 
@@ -1079,14 +1084,14 @@ let rec run' ctxt t =
   let sigma, env = ctxt.sigma, ctxt.env in
   ( match ctxt.hook with
     | Some f ->
-        let t = RE.whd_betaiota env sigma t in
+        let t = RE.whd_betaiota env ctxt.fixpoints sigma t in
         let ty = get_type_of ctxt t in
         run' {ctxt with hook = None} (mkApp (f, [|ty; t|]))
     | None -> return sigma t
   ) >>= fun (sigma, t) ->
   let ctxt = {ctxt with sigma = sigma} in
   (* let t = to_constr sigma t in *)
-  let reduced_term = RE.whd_betadeltaiota_nolet env sigma t in
+  let reduced_term = RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t in
   let (h, args) = decompose_appvect sigma ((* of_constr @@ *) reduced_term) in
   let nth = Array.get args in
   if isLetIn sigma h then
@@ -1274,7 +1279,7 @@ let rec run' ctxt t =
 
     | _ when isconstrs h ->
         let t = nth 1 in
-        let (sigma', constrs) = get_Constrs (env, sigma) t in
+        let (sigma', constrs) = get_Constrs (env, ctxt.fixpoints, sigma) t in
         return sigma' constrs
 
     | _ when ismakecase h ->
@@ -1456,17 +1461,7 @@ let rec run' ctxt t =
         return sigma CoqUnit.mkTT
 
     | _ ->
-        begin
-          try
-            let n = EConstr.destVar sigma h in
-            match Environ.named_body n ctxt.fixpoints with
-            | Some fixbody ->
-                let t = (EConstr.applist (of_constr fixbody,Array.to_list args)) in
-                run' ctxt t
-            | None -> Err (E.mkStuckTerm sigma env h)
-          with | Term.DestKO ->
-            Err (E.mkStuckTerm sigma env h)
-        end
+        Err (E.mkStuckTerm sigma env h)
   end
 
 (* h is the mfix operator, a is an array of types of the arguments, b is the
@@ -1496,7 +1491,7 @@ and run_fix ctxt (h: constr) (a: constr array) (b: constr) (f: constr) (x: const
   (* HACK: we put Prop as the type of fixf in the context, simply because we
      don't care. If it turns out to be problematic, we have to construct its
      type. *)
-  let fixpoints = push_named (Context.Named.Declaration.of_tuple (n, Some (fixf), EConstr.mkProp)) ctxt.fixpoints in
+  let fixpoints = push_named (Context.Named.Declaration.of_tuple (n, Some (fixf), EConstr.mkProp)) (* ctxt.fixpoints *) env in
   let c = mkApp (f, Array.append [| fixvar |] x) in
   run' {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} c
 (* run' ctxt c *)

@@ -1,6 +1,7 @@
 MetaCoq
 MetaCoqInstr
 Constrs
+Machine
 Run
 MetaCoqInterp
 MetaCoqInit
