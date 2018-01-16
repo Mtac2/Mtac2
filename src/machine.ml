@@ -873,6 +873,16 @@ let equal_stacks sigma (x, l) (y, l') =
 
 let rec whd_state_gen ?csts ~refold ~tactic_mode flags env fixs sigma =
   let open Context.Named.Declaration in
+  let safe_lookup_named_body id =
+    try
+      match lookup_named id env with
+      | LocalDef (_,body,_) -> Some body
+      | _ -> None
+    with Not_found ->
+    match lookup_named id fixs with
+    | LocalDef (_,body,_) -> Some body
+    | _ -> None
+  in
   let rec whrec cst_l (x, stack) =
     let () = if !debug_RAKAM then
         let open Pp in
@@ -895,16 +905,18 @@ let rec whd_state_gen ?csts ~refold ~tactic_mode flags env fixs sigma =
          | LocalDef (_,body,_) -> whrec Cst_stack.empty (lift n body, stack)
          | _ -> fold ())
     | Var id when CClosure.RedFlags.red_set flags (CClosure.RedFlags.fVAR id) ->
-        let body =
-          try
-            match lookup_named id env with
-            | LocalDef (_,body,_) -> Some body
-            | _ -> None
-          with Not_found ->
-          match lookup_named id fixs with
+        let body = safe_lookup_named_body id in
+        begin
+          match body with
+          | Some body ->
+              whrec (if refold then Cst_stack.add_cst (mkVar id) cst_l else cst_l) (body, stack)
+          | _ -> fold ()
+        end
+    | Var id when CClosure.RedFlags.red_set flags CClosure.RedFlags.fFIX ->
+        let body = try match lookup_named id fixs with
           | LocalDef (_,body,_) -> Some body
           | _ -> None
-        in
+          with Not_found -> None in
         begin
           match body with
           | Some body ->
