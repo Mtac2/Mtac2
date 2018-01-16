@@ -1,6 +1,6 @@
-From Mtac2 Require Import Base Datatypes List MTele MTeleMatch MTeleMatchDef MFixDef.
+From Mtac2 Require Import Base Datatypes List MTele MTeleMatch MTeleMatchDef MFixDef Sorts.
 Require Import Strings.String.
-
+Import Sorts.
 Import M.notations.
 Import Mtac2.List.ListNotations.
 Import ProdNotations.
@@ -183,13 +183,13 @@ Polymorphic Definition assumption(*@{i j k k1 a1 a2 a3 a4 a5 a6 a7 a8}*) {A:Type
 (** Solves goal A provided tactic t *)
 Definition by' {A} (t: tactic) : M A :=
   e <- evar A;
-  l <- t (Goal e);
+  l <- t (Goal SType e);
   l' <- T.filter_goals l;
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
 
 Definition use {A} (t: tactic) : M A :=
   e <- evar A;
-  t (Goal e);;
+  t (Goal SType e);;
   ret e.
 
 
@@ -208,7 +208,7 @@ Definition dest_pair {T} (x:T) : M (dyn * dyn) :=
     it generates a goal for each unsolved variable in the pair. *)
 Program Definition to_goals : forall {A}, A -> M (mlist (unit *m goal)) :=
   mfix2 to_goals (A: Type) (a: A) : M _ :=
-  mif is_evar a then ret [m: (m: tt, Goal a)]
+  mif is_evar a then ret [m: (m: tt, Goal SType a)]
   else
     mif is_prod A then
       ''(d1, d2) <- dest_pair a;

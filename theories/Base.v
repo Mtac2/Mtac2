@@ -3,7 +3,9 @@ Declare ML Module "unicoq".
 (** Load library "MetaCoqPlugin.cma". *)
 Declare ML Module "MetaCoqPlugin".
 
-From Mtac2 Require Import Logic Datatypes Logic List Utils.
+From Mtac2 Require Import Logic Datatypes Logic List Utils Sorts.
+Import Sorts.
+
 Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
@@ -97,7 +99,8 @@ Inductive implicit_arguments :=
 | ia_MaximallyImplicit.
 
 Inductive dyn : Prop := mkdyn.
-Definition Dyn(*@{a}*) : forall {type : Type(*@{a}*)} (elem : type), dyn. refine (fun _ _=> mkdyn). Qed.
+(* Definition Dyn : forall {sort : Sort} {type : stype_of sort} (elem : selem_of type), dyn. refine (fun _ _ _=> mkdyn). Qed. *)
+Definition Dyn : forall {type : Type} (elem : type), dyn. refine (fun _ _=> mkdyn). Qed.
 
 Record dynr := Dynr { typer: Type; elemr:> typer }.
 Arguments Dynr {_} _.
@@ -158,8 +161,8 @@ Notation "'dreduce' ( l1 , .. , ln )" :=
   (at level 0).
 
 (** goal type *)
-Inductive goal(*@{K L}*) :=
-  | Goal : forall {A:Type(*@{K}*)}, A -> goal
+Inductive goal :=
+  | Goal : forall (s:Sort){A:stype_of s}, selem_of A -> goal
   | AHyp : forall {A:Type(*@{L}*)}, moption(*@{L}*) A -> (A -> goal) -> goal
   | HypRem : forall {A:Type(*@{L}*)}, A -> goal -> goal.
 
@@ -291,7 +294,13 @@ Definition abs_let(*@{a b c}*): forall{A: Type(*@{a}*)} {P: A->Type(*@{b}*)} (x:
 (** [abs_prod x e] returns [forall x, e]. It raises [NotAVar] if [x] is not a
     variable, or [AbsDependencyError] if [e] or its type [P] depends on a
     variable also depending on [x]. *)
-Definition abs_prod(*@{a b c}*): forall{A: Type(*@{a}*)} (x : A), Type(*@{a}*) -> t(*@{c}*) Type(*@{b}*).
+Definition abs_prod_type(*@{a b c}*): forall{A: Type(*@{a}*)} (x : A), Type(*@{a}*) -> t(*@{c}*) Type(*@{b}*).
+  refine (fun _ _ _=> mkt). Qed.
+
+(** [abs_prod x e] returns [forall x, e]. It raises [NotAVar] if [x] is not a
+    variable, or [AbsDependencyError] if [e] or its type [P] depends on a
+    variable also depending on [x]. *)
+Definition abs_prod_prop(*@{a b c}*): forall{A: Type} (x : A), Prop -> t Prop.
   refine (fun _ _ _=> mkt). Qed.
 
 (** [abs_fix f t n] returns [fix f {struct n} := t].
@@ -804,19 +813,20 @@ Definition is_prop_or_type (d : dyn) : t bool :=
     if [g] is not [Goal]. *)
 Definition goal_type (g : goal) : t Type :=
   match g with
-  | @Goal A _ => ret A
+  | @Goal s A x => ret (selem_of A)
   | _ => raise NotAGoal
   end.
 
 (** Convertion functions from [dyn] to [goal]. *)
 Definition dyn_to_goal (d : dyn) : t goal :=
   mmatch d with
-  | [? A x] @Dyn A x => ret (Goal x)
+  | [? (A:Prop) x] @Dyn A x => ret (@Goal SProp A x)
+  | [? (A:Type) x] @Dyn A x => ret (@Goal SType A x)
   end.
 
 Definition goal_to_dyn (g : goal) : t dyn :=
   match g with
-  | Goal d => ret (Dyn d)
+  | Goal _ d => ret (Dyn d)
   | _ => raise NotAGoal
   end.
 

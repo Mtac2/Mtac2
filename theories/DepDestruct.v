@@ -396,7 +396,7 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
                         fun ct =>
                            (selem_of (branch_of_CTele rt ct))
                                        ) cts) in
-          goals <- M.map (fun ty=> r <- M.evar ty; M.ret (Goal r)) sg;
+          goals <- M.map (fun ty=> r <- M.evar ty; M.ret (Goal SType r)) sg;
           branches <- M.map M.goal_to_dyn goals;
           let tsg := reduce RedHNF (type_of sg) in
           let rrf := reduce RedSimpl (RTele_Fun rt) in

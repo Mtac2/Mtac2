@@ -1,5 +1,5 @@
-From Mtac2 Require Import Base Tactics ImportedTactics Datatypes List Logic Abstract.
-
+From Mtac2 Require Import Base Tactics ImportedTactics Datatypes List Logic Abstract Sorts.
+Import Sorts.
 Import M. Import M.notations.
 Import ListNotations.
 Import ProdNotations.
@@ -15,7 +15,7 @@ Definition simple_rewrite A {x y : A} (p : x = y) : tactic := fun g=>
   let reduced := dreduce (fu) (fu r y) in
   newG <- evar reduced;
   T.exact (eq_fu (r:=r) p newG) g;;
-  ret [m: (m: tt, Goal newG)].
+  ret [m: (m: tt, Goal SType newG)].
 
 Import T.notations.
 Definition cvariabilize_base {A} (t: A) name (cont: A -> tactic) : tactic :=

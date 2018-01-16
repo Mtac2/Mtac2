@@ -127,8 +127,11 @@ module TConstr = struct
   let mkabs_let = mkconstr "abs_let"
   let isabs_let  = isconstr mkabs_let
 
-  let mkabs_prod = mkconstr "abs_prod"
-  let isabs_prod  = isconstr mkabs_prod
+  let mkabs_prod_prop = mkconstr "abs_prod_prop"
+  let isabs_prod_prop  = isconstr mkabs_prod_prop
+
+  let mkabs_prod_type = mkconstr "abs_prod_type"
+  let isabs_prod_type  = isconstr mkabs_prod_type
 
   let mkabs_fix = mkconstr "abs_fix"
   let isabs_fix  = isconstr mkabs_fix
@@ -235,9 +238,18 @@ module Goal = struct
   let mkGoal = mkUConstr "Goal"
   let mkAHyp = mkUConstr "AHyp"
 
+  let mkSType = Constr.mkConstr "Mtac2.Sorts.Sorts.SType"
+  let mkSProp = Constr.mkConstr "Mtac2.Sorts.Sorts.SProp"
+
   let mkTheGoal ty ev sigma env =
-    let sigma, tg = mkGoal sigma env in
-    sigma, mkApp (tg, [|ty;ev|])
+    let tt = Retyping.get_type_of env sigma ty in
+    if isSort sigma tt then
+      let sort = ESorts.kind sigma (destSort sigma tt) in
+      let ssort = Lazy.force (if Sorts.is_prop sort then mkSProp else mkSType) in
+      let sigma, tg = mkGoal sigma env in
+      sigma, mkApp (tg, [|ssort; ty;ev|])
+    else
+      failwith ("WAT? Not a sort?" ^ (Pp.string_of_ppcmds (Termops.print_constr_env env sigma tt)))
 
   let mkAHypOrDef (name, odef, ty) body sigma env =
     (* we are going to wrap the body in a function, so we need to lift
@@ -254,7 +266,7 @@ module Goal = struct
       if isConstruct sigma c then
         match get_constructor_pos sigma c with
         | 0 -> (* AGoal *)
-            let evar = whd_evar sigma args.(1) in
+            let evar = whd_evar sigma args.(2) in
             if isEvar sigma evar then
               Some (fst (destEvar sigma evar))
             else (* it is defined *)
@@ -537,6 +549,10 @@ module ReductionStrategy = struct
 
   (* let whd_betaiota = whdfun betaiota *)
   let whd_betaiota = Reductionops.clos_whd_flags betaiota
+
+  let whd_all_novars =
+    let flags = red_add_transparent betaiota Names.cst_full_transparent_state in
+    Reductionops.clos_whd_flags flags
 
 end
 
@@ -903,7 +919,7 @@ let cvar (env, sigma as ctx) ty ohyps =
 
 let get_name (env, sigma) (t: constr) : constr option =
   (* If t is a defined variable it is reducing it *)
-  (*  let t = whd_betadeltaiota_nolet env sigma t in *)
+  let t = RE.whd_all_novars env sigma t in
   let name =
     if isVar sigma t then Some (Name (destVar sigma t))
     else if isLambda sigma t then
@@ -1199,7 +1215,7 @@ let rec run' ctxt t =
         let a, p, x, t, y = nth 0, nth 1, nth 2, nth 3, nth 4 in
         abs AbsLet (env, sigma) a p x y 0 t
 
-    | _ when isabs_prod h ->
+    | _ when isabs_prod_type h || isabs_prod_prop h ->
         let a, x, y = nth 0, nth 1, nth 2 in
         (* HACK: put mkProp as returning type *)
         abs AbsProd (env, sigma) a mkProp x y 0 mkProp

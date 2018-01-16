@@ -1,4 +1,5 @@
-From Mtac2 Require Import Base Tactics Datatypes List.
+From Mtac2 Require Import Base Tactics Datatypes List Sorts.
+Import Sorts.
 Import ListNotations.
 Set Implicit Arguments.
 Import ProdNotations.
@@ -46,7 +47,7 @@ Import Datatypes.
 (** [max_apply t] applies theorem t to the current goal.
     It generates a subgoal for each non-dependent hypothesis in the theorem. *)
 Definition max_apply {T} (c : T) : tactic := fun g=>
-  match g with Goal eg =>
+  match g with @Goal SType gT eg =>
     (mfix1 go (d : dyn) : M (mlist (unit *m goal)) :=
       (* let (_, el) := d in *)
       (* mif M.unify_cumul el eg UniCoq then M.ret [m:] else *)
@@ -54,17 +55,17 @@ Definition max_apply {T} (c : T) : tactic := fun g=>
         | [? T1 T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
-          M.ret ((m: tt, Goal e) :m: r)
+          M.ret ((m: tt, Goal SType e) :m: r)
         | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
           M.ret r
-        | Dyn eg => M.ret [m:]
+        | Dyn eg =u> M.ret [m:]
         | _ =>
           dcase d as ty, el in
-          gT <- M.goal_type g;
           M.raise (CantApply ty gT)
         end) (Dyn c)
+  | Goal SProp _ => M.failwith "It's a prop!"
   | _ => M.raise NotAGoal
   end.
 
@@ -93,7 +94,8 @@ MProof.
   intros P Q H x y.
 Fail napply H &n> [m: assumption].
 Fail napply H &n> [m: ].
-  napply H &n> [m: assumption | assumption].
+  pose (T := napply H &n> [m: assumption | assumption]).
+  T.
 Qed.
 
 Goal forall P Q, (P -> Q -> P) -> P -> Q -> P.
@@ -102,7 +104,7 @@ MProof.
 Fail napply H &n> [m: assumption].
 Fail napply H &n> [m: ].
   pose (tac := napply H &n> [m: assumption | assumption]).
-Fail T. (* ok, we can define the tactic, but it now fails to apply *)
+  Fail tac. (* ok, we can define the tactic, but it now fails to apply *)
   intro y.
   tac.
 Qed.
