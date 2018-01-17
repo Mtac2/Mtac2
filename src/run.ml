@@ -241,23 +241,27 @@ module Goal = struct
   let mkSType = Constr.mkConstr "Mtac2.Sorts.Sorts.SType"
   let mkSProp = Constr.mkConstr "Mtac2.Sorts.Sorts.SProp"
 
-  let mkTheGoal ty ev sigma env =
+  let get_sort sigma env ty =
     let tt = Retyping.get_type_of env sigma ty in
     if isSort sigma tt then
       let sort = ESorts.kind sigma (destSort sigma tt) in
-      let ssort = Lazy.force (if Sorts.is_prop sort then mkSProp else mkSType) in
-      let sigma, tg = mkGoal sigma env in
-      sigma, mkApp (tg, [|ssort; ty;ev|])
+      Lazy.force (if Sorts.is_prop sort then mkSProp else mkSType)
     else
       failwith ("WAT? Not a sort?" ^ (Pp.string_of_ppcmds (Termops.print_constr_env env sigma tt)))
+
+  let mkTheGoal ty ev sigma env =
+    let ssort = get_sort sigma env ty in
+    let sigma, tg = mkGoal sigma env in
+    sigma, mkApp (tg, [|ssort; ty;ev|])
 
   let mkAHypOrDef (name, odef, ty) body sigma env =
     (* we are going to wrap the body in a function, so we need to lift
        the indices. we also replace the name with index 1 *)
     let body = replace_term sigma (mkVar name) (mkRel 1) (Vars.lift 1 body) in
     let sigma, odef_coq = CoqOption.to_coq sigma env ty odef in
+    let ssort = get_sort sigma env ty in
     let sigma, ahyp = mkAHyp sigma env in
-    sigma, mkApp (ahyp, [|ty; odef_coq; mkLambda(Name name,ty,body)|])
+    sigma, mkApp (ahyp, [|ssort; ty; odef_coq; mkLambda(Name name,ty,body)|])
 
   (* it assumes goal is of type goal *)
   let evar_of_goal sigma env =
@@ -272,7 +276,7 @@ module Goal = struct
             else (* it is defined *)
               None
         | 1 -> (* AHyp *)
-            let func = args.(2) in
+            let func = args.(3) in
             if isLambda sigma func then
               let (_, _, body) = destLambda sigma func in
               eog body

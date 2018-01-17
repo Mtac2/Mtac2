@@ -163,7 +163,7 @@ Notation "'dreduce' ( l1 , .. , ln )" :=
 (** goal type *)
 Inductive goal :=
   | Goal : forall (s:Sort){A:stype_of s}, selem_of A -> goal
-  | AHyp : forall {A:Type(*@{L}*)}, moption(*@{L}*) A -> (A -> goal) -> goal
+  | AHyp : forall (s:Sort) {A:stype_of s}, moption (selem_of A) -> (selem_of A -> goal) -> goal
   | HypRem : forall {A:Type(*@{L}*)}, A -> goal -> goal.
 
 (** Pattern matching without pain *)

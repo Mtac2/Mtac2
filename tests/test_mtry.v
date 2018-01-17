@@ -1,4 +1,4 @@
-Require Import Mtac2.Mtac2.
+Require Import Mtac2.Base.
 Import M.
 Import notations.
 

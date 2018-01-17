@@ -1,6 +1,6 @@
-Require Import Mtac2.Mtac2.
+Require Import Mtac2.Base.
 
 Goal True.
 MProof.
-M.ret I.
+  M.ret I.
 Qed.
