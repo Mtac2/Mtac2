@@ -245,6 +245,7 @@ module Goal = struct
 
   let mkTheGoal ty ev sigma env =
     let tt = Retyping.get_type_of env sigma ty in
+    let tt = Reductionops.nf_all env sigma tt in
     if isSort sigma tt then
       let sort = ESorts.kind sigma (destSort sigma tt) in
       let ssort = Lazy.force (if Sorts.is_prop sort then mkSProp else mkSType) in

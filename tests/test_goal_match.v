@@ -61,5 +61,8 @@ MProof.
 intros x H y.
 (* a is instantiated with x, and then when matching x with 0 + x it fails (as it should) *)
 Fail match_goal_nored with [[? a | (Q : a > 0) (z : nat) |- a = z ]] => apply (eq_refl a) end.
-match_goal_nored with [[? a | (Q : a > 0) (z : nat) |- 0 + a = z ]] => apply (eq_refl a) end.
+
+(* FIX: fails because there is a selem_of to be reduced that 'nored' won't reduce *)
+Fail match_goal_nored with [[? a | (Q : a > 0) (z : nat) |- 0 + a = z ]] => apply (eq_refl a) end.
+match_goal with [[? a | (Q : a > 0) (z : nat) |- 0 + a = z ]] => apply (eq_refl a) end.
 Qed.
