@@ -186,8 +186,8 @@ MProof.
   intros b.
   Fail testmg. (* FIX why? *)
   destruct b.
-  - omega.
-  - intros n';; omega.
+  - simpl. omega.
+  - intros n';; simpl;; omega.
 Qed.
 
 Goal forall a b : nat, S b > 0.
@@ -195,8 +195,8 @@ MProof.
   intros a b.
   Fail testmg. (* FIX why? *)
   destruct b.
-  - omega.
-  - intros n';; omega.
+  - simpl;; omega.
+  - intros n';; simpl;; omega.
 Qed.
 
 Goal forall a b c : nat, S b > 0.
@@ -204,8 +204,8 @@ MProof.
   intros a b c.
   Fail testmg.
   destruct b.
-  - omega.
-  - intros n';; omega.
+  - simpl;; omega.
+  - intros n';; simpl;; omega.
 Qed.
 
 Goal forall P Q : Prop, P -> P.

@@ -352,25 +352,28 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
   let A := reduce (RedWhd [rl:RedBeta]) A in
   b <- M.is_var n;
   ctx <- if b then M.hyps_except n else M.hyps;
-  P <- M.Cevar (A->Type) ctx;
-  let Pn := P n in
-  gT <- M.goal_type g;
-  M.unify_or_fail UniCoq Pn gT;;
-  l <- M.constrs A;
-  l <- M.map (fun d : dyn =>
-    (* a constructor c has type (forall x, ... y, A) and we return
-       (forall x, ... y, P (c x .. y)) *)
-    t' <- copy_ctx P d;
-    e <- M.Cevar t' ctx;
-    M.ret (Dyn e)) (msnd l);
-  let c := {| case_ind := A;
-              case_val := n;
-              case_return := Dyn P;
-              case_branches := l
-           |} in
-  case <- M.makecase c;
-  dcase case as e in exact e g;;
-  M.map (fun d => g <- M.dyn_to_goal d; M.ret (m: tt, g)) l.
+  match g with
+  | @Goal s gT _ =>
+    P <- M.Cevar (A->s) ctx;
+    let Pn := P n in
+    M.unify_or_fail UniCoq Pn gT;;
+    l <- M.constrs A;
+    l <- M.map (fun d : dyn =>
+      (* a constructor c has type (forall x, ... y, A) and we return
+         (forall x, ... y, P (c x .. y)) *)
+      t' <- copy_ctx P d;
+      e <- M.Cevar t' ctx;
+      M.ret (Dyn e)) (msnd l);
+    let c := {| case_ind := A;
+                case_val := n;
+                case_return := Dyn P;
+                case_branches := l
+             |} in
+    case <- M.makecase c;
+    dcase case as e in exact e g;;
+    M.map (fun d => g <- M.dyn_to_goal d; M.ret (m: tt, g)) l
+  | _ => M.raise NotAGoal
+  end.
 
 (** Destructs the n-th hypotheses in the goal (counting from 0) *)
 Definition destructn (n : nat) : tactic :=
