@@ -30,9 +30,8 @@ Definition SomethingNotRight {A} (t : A) : Exception. exact exception. Qed.
 
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 
-Set Printing Universes.
 Import ProdNotations.
-Set Printing All.
+
 (** The type for tactics *)
 Definition gtactic(*@{a g1 g2 rg1 rg2 l}*) (A: Type(*@{a}*)) := goal(*@{g1 g2}*) -> M.t(*@{l}*) (mlist(*@{l}*) (mprod(*@{l l}*) A goal(*@{rg1 rg2}*))).
 Definition tactic := gtactic unit.
@@ -106,14 +105,14 @@ Definition get_binder_name {A} (x : A) : gtactic string := fun g =>
 
 (** [close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] to each of them. *)
-Definition close_goals {A B} (y : B) : mlist (A *m goal) -> M (mlist (A *m goal)) :=
-  M.map (fun '(m: x,g') => r <- M.abs_fun y g'; M.ret (m: x, @AHyp SType B mNone r)).
+Definition close_goals (sort:Sort) {A} {B:sort} (y : B) : mlist (A *m goal) -> M (mlist (A *m goal)) :=
+  M.map (fun '(m: x,g') => r <- M.abs_fun y g'; M.ret (m: x, @AHyp sort B mNone r)).
 
 (** [let_close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] with its definition to each of them (it assumes it is defined). *)
-Definition let_close_goals(*@{a b g1 g2 l}*) {A: Type(*@{a}*)} {B:Type(*@{b}*)} (y : B) : mlist(*@{l}*) (A *m goal(*@{g1 g2}*)) -> M (mlist(*@{l}*) (mprod(*@{a l}*) A goal(*@{g1 g2}*))) :=
-  let t := reduce(*@{b}*) RedOneStep y in (* to obtain x's definition *)
-  M.map (fun '(m: x,g') => r <- M.abs_fun(*@{b l l}*) y g'; M.ret (m: x, @AHyp SType B (mSome t) r)).
+Definition let_close_goals (sort:Sort) {A: Type} {B:sort} (y : B) : mlist (A *m goal) -> M (mlist (mprod A goal)) :=
+  let t := reduce RedOneStep y in (* to obtain x's definition *)
+  M.map (fun '(m: x,g') => r <- M.abs_fun y g'; M.ret (m: x, @AHyp sort B (mSome t) r)).
 
 (** [rem_hyp x l] "removes" hypothesis [x] from the list of goals [l]. *)
 Definition rem_hyp {A B} (x : B) (l: mlist (A *m goal)) : M (mlist (A *m goal)) :=
@@ -142,14 +141,14 @@ Definition open_and_apply(* @{a g1 g2 rg1 rg2 l I J c} *) {A} (t : gtactic(* @{a
   fix open g :=
     match g return M _ with
     | Goal _ _ => t g
-    | @AHyp _ C mNone f =>
+    | @AHyp sort C mNone f =>
       x <- M.fresh_binder_name(* @{c I J} *) f;
       M.nu x mNone (fun x : C =>
-        open (f x) >>= close_goals x)
-    | @AHyp _ C (mSome t) f =>
+        open (f x) >>= close_goals sort x)
+    | @AHyp sort C (mSome t) f =>
       x <- M.fresh_binder_name(* @{c I J} *) f;
       M.nu x (mSome t) (fun x : C =>
-        open (f x) >>= let_close_goals x)
+        open (f x) >>= let_close_goals sort x)
     | HypRem x f =>
       M.remove x (open f) >>= rem_hyp x
     end.
@@ -188,7 +187,7 @@ Definition exact {A} (x:A) : tactic := fun g =>
   | Goal _ g => M.cumul_or_fail UniCoq x g;; M.ret [m:]
   | _ => M.raise NotAGoal
   end.
-Set Printing All. Set Printing Universes.
+
 Definition eexact {A} (x:A) : tactic := fun g =>
   match g with
   | Goal _ g =>
@@ -203,61 +202,97 @@ Definition goal_type : gtactic Type := with_goal M.goal_type.
 (** [intro_base n t] introduces variable or definition named [n]
     in the context and executes [t n].
     Raises [NotAProduct] if the goal is not a product or a let-binding. *)
-Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := fun g =>
-  mmatch g return M (mlist (B *m goal)) with
-  | [? B (def: B) P e] @Goal SProp (let x := def in P x) e =n>
-    (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
-    eqBA <- M.unify_or_fail UniCoq B A;
-    M.nu var (mSome def) (fun x=>
-      let Px := reduce (RedWhd [rl:RedBeta]) (P x) in
-      e' <- M.evar Px;
-      nG <- M.abs_let (P:=P) x def e';
-      exact nG g;;
-      let x := reduce (RedWhd [rl:RedMatch]) (match eqBA with meq_refl => x end) in
-      t x (Goal SProp e') >>= let_close_goals x)
-  | [? P e] @Goal SProp (forall x:A, P x : Prop) e =u>
-    M.nu var mNone (fun x=>
-      let Px := reduce (RedWhd [rl:RedBeta]) (P x) in
-      e' <- M.evar Px;
-      nG <- M.abs_fun (P:=P) x e';
-      exact nG g;;
-      t x (Goal SProp e') >>= close_goals x)
+(* Definition intro_base (sort: Sort) {A: sort} {B} (var : string) (t : A -> gtactic B) : gtactic B := fun g => *)
+(*   mmatch g return M (mlist (B *m goal)) with *)
+(*   | [? (B': sort) (def: B') P e] @Goal SProp (let x := def in P x) e =n> *)
+(*     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*) *)
+(*     eqBA <- M.unify_or_fail UniCoq B' A; *)
+(*     M.nu var (mSome def) (fun x=> *)
+(*       let Px := reduce (RedWhd [rl:RedBeta]) (P x) in *)
+(*       e' <- M.evar Px; *)
+(*       nG <- M.abs_let (P:=P) x def e'; *)
+(*       exact nG g;; *)
+(*       let x := reduce (RedWhd [rl:RedMatch]) (match eqBA with meq_refl => x end) in *)
+(*       t x (Goal SProp e') >>= let_close_goals sort x) *)
+(*   | [? P e] @Goal SProp (forall x:A, P x : Prop) e =u> *)
+(*     M.nu var mNone (fun x=> *)
+(*       let Px := reduce (RedWhd [rl:RedBeta]) (P x) in *)
+(*       e' <- M.evar Px; *)
+(*       nG <- M.abs_fun (P:=P) x e'; *)
+(*       exact nG g;; *)
+(*       t x (Goal SProp e') >>= close_goals sort x) *)
 
-  | [? B (def: B) P e] @Goal SType (let x := def in P x) e =n>
-    (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
-    eqBA <- M.unify_or_fail UniCoq B A;
-    M.nu var (mSome def) (fun x=>
+(*   | [? (B': sort) (def: B') P e] @Goal SType (let x := def in P x) e =n> *)
+(*     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*) *)
+(*     eqBA <- M.unify_or_fail UniCoq B' A; *)
+(*     M.nu var (mSome def) (fun x=> *)
+(*       let Px := reduce (RedWhd [rl:RedBeta]) (P x) in *)
+(*       e' <- M.evar Px; *)
+(*       nG <- M.abs_let (P:=P) x def e'; *)
+(*       exact nG g;; *)
+(*       let x := reduce (RedWhd [rl:RedMatch]) (match eqBA with meq_refl => x end) in *)
+(*       t x (Goal SType e') >>= let_close_goals sort x) *)
+(*   | [? P e] @Goal SType (forall x:A, P x) e =u> *)
+(*     M.nu var mNone (fun x=> *)
+(*       let Px := reduce (RedWhd [rl:RedBeta]) (P x) in *)
+(*       e' <- M.evar Px; *)
+(*       nG <- M.abs_fun (P:=P) x e'; *)
+(*       exact nG g;; *)
+(*       t x (Goal SType e') >>= close_goals sort x) *)
+(*   | _ => M.raise NotAProduct *)
+(*   end. *)
+
+Definition intro_let var (sortA sortB: Sort) {A:sortA} (def: A) (P: A -> sortB) : tactic  := fun g=>
+    M.nu var (mSome def) (fun x:A=>
       let Px := reduce (RedWhd [rl:RedBeta]) (P x) in
       e' <- M.evar Px;
       nG <- M.abs_let (P:=P) x def e';
       exact nG g;;
-      let x := reduce (RedWhd [rl:RedMatch]) (match eqBA with meq_refl => x end) in
-      t x (Goal SType e') >>= let_close_goals x)
-  | [? P e] @Goal SType (forall x:A, P x) e =u>
-    M.nu var mNone (fun x=>
+      let_close_goals sortA x [m: (m: tt, Goal sortB e')]).
+
+Definition intro_fun var (sortA sortB: Sort) {A:sortA} (P: A -> sortB) : tactic  := fun g=>
+    M.nu var mNone (fun x:A=>
       let Px := reduce (RedWhd [rl:RedBeta]) (P x) in
       e' <- M.evar Px;
       nG <- M.abs_fun (P:=P) x e';
       exact nG g;;
-      t x (Goal SType e') >>= close_goals x)
+      close_goals sortA x [m: (m: tt, Goal sortB e')]).
+
+Definition intro_base (var : string) : tactic := fun g =>
+  mmatch g return M (mlist (unit *m goal)) with
+  | [? (A: Prop) (def: A) P e] @Goal SProp (let x := def in P x) e =n>
+    intro_let var SProp SProp def P g
+  | [? (A:Prop) P e] @Goal SProp (forall x:A, P x : Prop) e =>
+    intro_fun var SProp SProp P g
+
+  | [? (A: Type) (def: A) P e] @Goal SProp (let x := def in P x) e =n>
+    intro_let var SType SProp def P g
+  | [? (A: Type) P e] @Goal SProp (forall x:A, P x : Prop) e =>
+    intro_fun var SType SProp P g
+
+  | [? (B: Type) (def: B) P e] @Goal SType (let x := def in P x) e =n>
+    intro_let var SType SType def P g
+  | [? (A:Type) P e] @Goal SType (forall x:A, P x) e =>
+    intro_fun var SType SType P g
   | _ => M.raise NotAProduct
   end.
 
-Definition intro_cont {A B} (t : A -> gtactic B) : gtactic B := fun g=>
-  n <- M.get_binder_name t;
-  intro_base n t g.
+(* Definition intro_cont (sort: Sort) {A:stype_of sort} {B} (t : A -> gtactic B) : gtactic B := fun g=> *)
+(*   n <- M.get_binder_name t; *)
+(*   intro_base sort n t g. *)
 
 (** Given a name of a variable, it introduces it in the context *)
-Definition intro_simpl (var : string) : tactic := fun g =>
-  A <- M.evar Type;
-  intro_base var (fun _ : A => idtac) g.
+(* Definition intro_simpl (var : string) : tactic := fun g => *)
+(*   sort <- M.evar Sort; *)
+(*   A <- M.evar sort; *)
+(*   intro_base sort var (fun _ : A => idtac) g. *)
 
 (** Introduces an anonymous name based on a binder *)
 Definition intro_anonymous {A} (T : A) (f : string -> M string) (g : goal) : M goal :=
   name <- M.get_binder_name T;
   axn <- M.anonymize name;
   axn <- f axn;
-  res <- intro_simpl axn g >>= M.hd;
+  res <- intro_base axn g >>= M.hd;
   M.ret (msnd res).
 
 (** Introduces all hypotheses. Does not fail if there are 0. *)
@@ -371,13 +406,6 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
   case <- M.makecase c;
   dcase case as e in exact e g;;
   M.map (fun d => g <- M.dyn_to_goal d; M.ret (m: tt, g)) l.
-
-(** Destructs the n-th hypotheses in the goal (counting from 0) *)
-Definition destructn (n : nat) : tactic :=
-  bind (introsn n) (fun _ g =>
-    A <- M.evar Type;
-    n <- M.fresh_name "tmp";
-    @intro_base A _ n destruct g).
 
 (** [apply t] applies theorem t to the current goal.
     It generates a subgoal for each hypothesis in the theorem.
@@ -515,7 +543,7 @@ Definition typed_intro (T : Type) : tactic := fun g =>
   mmatch U with
   | [? P:T->Type] forall x:T, P x =>
     xn <- M.get_binder_name U;
-    intro_simpl xn g
+    intro_base xn g
   | _ => M.raise NotThatType
   end.
 
@@ -537,29 +565,29 @@ Definition change_hyp {P Q} (H : P) (newH: Q) : tactic := fun g=>
   exact (abs newH) g;;
   M.ret [m:(m: tt, gabs)].
 
-Definition cassert_with_base {A B} (name : string) (t : A)
+Definition cassert_with_base (sort: Sort) {A: sort} {B} (name : string) (t : A)
     (cont : A -> gtactic B) : gtactic B := fun g =>
   M.nu name (mSome t) (fun x=>
     gT <- M.goal_type g;
     r <- M.evar gT;
     value <- M.abs_fun x r;
     exact (value t) g;;
-    close_goals x =<< cont x (Goal SType r)).
+    close_goals sort x =<< cont x (Goal SType r)).
 
-Definition cpose_base {A B} (name : string) (t : A)
+Definition cpose_base (sort: Sort) {A: sort} {B} (name : string) (t : A)
     (cont : A -> gtactic B) : gtactic B := fun g =>
   M.nu name (mSome t) (fun x=>
     gT <- M.goal_type g;
     r <- M.evar gT;
     value <- M.abs_let x t r;
     exact value g;;
-    let_close_goals x =<< cont x (Goal SType r)).
+    let_close_goals sort x =<< cont x (Goal SType r)).
 
-Definition cpose {A} (t: A) (cont : A -> tactic) : tactic := fun g =>
+Definition cpose (sort: Sort) {A:sort} (t: A) (cont : A -> tactic) : tactic := fun g =>
   n <- M.get_binder_name cont;
-  cpose_base n t cont g.
+  cpose_base sort n t cont g.
 
-Definition cassert_base {A} (name : string)
+Definition cassert_base (sort: Sort) {A:sort} (name : string)
     (cont : A -> tactic) : tactic := fun g =>
   a <- M.evar A; (* [a] will be the goal to solve [A] *)
   M.nu name mNone (fun x =>
@@ -567,12 +595,12 @@ Definition cassert_base {A} (name : string)
     r <- M.evar gT; (* The new goal now referring to n *)
     value <- M.abs_fun x r;
     exact (value a) g;; (* instantiate the old goal with the new one *)
-    v <- cont x (Goal SType r) >>= close_goals x;
+    v <- cont x (Goal SType r) >>= close_goals sort x;
     M.ret ((m: tt,Goal SType a) :m: v)). (* append the goal for a to the top of the goals *)
 
-Definition cassert {A} (cont : A -> tactic) : tactic := fun g=>
+Definition cassert (sort: Sort) {A:sort} (cont : A -> tactic) : tactic := fun g=>
   n <- M.get_binder_name cont;
-  cassert_base n cont g.
+  cassert_base sort n cont g.
 
 (** [cut U] creates two goals with types [U -> T] and [U], where
     [T] is the type of the current goal. *)
@@ -796,7 +824,7 @@ Definition unfold_in {A B} (x : A) (h : B) : tactic :=
 Fixpoint intros_simpl (l : list string) : tactic :=
   match l with
   | nil => idtac
-  | n :: l => bind (intro_simpl n) (fun _ => intros_simpl l)
+  | n :: l => bind (intro_base n) (fun _ => intros_simpl l)
   end%list.
 
 Fixpoint name_pattern (l : list (list string)) : mlist tactic :=
@@ -904,29 +932,31 @@ Module notations.
 
   Notation "t || u" := (or t u) : tactic_scope.
 
-  (* We need a fresh evar to be able to use intro with ;; *)
+  Definition intro_binder (T : unit->unit) : tactic :=
+    M.get_binder_name T >>= intro_base.
+
   Notation "'intro' x" :=
-    (T <- M.evar Type; @intro_cont T _ (fun x=>idtac))
+    (intro_binder (fun x=>tt))
     (at level 40) : tactic_scope.
   Notation "'intros' x .. y" :=
-    (intro_cont (fun x=>.. (intro_cont (fun y=>idtac)) ..))
+    (bind (intro_binder (fun x=>tt)) (fun _=> .. (bind (intro_binder (fun y=>tt)) (fun _=>idtac)) ..))
     (at level 0, x binder, y binder, right associativity) : tactic_scope.
   Notation "'intros'" := intros_all : tactic_scope.
 
-  Notation "'cintro' x '{-' t '-}'" :=
-    (intro_cont (fun x=>t)) (at level 0, right associativity) : tactic_scope.
-  Notation "'cintros' x .. y '{-' t '-}'" :=
-    (intro_cont (fun x=>.. (intro_cont (fun y=>t)) ..))
-    (at level 0, x binder, y binder, t at next level, right associativity) : tactic_scope.
+  (* Notation "'cintro' x '{-' t '-}'" := *)
+  (*   (intro_cont _ (fun x=>t)) (at level 0, right associativity) : tactic_scope. *)
+  (* Notation "'cintros' x .. y '{-' t '-}'" := *)
+  (*   (intro_cont _ (fun x=>.. (intro_cont _ (fun y=>t)) ..)) *)
+  (*   (at level 0, x binder, y binder, t at next level, right associativity) : tactic_scope. *)
 
   Notation "'simpl'" := (treduce RedSimpl) : tactic_scope.
   Notation "'hnf'" := (treduce RedHNF) : tactic_scope.
   Notation "'cbv'" := (treduce RedNF) : tactic_scope.
 
   Notation "'pose' ( x := t )" :=
-    (cpose t (fun x=>idtac)) (at level 40, x at next level) : tactic_scope.
+    (cpose SType t (fun x=>idtac)) (at level 40, x at next level) : tactic_scope.
   Notation "'assert' ( x : T )" :=
-    (cassert (fun x:T=>idtac)) (at level 40, x at next level) : tactic_scope.
+    (cassert SType (fun x:T=>idtac)) (at level 40, x at next level) : tactic_scope.
 
   Notation "t 'asp' n" :=
     (seq_list t (name_pattern n%list)) (at level 40) : tactic_scope.
@@ -1119,6 +1149,15 @@ Definition first {B} : mlist (gtactic B) -> gtactic B :=
     | [m:] => T.raise NoProgress
     | x :m: xs => x || go xs
     end.
+
+(** Destructs the n-th hypotheses in the goal (counting from 0) *)
+Definition destructn (n : nat) : tactic :=
+  introsn n;;
+  name <- M.fresh_name "tmp";
+  intro_base name;;
+  v <- M.get_var name;
+  dcase v as var in
+  destruct var.
 
 End T.
 Coercion T.of_M : M >-> gtactic.

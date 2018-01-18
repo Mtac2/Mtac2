@@ -18,10 +18,10 @@ Definition simple_rewrite A {x y : A} (p : x = y) : tactic := fun g=>
   ret [m: (m: tt, Goal SType newG)].
 
 Import T.notations.
-Definition cvariabilize_base {A} (t: A) name (cont: A -> tactic) : tactic :=
+Definition cvariabilize_base (sort: Sort) {A:sort} (t: A) name (cont: A -> tactic) : tactic :=
   gT <- T.goal_type;
   r <- abstract t gT;
-  T.cpose_base name t (fun x=>
+  T.cpose_base sort name t (fun x=>
     let reduced := dreduce (fu) (fu r x) in
     T.change reduced;;
     cont x
@@ -32,13 +32,13 @@ Definition destruct {A : Type} (n : A) : tactic :=
     T.destruct n
   else
     dn <- M.fresh_name "dn";
-    cvariabilize_base n dn (fun x=>T.destruct x).
+    @cvariabilize_base SType A n dn (fun x=>T.destruct x).
 
 Program Definition destruct_eq {A} (t: A) : tactic :=
   vn <- M.fresh_name "v"; (* will be removed by destruct below *)
-  cvariabilize_base t vn (fun var=>
+  cvariabilize_base (sort:=SType) t vn (fun var=>
     eqn <- M.fresh_name "eqn";
-    T.cassert_base eqn (fun (eqnv : t = var)=>
+    T.cassert_base SType eqn (fun (eqnv : t = var)=>
       T.cmove_back eqnv (T.destruct var))
       |1> T.reflexivity
   ).
@@ -49,7 +49,7 @@ Notation "'uid' v" := (fun v:unit=>unit) (at level 0).
 Notation "'variabilize' t 'as' v" :=
   (
     vn <- M.get_binder_name (uid v);
-    cvariabilize_base t vn (fun _=>T.idtac)
+    @cvariabilize_base SType _ t vn (fun _=>T.idtac)
   ) (at level 0, t at next level, v at next level).
 
 End notations.
