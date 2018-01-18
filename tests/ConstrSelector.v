@@ -163,13 +163,12 @@ Lemma WHILE_true_nonterm : forall b c st st',
 MProof.
   intros b c.
   remember (WHILE b DO c END) "cw" "Heqcw".
-  intros.
-  intro H.
+  intros st st' eqT H.
   induction H &> case E_Skip, E_Ass, E_IfTrue, E_IfFalse, E_Seq do discriminate.
   - (* E_WhileEnd *) (* contradictory -- b is always true! *)
     inversion Heqcw. subst.
     select (bequiv _ _) >>= unfold_in bequiv.
-    move_back H.
+    move_back H. simpl.
     select (forall x:_, _) >>= rrewrite. simpl.
     discriminate.
   - (* E_WhileLoop *) (* immediate from the IH *)

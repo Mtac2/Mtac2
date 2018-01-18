@@ -400,8 +400,8 @@ Definition get_reference(*@{a}*): string -> t(*@{a}*) dyn.
 Definition get_var(*@{a}*): string -> t(*@{a}*) dyn.
   refine (fun _=>mkt). Qed.
 
-Definition call_ltac : forall{A: Type}, string->mlist dyn -> t (mprod A (mlist goal)).
-  refine (fun _ _ _ =>mkt). Qed.
+Definition call_ltac : forall(sort: Sort) {A: sort}, string->mlist dyn -> t (mprod A (mlist goal)).
+  refine (fun _ _ _ _ =>mkt). Qed.
 
 Definition list_ltac: t(*@{Set}*) unit.
   refine mkt. Qed.

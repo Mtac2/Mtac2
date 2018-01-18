@@ -318,7 +318,7 @@ Definition generalize {A} (x : A) : tactic := fun g =>
      e <- M.evar aP;
      mmatch aP with
      | [? Q : A -> Type] (forall z:A, Q z) =n> [H]
-        let e' := dreduce (@meq_refl) match H in _ =m= Q return Q with meq_refl _ => e end in
+        let e' := reduce (RedWhd [rl:RedMatch]) match H in _ =m= Q return Q with meq_refl _ => e end in
         exact (e' x) g;;
         M.ret [m:(m: tt, @Goal SType _ e)]
      | _ => M.failwith "generalize"
@@ -328,7 +328,7 @@ Definition generalize {A} (x : A) : tactic := fun g =>
      e <- M.evar aP;
      mmatch aP with
      | [? Q : A -> Prop] (forall z:A, Q z) =n> [H]
-        let e' := dreduce (@meq_refl) match H in _ =m= Q return Q with meq_refl _ => e end in
+        let e' := reduce (RedWhd [rl:RedMatch]) match H in _ =m= Q return Q with meq_refl _ => e end in
         exact (e' x) g;;
         M.ret [m:(m: tt, @Goal SProp _ e)]
      | _ => M.failwith "generalize"
@@ -475,15 +475,17 @@ Fixpoint match_goal_base {B} (u : Unification)
   end.
 Import M.notations.
 Definition ltac (t : string) (args : mlist dyn) : tactic := fun g =>
-  d <- M.goal_to_dyn g;
-  (dcase d as ty, el in
-  ''(m: v, l) <- @M.call_ltac ty t args;
-  M.unify_or_fail UniCoq v el;;
-  mif M.is_evar v then
-    M.ret [m:(m: tt, Goal SType v)] (* it wasn't solved *)
-  else
-    let l' := dreduce (@mmap) (mmap (mpair tt) l) in
-    M.ret l').
+  match g with
+  | @Goal s ty el =>
+    ''(m: v, l) <- @M.call_ltac s ty t args;
+    M.unify_or_fail UniCoq v el;;
+    mif M.is_evar v then
+      M.ret [m:(m: tt, Goal s v)] (* it wasn't solved *)
+    else
+      let l' := dreduce (@mmap) (mmap (mpair tt) l) in
+      M.ret l'
+  | _ => M.raise NotAGoal
+  end.
 
 Definition destruct_all (T : Type) : tactic := fun g=>
   l <- M.filter (fun '(@ahyp Th _ _) =>
@@ -605,32 +607,56 @@ Definition reduce_in (r : Reduction) {P} (H : P) : tactic := fun g =>
     mif M.cumul UniMatchNoRed H v then
       let T' := reduce r T in M.ret (@ahyp T' v def)
     else M.ret (ahyp v def)) =<< M.hyps;
-  gT <- M.goal_type g;
-  e <- M.Cevar gT l';
-  oeq <- M.unify (Goal SType e) g UniCoq;
-  match oeq with
-  | mSome (meq_refl _) => M.ret [m:(m: tt,Goal SType e)]
-  | _ => M.raise exception (* should never happen *)
+  match g with
+  | @Goal SType gT _ =>
+    e <- M.Cevar gT l';
+    oeq <- M.unify (Goal SType e) g UniCoq;
+    match oeq with
+    | mSome _ => M.ret [m:(m: tt,Goal SType e)]
+    | _ => M.failwith "reduce_in: impossible"
+    end
+  | @Goal SProp gT _ =>
+    e <- M.Cevar gT l';
+    oeq <- M.unify (Goal SProp e) g UniCoq;
+    match oeq with
+    | mSome _ => M.ret [m:(m: tt,Goal SProp e)]
+    | _ => M.failwith "reduce_in: impossible"
+    end
+  | _ => M.raise NotAGoal
   end.
 
 Definition simpl_in {P} (H : P) : tactic :=
   reduce_in RedSimpl H.
 
+Mtac Do New Exception GoalNotExistential.
+
 (** exists tactic *)
 Definition mexists {A} (x: A) : tactic := fun g =>
-  P <- M.evar _;
-  e <- M.evar _;
-  oeq <- M.unify g (Goal SType (@ex_intro _ P x e)) UniCoq;
-  match oeq with
-  | mSome (meq_refl _) => M.ret [m:(m: tt,Goal SType e)]
-  | _ => M.raise (NotUnifiable g (Goal SType (@ex_intro _ P x e)))
+  match g with
+  | @Goal SType _ _ =>
+    P <- M.evar (A -> Type);
+    e <- M.evar _;
+    oeq <- M.unify g (Goal SType (@existT _ P x e)) UniCoq;
+    match oeq with
+    | mSome _ => M.ret [m:(m: tt,Goal SType e)]
+    | _ => M.raise GoalNotExistential
+    end
+  | @Goal SProp _ _ =>
+    P <- M.evar (A -> Prop);
+    e <- M.evar _;
+    oeq <- M.unify g (Goal SProp (@ex_intro _ P x e)) UniCoq;
+    match oeq with
+    | mSome _ => M.ret [m:(m: tt,Goal SProp e)]
+    | _ => M.raise GoalNotExistential
+    end
+  | _ => M.raise NotAGoal
   end.
 
 Definition eexists: tactic := fun g=>
   T <- M.evar Type;
-  e <- M.evar T;
-  l <- mexists e g;
-  let res := dreduce (@mapp) (l +m+ [m:(m: tt, Goal SType e)]) in
+  x <- M.evar T;
+  l <- mexists x g;
+  let res := dreduce (@mapp) (l +m+ [m:(m: tt, Goal SType x)]) in
   M.ret res.
 
 Definition print_goal : tactic := with_goal M.print_goal.
@@ -727,23 +753,44 @@ Definition map_term (f : forall d:dynr, M d.(typer)) : forall d : dynr, M d.(typ
 
 Definition unfold_slow {A} (x : A) : tactic := fun g =>
   let def := rone_step x in
-  gT <- M.goal_type g;
-  gT' <- map_term (fun d =>
-    let (ty, el) := d in
-    mmatch d as d return M d.(typer) with
-    | Dynr x =n> M.ret def
-    | [? A (d': A)] Dynr d' =n> M.ret d'
-    end) (Dynr gT);
-  e <- M.evar gT';
-  exact e g;;
-  M.ret [m:(m: tt,Goal SType e)].
+  match g with
+  | @Goal SType gT _ =>
+    gT' <- map_term (fun d =>
+                      let (ty, el) := d in
+                      mmatch d as d return M d.(typer) with
+                      | Dynr x =n> M.ret def
+                      | [? A (d': A)] Dynr d' =n> M.ret d'
+                      end) (Dynr gT);
+    e <- M.evar gT';
+    exact e g;;
+    M.ret [m:(m: tt,Goal SType e)]
+  | @Goal SProp gT _ =>
+    gT' <- map_term (fun d =>
+                      let (ty, el) := d in
+                      mmatch d as d return M d.(typer) with
+                      | Dynr x =n> M.ret def
+                      | [? A (d': A)] Dynr d' =n> M.ret d'
+                      end) (Dynr gT);
+    e <- M.evar gT';
+    exact e g;;
+    M.ret [m:(m: tt,Goal SProp e)]
+  | _ => M.raise NotAGoal
+  end.
 
 Definition unfold {A} (x : A) : tactic := fun g =>
-  gT <- M.goal_type g;
-  let gT' := dreduce (x) gT in
-  ng <- M.evar gT';
-  exact ng g;;
-  M.ret [m:(m: tt, Goal SType ng)].
+  match g with
+  | @Goal SType gT _ =>
+    let gT' := dreduce (x) gT in
+    ng <- M.evar gT';
+    exact ng g;;
+    M.ret [m:(m: tt, Goal SType ng)]
+  | @Goal SProp gT _ =>
+    let gT' := dreduce (x) gT in
+    ng <- M.evar gT';
+    exact ng g;;
+    M.ret [m:(m: tt, Goal SProp ng)]
+  | _ => M.raise NotAGoal
+  end.
 
 Definition unfold_in {A B} (x : A) (h : B) : tactic :=
   reduce_in (RedStrong [rl:RedBeta; RedMatch; RedFix; RedDeltaOnly [rl:Dyn x]]) h.

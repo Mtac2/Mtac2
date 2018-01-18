@@ -46,6 +46,8 @@ let print (sigma: Evd.evar_map) env s =
 let print_constr (sigma: Evd.evar_map) env t =
   Feedback.msg_notice (app (str "[DEBUG] ") (Termops.print_constr_env env sigma t))
 
+let constr_to_string (sigma: Evd.evar_map) env t =
+  Pp.string_of_ppcmds (Termops.print_constr_env env sigma t)
 
 module MetaCoqNames = struct
   let metaCoq_module_name = "Mtac2.Base"
@@ -249,7 +251,7 @@ module Goal = struct
       let sigma, tg = mkGoal sigma env in
       sigma, mkApp (tg, [|ssort; ty;ev|])
     else
-      failwith ("WAT? Not a sort?" ^ (Pp.string_of_ppcmds (Termops.print_constr_env env sigma tt)))
+      failwith ("WAT? Not a sort?" ^ (constr_to_string sigma env tt))
 
   let mkAHypOrDef (name, odef, ty) body sigma env =
     (* we are going to wrap the body in a function, so we need to lift
@@ -307,7 +309,6 @@ module Goal = struct
 
 end
 
-let constr_to_string_env (sigma: Evd.evar_map) env t = string_of_ppcmds (Termops.print_constr_env env sigma t)
 
 module Exceptions = struct
 
@@ -315,7 +316,7 @@ module Exceptions = struct
     if !debug_ex then print_constr sigma env (mkApp (e, [|t|]))
 
   let mkCannotRemoveVar sigma env x =
-    let varname = CoqString.to_coq (constr_to_string_env sigma env x) in
+    let varname = CoqString.to_coq (constr_to_string sigma env x) in
     let sigma, exc = mkUConstr "CannotRemoveVar" sigma env in
     debug_exception sigma env exc x;
     sigma, mkApp(exc, [|varname|])
@@ -490,7 +491,7 @@ module ReductionStrategy = struct
             else if isConst sigma e then
               func reds (fCONST (fst (destConst sigma e)))
             else
-              failwith "Unknown reference") ids reds
+              failwith ("Unknown reference: " ^ constr_to_string sigma env e)) ids reds
         else
           failwith "Unknown flag"
       else
@@ -1274,7 +1275,7 @@ let rec run' ctxt t =
     | _ when ispretty_print h ->
         let t = nth 1 in
         let t = nf_evar sigma t in
-        let s = constr_to_string_env sigma env t in
+        let s = constr_to_string sigma env t in
         return sigma (CoqString.to_coq s)
 
     | _ when ishyps h ->
@@ -1357,7 +1358,7 @@ let rec run' ctxt t =
         end
 
     | _ when iscall_ltac h ->
-        let concl, name, args = nth 0, nth 1, nth 2 in
+        let sort, concl, name, args = nth 0, nth 1, nth 2, nth 3 in
         let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq sigma env args in
         (* let name = Lib.make_kn (Names.Id.of_string name) in *)
         (* let tac = Tacenv.interp_ml_tactic name in *)
