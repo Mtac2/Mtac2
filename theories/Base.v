@@ -169,9 +169,9 @@ Inductive goal :=
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
 we could make it part of the B, but then higher order unification will fail. *)
-Inductive pattern(*@{a b e}*) (M : Type(*@{b}*) -> Type(*@{b}*)) (A : Type(*@{a}*)) (B : A -> Type(*@{b}*)) (y : A) : Prop :=
+Inductive pattern (M : Type -> Prop) (A : Type) (B : A -> Type) (y : A) : Prop :=
   | pbase : forall x : A, (y =m= x ->M (B x)) -> Unification -> pattern M A B y
-  | ptele : forall {C:Type(*@{e}*)}, (forall x : C, pattern M A B y) -> pattern M A B y.
+  | ptele : forall {C:Type}, (forall x : C, pattern M A B y) -> pattern M A B y.
 
 Arguments pbase {M A B y} _ _ _.
 Arguments ptele {M A B y C} _.

@@ -533,47 +533,63 @@ Definition typed_intros (T : Type) : tactic := fun g =>
 (** changes a hypothesis H with one of type Q and the same name *)
 Definition change_hyp {P Q} (H : P) (newH: Q) : tactic := fun g=>
   name <- M.get_binder_name H;
-  gT <- M.goal_type g;
-  ''(m: gabs, abs) <- M.remove H (M.nu name mNone (fun nH: Q=>
-     r <- M.evar gT;
-     abs <- M.abs_fun nH r;
-     gabs <- M.abs_fun nH (Goal SType r);
-     M.ret (m: AHyp mNone gabs, abs)));
-  exact (abs newH) g;;
-  M.ret [m:(m: tt, gabs)].
+  match g with
+  | @Goal sort gT _ =>
+     ''(m: gabs, abs) <- M.remove H (M.nu name mNone (fun nH: Q=>
+       r <- M.evar gT;
+       abs <- M.abs_fun nH r;
+       gabs <- M.abs_fun nH (Goal sort r);
+       M.ret (m: AHyp mNone gabs, abs)));
+     exact (abs newH) g;;
+     M.ret [m:(m: tt, gabs)]
+  | _ => M.raise NotAGoal
+  end.
 
 Definition cassert_with_base {A B} (name : string) (t : A)
     (cont : A -> gtactic B) : gtactic B := fun g =>
   M.nu name (mSome t) (fun x=>
-    gT <- M.goal_type g;
-    r <- M.evar gT;
-    value <- M.abs_fun x r;
-    exact (value t) g;;
-    close_goals x =<< cont x (Goal SType r)).
+    match g with
+    | @Goal sort gT _ =>
+      r <- M.evar gT;
+      value <- M.abs_fun x r;
+      exact (value t) g;;
+      close_goals x =<< cont x (Goal sort r)
+    | _ => M.raise NotAGoal
+    end).
 
 Definition cpose_base {A B} (name : string) (t : A)
     (cont : A -> gtactic B) : gtactic B := fun g =>
   M.nu name (mSome t) (fun x=>
-    gT <- M.goal_type g;
-    r <- M.evar gT;
-    value <- M.abs_let x t r;
-    exact value g;;
-    let_close_goals x =<< cont x (Goal SType r)).
+    match g with
+    | @Goal sort gT _ =>
+      r <- M.evar gT;
+      value <- M.abs_let x t r;
+      exact value g;;
+      let_close_goals x =<< cont x (Goal sort r)
+    | _ => M.raise NotAGoal
+    end).
 
 Definition cpose {A} (t: A) (cont : A -> tactic) : tactic := fun g =>
   n <- M.get_binder_name cont;
   cpose_base n t cont g.
 
+(* FIX: seriously need to abstract these set of functions!
+   Too much duplication! *)
 Definition cassert_base {A} (name : string)
     (cont : A -> tactic) : tactic := fun g =>
   a <- M.evar A; (* [a] will be the goal to solve [A] *)
   M.nu name mNone (fun x =>
-    gT <- M.goal_type g;
-    r <- M.evar gT; (* The new goal now referring to n *)
-    value <- M.abs_fun x r;
-    exact (value a) g;; (* instantiate the old goal with the new one *)
-    v <- cont x (Goal SType r) >>= close_goals x;
-    M.ret ((m: tt,Goal SType a) :m: v)). (* append the goal for a to the top of the goals *)
+    match g with
+    | @Goal sort gT _ =>
+      gT <- M.goal_type g;
+      r <- M.evar gT; (* The new goal now referring to n *)
+      value <- M.abs_fun x r;
+      exact (value a) g;; (* instantiate the old goal with the new one *)
+      v <- cont x (Goal SType r) >>= close_goals x;
+      M.ret ((m: tt,Goal SType a) :m: v)
+    | _ => M.raise NotAGoal
+    end
+  ). (* append the goal for a to the top of the goals *)
 
 Definition cassert {A} (cont : A -> tactic) : tactic := fun g=>
   n <- M.get_binder_name cont;
