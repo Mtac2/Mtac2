@@ -2,6 +2,7 @@ MetaCoq
 MetaCoqInstr
 Constrs
 MtacNames
+MConstr
 Run
 MetaCoqInterp
 MetaCoqInit
