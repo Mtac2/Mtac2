@@ -8,7 +8,7 @@ module MetaCoqRun = struct
   open Proofview.Notations
 
   let ifM env sigma concl ty c =
-    let sigma, metaCoqType = Run.MetaCoqNames.mkT_lazy sigma env in
+    let sigma, metaCoqType = MtacNames.mkT_lazy sigma env in
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
     if EConstr.eq_constr_nounivs sigma metaCoqType h && List.length args = 1 then
       try

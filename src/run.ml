@@ -49,42 +49,7 @@ let print_constr (sigma: Evd.evar_map) env t =
 let constr_to_string (sigma: Evd.evar_map) env t =
   Pp.string_of_ppcmds (Termops.print_constr_env env sigma t)
 
-module MetaCoqNames = struct
-  let metaCoq_module_name = "Mtac2.Base"
-  let mkConstr e = Constr.mkConstr (metaCoq_module_name ^ "." ^ e)
-  let mkUConstr e = Constr.mkUConstr (metaCoq_module_name ^ "." ^ e)
-  let mkBuilder e = ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
-  let mkUBuilder e = UConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
-  let mkT_lazy = mkUConstr "M.t"
-  let mkUConstr e = Constr.mkUConstr (metaCoq_module_name ^ "." ^ e)
-
-  let isConstr sigma e =
-    let c = Lazy.force (mkConstr e) in
-    eq_constr sigma c
-
-  let isUConstr sigma env e =
-    let sigma, c = mkUConstr e sigma env in
-    eq_constr_nounivs sigma c
-
-  let mkCase ind v ret branch sigma env =
-    let sigma, c = mkUConstr "mkCase" sigma env in
-    sigma, mkApp(c, [|ind;v;ret;branch|])
-
-  let mkelem d sigma env =
-    let sigma, c = mkUConstr "elem" sigma env in
-    sigma, mkApp(c, [|d|])
-
-  let mkdyn = mkUConstr "dyn"
-
-  let mkDyn ty el sigma env =
-    let sigma, c = mkUConstr "Dyn" sigma env in
-    sigma, mkApp(c, [|ty;el|])
-
-  (* dyn is expected to be Dyn ty el *)
-  let get_elem sigma dyn = (snd (destApp sigma dyn)).(1)
-end
-
-open MetaCoqNames
+open MtacNames
 
 module TConstr = struct
   let mkconstr s = lazy (let (_, c) = mkUConstr ("M." ^ s) Evd.empty (Global.env ()) in c)
@@ -388,7 +353,6 @@ end
 module E = Exceptions
 
 module ReductionStrategy = struct
-  open MetaCoqNames
   open Reductionops
   open CClosure
   open CClosure.RedFlags
@@ -1617,7 +1581,7 @@ let run (env0, sigma) t =
       Val (sigma', v)
 
 (** set the run function in unicoq *)
-let _ = Munify.set_lift_constr (fun env sigma -> (MetaCoqNames.mkUConstr "lift" sigma env))
+let _ = Munify.set_lift_constr (fun env sigma -> (mkUConstr "lift" sigma env))
 let _ = Munify.set_run (fun env sigma t ->
   match run (env, sigma) t with
   | Err _ -> None
