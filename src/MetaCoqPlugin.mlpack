@@ -3,6 +3,7 @@ MetaCoqInstr
 Constrs
 MtacNames
 MConstr
+Machine
 Run
 MetaCoqInterp
 MetaCoqInit
