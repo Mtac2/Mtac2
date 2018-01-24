@@ -813,7 +813,10 @@ Definition is_prop_or_type (d : dyn) : t bool :=
     if [g] is not [Goal]. *)
 Definition goal_type (g : goal) : t Type :=
   match g with
-  | @Goal s A x => ret (selem_of A)
+  | @Goal s A x =>
+    match s as s return stype_of s -> t Type with
+      | SProp => fun A => ret (A:Type)
+      | SType => fun A => ret A end A
   | _ => raise NotAGoal
   end.
 
