@@ -414,8 +414,11 @@ Definition apply {T} (c : T) : tactic := fun g=>
 
 Definition apply_ : tactic := fun g =>
   match g with
-  | @Goal _ G g =>
-     x <- M.solve_typeclass_or_fail G; M.cumul_or_fail UniCoq x g;; M.ret [m:]
+  | @Goal _ _ gevar =>
+    G <- M.goal_type g;
+    x <- M.solve_typeclass_or_fail G;
+    M.cumul_or_fail UniCoq x gevar;;
+    M.ret [m:]
   | _ => M.raise NotAGoal
   end.
 
