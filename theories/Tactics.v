@@ -393,6 +393,10 @@ Definition apply {T} (c : T) : tactic := fun g=>
       dcase d as el in
       mif M.cumul UniCoq el eg then M.ret [m:] else
         mmatch d return M (mlist (unit *m goal)) with
+        | [? (T1 : Prop) T2 f] @Dyn (T1 -> T2) f =>
+          e <- M.evar T1;
+          r <- go (Dyn (f e));
+          M.ret ((m: tt, @Goal SProp _ e) :m: r)
         | [? T1 T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
