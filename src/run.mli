@@ -21,7 +21,7 @@ end
 
 (** DEBUG **)
 
-type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option; fixpoints: Environ.env}
+type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; fixpoints: Environ.env}
 val run' : ctxt -> constr -> data
 
 val multi_subst : evar_map -> (int * constr) list -> constr -> constr

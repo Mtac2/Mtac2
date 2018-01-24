@@ -906,7 +906,7 @@ let run_declare_implicits env sigma gr impls =
 
 
 
-type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; hook: constr option;
+type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int;
              fixpoints: Environ.env;
             }
 
@@ -919,14 +919,6 @@ let get_type_of ctxt t =
 let rec run' ctxt t =
   let open MConstr in
   let sigma, env = ctxt.sigma, ctxt.env in
-  ( match ctxt.hook with
-    | Some f ->
-        let t = RE.whd_betaiota env sigma t in
-        let ty = get_type_of ctxt t in
-        run' {ctxt with hook = None} (mkApp (f, [|ty; t|]))
-    | None -> return sigma t
-  ) >>= fun (sigma, t) ->
-  let ctxt = {ctxt with sigma = sigma} in
   (* let t = to_constr sigma t in *)
   let reduced_term = RE.whd_betadeltaiota_nolet env sigma t in
   let (h, args) = decompose_appvect sigma ((* of_constr @@ *) reduced_term) in
@@ -1231,10 +1223,6 @@ let rec run' ctxt t =
     | _ when isread_line h ->
         return sigma (CoqString.to_coq (read_line ()))
 
-    | _ when isbreak h ->
-        run' {ctxt with hook=Some (nth 0)} (nth 2)(*  >>= fun (sigma, _) -> *)
-    (* return sigma CoqUnit.mkTT *)
-
     | _ when isdecompose h ->
         let (h, args) = decompose_app sigma (nth 1) in
         let sigma, dyn = mkdyn sigma env in
@@ -1429,7 +1417,7 @@ let run (env0, sigma) t =
   let subs, env = db_to_named sigma env0 in
   let t = multi_subst sigma subs t in
   let (sigma, renv) = build_hypotheses sigma env in
-  match run' {env; renv; sigma; nus=0;hook=None; fixpoints=Environ.empty_env} t with
+  match run' {env; renv; sigma; nus=0; fixpoints=Environ.empty_env} t with
   | Err (sigma', v) ->
       (* let v = Vars.replace_vars vsubs v in *)
       let v = multi_subst_inv sigma' subs v in

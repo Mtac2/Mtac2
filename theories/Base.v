@@ -410,14 +410,6 @@ Definition list_ltac: t(*@{Set}*) unit.
 Definition read_line: t(*@{Set}*) string.
   refine mkt. Qed.
 
-(** [break f t] calls [f] at each step of the computation of [t]. [f]
-    is expcted to return the term that receives as argument, or any
-    transformation of it. *)
-Definition break :
-  (forall A : Type, t A -> t (t A)) -> forall {A : Type}, t A -> t A.
-  refine (fun _ _ _ =>mkt). Qed.
-
-
 (** [decompose x] decomposes value [x] into a head and a spine of
     arguments. For instance, [decompose (3 + 3)] returns
     [(Dyn add, [Dyn 3; Dyn 3])] *)
