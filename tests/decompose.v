@@ -1,4 +1,4 @@
-From Mtac2 Require Import List Mtac2 Debugger.
+From Mtac2 Require Import List Mtac2.
 Import ListNotations.
 Import M.
 Import M.notations.
