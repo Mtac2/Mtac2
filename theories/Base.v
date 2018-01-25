@@ -521,7 +521,7 @@ Fixpoint open_pattern(*@{a1 a2 a3 I K a b}*) {A P y} (p : pattern(*@{a1 a2 a3}*)
     | mSome eq =>
       (* eq has type x =m= t, but for the pattern we need t = x.
          we still want to provide eq_refl though, so we reduce it *)
-      let h := (* reduce(*@{b1 b2 b3}*) (RedWhd [rl:RedBeta;RedDelta;RedMatch]) *) (meq_sym(*@{a1 K}*) eq) in
+      let h := reduce(*@{b1 b2 b3}*) (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym(*@{a1 K}*) eq) in
       let 'meq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
       let b := (* reduce(*@{b1 b2 b3}*) (RedWhd [rl:RedBeta]) *) (f h) in b
