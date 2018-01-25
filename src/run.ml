@@ -341,8 +341,11 @@ module ReductionStrategy = struct
   |]
 
   let reduce sigma env strategy c =
-    let strategy, args = decompose_appvect sigma strategy in
-    redfuns.(get_constructor_pos sigma strategy) args env sigma c
+    try
+      let strategy, args = decompose_appvect sigma strategy in
+      Some (redfuns.(get_constructor_pos sigma strategy) args env sigma c)
+    with RedList.NotAList _ ->
+      None
 
   (* XXX: Port to 8.7: [EJGA]
 
@@ -647,33 +650,6 @@ let rec n_prods env sigma ty = function
       else
         false
 
-(* abs case env a p x y n abstract variable x from term y according to the case.
-   if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
-let abs case (env, sigma) a p x y n t : data =
-  (* check if the type p does not depend of x, and that no variable
-     created after x depends on it.  otherwise, we will have to
-     substitute the context, which is impossible *)
-  let a = nf_evar sigma a in
-  let p = nf_evar sigma p in
-  let x = nf_evar sigma x in
-  let y = nf_evar sigma y in
-  if isVar sigma x then
-    if check_abs_deps env sigma x y p then
-      let name = destVar sigma x in
-      let y' = Vars.subst_vars [name] y in
-      let t =
-        match case with
-        | AbsProd -> mkProd (Name name, a, y')
-        | AbsFun  -> mkLambda (Name name, a, y')
-        | AbsLet  -> mkLetIn (Name name, t, a, y')
-        | AbsFix  -> mkFix (([|n-1|], 0), ([|Name name|], [|a|], [|y'|]))
-      in
-      return sigma t
-    else
-      Err (E.mkAbsDependencyError sigma env (mkApp(x,[|y;p|])))
-  else
-    Err (E.mkNotAVar sigma env x)
-
 (** checks if (option) definition od and type ty has named
     vars included in vars *)
 let check_vars sigma od ty vars =
@@ -948,7 +924,9 @@ let rec run' ctxt (vms : vm list) =
   | Ret c, (Try (_, b) :: vms) -> (run'[@tailcall]) ctxt (Ret c :: vms)
   | Ret c, Nu (name, _, _ as p) :: vms -> (* why the sigma'? *)
       if occur_var env sigma name c then
-        (run'[@tailcall]) (ctxt_nu1 p) (Fail (E.mkVarAppearsInValue sigma env (mkVar name)) :: vms)
+        let (sigma, e) = E.mkVarAppearsInValue sigma env (mkVar name) in
+        let ctxt = ctxt_nu1 p in
+        (run'[@tailcall]) {ctxt with sigma} (Fail e :: vms)
       else
         (run'[@tailcall]) (ctxt_nu1 p) (Ret c :: vms)
   | Ret c, Fix :: vms -> (run'[@tailcall]) (ctxt_fix ()) (Ret c :: vms)
@@ -965,21 +943,23 @@ let rec run' ctxt (vms : vm list) =
   | Code t, _ ->
       let upd c = (Code c :: vms) in
       let return sigma c = (run'[@tailcall]) {ctxt with sigma} (Ret c :: vms) in
-      let fail sigma c = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
-      let (h, args) = Term.decompose_appvect (RE.whd_betadeltaiota_nolet env sigma t) in
+      let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
+      let reduced_term = RE.whd_betadeltaiota_nolet env sigma t in
+      let (h, args) = decompose_appvect sigma reduced_term in
       let nth = Array.get args in
-      if Term.isLetIn h then
+      if isLetIn sigma h then
         let open ReductionStrategy in
-        let (_, b, _, t) = Term.destLetIn h in
-        let (h, args') = Term.decompose_appvect b in
-        if isReduce h && Array.length args' = 3 then
+        let (_, b, _, t) = destLetIn sigma h in
+        let (h, args') = decompose_appvect sigma b in
+        if isReduce sigma env h && Array.length args' = 3 then
           let ob = reduce sigma env (Array.get args' 0) (Array.get args' 2) in
           match ob with
           | Some b ->
-              (run'[@tailcall]) ctxt (upd (Term.mkApp (Vars.subst1 b t, args)))
-          | None -> fail sigma (E.mkNotAList ())
+              (run'[@tailcall]) ctxt (upd (mkApp (Vars.subst1 b t, args)))
+          | None ->
+              fail (E.mkNotAList sigma env (Array.get args' 0))
         else
-          (run'[@tailcall]) ctxt (upd (Term.mkApp (Vars.subst1 b t, args)))
+          (run'[@tailcall]) ctxt (upd (mkApp (Vars.subst1 b t, args)))
       else
         begin
           if !trace then print_constr sigma env reduced_term;
@@ -1001,9 +981,9 @@ let rec run' ctxt (vms : vm list) =
               let intersect = Id.Set.inter vars nuvars in
               let closed = Id.Set.is_empty intersect && Evar.Set.is_empty (Evarutil.undefined_evars_of_term sigma term) in
               if closed then
-                fail sigma (Evarutil.nf_evar sigma term)
+                fail (sigma, Evarutil.nf_evar sigma term)
               else
-                fail sigma (E.mkExceptionNotGround sigma env term)
+                fail (E.mkExceptionNotGround sigma env term)
 
           | _ when isfix1 h ->
               let a, b, f, x = nth 0, nth 1, nth 2, nth 3 in
@@ -1041,13 +1021,13 @@ let rec run' ctxt (vms : vm list) =
               let namestr = CoqString.from_coq (env, sigma) s in
               let name = Names.Id.of_string namestr in
               if Id.Set.mem name (vars_of_env env) then
-                fail sigma (Exceptions.mkNameExists s)
+                fail (Exceptions.mkNameExists sigma env s)
               else
                 begin
-                  let fx = Term.mkApp(f, [|Term.mkVar name|]) in
-                  let ot = CoqOption.from_coq (env, sigma) ot in
+                  let fx = mkApp(f, [|mkVar name|]) in
+                  let ot = CoqOption.from_coq sigma env ot in
                   let env' = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
-                  let (sigma, renv') = Hypotheses.cons_hyp a (Term.mkVar name) ot ctxt.renv sigma env in
+                  let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot ctxt.renv sigma env in
                   (run'[@tailcall]) {ctxt with env=env'; renv=renv'; sigma; nus=(ctxt.nus+1)} (Code fx :: Nu (name, env, ctxt.renv) :: vms)
                 end
 
@@ -1077,20 +1057,20 @@ let rec run' ctxt (vms : vm list) =
                 match s with
                 | Some s -> return sigma s
                 | None ->
-                    fail sigma (Exceptions.mkWrongTerm sigma env t)
+                    fail (Exceptions.mkWrongTerm sigma env t)
               end
 
           | _ when isremove h ->
               let x, t = nth 2, nth 3 in
-              if isVar x then
-                if check_dependencies env x t then
-                  let nus = if is_nu env x ctxt.nus then ctxt.nus-1 else ctxt.nus in
+              if isVar sigma x then
+                if check_dependencies env sigma x t then
+                  let nus = if is_nu env sigma x ctxt.nus then ctxt.nus-1 else ctxt.nus in
                   let env, (sigma, renv) = env_without sigma env ctxt.renv x in
                   (run'[@tailcall]) {ctxt with env; renv; sigma; nus} (upd t)
                 else
-                  fail sigma (E.mkCannotRemoveVar env sigma x)
+                  fail (E.mkCannotRemoveVar sigma env x)
               else
-                fail sigma (E.mkNotAVar sigma env x)
+                fail (E.mkNotAVar sigma env x)
 
           | _ when isgen_evar h->
               let ty, hyp = nth 0, nth 1 in
@@ -1186,7 +1166,7 @@ let rec run' ctxt (vms : vm list) =
                   let ty = Retyping.get_type_of env sigma (of_constr v) in
                   let sigma, dyn = mkDyn ty (of_constr v) sigma env in
                   return sigma dyn
-                with _ -> fail sigma (Exceptions.mkRefNotFound sigma env s)
+                with _ -> fail (Exceptions.mkRefNotFound sigma env s)
               end
 
           | _ when isget_var h ->
@@ -1197,7 +1177,7 @@ let rec run' ctxt (vms : vm list) =
                   let var = lookup (Id.of_string s) (named_context env) in
                   let sigma, dyn = mkDyn (Declaration.get_type var) (mkVar (Declaration.get_id var)) sigma env in
                   return sigma dyn
-                with _ -> fail sigma (Exceptions.mkRefNotFound sigma env s)
+                with _ -> fail (Exceptions.mkRefNotFound sigma env s)
               end
 
           | _ when iscall_ltac h ->
@@ -1235,9 +1215,9 @@ let rec run' ctxt (vms : vm list) =
                 with CErrors.UserError(s,ppm) ->
                   let expl = string_of_ppcmds ppm in
                   let s = Option.default "" s in
-                  fail sigma (Exceptions.mkLtacError sigma env (s ^ ": " ^ expl))
+                  fail (Exceptions.mkLtacError sigma env (s ^ ": " ^ expl))
                    | e ->
-                       fail sigma (Exceptions.mkLtacError sigma env (Printexc.to_string e))
+                       fail (Exceptions.mkLtacError sigma env (Printexc.to_string e))
               end
 
           | _ when islist_ltac h ->
@@ -1278,9 +1258,9 @@ let rec run' ctxt (vms : vm list) =
                  return sigma (of_constr ret)
                with
                | CErrors.AlreadyDeclared _ ->
-                   fail sigma (E.mkAlreadyDeclared sigma env name)
+                   fail (E.mkAlreadyDeclared sigma env name)
                | Type_errors.TypeError(env, Type_errors.UnboundVar v) ->
-                   fail sigma (E.mkTypeErrorUnboundVar sigma env (mkVar v))
+                   fail (E.mkTypeErrorUnboundVar sigma env (mkVar v))
               )
 
           | _ when isdeclare_implicits h ->
@@ -1290,7 +1270,7 @@ let rec run' ctxt (vms : vm list) =
                  let sigma, ret = run_declare_implicits env sigma reference impls in
                  return sigma ret
                with Not_found ->
-                 fail sigma (E.mkNotAReference sigma env (nth 0) reference)
+                 fail (E.mkNotAReference sigma env (nth 0) reference)
               )
 
           | _ when isos_cmd h ->
@@ -1318,9 +1298,9 @@ let rec run' ctxt (vms : vm list) =
                   | Some fixbody ->
                       let t = (EConstr.applist (of_constr fixbody,Array.to_list args)) in
                       (run'[@tailcall]) ctxt t
-                  | None -> fail sigma (E.mkStuckTerm sigma env h)
+                  | None -> fail (E.mkStuckTerm sigma env h)
                 with Term.DestKO ->
-                  fail sigma (E.mkStuckTerm sigma env h)
+                  fail (E.mkStuckTerm sigma env h)
               end
         end
 
@@ -1350,6 +1330,37 @@ and run_fix ctxt (vms: vm list) (h: constr) (a: constr array) (b: constr) (f: co
   let fixpoints = push_named (Context.Named.Declaration.of_tuple (n, Some (fixf), EConstr.mkProp)) ctxt.fixpoints in
   let c = mkApp (f, Array.append [| fixvar |] x) in
   (run'[@tailcall]) {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} (Code c :: vms)
+
+(* abs case env a p x y n abstract variable x from term y according to the case.
+   if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
+and abs vms case ctxt a p x y n t : data =
+  let sigma = ctxt.sigma in
+  let a = nf_evar sigma a in
+  let p = nf_evar sigma p in
+  let x = nf_evar sigma x in
+  let y = nf_evar sigma y in
+  (* check if the type p does not depend of x, and that no variable
+     created after x depends on it.  otherwise, we will have to
+     substitute the context, which is impossible *)
+  if isVar x then
+    if check_abs_deps ctxt.env x y p then
+      let name = destVar x in
+      let y' = Vars.subst_vars [name] y in
+      let t =
+        match case with
+        | AbsProd -> mkProd (Name name, a, y')
+        | AbsFun -> mkLambda (Name name, a, y')
+        | AbsLet -> mkLetIn (Name name, t, a, y')
+        | AbsFix -> mkFix (([|n-1|], 0), ([|Name name|], [|a|], [|y'|]))
+      in
+      (run'[@tailcall]) ctxt (Ret t :: vms)
+    else
+      let (sigma, e) = E.mkAbsDependencyError sigma env (mkApp(x,[|y;p|])) in
+      (run'[@tailcall]) {ctxt with sigma} (Fail e :: vms)
+  else
+    let (sigma, e) = E.mkNotAVar sigma env x in
+    (run'[@tailcall]) {ctxt with sigma} (Fail e :: vms)
+
 
 (* Takes a [sigma], a set of evars [metas], and a [term],
    and garbage collects all the [metas] in [sigma] that do not appear in
