@@ -905,7 +905,7 @@ let rec run' ctxt (vms : vm list) =
   | Fail c, [] -> fail sigma c
   | Fail c, (Bind _ :: vms) -> (run'[@tailcall]) ctxt (Fail c :: vms)
   | Fail c, (Try (sigma, b) :: vms) ->
-      let sigma = Evd.set_universe_context ctxt.sigma (Evd.evar_universe_context sigma) in
+      let sigma = Evd.set_universe_context sigma (Evd.evar_universe_context ctxt.sigma) in
       (run'[@tailcall]) {ctxt with sigma} (Code (mkApp(b, [|c|]))::vms)
   | Fail c, (Nu p :: vms) -> (run'[@tailcall]) (ctxt_nu1 p) (Fail c :: vms)
   | Fail c, Fix :: vms -> (run'[@tailcall]) (ctxt_fix ()) (Fail c :: vms)
