@@ -1312,7 +1312,7 @@ and run_fix ctxt (vms: vm list) (h: constr) (a: constr array) (b: constr) (f: co
      type. *)
   let fixpoints = Context.Named.Declaration.of_tuple (n, Some (fixf), EConstr.mkProp) :: ctxt.fixpoints in
   let c = mkApp (f, Array.append [| fixvar |] x) in
-  (run'[@tailcall]) {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} (Code c :: vms)
+  (run'[@tailcall]) {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} (Code c :: Fix :: vms)
 
 (* abs case env a p x y n abstract variable x from term y according to the case.
    if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
