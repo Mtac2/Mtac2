@@ -1280,15 +1280,6 @@ let rec run' ctxt (vms : vm list) =
                     (run'[@tailcall]) ctxt (upd t)
                 | None -> fail (E.mkStuckTerm sigma env h)
               end
-              (*     let n = EConstr.destVar sigma h in *)
-              (*     match Environ.named_body n ctxt.fixpoints with *)
-              (*     | Some fixbody -> *)
-              (*         let t = (EConstr.applist (of_constr fixbody,Array.to_list args)) in *)
-              (*         (run'[@tailcall]) ctxt t *)
-              (*     | None -> fail (E.mkStuckTerm sigma env h) *)
-              (*   with Term.DestKO -> *)
-              (*     fail (E.mkStuckTerm sigma env h) *)
-              (* end *)
         end
 
 (* h is the mfix operator, a is an array of types of the arguments, b is the
@@ -1307,8 +1298,7 @@ and run_fix ctxt (vms: vm list) (h: constr) (a: constr array) (b: constr) (f: co
     else None
   in
   let name = match name with | Some (Name i) -> Names.Id.to_string i | Some _ -> "anon" | None -> "impossible" in
-
-  let n = Namegen.next_name_away (Name (Names.Id.of_string (concat "mtac_fix_" [name]))) (ids_of_context env) in
+  let n = Namegen.next_name_away (Name (Names.Id.of_string (concat "mtac_fix_" [name]))) (List.append (ids_of_context env) (ids_of_named_context ctxt.fixpoints)) in
   let fixvar = EConstr.mkVar n in
   let fixf = mkApp(f, [|fixvar|]) in
   (* HACK: we put Prop as the type of fixf in the context, simply because we
