@@ -690,35 +690,6 @@ let make_evar sigma env ty =
     let sigma, evar = Evarutil.new_evar env sigma ty in
     sigma, evar
 
-let cvar (env, sigma as ctx) ty ohyps =
-  let ohyps = CoqOption.from_coq sigma env ohyps in
-  if Option.has_some ohyps then
-    try
-      let hyps = Hypotheses.from_coq_list (env, sigma) (Option.get ohyps) in
-      let vars = List.map (fun (v, _, _)->v) hyps in
-      if List.distinct vars then
-        try
-          let subs, env = new_env ctx hyps in
-          let ty = multi_subst sigma subs ty in
-          let sigma, evar = make_evar sigma env ty in
-          let (e, _) = destEvar sigma evar in
-          (* the evar created by make_evar has id in the substitution
-             but we need to remap it to the actual variables in hyps *)
-          return sigma (mkEvar (e, Array.of_list vars))
-        with
-        | MissingDep ->
-            Err (E.mkHypMissesDependency sigma env (Option.get ohyps))
-        | Not_found ->
-            Err (E.mkTypeMissesDependency sigma env (Option.get ohyps))
-      else
-        Err (E.mkDuplicatedVariable sigma env (Option.get ohyps))
-    with Hypotheses.NotAVariable ->
-      Err (E.mkNotAVar sigma env (Option.get ohyps))
-  else
-    let sigma, evar = make_evar sigma env ty in
-    return sigma evar
-
-
 let get_name (env, sigma) (t: constr) : constr option =
   (* If t is a defined variable it is reducing it *)
   let t = RE.whd_all_novars env sigma t in
@@ -883,7 +854,7 @@ let run_declare_implicits env sigma gr impls =
 
 
 type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int;
-             fixpoints: Context.Named.t;
+             fixpoints: (EConstr.t, EConstr.t) Context.Named.pt;
             }
 
 (* the intention of this function was to add the fixpoint context to the
@@ -933,7 +904,9 @@ let rec run' ctxt (vms : vm list) =
 
   | Fail c, [] -> fail sigma c
   | Fail c, (Bind _ :: vms) -> (run'[@tailcall]) ctxt (Fail c :: vms)
-  | Fail c, (Try (sigma, b) :: vms) -> (run'[@tailcall]) {ctxt with sigma} (Code (mkApp(b, [|c|]))::vms)
+  | Fail c, (Try (sigma, b) :: vms) ->
+      let sigma = Evd.set_universe_context ctxt.sigma (Evd.evar_universe_context sigma) in
+      (run'[@tailcall]) {ctxt with sigma} (Code (mkApp(b, [|c|]))::vms)
   | Fail c, (Nu p :: vms) -> (run'[@tailcall]) (ctxt_nu1 p) (Fail c :: vms)
   | Fail c, Fix :: vms -> (run'[@tailcall]) (ctxt_fix ()) (Fail c :: vms)
 
@@ -1033,22 +1006,22 @@ let rec run' ctxt (vms : vm list) =
 
           | _ when isabs_fun h ->
               let a, p, x, y = nth 0, nth 1, nth 2, nth 3 in
-              abs vms AbsFun (env, sigma) a p x y 0 mkProp
+              abs vms AbsFun ctxt a p x y 0 mkProp
 
           | _ when isabs_let h ->
               let a, p, x, t, y = nth 0, nth 1, nth 2, nth 3, nth 4 in
-              abs vms AbsLet (env, sigma) a p x y 0 t
+              abs vms AbsLet ctxt a p x y 0 t
 
           | _ when isabs_prod_type h || isabs_prod_prop h ->
               let a, x, y = nth 0, nth 1, nth 2 in
               (* HACK: put mkProp as returning type *)
-              abs vms AbsProd (env, sigma) a mkProp x y 0 mkProp
+              abs vms AbsProd ctxt a mkProp x y 0 mkProp
 
           | _ when isabs_fix h ->
               let a, f, t, n = nth 0, nth 1, nth 2, nth 3 in
               let n = CoqN.from_coq (env, sigma) n in
               (* HACK: put mkProp as returning type *)
-              abs vms AbsFix (env, sigma) a mkProp f t n mkProp
+              abs vms AbsFix ctxt a mkProp f t n mkProp
 
           | _ when isget_binder_name h ->
               let t = nth 1 in
@@ -1074,7 +1047,7 @@ let rec run' ctxt (vms : vm list) =
 
           | _ when isgen_evar h->
               let ty, hyp = nth 0, nth 1 in
-              cvar vms (env, sigma) ty hyp
+              cvar vms ctxt ty hyp
 
           | _ when isis_evar h ->
               let e = whd_evar sigma (nth 1) in
@@ -1292,16 +1265,30 @@ let rec run' ctxt (vms : vm list) =
 
           | _ ->
               begin
-                try
-                  let n = EConstr.destVar sigma h in
-                  match Environ.named_body n ctxt.fixpoints with
-                  | Some fixbody ->
-                      let t = (EConstr.applist (of_constr fixbody,Array.to_list args)) in
-                      (run'[@tailcall]) ctxt t
-                  | None -> fail (E.mkStuckTerm sigma env h)
-                with Term.DestKO ->
-                  fail (E.mkStuckTerm sigma env h)
+                let value =
+                  try
+                    (* search for the variable in the fixpoint context *)
+                    let n = destVar sigma h in
+                    let open Context.Named in
+                    Declaration.get_value (lookup n ctxt.fixpoints)
+                  with (Term.DestKO | Not_found ) ->
+                    None
+                in
+                match value with
+                | Some fixbody ->
+                    let t = (mkApp (fixbody,args)) in
+                    (run'[@tailcall]) ctxt (upd t)
+                | None -> fail (E.mkStuckTerm sigma env h)
               end
+              (*     let n = EConstr.destVar sigma h in *)
+              (*     match Environ.named_body n ctxt.fixpoints with *)
+              (*     | Some fixbody -> *)
+              (*         let t = (EConstr.applist (of_constr fixbody,Array.to_list args)) in *)
+              (*         (run'[@tailcall]) ctxt t *)
+              (*     | None -> fail (E.mkStuckTerm sigma env h) *)
+              (*   with Term.DestKO -> *)
+              (*     fail (E.mkStuckTerm sigma env h) *)
+              (* end *)
         end
 
 (* h is the mfix operator, a is an array of types of the arguments, b is the
@@ -1327,14 +1314,14 @@ and run_fix ctxt (vms: vm list) (h: constr) (a: constr array) (b: constr) (f: co
   (* HACK: we put Prop as the type of fixf in the context, simply because we
      don't care. If it turns out to be problematic, we have to construct its
      type. *)
-  let fixpoints = push_named (Context.Named.Declaration.of_tuple (n, Some (fixf), EConstr.mkProp)) ctxt.fixpoints in
+  let fixpoints = Context.Named.Declaration.of_tuple (n, Some (fixf), EConstr.mkProp) :: ctxt.fixpoints in
   let c = mkApp (f, Array.append [| fixvar |] x) in
   (run'[@tailcall]) {ctxt with sigma=sigma; env=env; fixpoints=fixpoints} (Code c :: vms)
 
 (* abs case env a p x y n abstract variable x from term y according to the case.
    if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
 and abs vms case ctxt a p x y n t : data =
-  let sigma = ctxt.sigma in
+  let sigma, env = ctxt.sigma, ctxt.env in
   let a = nf_evar sigma a in
   let p = nf_evar sigma p in
   let x = nf_evar sigma x in
@@ -1342,9 +1329,9 @@ and abs vms case ctxt a p x y n t : data =
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
-  if isVar x then
-    if check_abs_deps ctxt.env x y p then
-      let name = destVar x in
+  if isVar sigma x then
+    if check_abs_deps env sigma x y p then
+      let name = destVar sigma x in
       let y' = Vars.subst_vars [name] y in
       let t =
         match case with
@@ -1361,6 +1348,47 @@ and abs vms case ctxt a p x y n t : data =
     let (sigma, e) = E.mkNotAVar sigma env x in
     (run'[@tailcall]) {ctxt with sigma} (Fail e :: vms)
 
+and cvar vms ctxt ty ohyps =
+  let env, sigma = ctxt.env, ctxt.sigma in
+  let ohyps = CoqOption.from_coq sigma env ohyps in
+  if Option.has_some ohyps then
+    let chyps = Option.get ohyps in
+    let ovars =
+      try
+        let hyps = Hypotheses.from_coq_list (env, sigma) chyps in
+        Some (List.map (fun (v, _, _)->v) hyps, hyps)
+      with Hypotheses.NotAVariable ->
+        None
+    in
+    let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
+    match ovars with
+    | Some (vars, hyps) ->
+        if List.distinct vars then
+          let value =
+            try
+              let subs, env = new_env (env, sigma) hyps in
+              let ty = multi_subst sigma subs ty in
+              let sigma, evar = make_evar sigma env ty in
+              let (e, _) = destEvar sigma evar in
+              (* the evar created by make_evar has id in the substitution
+                 but we need to remap it to the actual variables in hyps *)
+              `OK (sigma, mkEvar (e, Array.of_list vars))
+            with
+            | MissingDep ->
+                `MDep
+            | Not_found ->
+                `NFound
+          in
+          match value with
+          | `OK (sigma, c) -> (run'[@tailcall]) {ctxt with sigma} (Ret c :: vms)
+          | `MDep -> fail (E.mkHypMissesDependency sigma env chyps)
+          | `NFound -> fail (E.mkTypeMissesDependency sigma env chyps)
+        else
+          fail (E.mkDuplicatedVariable sigma env chyps)
+    | None -> fail (E.mkNotAVar sigma env chyps)
+  else
+    let sigma, evar = make_evar sigma env ty in
+    (run'[@tailcall]) {ctxt with sigma} (Ret evar :: vms)
 
 (* Takes a [sigma], a set of evars [metas], and a [term],
    and garbage collects all the [metas] in [sigma] that do not appear in
@@ -1448,7 +1476,7 @@ let run (env0, sigma) t =
   let subs, env = db_to_named sigma env0 in
   let t = multi_subst sigma subs t in
   let (sigma, renv) = build_hypotheses sigma env in
-  match run' {env; renv; sigma; nus=0; fixpoints=Environ.empty_env} t with
+  match run' {env; renv; sigma; nus=0; fixpoints=[]} [Code t] with
   | Err (sigma', v) ->
       (* let v = Vars.replace_vars vsubs v in *)
       let v = multi_subst_inv sigma' subs v in

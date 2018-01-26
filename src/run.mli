@@ -21,8 +21,14 @@ end
 
 (** DEBUG **)
 
-type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; fixpoints: Environ.env}
-val run' : ctxt -> constr -> data
+type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int; fixpoints: (EConstr.t, EConstr.t) Context.Named.pt}
+
+type vm = Code of constr | Ret of constr | Fail of constr
+        | Bind of constr | Try of (Evd.evar_map * constr)
+        | Nu of (Names.Id.t * Environ.env * constr)
+        | Fix
+
+val run' : ctxt -> vm list -> data
 
 val multi_subst : evar_map -> (int * constr) list -> constr -> constr
 
