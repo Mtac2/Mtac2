@@ -9,24 +9,19 @@ open String
 
 open Pp
 open Environ
-open CClosure
 open Evd
-open Evarutil
 open EConstr
 open Termops
 open Reductionops
 open Names
 open Util
 open Evarconv
-open Libnames
 
 open Constrs
 
 [@@@ocaml.warning "-27-40-41-42-44"]
 
 module Stack = Reductionops.Stack
-
-let reduce_value = Tacred.compute
 
 let get_ts env = Conv_oracle.get_transp_state (Environ.oracle env)
 
@@ -282,9 +277,9 @@ module ReductionStrategy = struct
   let posDeltaC = Array.length redflags
   let posDeltaX = posDeltaC + 1
   let posDeltaOnly = posDeltaX + 1
-  let posDeltaBut = posDeltaOnly + 1
+  (* let posDeltaBut = posDeltaOnly + 1 *)
 
-  let get_flags (env, sigma as ctx) flags =
+  let get_flags (env, sigma) flags =
     (* we assume flags have the right type and are in nf *)
     let flags = RedList.from_coq sigma env flags in
     List.fold_right (fun f reds->
@@ -358,26 +353,17 @@ module ReductionStrategy = struct
      `Reductionops.clos_whd_flags`, however @SkySkimmer notes that
      it catches anomalies so a minor difference may exist.
   *)
-  let whdfun flags env sigma c =
-    let evars = safe_evar_value sigma in
-    whd_val
-      (create_clos_infos ~evars flags env)
-      (inject c)
+  (* let whdfun flags env sigma c = *)
+  (*   let evars = safe_evar_value sigma in *)
+  (*   whd_val *)
+  (*     (create_clos_infos ~evars flags env) *)
+  (*     (inject c) *)
 
   (* let whd_betadeltaiota_nolet = whdfun CClosure.allnolet *)
   let whd_betadeltaiota_nolet = Reductionops.clos_whd_flags CClosure.allnolet
 
   (* let whd_betadeltaiota = whdfun CClosure.all *)
   let whd_betadeltaiota = Reductionops.clos_whd_flags CClosure.all
-
-  (* let whd_betadelta = whdfun (red_add beta fDELTA) *)
-  let whd_betadelta = Reductionops.clos_whd_flags (red_add beta fDELTA)
-
-  (* let whd_betaiotazeta = whdfun betaiotazeta *)
-  let whd_betaiotazeta = Reductionops.clos_whd_flags betaiotazeta
-
-  (* let whd_betaiota = whdfun betaiota *)
-  let whd_betaiota = Reductionops.clos_whd_flags betaiota
 
   let whd_all_novars =
     let flags = red_add_transparent betaiota Names.cst_full_transparent_state in
@@ -389,13 +375,6 @@ module RE = ReductionStrategy
 
 module UnificationStrategy = struct
   open Evarsolve
-
-  let find_pbs sigma evars =
-    let (_, pbs) = extract_all_conv_pbs sigma in
-    List.filter (fun (_,_,c1,c2) ->
-      List.exists (fun e ->
-        Termops.occur_term sigma e (of_constr c1) ||
-        Termops.occur_term sigma e (of_constr c2)) evars) pbs
 
   let funs = [|
     (fun _-> Munify.unify_evar_conv);
@@ -441,24 +420,9 @@ type data =
   | Val of elem
   | Err of elem
 
-let (>>=) v g =
-  match v with
-  | Val v' -> g v'
-  | _ -> v
-
 let return s t = Val (s, t)
 
 let fail s t = Err (s, t)
-
-let mysubstn sigma t n c =
-  let rec substrec in_arr depth c = match kind sigma c with
-    | Rel k    ->
-        if k<=depth then c
-        else if k = depth+n then
-          Vars.lift depth t
-        else mkRel (k+1)
-    | _ -> map_with_binders sigma succ (substrec in_arr) depth c in
-  substrec false 0 c
 
 let name_occurn_env env n =
   let open Context.Named.Declaration in
@@ -492,7 +456,6 @@ let dest_Case (env, sigma) t =
       Exceptions.block "Something not so specific went wrong."
 
 let make_Case (env, sigma) case =
-  let open Lazy in
   let (_, args) = decompose_appvect sigma case in
   let repr_ind = args.(0) in
   let repr_val = args.(1) in
@@ -572,7 +535,7 @@ module Hypotheses = struct
     | Some args -> (fvar args.(1), fdecl args.(2), args.(0))
     | None -> raise NotAHyp
 
-  let from_coq_list (env, sigma as ctx) t =
+  let from_coq_list (env, sigma) t =
     (* safe to throw away sigma here as it doesn't change *)
     snd (CoqList.from_coq_conv sigma env (fun sigma x -> sigma, from_coq (env, sigma) x ) t)
 
@@ -639,16 +602,6 @@ let check_dependencies env sigma x t =
 
 (** Abstract *)
 type abs = AbsProd | AbsFun | AbsLet | AbsFix
-
-let rec n_prods env sigma ty = function
-  | 0 -> true
-  | n ->
-      let ty = (* of_constr @@ *) RE.whd_betadeltaiota env sigma ((* to_constr sigma *) ty) in
-      if isProd sigma ty then
-        let _, _, b = destProd sigma ty in
-        n_prods env sigma b (n-1)
-      else
-        false
 
 (** checks if (option) definition od and type ty has named
     vars included in vars *)
@@ -756,8 +709,6 @@ let is_nu env sigma x nus =
   find env 0 < nus
 
 (** declare a definition *)
-exception DischargeLocality
-
 exception UnsupportedDefinitionObjectKind
 exception CanonicalStructureMayNotBeOpaque
 
@@ -856,12 +807,6 @@ let run_declare_implicits env sigma gr impls =
 type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int;
              fixpoints: (EConstr.t, EConstr.t) Context.Named.pt;
             }
-
-(* the intention of this function was to add the fixpoint context to the
-   normal context for retyping. but it seems unnecessary *)
-let get_type_of ctxt t =
-  (* let env = push_named_context (named_context ctxt.fixpoints) ctxt.env in *)
-  Retyping.get_type_of ctxt.env ctxt.sigma t
 
 type vm = Code of constr | Ret of constr | Fail of constr
         | Bind of constr | Try of (Evd.evar_map * constr)
@@ -1385,49 +1330,6 @@ and cvar vms ctxt ty ohyps =
   else
     let sigma, evar = make_evar sigma env ty in
     (run'[@tailcall]) {ctxt with sigma} (Ret evar :: vms)
-
-(* Takes a [sigma], a set of evars [metas], and a [term],
-   and garbage collects all the [metas] in [sigma] that do not appear in
-   [term]. *)
-let clean_unused_metas sigma metas term =
-  let rec rem (term : constr) (metas : ExistentialSet.t) =
-    let fms = Evd.evars_of_term (to_constr sigma term) in
-    let metas = ExistentialSet.diff metas fms in
-    (* we also need to remove all metas that occur in the
-       types, context, and terms of other metas *)
-    ExistentialSet.fold (fun ev metas ->
-      let ev_info = Evd.find sigma ev  in
-      let metas = rem (of_constr @@ Evd.evar_concl ev_info) metas in
-      let metas = List.fold_right (fun var metas ->
-        let (_, body, ty) = Context.Named.Declaration.to_tuple var in
-        let metas = rem ty metas in
-        match body with
-        | None -> metas
-        | Some v -> rem v metas) (List.map of_named_decl @@ Evd.evar_context ev_info) metas in
-      match Evd.evar_body ev_info with
-      | Evar_empty -> metas
-      | Evar_defined b -> rem (of_constr b) metas
-    ) fms metas
-  in
-  let metas = rem term metas in
-  (* remove all the reminding metas, also from the future goals *)
-  let sigma = ExistentialSet.fold
-                (fun ev sigma -> Evd.remove sigma ev) metas sigma in
-  let future_goals = Evd.future_goals sigma in
-  let principal_goal = Evd.principal_future_goal sigma in
-  let sigma = Evd.reset_future_goals sigma in
-  let alive = List.filter (fun e->not (ExistentialSet.mem e metas)) future_goals in
-  let principal_goal =
-    match principal_goal with
-    | Some e ->
-        if not (ExistentialSet.mem e metas) then
-          Some e
-        else
-          None
-    | None -> None
-  in
-  Evd.restore_future_goals sigma alive principal_goal
-
 
 (* returns the enviornment and substitution without db rels *)
 let db_to_named sigma env =

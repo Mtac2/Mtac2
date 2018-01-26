@@ -1,11 +1,9 @@
-open Ltac_plugin
 open Constrs
+open Pp
 
 module MetaCoqRun = struct
   (** This module run the interpretation of a constr
   *)
-
-  open Proofview.Notations
 
   let ifM env sigma concl ty c =
     let sigma, metaCoqType = MtacNames.mkT_lazy sigma env in
@@ -14,7 +12,7 @@ module MetaCoqRun = struct
       try
         let sigma = Evarconv.the_conv_x_leq env concl (List.hd args) sigma in
         (true, sigma)
-      with Evarconv.UnableToUnify(_,_) -> CErrors.error "Different types"
+      with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (str "Different types")
     else
       (false, sigma)
 
@@ -42,7 +40,7 @@ module MetaCoqRun = struct
         let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
         (true, sigma, EConstr.mkApp(c, [|goal|]))
       else
-        CErrors.error "Not a Mtactic"
+        CErrors.user_err (str "Not a Mtactic")
 
   let run env sigma concl evar c =
     let (istactic, sigma, t) = pretypeT env sigma concl evar c in
@@ -61,7 +59,7 @@ module MetaCoqRun = struct
           Unsafe.tclSETGOALS goals
 
     | Run.Err (_, e) ->
-        CErrors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
+        CErrors.user_err (str "Uncaught exception: " ++ (Termops.print_constr e))
 
   let evar_of_goal gl =
     let open Proofview.Goal in
@@ -113,7 +111,7 @@ module MetaCoqRun = struct
     match Run.run (env, sigma) c with
     | Run.Val _ -> ()
     | Run.Err (_, e) ->
-        CErrors.error ("Uncaught exception: " ^ Pp.string_of_ppcmds (Termops.print_constr e))
+        CErrors.user_err (str "Uncaught exception: " ++ Termops.print_constr e)
 
 end
 
@@ -129,7 +127,7 @@ end
 let interp_mproof_command () =
   let pf = Proof_global.give_me_the_proof () in
   if Proof.is_done pf then
-    CErrors.error "Nothing left to prove here."
+    CErrors.user_err (str "Nothing left to prove here.")
   else
     begin
       Proof_global.set_proof_mode "MProof";
@@ -182,4 +180,5 @@ let end_proof () =
   if proof_is_closed_wrt_to_evars () then
     remove_dangling_evars ();
   (* The following invokes the usual Qed. *)
+  let open Vernacexpr in
   Lemmas.save_proof (Proved (Opaque None,None))

@@ -1,4 +1,3 @@
-open Names
 open EConstr
 open Termops
 

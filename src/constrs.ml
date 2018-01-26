@@ -1,4 +1,4 @@
-open Ltac_plugin
+open Constr
 open EConstr
 open Reductionops
 
@@ -31,7 +31,6 @@ module Constr = struct
   let isUConstr r sigma env = fun c ->
     eq_constr_nounivs sigma (snd (mkUConstr r sigma env)) c
 
-  let eq_ind i1 i2 = Names.eq_ind (fst i1) (fst i2)
 end
 
 module ConstrBuilder = struct
@@ -68,11 +67,11 @@ end
 module CoqOption = struct
   open UConstrBuilder
 
-  let optionBuilder = from_string "Mtac2.Datatypes.moption"
+  (* let optionBuilder = from_string "Mtac2.Datatypes.moption" *)
   let noneBuilder = from_string "Mtac2.Datatypes.mNone"
   let someBuilder = from_string "Mtac2.Datatypes.mSome"
 
-  let mkType sigma env ty = build_app optionBuilder sigma env [|ty|]
+  (* let mkType sigma env ty = build_app optionBuilder sigma env [|ty|] *)
   let mkNone sigma env ty = build_app noneBuilder sigma env [|ty|]
   let mkSome sigma env ty t = build_app someBuilder sigma env [|ty; t|]
 
@@ -183,47 +182,11 @@ module CoqEq = struct
   let mkEqRefl env sigma a x = build_app eqReflBuilder env sigma [|a;x|]
 end
 
-module CoqSigT = struct
-  open ConstrBuilder
-
-  let existTBuilder = from_string "Coq.Init.Specif.existT"
-
-  let mkAppExistT a p x px = build_app existTBuilder [|a; p; x; px|]
-end
-
 module CoqSig = struct
-  let rec from_coq (env, sigma) constr =
+  let from_coq (env, sigma) constr =
     (* NOTE: Hightly unsafe *)
     let (_, args) = decompose_appvect sigma (whd_all env sigma constr) in
     args.(1)
-end
-
-module CoqNat = struct
-  let mkZero = Constr.mkConstr "Coq.Init.Datatypes.O"
-  let mkSucc = Constr.mkConstr "Coq.Init.Datatypes.S"
-
-  let isZero sigma = Constr.isConstr sigma mkZero
-  let isSucc sigma = Constr.isConstr sigma mkSucc
-
-  let rec to_coq = function
-    | 0 -> Lazy.force mkZero
-    | n -> mkApp (Lazy.force mkSucc, [| to_coq (pred n) |])
-
-  let from_coq (env, evd) c =
-    let rec fc c =
-      if isZero evd c then
-        0
-      else
-        let (s, n) = destApp evd c in
-        begin
-          if isSucc evd s then
-            1 + (fc (n.(0)))
-          else
-            CErrors.user_err Pp.(str "Not a nat")
-        end
-    in
-    let c' = reduce_value env evd c in
-    fc c'
 end
 
 module CoqPositive = struct
@@ -263,7 +226,7 @@ module CoqPositive = struct
 end
 
 module CoqN = struct
-  let tN = Constr.mkConstr "Coq.Numbers.BinNums.N"
+  (* let tN = Constr.mkConstr "Coq.Numbers.BinNums.N" *)
   let h0 = Constr.mkConstr "Coq.Numbers.BinNums.N0"
   let hP = Constr.mkConstr "Coq.Numbers.BinNums.Npos"
 
@@ -273,7 +236,7 @@ module CoqN = struct
   exception NotAnN
 
   let from_coq (env, evd) c =
-    let rec fc c =
+    let fc c =
       if is0 evd c then
         0
       else
@@ -391,10 +354,10 @@ end
 module MCTactics = struct
   let gTactic = "Mtac2.Tactics.gtactic"
 
-  let mkConstr s =
-    let open Nametab in let open Libnames in
-    try Universes.constr_of_global (locate (qualid_of_string s))
-    with _ -> raise (Constr.Constr_not_found s)
+  (* let mkConstr s = *)
+  (*   let open Nametab in let open Libnames in *)
+  (*   try Universes.constr_of_global (locate (qualid_of_string s)) *)
+  (*   with _ -> raise (Constr.Constr_not_found s) *)
 
   let mkUConstr s env sigma =
     let open Nametab in let open Libnames in
