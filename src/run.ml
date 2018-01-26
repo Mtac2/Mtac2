@@ -867,6 +867,8 @@ type vm = Code of constr | Ret of constr | Fail of constr
         | Bind of constr | Try of (Evd.evar_map * constr)
         | Nu of (Names.Id.t * Environ.env * constr)
         | Fix
+        (* env and renv prior to remove, and if a nu was removed *)
+        | Rem of (Environ.env * constr * bool)
 
 let vm_to_string env sigma = function
   | Code c -> "Code " ^ constr_to_string sigma env c
@@ -876,6 +878,7 @@ let vm_to_string env sigma = function
   | Fail c -> "Fail " ^ constr_to_string sigma env c
   | Nu _ -> "Nu"
   | Fix -> "Fix"
+  | Rem _ -> "Rem"
 
 let rec run' ctxt (vms : vm list) =
   let open MConstr in
@@ -901,6 +904,7 @@ let rec run' ctxt (vms : vm list) =
       else
         (run'[@tailcall]) (ctxt_nu1 p) (Ret c :: vms)
   | Ret c, Fix :: vms -> (run'[@tailcall]) (ctxt_fix ()) (Ret c :: vms)
+  | Ret c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Ret c :: vms)
 
   | Fail c, [] -> fail sigma c
   | Fail c, (Bind _ :: vms) -> (run'[@tailcall]) ctxt (Fail c :: vms)
@@ -909,6 +913,7 @@ let rec run' ctxt (vms : vm list) =
       (run'[@tailcall]) {ctxt with sigma} (Code (mkApp(b, [|c|]))::vms)
   | Fail c, (Nu p :: vms) -> (run'[@tailcall]) (ctxt_nu1 p) (Fail c :: vms)
   | Fail c, Fix :: vms -> (run'[@tailcall]) (ctxt_fix ()) (Fail c :: vms)
+  | Fail c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Ret c :: vms)
 
   | (Bind _ | Fail _ | Nu _ | Try _ | Fix), _ -> failwith "ouch1"
   | Ret _, (Code _ :: _ | Ret _ :: _ | Fail _ :: _) -> failwith "ouch2"
@@ -1037,9 +1042,10 @@ let rec run' ctxt (vms : vm list) =
               let x, t = nth 2, nth 3 in
               if isVar sigma x then
                 if check_dependencies env sigma x t then
-                  let nus = if is_nu env sigma x ctxt.nus then ctxt.nus-1 else ctxt.nus in
-                  let env, (sigma, renv) = env_without sigma env ctxt.renv x in
-                  (run'[@tailcall]) {ctxt with env; renv; sigma; nus} (upd t)
+                  let isnu = is_nu env sigma x ctxt.nus in
+                  let nus = if isnu then ctxt.nus-1 else ctxt.nus in
+                  let env', (sigma, renv') = env_without sigma env ctxt.renv x in
+                  (run'[@tailcall]) {ctxt with env=env'; renv=renv'; sigma; nus} (Code t :: Rem (env, ctxt.renv, isnu) :: vms)
                 else
                   fail (E.mkCannotRemoveVar sigma env x)
               else

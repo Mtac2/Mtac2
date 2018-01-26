@@ -27,6 +27,7 @@ type vm = Code of constr | Ret of constr | Fail of constr
         | Bind of constr | Try of (Evd.evar_map * constr)
         | Nu of (Names.Id.t * Environ.env * constr)
         | Fix
+        | Rem of (Environ.env * constr * bool)
 
 val run' : ctxt -> vm list -> data
 
