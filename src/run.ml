@@ -915,7 +915,7 @@ let rec run' ctxt (vms : vm list) =
   | Fail c, Fix :: vms -> (run'[@tailcall]) (ctxt_fix ()) (Fail c :: vms)
   | Fail c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Ret c :: vms)
 
-  | (Bind _ | Fail _ | Nu _ | Try _ | Fix), _ -> failwith "ouch1"
+  | (Bind _ | Fail _ | Nu _ | Try _ | Fix | Rem _), _ -> failwith "ouch1"
   | Ret _, (Code _ :: _ | Ret _ :: _ | Fail _ :: _) -> failwith "ouch2"
 
   | Code t, _ ->
