@@ -19,9 +19,7 @@ open Evarconv
 
 open Constrs
 
-[@@@ocaml.warning "-27-40-41-42-44"]
-
-module Stack = Reductionops.Stack
+[@@@ocaml.warning "-40"]
 
 let get_ts env = Conv_oracle.get_transp_state (Environ.oracle env)
 
