@@ -19,6 +19,7 @@ open Evarconv
 
 open Constrs
 
+(* warning 40 is about picking a constructor name from a module that is not in scope *)
 [@@@ocaml.warning "-40"]
 
 let get_ts env = Conv_oracle.get_transp_state (Environ.oracle env)
