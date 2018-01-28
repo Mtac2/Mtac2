@@ -1,6 +1,5 @@
 open MtacNames
 open EConstr
-open Names
 
 let mkconstr s = lazy (let (_, c) = mkUConstr ("M." ^ s) Evd.empty (Global.env ()) in c)
 let isconstr c h = eq_constr_nounivs Evd.empty (Lazy.force c) h
