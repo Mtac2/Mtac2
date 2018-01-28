@@ -249,36 +249,33 @@ Definition doTT {A:Prop} (x:A) :=
   do_def s x.
 
 Definition use' {A} (t : tactic) : M (A *m mlist goal) :=
-  (e <- M.evar A;
-  gs <- t (Goal Sorts.Sorts.SType e);
-  let gs := mmap (fun '(m: _, g) => g) gs in
-  M.ret (m: e, gs))%MC.
+  (a <- M.evar A;
+  gs <- t (@Goal Sorts.Sorts.SType A a);
+  let gs := dreduce (@mmap) (mmap (fun '(m: _, g) => g) gs) in
+  M.ret (m: a, gs))%MC.
 
 Definition lift {A} (t : M A) : M (A *m mlist goal) :=
-  t >>= (fun a => M.ret (m: a,  mnil)).
+  t >>= (fun a => M.ret (m: a,  [m:])).
 
 Definition fappgl {A B C} (comb : C -> C -> M C) (f : M ((A -> B) *m C)) (x : M (A *m C)) : M (B *m C) :=
   (f >>=
      (fun '(m: b, cb) =>
         ''(m: a, ca) <- x;
-        c <- comb ca cb;
+        c <- comb cb ca;
         M.ret (m: b a, c)
      )
   )%MC.
 
 Definition Mappend {A} (xs ys : mlist A) :=
-  let zs := dreduce (mapp) (mapp xs ys) in
+  let zs := dreduce (@mapp) (mapp xs ys) in
   M.ret zs.
 
 
 Definition apply {A} : (A *m mlist goal) -> tactic :=
   (fun '(m: a, gs) g =>
     T.exact a g;;
-            match g with
-            | Goal _ g =>
-              M.ret (mmap (fun g => (m: tt, g)) gs)
-            | _ => M.raise NotAGoal
-            end
+    let gs := dreduce (@mmap) (mmap (mpair tt) gs) in
+    M.ret gs
   )%MC.
 
 Module notations.
