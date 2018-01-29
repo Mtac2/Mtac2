@@ -16,6 +16,25 @@ Reserved Notation "x =m= y  :>  T"
 (at level 70, y at next level, no associativity).
 Reserved Notation "x =m= y" (at level 70, no associativity).
 
+
+(** * First-order quantifiers *)
+
+(** [ex P], or simply [exists x, P x], or also [exists x:A, P x],
+    expresses the existence of an [x] of some type [A] in [Set] which
+    satisfies the predicate [P].  This is existential quantification.
+
+    [ex2 P Q], or simply [exists2 x, P x & Q x], or also
+    [exists2 x:A, P x & Q x], expresses the existence of an [x] of
+    type [A] which satisfies both predicates [P] and [Q].
+
+    Universal quantification is primitively written [forall x:A, Q]. By
+    symmetry with existential quantification, the construction [all P]
+    is provided too.
+*)
+
+Inductive mex (A:Type) (P:A -> Prop) : Prop :=
+  mex_intro : forall x:A, P x -> mex (A:=A) P.
+
 (** * Equality *)
 
 (** [eq x y], or simply [x=y] expresses the equality of [x] and

@@ -18,6 +18,7 @@ src/metaCoqInterp.mli
 src/metaCoqTactic.ml4
 src/MetaCoqPlugin.mlpack
 theories/Logic.v
+theories/Specif.v
 theories/Datatypes.v
 theories/List.v
 theories/Utils.v

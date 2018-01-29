@@ -21,6 +21,10 @@ Require Import Notations.
 
 (* (* Set Universe Polymorphism. *) *)
 
+
+Inductive munit : Set :=
+    mtt : munit.
+
 (** [option A] is the extension of [A] with an extra element [None] *)
 
 Inductive moption (A:Type) : Type :=
