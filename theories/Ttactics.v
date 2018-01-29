@@ -248,15 +248,18 @@ Definition doTT {A:Prop} (x:A) :=
   print s;;
   do_def s x.
 
-Definition use' {A} (t : tactic) : M (A *m mlist goal) :=
+Definition TT A := M (A *m mlist goal).
+
+Definition use' {A} (t : tactic) : TT A :=
   (e <- M.evar A;
   gs <- t (Goal Sorts.Sorts.SType e);
   let gs := mmap (fun '(m: _, g) => g) gs in
   M.ret (m: e, gs))%MC.
 
-Definition lift {A} (t : M A) : M (A *m mlist goal) :=
+Definition lift {A} (t : M A) : TT A :=
   t >>= (fun a => M.ret (m: a,  mnil)).
 
+Coercion lift : M.t >-> TT.
 Definition fappgl {A B C} (comb : C -> C -> M C) (f : M ((A -> B) *m C)) (x : M (A *m C)) : M (B *m C) :=
   (f >>=
      (fun '(m: b, cb) =>
