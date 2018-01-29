@@ -14,7 +14,6 @@ Import Mtac2.List.ListNotations.
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
-Set Printing Universes.
 
 Inductive Exception : Prop := exception : Exception.
 
@@ -497,6 +496,9 @@ Module monad_notations.
   Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2) ..))
     (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200,
      right associativity, format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
+  Notation "` r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (bind t1 (fun rn => t2)) ..))
+    (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200,
+     right associativity, format "'[' '`' r1  ..  rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
   Notation "t1 ';;' t2" := (bind t1 (fun _ => t2))
     (at level 100, t2 at level 200,
      format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : M_scope.
