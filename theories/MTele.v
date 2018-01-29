@@ -15,6 +15,13 @@ Inductive MTele : Type :=
 | mTele {X : Type} (F : X -> MTele) : MTele
 .
 
+(** MTele_Const : A constant (i.e. binder independent) type-level interpretation of MTele *)
+Fixpoint MTele_Const {s : Sort} (T : s) (n : MTele) : s :=
+match n with
+| mBase => T
+| mTele F => ForAll (fun x => MTele_Const T (F x))
+end.
+
 (** MTele_Sort: compute `∀ x .. z, Type` from a given MTele *)
 Set Printing Universes.
 Fixpoint MTele_Sort (s : Sort) (n : MTele) : Type :=
@@ -57,6 +64,23 @@ Definition MTele_valP {n} : MTele_Pr n -> Prop :=
   MTele_val (s := SProp) (n:=n).
 
 (* Coercion MTele_valT : MTele_Ty >-> Sortclass. *)
+
+
+(** MTele_To: recursively apply the given functor G to binders and return B at
+the base. MTele_Sort and MTele_val could be instances of this if we were to wrap
+∀ and λ in definitions. *)
+Fixpoint MTele_To {s : Sort} (B : s) (G: forall X, (X -> s) -> s) (n : MTele) : s :=
+  match n as n return s with
+  | mBase => B
+  | mTele F => G _ (fun x => MTele_To B G (F x))
+  end.
+
+Fixpoint MTele_to {s : Sort} {B : s} {G: forall X, (X -> s) -> s} {n : MTele} (b : B) (g : forall X F, G X F) :
+  MTele_To B G n :=
+    match n as n return MTele_To B G n with
+    | mBase => b
+    | mTele F => g _ _
+    end.
 
 (** MTele_In: gain access to potentially multiple telescoped types and values at
 the same time to compute a new telescoped _type_. *)
