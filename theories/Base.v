@@ -610,9 +610,10 @@ Module notations.
                    (mapp ls%with_pattern [m:([? x] x => raise x)%pattern]))))
       (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 
-
-  Notation "'dcase' v 'as' A ',' x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200).
-  Notation "'dcase' v 'as' x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200).
+  Notation "'dcase' v 'as' A ',' x 'in' t" :=
+    (@M.decompose_app' _ _ (mTele (fun A => mTele (fun _ : A => mBase))) v (@Dyn) (fun A x => t)) (at level 91, t at level 200).
+  Notation "'dcase' v 'as' x 'in' t" :=
+    (dcase v as _ , x in t) (at level 91, t at level 200).
 End notations.
 
 Import notations.
