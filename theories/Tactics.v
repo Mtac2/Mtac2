@@ -438,11 +438,16 @@ Arguments gbase_context {B A} _ _.
 Arguments gtele {B C} _.
 Arguments gtele_evar {B C} _.
 
+Unset Printing All.
+Unset Printing Universes.
 Definition match_goal_context
     {C A B} (x: A) (y: B) (cont: (A -> B) -> gtactic C) : gtactic C := fun g=>
   r <- abstract x y;
   let reduced := dreduce (fu) (fu r) in
-  cont reduced g.
+  mmatch reduced with
+  | [? (CONST : B)] (fun _ => CONST) =n> M.raise DoesNotMatchGoal
+  | _ => cont reduced g
+  end.
 
 Fixpoint match_goal_pattern' {B}
     (u : Unification) (p : goal_pattern B) : mlist Hyp -> mlist Hyp -> gtactic B :=

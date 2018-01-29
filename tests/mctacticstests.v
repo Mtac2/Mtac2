@@ -407,7 +407,7 @@ Example intros_def': let x := 0 in forall y, x <= y.
 MProof.
   intros x y.
   Ltac ind x :=induction x.
-  ltac "mctacticstests.ind" [m:Dyn y];; apply le_0_n.
+  ltac "Top.ind" [m:Dyn y];; apply le_0_n.
 Qed.
 
 Example test_unfold : id 0 = 0.

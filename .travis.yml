@@ -19,7 +19,7 @@ install:
 script:
 - ./configure.sh
 - make printenv
-- make clean && make && (cd tests && make clean && make -k)
+- make clean && make && (make -k test)
 
 notifications:
   webhooks:

@@ -1,0 +1,24 @@
+.PHONY: test
+#RED='\033[0;31m'
+#NC='\033[0m' # No Color
+#COQC=coqc
+
+TESTS=$(wildcard tests/*.v)
+TESTRESULTS=$(TESTS:.v=.vo)
+
+test: $(TESTRESULTS)
+
+TIMINGS=$(wildcard timings/*.v)
+TIMINGRESULTS=$(TIMINGS:.v=.vo)
+
+timing: $(TIMINGRESULTS)
+
+tests/%.vo: tests/%.v
+	$(SHOW)COQC $<
+	$(HIDE)(($(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $< $(TIMING_EXTRA) && echo "[OK] " $<) || ( EXITSTATE="$$?"; echo "\033[0;31m[KO]\033[0m" $<; exit "$$EXITSTATE" ))
+.PHONY=tes
+
+timings/%.vo: timings/%.v
+	$(SHOW)COQC $<
+	$(HIDE)(($(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $< $(TIMING_EXTRA) && echo "[OK] " $<) || ( EXITSTATE="$$?"; echo "\033[0;31m[KO]\033[0m" $<; exit "$$EXITSTATE" ))
+.PHONY=timing
