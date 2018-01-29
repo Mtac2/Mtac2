@@ -169,9 +169,11 @@ Inductive goal :=
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
 we could make it part of the B, but then higher order unification will fail. *)
 Inductive pattern (M : Type -> Prop) (A : Type) (B : A -> Type) (y : A) : Prop :=
+  | pany : M (B y) -> pattern M A B y
   | pbase : forall x : A, (y =m= x ->M (B x)) -> Unification -> pattern M A B y
   | ptele : forall {C:Type}, (forall x : C, pattern M A B y) -> pattern M A B y.
 
+Arguments pany {M A B y} _.
 Arguments pbase {M A B y} _ _ _.
 Arguments ptele {M A B y C} _.
 
@@ -183,7 +185,7 @@ Notation "p => [ H ] b" := (pbase p%core (fun H => b%core) UniMatch)
   (no associativity, at level 201, H at next level) : pattern_scope.
 Notation "p => [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniMatch)
   (no associativity, at level 201, H binder, G binder) : pattern_scope.
-Notation "'_' => b " := (ptele (fun x=> pbase x (fun _ => b%core) UniMatch))
+Notation "'_' => b " := (pany b%core)
   (at level 201, b at next level) : pattern_scope.
 
 Notation "p '=n>' b" := (pbase p%core (fun _ => b%core) UniMatchNoRed)
@@ -527,6 +529,7 @@ Import monad_notations.
 
 Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
   match p with
+  | pany b => b
   | pbase x f u =>
     oeq <- unify x y u;
     match oeq return t (P y) with

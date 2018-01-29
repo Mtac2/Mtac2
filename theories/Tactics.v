@@ -30,11 +30,10 @@ Definition SomethingNotRight {A} (t : A) : Exception. exact exception. Qed.
 
 Definition CantApply {T1 T2} (x:T1) (y:T2) : Exception. exact exception. Qed.
 
-Set Printing Universes.
 Import ProdNotations.
-Set Printing All.
+
 (** The type for tactics *)
-Definition gtactic(*@{a g1 g2 rg1 rg2 l}*) (A: Type(*@{a}*)) := goal(*@{g1 g2}*) -> M.t(*@{l}*) (mlist(*@{l}*) (mprod(*@{l l}*) A goal(*@{rg1 rg2}*))).
+Definition gtactic (A: Type) := goal -> M.t (mlist (mprod A goal)).
 Definition tactic := gtactic unit.
 
 Delimit Scope tactic_scope with tactic.
@@ -84,6 +83,7 @@ Definition fix4 {A1} {A2 : A1 -> Type} {A3 : forall a1 : A1, A2 a1 -> Type}
 Fixpoint pattern_map {A} {B : A -> Type} (g : goal) (y : A)
     (p : pattern gtactic A B y) : pattern M A (fun y => mlist (B y *m goal)) y :=
   match p with
+  | pany b => pany (b g)
   | pbase x f r => pbase x (fun Heq => f Heq g) r
   | ptele f => ptele (fun x => pattern_map g y (f x))
   end.
