@@ -11,6 +11,7 @@ Inductive IPB := .
 
 Inductive IP :=
 | IntroNoOp : IP
+| IntroAnon : IP
 | IntroB (binder : IPB -> unit) : IP
 | IntroC (cases : mlist LIP)
 | IntroR : RewriteDirection -> IP
@@ -39,6 +40,7 @@ Notation "'/='" := (lcons IntroSimpl lnil) : IP_scope.
 Notation "~~" := (lcons IntroNoOp lnil) : IP_scope.
 Notation "r>" := (lcons (IntroR RightRewrite) lnil) : IP_scope.
 Notation "<l" := (lcons (IntroR LeftRewrite) lnil) : IP_scope.
+Notation "??" := (lcons IntroAnon lnil) : IP_scope.
 
 Notation "[| ]" := (lcons (IntroC mnil) lnil) : IP_scope.
 Notation "[| x | .. | y ]" := (lcons (IntroC (mcons x .. (mcons y mnil) .. )) lnil) : IP_scope.
@@ -65,6 +67,7 @@ Fixpoint mmap_plist (f: LIP -> tactic) (l: mlist LIP) : mlist tactic :=
 Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
   match ip return tactic with
   | IntroNoOp => T.idtac
+  | IntroAnon => T.introsn 1
   | IntroB binder =>
     var <- M.get_binder_name binder;
     T.intro_simpl var
