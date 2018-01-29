@@ -43,3 +43,4 @@ val isget_debug_ex : EConstr.t -> bool
 val isset_debug_ex : EConstr.t -> bool
 val isget_trace : EConstr.t -> bool
 val isset_trace : EConstr.t -> bool
+val isdecompose_app : EConstr.t -> bool

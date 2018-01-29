@@ -138,3 +138,6 @@ let isget_trace  = isconstr mkget_trace
 
 let mkset_trace = mkconstr "set_trace"
 let isset_trace  = isconstr mkset_trace
+
+let mkdecompose_app = mkconstr "decompose_app'"
+let isdecompose_app = isconstr mkdecompose_app

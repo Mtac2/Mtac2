@@ -1213,6 +1213,16 @@ let rec run' ctxt (vms : vm list) =
               trace := CoqBool.from_coq sigma (nth 0);
               return sigma CoqUnit.mkTT
 
+          | _ when isdecompose_app h ->
+              let (t_head, t_args) = decompose_app sigma (nth 3) in
+              let head = nth 4 in
+              if eq_constr_nounivs sigma (t_head) head then
+                let cont = nth 5 in
+                let code = (applist (cont, t_args)) in
+                (run'[@tailcall]) ctxt (upd code)
+              else
+                fail (E.mkWrongTerm sigma env head)
+
           | _ ->
               begin
                 let value =

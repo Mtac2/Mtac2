@@ -3,7 +3,7 @@ Declare ML Module "unicoq".
 (** Load library "MetaCoqPlugin.cma". *)
 Declare ML Module "MetaCoqPlugin".
 
-From Mtac2 Require Import Logic Datatypes Logic List Utils Sorts.
+From Mtac2 Require Import Logic Datatypes Logic List Utils Sorts MTele.
 Import Sorts.
 
 Require Import Strings.String.
@@ -446,6 +446,14 @@ Definition get_trace: t bool.
   refine mkt. Qed.
 Definition set_trace: bool -> t unit.
   refine (fun _ => mkt). Qed.
+
+Definition decompose_app' :
+  forall {A : Type} {B : Type} {m},
+    A ->
+    MTele_Const (s:=SType) A m ->
+    MTele_Const (s:=SProp) (t B) m ->
+    t B.
+  refine (fun _ _ _ _ _ _=> mkt). Qed.
 
 Arguments t _%type.
 
