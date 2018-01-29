@@ -6,7 +6,7 @@ Require Import Bool.Bool.
 
 Ltac induction n := induction n.
 
-Definition qualify s := String.append "ltac." s.
+Definition qualify s := String.append "Mtac2Tests.ltac." s.
 
 Definition induction {A} (n:A) : tactic := ltac (qualify "induction") [m:Dyn n].
 
