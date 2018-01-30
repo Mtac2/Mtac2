@@ -72,5 +72,5 @@ Definition decompose_app {m : MTele} {A B T: Type} (a : A) (t : T):
     M.ret x
   ).
 
-Notation "<[ 'decapp' a b ]>" := (ltac:(mrun (decompose_app a b)))
+Notation "'<[decapp' a b ]>" := (ltac:(mrun (decompose_app a b)))
   (at level 0, a at next level, b at next level).
