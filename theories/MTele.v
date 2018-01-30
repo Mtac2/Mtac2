@@ -21,6 +21,8 @@ match n with
 | mBase => T
 | mTele F => ForAll (fun x => MTele_Const T (F x))
 end.
+Definition MTele_ConstP (T : Prop) (n : MTele) := @MTele_Const SProp T n.
+Definition MTele_ConstT (T : Type) (n : MTele) := @MTele_Const SType T n.
 
 (** MTele_Sort: compute `∀ x .. z, Type` from a given MTele *)
 Set Printing Universes.
