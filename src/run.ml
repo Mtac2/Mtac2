@@ -824,6 +824,13 @@ let vm_to_string env sigma = function
   | Fix -> "Fix"
   | Rem _ -> "Rem"
 
+let check_evars_exception old_sigma new_sigma env c =
+  try
+    let c = nf_evar old_sigma c in
+    let (sigma, _) = Typing.type_of env new_sigma c in
+    (sigma, c)
+  with _ -> E.mkExceptionNotGround new_sigma env c
+
 let rec run' ctxt (vms : vm list) =
   let open MConstr in
   let sigma, env = ctxt.sigma, ctxt.env in
@@ -853,6 +860,7 @@ let rec run' ctxt (vms : vm list) =
   | Fail c, [] -> fail sigma c
   | Fail c, (Bind _ :: vms) -> (run'[@tailcall]) ctxt (Fail c :: vms)
   | Fail c, (Try (sigma, b) :: vms) ->
+      let (sigma, c) = check_evars_exception ctxt.sigma sigma env c in
       let sigma = Evd.set_universe_context sigma (Evd.evar_universe_context ctxt.sigma) in
       (run'[@tailcall]) {ctxt with sigma} (Code (mkApp(b, [|c|]))::vms)
   | Fail c, (Nu p :: vms) -> (run'[@tailcall]) (ctxt_nu1 p) (Fail c :: vms)
@@ -896,16 +904,8 @@ let rec run' ctxt (vms : vm list) =
               (run'[@tailcall]) ctxt (Code (nth 1) :: Try (sigma, nth 2) :: vms)
 
           | _ when israise h ->
-              (* we make sure the exception is a closed term: it does not depend on evars or nus *)
               let term = nth 1 in
-              let vars = collect_vars sigma term in
-              let nuvars = Context.Named.to_vars (CList.firstn ctxt.nus (named_context env)) in
-              let intersect = Id.Set.inter vars nuvars in
-              let closed = Id.Set.is_empty intersect && Evar.Set.is_empty (Evarutil.undefined_evars_of_term sigma term) in
-              if closed then
-                fail (sigma, Evarutil.nf_evar sigma term)
-              else
-                fail (E.mkExceptionNotGround sigma env term)
+              fail (sigma, term)
 
           | _ when isfix1 h ->
               let a, b, f, x = nth 0, nth 1, nth 2, nth 3 in
@@ -1396,7 +1396,7 @@ let run (env0, sigma) t =
   | Err (sigma', v) ->
       (* let v = Vars.replace_vars vsubs v in *)
       let v = multi_subst_inv sigma' subs v in
-      let sigma', _ = Typing.type_of env0 sigma' v in
+      let sigma', v = check_evars_exception sigma' sigma' env0 v in
       Err (sigma', v)
   | Val (sigma', v) ->
       let v = multi_subst_inv sigma' subs v in
