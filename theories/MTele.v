@@ -194,6 +194,25 @@ Local Fixpoint MTele_id {s} (n : MTele) :
 
 Local Example map_id {s} {n : MTele} {A : MTele_Sort s n} := @MTele_map s n A A (MTele_id n).
 
+(** Partial Telescopes *)
+Inductive PTele : MTele -> Type :=
+| pBase {n} : PTele n
+| pTele {X} {F} (x : X) : PTele (F x) -> PTele (@mTele X F).
+
+Fixpoint PTele_MTele {n} (p : PTele n) : MTele :=
+  match p with
+  | pBase => n
+  | pTele _ p => PTele_MTele p
+  end.
+
+Coercion PTele_MTele : PTele >-> MTele.
+
+Fixpoint PTele_Sort {s} {n} (p : PTele n) : MTele_Sort s n -> MTele_Sort s p :=
+  match p with
+  | pBase => fun x => x
+  | pTele _ p => fun T => PTele_Sort p (T _)
+  end.
+
 
 (* Old MTele functions redefined on top of the more general newer ones above *)
 
