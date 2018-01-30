@@ -1214,12 +1214,21 @@ let rec run' ctxt (vms : vm list) =
               return sigma CoqUnit.mkTT
 
           | _ when isdecompose_app h ->
-              let (t_head, t_args) = decompose_app sigma (nth 3) in
-              let head = nth 4 in
+              let (t_head, t_args) = decompose_app sigma (nth 4) in
+              let head = nth 6 in
               if eq_constr_nounivs sigma (t_head) head then
-                let cont = nth 5 in
-                let code = (applist (cont, t_args)) in
-                (run'[@tailcall]) ctxt (upd code)
+                let cont = nth 8 in
+                let ptele = nth 3 in
+                let rec traverse ptele t_args =
+                  let ptele = ReductionStrategy.whd_betadeltaiota env sigma ptele in
+                  match CoqPTele.from_coq sigma env ptele with
+                  | None ->
+                      let code = (applist (cont, t_args)) in
+                      (run'[@tailcall]) ctxt (upd code)
+                  | Some (x, ptele) ->
+                      traverse ptele (tl t_args)
+                in
+                traverse ptele t_args
               else
                 fail (E.mkWrongTerm sigma env head)
 

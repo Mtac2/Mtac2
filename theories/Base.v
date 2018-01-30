@@ -448,12 +448,14 @@ Definition set_trace: bool -> t unit.
   refine (fun _ => mkt). Qed.
 
 Definition decompose_app' :
-  forall {A : Type} {B : Type} {m},
+  forall {A : Type} {B : Type} {m} {p : PTele m},
     A ->
-    MTele_Const (s:=SType) A m ->
-    MTele_Const (s:=SProp) (t B) m ->
+    forall {T : MTele_Ty m},
+      MTele_valT T ->
+      (MTele_sort (PTele_Sort p T) =m= MTele_ConstT A p) ->
+    MTele_ConstP (t B) p ->
     t B.
-  refine (fun _ _ _ _ _ _=> mkt). Qed.
+  refine (fun _ _ _ _ _ _ _ _ _ => mkt). Qed.
 
 Arguments t _%type.
 
@@ -611,7 +613,7 @@ Module notations.
       (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 
   Notation "'dcase' v 'as' A ',' x 'in' t" :=
-    (@M.decompose_app' _ _ (mTele (fun A => mTele (fun _ : A => mBase))) v (@Dyn) (fun A x => t)) (at level 91, t at level 200).
+    (@M.decompose_app' _ _ (mTele (fun A => mTele (fun _ : A => mBase))) (pBase) v _ (@Dyn) (meq_refl) (fun A x => t)) (at level 91, t at level 200).
   Notation "'dcase' v 'as' x 'in' t" :=
     (dcase v as _ , x in t) (at level 91, t at level 200).
 End notations.

@@ -381,3 +381,26 @@ module CoqPair = struct
     | None -> raise NotAPair
     | Some args -> (args.(2), args.(3))
 end
+
+module CoqPTele = struct
+  open UConstrBuilder
+
+  let pTeleBuilder = from_string "Mtac2.MTele.PTele"
+  let pBaseBuilder = from_string "Mtac2.MTele.pBase"
+  let pTeleBuilder = from_string "Mtac2.MTele.pTele"
+
+  let mkType env sigma tele = build_app pTeleBuilder sigma env [|tele|]
+  let mkPBase env sigma tele = build_app pBaseBuilder sigma env [|tele|]
+  let mkPTele env sigma ty telefun tyval ptele = build_app pTeleBuilder sigma env [|ty; telefun; tyval; ptele|]
+
+  exception NotAPTele
+
+  let from_coq sigma env cterm =
+    match from_coq pTeleBuilder (env, sigma) cterm with
+    | None ->
+        begin match from_coq pBaseBuilder (env, sigma) cterm with
+        | None -> raise NotAPTele
+        | Some _ -> None
+        end
+    | Some args -> Some (args.(2), args.(3))
+end

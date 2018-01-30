@@ -131,3 +131,13 @@ module CoqPair : sig
 
   val from_coq : (Environ.env * Evd.evar_map) -> constr -> constr * constr
 end
+
+module CoqPTele : sig
+  exception NotAPTele
+
+  val mkType  : Environ.env -> Evd.evar_map -> constr -> Evd.evar_map * constr
+  val mkPBase : Environ.env -> Evd.evar_map -> constr -> Evd.evar_map * constr
+  val mkPTele : Environ.env -> Evd.evar_map -> types -> constr -> constr -> constr -> Evd.evar_map * constr
+
+  val from_coq : Evd.evar_map -> Environ.env -> constr -> (constr * constr) option
+end

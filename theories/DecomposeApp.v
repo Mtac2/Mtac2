@@ -50,10 +50,20 @@ Definition MTele_of (A : Type) : forall T, T -> M (msigT (MTele_Const (s:=SType)
                                    let Fx := rone_step (F x) in
                                    let tx := (* rone_step *) (t x) in
                                    ''(mexistT _ n T) <- f Fx tx;
+                                   (* M.print "x";; *)
+                                   (* M.print_term x;; *)
+                                   (* M.print "n";; *)
+                                   (* M.print_term n;; *)
                                    n' <- M.abs_fun (P:=fun _ => MTele) x n;
-                                   T' <- M.abs_fun x T;
-                                   T' <- M.coerce T';
-                                   M.ret (mexistT _ (mTele n') T')
+                                   (* M.print "n'";; *)
+                                   (* M.print_term n';; *)
+                                   (* M.print "T";; *)
+                                   (* M.print_term T;; *)
+                                   T' <- M.coerce T;
+                                   T' <- M.abs_fun (P:=fun x => MTele_Const (s:=SType) A (n' x)) x T';
+                                   (* T' <- M.abs_fun x T; *)
+                                   (* T' <- M.coerce T'; *)
+                                   M.ret (mexistT (MTele_Const (s:=SType) A) (mTele n') T')
                                 )
                 )
                 UniCoq
@@ -65,6 +75,7 @@ Definition MTele_of (A : Type) : forall T, T -> M (msigT (MTele_Const (s:=SType)
 
 Check ltac:(mrun (MTele_of (nat) _ (@plus))).
 
+(* This wrapper hardcodes an empty list of arguments. FIXME *)
 Definition decompose_app {m : MTele} {A B T: Type} (a : A) (t : T) {F}:
   @lift
     (MTele_Const (s:=SProp) (M B) m -> M B)
@@ -74,8 +85,15 @@ Definition decompose_app {m : MTele} {A B T: Type} (a : A) (t : T) {F}:
           MTele_of A T t
         with | [?E] E => M.print_term E;; M.evar _ end;
         M.unify m m' UniCoq;;
+        (* M.print_term m;; *)
+        (* M.print_term T';; *)
+        (* let typi := dreduce (@MTele_Ty, @MTele_Sort) (MTele_Ty m) in *)
+        (* M.print_term typi;; *)
+        (* MT <- M.coerce (B:=typi) T'; *)
+                MT <- M.evar _;
         t' <- M.coerce t;
-        let x := @M.decompose_app' A B m a t' in
+        eq <- M.unify_or_fail UniCoq _ _;
+        let x := @M.decompose_app' A B m (pBase) a MT t' eq in
         M.ret x
     )
     (F) := F.
