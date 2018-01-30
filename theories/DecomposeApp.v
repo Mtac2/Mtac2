@@ -59,7 +59,6 @@ Definition MTele_of (A : Type) : forall T, T -> M (msigT (MTele_Const (s:=SType)
           ]
     ).
 
-(* This wrapper hardcodes an empty list of arguments. FIXME *)
 Definition decompose_app {m : MTele} (p : PTele m) {A B T: Type} (a : A) (t : T):
   M (MTele_Const (s:=SProp) (M B) p -> M B) :=
   (
