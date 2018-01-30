@@ -60,17 +60,28 @@ Definition MTele_of (A : Type) : forall T, T -> M (msigT (MTele_Const (s:=SType)
     ).
 
 (* This wrapper hardcodes an empty list of arguments. FIXME *)
-Definition decompose_app {m : MTele} {A B T: Type} (a : A) (t : T):
-  M (MTele_Const (s:=SProp) (M B) m -> M B) :=
+Definition decompose_app {m : MTele} (p : PTele m) {A B T: Type} (a : A) (t : T):
+  M (MTele_Const (s:=SProp) (M B) p -> M B) :=
   (
     ''(mexistT _ m' T') <- MTele_of A T t;
     M.unify m m' UniCoq;;
     MT <- M.evar _;
     t' <- M.coerce t;
     eq <- M.unify_or_fail UniCoq _ _;
-    let x := @M.decompose_app' A B m (pBase) a MT t' eq in
+    let x := @M.decompose_app' A B m p a MT t' eq in
     M.ret x
   ).
 
-Notation "'<[decapp' a b ]>" := (ltac:(mrun (decompose_app a b)))
+Notation "'<[decapp' a b 'with' x , .. , z ]>" :=
+  (
+      let p := (pTele x .. (pTele z pBase) ..) in
+      ltac:(mrun (decompose_app p a b))
+  )
+  (at level 0, a at next level, b at next level).
+
+Notation "'<[decapp' a b ]>" :=
+  (
+    let p := pBase in
+    ltac:(mrun (decompose_app p a b))
+  )
   (at level 0, a at next level, b at next level).

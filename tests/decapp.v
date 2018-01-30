@@ -9,3 +9,7 @@ Fail Definition should_fail := <[decapp (String.append "a" "b") @plus ]> (fun x 
 
 Definition dyns := <[decapp (Dyn 5) @Dyn ]> (fun ty el => M.ret ty).
 Definition dyns_eq : M.eval dyns = nat := eq_refl.
+
+
+Definition dyns_ty := <[decapp (Dyn 5) @Dyn with nat ]> (fun el => M.ret el).
+Definition dyns_ty_eq : M.eval dyns_ty = 5 := eq_refl.
