@@ -21,8 +21,21 @@ Example not_closed_but_closed (m : nat) :=
 Example nu_not_closed_raise_not_closed  :=
   ltac:(mrun (mtry \nu x:nat, M.raise (AnException x) with ExceptionNotGround => M.ret 0 end)%MC).
 
+Example nu_not_closed_but_ok  :=
+  ltac:(mrun (\nu x:nat, mtry M.raise (AnException x) with [? y] AnException y => M.ret 0 end)%MC).
+
 Example evar_not_closed_raise_not_closed  :=
   ltac:(mrun (mtry e <- M.evar nat; M.raise (AnException e) with ExceptionNotGround => M.ret 0 end)%MC).
 
 Example evar_closed_is_fine  :=
   ltac:(mrun (mtry e <- M.evar nat; M.unify e 0 UniCoq;; M.raise (AnException e) with [? n] AnException n => M.ret n end)%MC).
+
+Example evar_not_closed_but_ok  :=
+  ltac:(mrun (
+    e <- M.evar nat;
+    mtry M.raise (AnException e)
+    with [? d] AnException d => M.unify d 0 UniCoq;; M.ret d
+    end)%MC).
+
+Fail Example nu_not_closed_raise_not_groud_uncaught  :=
+  ltac:(mrun (\nu e : nat, M.raise (AnException e)%MC)).
