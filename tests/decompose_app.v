@@ -1,8 +1,6 @@
 From Mtac2 Require Import Base MTele.
-Definition test_tele : MTele :=
-  mTele (fun x : nat =>
-           mTele (fun y : nat => mBase)
-        ).
+Import TeleNotation.
+Definition test_tele : MTele := [tele (x y : nat)].
 
 Check ltac:(mrun (
                 M.decompose_app'

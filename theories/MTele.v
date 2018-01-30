@@ -230,3 +230,20 @@ Fixpoint MTele_open (M : Type -> Prop) {X : Type -> Prop} {m}:
   | mBase => fun T b => b _ (fun X x => x)
   | mTele F => fun T b x => MTele_open M (T x) (fun R f => b R (fun M' mR => f M' (mR x)))
   end.
+
+
+Module TeleNotation.
+  Notation "'[tele' x .. z ]" :=
+    (mTele (fun x => .. (mTele (fun z => mBase)) ..))
+      (x binder, z binder, format "[tele  '[hv' x  ..  z ']'  ]").
+
+  Notation "'[tele' ]" := (mBase).
+
+  Notation "'[ptele' x , .. , z ]" :=
+    (pTele x .. (pTele z pBase) ..)
+      (format "[ptele  '[hv' x ,  .. ,  z ']'  ]").
+
+  Notation "'[ptele' ]" := (pBase).
+
+  (* Check [ptele 3, 5] : PTele [tele _ _ ]. *)
+End TeleNotation.
