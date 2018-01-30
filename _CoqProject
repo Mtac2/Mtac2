@@ -1,4 +1,5 @@
 CAMLC = "ocamlc -c -rectypes -thread -warn-error +a"
+CAMLDEBUG = "-g"
 -I $(COQMF_COQLIB)/user-contrib/Unicoq
 -I src
 -R theories Mtac2
@@ -11,6 +12,8 @@ src/mtacNames.ml
 src/mtacNames.mli
 src/mConstr.ml
 src/mConstr.mli
+src/machine.ml
+src/machine.mli
 src/run.ml
 src/run.mli
 src/metaCoqInterp.ml

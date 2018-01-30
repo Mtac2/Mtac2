@@ -317,57 +317,38 @@ module ReductionStrategy = struct
         failwith "Unknown flag"
     ) flags no_red
 
+
+  let whdfun flags env fixs sigma c =
+    let open Machine in
+    let state = (c, Stack.empty) in
+    let (s, _) = whd_state_gen ~refold:false ~tactic_mode:false flags env fixs sigma state in
+    Stack.zip sigma s
+
   let redfuns = [|
-    (fun _ _ _ c -> c);
-    (fun _ env sigma c -> Tacred.simpl env sigma (nf_evar sigma c));
-    (fun _ ->one_step);
-    (fun fs env sigma c ->
-       (* Environ.env -> Evd.evar_map -> EConstr.constr -> EConstr.constr *)
-       Reductionops.clos_whd_flags (get_flags (env, sigma) fs.(0)) env sigma c);
-    (* let evars ev = safe_evar_value sigma ev in *)
-    (* of_constr @@
-     * whd_val
-     *   (create_clos_infos ~evars (get_flags (env, sigma) fs.(0)) env)
-     *   (inject (EConstr.to_constr sigma c))); *)
-    (fun fs env sigma->
+    (fun _ _ _ _ c -> c);
+    (fun _ _ env sigma c -> Tacred.simpl env sigma (nf_evar sigma c));
+    (fun _ _ ->one_step);
+    (fun fs fixs env sigma c ->
+       whdfun (get_flags (env, sigma) fs.(0)) env fixs sigma c);
+    (fun fs _ env sigma->
        clos_norm_flags (get_flags (env, sigma) fs.(0)) env sigma);
-    (fun _ -> Redexpr.cbv_vm) (* vm_compute *)
+    (fun _ _ -> Redexpr.cbv_vm) (* vm_compute *)
   |]
 
-  let reduce sigma env strategy c =
+  let reduce sigma fixs env strategy c =
     try
       let strategy, args = decompose_appvect sigma strategy in
-      Some (redfuns.(get_constructor_pos sigma strategy) args env sigma c)
+      Some (redfuns.(get_constructor_pos sigma strategy) args fixs env sigma c)
     with RedList.NotAList _ ->
       None
 
-  (* XXX: Port to 8.7: [EJGA]
-
-     These functions take and return `Constr.t` instead of the
-     preferred `Econstr.t`. This implies a large performance cost in
-     some cases as the called has to perform evar substitution using
-     `EConstr.to_constr`
-
-     The most plausible fix is to use instead
-     `Reductionops.clos_whd_flags`, however @SkySkimmer notes that
-     it catches anomalies so a minor difference may exist.
-  *)
-  (* let whdfun flags env sigma c = *)
-  (*   let evars = safe_evar_value sigma in *)
-  (*   whd_val *)
-  (*     (create_clos_infos ~evars flags env) *)
-  (*     (inject c) *)
-
-  (* let whd_betadeltaiota_nolet = whdfun CClosure.allnolet *)
-  let whd_betadeltaiota_nolet = Reductionops.clos_whd_flags CClosure.allnolet
-
-  (* let whd_betadeltaiota = whdfun CClosure.all *)
-  let whd_betadeltaiota = Reductionops.clos_whd_flags CClosure.all
+  let whd_betadeltaiota_nolet = whdfun CClosure.allnolet
 
   let whd_all_novars =
     let flags = red_add_transparent betaiota Names.cst_full_transparent_state in
-    Reductionops.clos_whd_flags flags
+    whdfun flags
 
+  let whd_betadeltaiota = whdfun CClosure.all
 end
 
 module RE = ReductionStrategy
@@ -474,9 +455,9 @@ let make_Case (env, sigma) case =
     Exceptions.block "case_type is not an inductive type"
 
 
-let get_Constrs (env, sigma) t =
+let get_Constrs (env, fixs, sigma) t =
   (* let t = to_constr sigma t in *)
-  let t_type, args = decompose_app sigma ((* of_constr @@ *) RE.whd_betadeltaiota env sigma t) in
+  let t_type, args = decompose_app sigma ((* of_constr @@ *) RE.whd_betadeltaiota env fixs sigma t) in
   if isInd sigma t_type then
     let (mind, ind_i), _ = destInd sigma t_type in
     let mbody = Environ.lookup_mind mind env in
@@ -642,9 +623,9 @@ let make_evar sigma env ty =
     let sigma, evar = Evarutil.new_evar env sigma ty in
     sigma, evar
 
-let get_name (env, sigma) (t: constr) : constr option =
+let get_name (env, fixs, sigma) (t: constr) : constr option =
   (* If t is a defined variable it is reducing it *)
-  let t = RE.whd_all_novars env sigma t in
+  let t = RE.whd_all_novars env fixs sigma t in
   let name =
     if isVar sigma t then Some (Name (destVar sigma t))
     else if isLambda sigma t then
@@ -874,7 +855,7 @@ let rec run' ctxt (vms : vm list) =
       let upd c = (Code c :: vms) in
       let return sigma c = (run'[@tailcall]) {ctxt with sigma} (Ret c :: vms) in
       let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
-      let reduced_term = RE.whd_betadeltaiota_nolet env sigma t in
+      let reduced_term = RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t in
       let (h, args) = decompose_appvect sigma reduced_term in
       let nth = Array.get args in
       if isLetIn sigma h then
@@ -882,7 +863,7 @@ let rec run' ctxt (vms : vm list) =
         let (_, b, _, t) = destLetIn sigma h in
         let (h, args') = decompose_appvect sigma b in
         if isReduce sigma env h && Array.length args' = 3 then
-          let ob = reduce sigma env (Array.get args' 0) (Array.get args' 2) in
+          let ob = reduce sigma ctxt.fixpoints env (Array.get args' 0) (Array.get args' 2) in
           match ob with
           | Some b ->
               (run'[@tailcall]) ctxt (upd (mkApp (Vars.subst1 b t, args)))
@@ -974,7 +955,7 @@ let rec run' ctxt (vms : vm list) =
 
           | _ when isget_binder_name h ->
               let t = nth 1 in
-              let s = get_name (env, sigma) t in
+              let s = get_name (env, ctxt.fixpoints, sigma) t in
               begin
                 match s with
                 | Some s -> return sigma s
@@ -1037,7 +1018,7 @@ let rec run' ctxt (vms : vm list) =
 
           | _ when isconstrs h ->
               let t = nth 1 in
-              let (sigma', constrs) = get_Constrs (env, sigma) t in
+              let (sigma', constrs) = get_Constrs (env, ctxt.fixpoints, sigma) t in
               return sigma' constrs
 
           | _ when ismakecase h ->
@@ -1220,7 +1201,7 @@ let rec run' ctxt (vms : vm list) =
                 let cont = nth 8 in
                 let ptele = nth 3 in
                 let rec traverse ptele t_args =
-                  let ptele = ReductionStrategy.whd_betadeltaiota env sigma ptele in
+                  let ptele = ReductionStrategy.whd_betadeltaiota env ctxt.fixpoints sigma ptele in
                   match CoqPTele.from_coq sigma env ptele with
                   | None ->
                       let code = (applist (cont, t_args)) in
@@ -1233,22 +1214,7 @@ let rec run' ctxt (vms : vm list) =
                 fail (E.mkWrongTerm sigma env head)
 
           | _ ->
-              begin
-                let value =
-                  try
-                    (* search for the variable in the fixpoint context *)
-                    let n = destVar sigma h in
-                    let open Context.Named in
-                    Declaration.get_value (lookup n ctxt.fixpoints)
-                  with (Term.DestKO | Not_found ) ->
-                    None
-                in
-                match value with
-                | Some fixbody ->
-                    let t = (mkApp (fixbody,args)) in
-                    (run'[@tailcall]) ctxt (upd t)
-                | None -> fail (E.mkStuckTerm sigma env h)
-              end
+              fail (E.mkStuckTerm sigma env h)
         end
 
 (* h is the mfix operator, a is an array of types of the arguments, b is the
