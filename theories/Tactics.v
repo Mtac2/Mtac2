@@ -443,10 +443,11 @@ Unset Printing Universes.
 Definition match_goal_context
     {C A B} (x: A) (y: B) (cont: (A -> B) -> gtactic C) : gtactic C := fun g=>
   r <- abstract x y;
-  let reduced := dreduce (fu) (fu r) in
-  mmatch reduced with
-  | [? (CONST : B)] (fun _ => CONST) =n> M.raise DoesNotMatchGoal
-  | _ => cont reduced g
+  match r with
+  | mSome r =>
+    let reduced := dreduce (fu) (fu r) in
+    cont reduced g
+  | mNone => M.raise DoesNotMatchGoal
   end.
 
 Fixpoint match_goal_pattern' {B}
