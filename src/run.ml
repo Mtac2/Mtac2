@@ -812,6 +812,8 @@ let check_evars_exception old_sigma new_sigma env c =
     (sigma, c)
   with _ -> E.mkExceptionNotGround new_sigma env c
 
+let timers = ref []
+
 let rec run' ctxt (vms : vm list) =
   let open MConstr in
   let sigma, env = ctxt.sigma, ctxt.env in
@@ -1212,6 +1214,47 @@ let rec run' ctxt (vms : vm list) =
                 traverse ptele t_args
               else
                 fail (E.mkWrongTerm sigma env head)
+
+          | _ when isnew_timer h ->
+              let ts = !timers in
+              let last = None in
+              let () = timers := ((ref last, ref 0.0) :: ts) in
+              return sigma (CoqN.to_coq ((List.length ts) + 1))
+
+          | _ when isstart_timer h ->
+              let reset = CoqBool.from_coq sigma (nth 0) in
+              let t_arg = nth 1 in
+              let index = CoqN.from_coq (env, sigma) t_arg in
+              let ts = !timers in
+              let t = List.nth ts (List.length ts - index) in
+              let () = fst t := Some (System.get_time ()) in
+              if reset then snd t := 0.0;
+              return sigma CoqUnit.mkTT
+
+          | _ when isstop_timer h ->
+              let t_arg = nth 0 in
+              let index = CoqN.from_coq (env, sigma) t_arg in
+              let ts = !timers in
+              let t = List.nth ts (List.length ts - index) in
+              let (last, total) = (! (fst t)), (! (snd t)) in
+              begin
+                match last with
+                | Some last ->
+                    let time = System.get_time () in
+                    snd t := total +. (System.time_difference last time)
+                | None -> snd t := -.infinity
+              end;
+              return sigma CoqUnit.mkTT
+
+          | _ when isprint_timer h ->
+              let t_arg = nth 0 in
+              let index = CoqN.from_coq (env, sigma) t_arg in
+              let ts = !timers in
+              let t = List.nth ts (List.length ts - index) in
+              let total = !(snd t) in
+              let () = Feedback.msg_info (Pp.str (Printf.sprintf "%f" total)) in
+              return sigma CoqUnit.mkTT
+
 
           | _ ->
               fail (E.mkStuckTerm sigma env h)

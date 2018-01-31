@@ -141,3 +141,15 @@ let isset_trace  = isconstr mkset_trace
 
 let mkdecompose_app = mkconstr "decompose_app'"
 let isdecompose_app = isconstr mkdecompose_app
+
+let mknew_timer = mkconstr "new_timer"
+let isnew_timer = isconstr mknew_timer
+
+let mkstart_timer = mkconstr "start_timer"
+let isstart_timer = isconstr mkstart_timer
+
+let mkstop_timer = mkconstr "stop_timer"
+let isstop_timer = isconstr mkstop_timer
+
+let mkprint_timer = mkconstr "print_timer"
+let isprint_timer = isconstr mkprint_timer

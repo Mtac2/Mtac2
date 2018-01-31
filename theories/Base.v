@@ -459,6 +459,18 @@ Definition decompose_app' :
     t B.
   refine (fun _ _ _ _ _ _ _ _ _ => mkt). Qed.
 
+Definition new_timer : t N.
+  refine (mkt). Qed.
+
+Definition start_timer : forall reset : bool, N -> t N.
+  refine (fun _ _ => mkt). Qed.
+
+Definition stop_timer : N -> t N.
+  refine (fun _ => mkt). Qed.
+
+Definition print_timer : N -> t N.
+  refine (fun _ => mkt). Qed.
+
 Arguments t _%type.
 
 Definition fmap {A:Type} {B:Type} (f : A -> B) (x : t A) : t B :=
