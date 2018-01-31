@@ -47,4 +47,5 @@ val isdecompose_app : EConstr.t -> bool
 val isnew_timer : EConstr.t -> bool
 val isstart_timer : EConstr.t -> bool
 val isstop_timer : EConstr.t -> bool
+val isreset_timer : EConstr.t -> bool
 val isprint_timer : EConstr.t -> bool

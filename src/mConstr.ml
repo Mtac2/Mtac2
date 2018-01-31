@@ -151,5 +151,8 @@ let isstart_timer = isconstr mkstart_timer
 let mkstop_timer = mkconstr "stop_timer"
 let isstop_timer = isconstr mkstop_timer
 
+let mkreset_timer = mkconstr "reset_timer"
+let isreset_timer = isconstr mkreset_timer
+
 let mkprint_timer = mkconstr "print_timer"
 let isprint_timer = isconstr mkprint_timer

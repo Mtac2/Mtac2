@@ -459,17 +459,20 @@ Definition decompose_app' :
     t B.
   refine (fun _ _ _ _ _ _ _ _ _ => mkt). Qed.
 
-Definition new_timer : t N.
-  refine (mkt). Qed.
-
-Definition start_timer : forall reset : bool, N -> t N.
+Definition new_timer : forall {A} (a : A), t unit.
   refine (fun _ _ => mkt). Qed.
 
-Definition stop_timer : N -> t N.
-  refine (fun _ => mkt). Qed.
+Definition start_timer : forall {A} (a : A) (reset : bool), t unit.
+  refine (fun _ _ _ => mkt). Qed.
 
-Definition print_timer : N -> t N.
-  refine (fun _ => mkt). Qed.
+Definition stop_timer : forall {A} (a : A), t unit.
+  refine (fun _ _ => mkt). Qed.
+
+Definition reset_timer : forall {A} (a : A), t unit.
+  refine (fun _ _ => mkt). Qed.
+
+Definition print_timer : forall {A} (a : A), t unit.
+  refine (fun _ _ => mkt). Qed.
 
 Arguments t _%type.
 

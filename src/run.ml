@@ -812,7 +812,7 @@ let check_evars_exception old_sigma new_sigma env c =
     (sigma, c)
   with _ -> E.mkExceptionNotGround new_sigma env c
 
-let timers = ref []
+let timers = Hashtbl.create 128
 
 let rec run' ctxt (vms : vm list) =
   let open MConstr in
@@ -1216,41 +1216,60 @@ let rec run' ctxt (vms : vm list) =
                 fail (E.mkWrongTerm sigma env head)
 
           | _ when isnew_timer h ->
-              let ts = !timers in
-              let last = None in
-              let () = timers := ((ref last, ref 0.0) :: ts) in
-              return sigma (CoqN.to_coq ((List.length ts) + 1))
-
-          | _ when isstart_timer h ->
-              let reset = CoqBool.from_coq sigma (nth 0) in
               let t_arg = nth 1 in
-              let index = CoqN.from_coq (env, sigma) t_arg in
-              let ts = !timers in
-              let t = List.nth ts (List.length ts - index) in
-              let () = fst t := Some (System.get_time ()) in
-              if reset then snd t := 0.0;
+              let name, _ = destConst sigma t_arg in
+              let fname = Names.canonical_con name in
+              let last = None in
+              let () = Hashtbl.add timers fname ((ref last, ref 0.0)) in
               return sigma CoqUnit.mkTT
 
-          | _ when isstop_timer h ->
-              let t_arg = nth 0 in
-              let index = CoqN.from_coq (env, sigma) t_arg in
-              let ts = !timers in
-              let t = List.nth ts (List.length ts - index) in
-              let (last, total) = (! (fst t)), (! (snd t)) in
+          | _ when isstart_timer h ->
+              let reset = CoqBool.from_coq sigma (nth 2) in
+              let t_arg = nth 1 in
+              let name, _ = destConst sigma t_arg in
+              let fname = Names.canonical_con name in
               begin
-                match last with
-                | Some last ->
-                    let time = System.get_time () in
-                    snd t := total +. (System.time_difference last time)
-                | None -> snd t := -.infinity
-              end;
+                try
+                  let t = Hashtbl.find timers fname in
+                  let () = fst t := Some (System.get_time ()) in
+                  if reset then snd t := 0.0;
+                  return sigma CoqUnit.mkTT
+                with | Not_found -> return sigma CoqUnit.mkTT
+              end
+
+          | _ when isstop_timer h ->
+              let t_arg = nth 1 in
+              let name, _ = destConst sigma t_arg in
+              let fname = Names.canonical_con name in
+              begin
+                try
+                  let t = Hashtbl.find timers fname in
+                  let (last, total) = (! (fst t)), (! (snd t)) in
+                  begin
+                    match last with
+                    | Some last ->
+                        let time = System.get_time () in
+                        snd t := total +. (System.time_difference last time)
+                    | None -> snd t := -.infinity
+                  end;
+                  return sigma CoqUnit.mkTT
+                with | Not_found -> return sigma CoqUnit.mkTT
+              end
+
+          | _ when isreset_timer h ->
+              let t_arg = nth 1 in
+              let name, _ = destConst sigma t_arg in
+              let fname = Names.canonical_con name in
+              let t = Hashtbl.find timers fname in
+              let () = fst t := None in
+              let () = snd t := 0.0 in
               return sigma CoqUnit.mkTT
 
           | _ when isprint_timer h ->
-              let t_arg = nth 0 in
-              let index = CoqN.from_coq (env, sigma) t_arg in
-              let ts = !timers in
-              let t = List.nth ts (List.length ts - index) in
+              let t_arg = nth 1 in
+              let name, _ = destConst sigma t_arg in
+              let fname = Names.canonical_con name in
+              let t = Hashtbl.find timers fname in
               let total = !(snd t) in
               let () = Feedback.msg_info (Pp.str (Printf.sprintf "%f" total)) in
               return sigma CoqUnit.mkTT
