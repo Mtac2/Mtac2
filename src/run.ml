@@ -321,7 +321,7 @@ module ReductionStrategy = struct
   let whdfun flags env fixs sigma c =
     let open Machine in
     let state = (c, Stack.empty) in
-    let (s, _) = whd_state_gen ~refold:false ~tactic_mode:false flags env fixs sigma state in
+    let (s, _) = whd_state_gen flags env fixs sigma state in
     Stack.zip sigma s
 
   let redfuns = [|
