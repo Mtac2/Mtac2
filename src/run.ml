@@ -817,11 +817,11 @@ let timers = Hashtbl.create 128
 let rec run' ctxt (vms : vm list) =
   let open MConstr in
   let sigma, env = ctxt.sigma, ctxt.env in
-  if !trace then begin
-    print_string "<<< ";
-    List.iter (fun vm->Printf.printf "%s :: " (vm_to_string env sigma vm)) vms;
-    print_endline " >>>"
-  end;
+  (* if !trace then begin
+   *   print_string "<<< ";
+   *   List.iter (fun vm->Printf.printf "%s :: " (vm_to_string env sigma vm)) vms;
+   *   print_endline " >>>"
+   * end; *)
   let vm = hd vms in
   let vms = tl vms in
   let ctxt_nu1 (_, env, renv) = {ctxt with env; renv; nus = ctxt.nus-1} in
