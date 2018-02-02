@@ -153,8 +153,6 @@ Definition abstract A B (x : A) (t : B) : M (moption _) :=
               | mSome cas =>
                 mmatch cas with
                 | [? el: A -> (typer z)] Dyn el =c>
-                  M.print_term z;;
-                  M.print_term el;;
                   eq <- coerce (meq_refl (elemr z));
                   ret (mSome (R (t:=elemr z) el eq))
                 | [? e] e => print "nope:";; print_term e;; ret (mNone)
