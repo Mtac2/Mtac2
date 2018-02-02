@@ -249,6 +249,8 @@ Definition doTT {A:Prop} (x:A) :=
   do_def s x.
 
 Definition TT A := M (A *m mlist goal).
+Bind Scope typed_tactic_scope with TT.
+Delimit Scope typed_tactic_scope with TT.
 
 Definition use' {A} (t : tactic) : TT A :=
   (a <- M.evar A;
@@ -281,11 +283,126 @@ Definition apply {A} : (A *m mlist goal) -> tactic :=
     M.ret gs
   )%MC.
 
+Module MatchGoalTT.
+Import Abstract.
+Import T.notations.
+Import Mtac2.Logic.
+Inductive goal_pattern : Prop :=
+  | gbase : forall {A}, A -> TT A -> goal_pattern
+  | gbase_context : forall {A} (a : A), (forall (C : A -> Type), TT (C a)) -> goal_pattern
+  | gtele : forall {C}, (C -> goal_pattern) -> goal_pattern
+  | gtele_evar : forall {C}, (C -> goal_pattern) -> goal_pattern.
+Arguments gbase {A} _ _.
+Arguments gbase_context {A} _ _.
+Arguments gtele {C} _.
+Arguments gtele_evar {C} _.
+
+Set Printing Implicit.
+Definition match_goal_context
+    {A} (x: A) (y: Type) (cont: forall (C : A -> Type), TT (C x)) : tactic :=
+  r <- abstract x y;
+  M.print_term (x,y);;
+  M.print_term r;;
+  match r with
+  | mSome r =>
+    let reduced := dreduce (@fu) (fu r) in
+    cont reduced >>=
+    TT.apply
+  | mNone => M.raise DoesNotMatchGoal
+  end.
+
+Fixpoint match_goal_pattern'
+    (u : Unification) (p : goal_pattern) : mlist Hyp -> mlist Hyp -> tactic :=
+  fix go l1 l2 g :=
+  match p, l2 with
+  | gbase P t, _ =>
+    gT <- M.goal_type g;
+    mif M.cumul u P gT then (r <- t; TT.apply r g)
+    else M.raise DoesNotMatchGoal
+  | gbase_context x t, _ =>
+    gT <- M.goal_type g;
+    match_goal_context x gT t g
+  | @gtele C f, @ahyp A a d :m: l2' =>
+    oeqCA <- M.unify C A u;
+    match oeqCA with
+    | mSome eqCA =>
+      let a' := rcbv match Logic.meq_sym eqCA in _ =m= X return X with meq_refl => a end in
+      mtry match_goal_pattern' u (f a') [m:] (mrev_append l1 l2') g
+      with DoesNotMatchGoal =>
+        go (ahyp a d :m: l1) l2' g
+      end
+    | mNone => go (ahyp a d :m: l1) l2' g end
+  | @gtele_evar C f, _ =>
+    e <- M.evar C;
+    match_goal_pattern' u (f e) l1 l2 g
+  | _, _ => M.raise DoesNotMatchGoal
+  end%MC.
+
+Definition match_goal_pattern (u : Unification)
+    (p : goal_pattern) : tactic := fun g=>
+  (r <- M.hyps; match_goal_pattern' u p [m:] (mrev' r) g)%MC.
+
+Fixpoint match_goal_base (u : Unification)
+    (ps : mlist (goal_pattern)) : tactic := fun g =>
+  match ps with
+  | [m:] => M.raise NoPatternMatchesGoal
+  | p :m: ps' =>
+    mtry match_goal_pattern u p g
+    with DoesNotMatchGoal => match_goal_base u ps' g end
+  end%MC.
+End MatchGoalTT.
+Import MatchGoalTT.
+
 Module notations.
 Notation "[t: x | .. | y ]" := (TT.compi x (.. (TT.compi y (M.ret I)) ..)).
 Notation "'doTT' t" := (ltac:(mrun (doTT t))) (at level 0).
 Infix "<**>" := (fappgl Mappend) (at level 61, left associativity) : M_scope.
-End notations.
 
+Notation "[[ |- ps ] ] => t" :=
+  (gbase ps t)
+  (at level 202, ps at next level) : typed_match_goal_pattern_scope.
+Notation "[[? a .. b | x .. y |- ps ] ] => t" :=
+  (gtele_evar (fun a => .. (gtele_evar (fun b =>
+     gtele (fun x => .. (gtele (fun y => gbase ps t)).. ))).. ))
+  (at level 202, a binder, b binder,
+   x binder, y binder, ps at next level) : typed_match_goal_pattern_scope.
+Notation "[[? a .. b |- ps ] ] => t" :=
+  (gtele_evar (fun a => .. (gtele_evar (fun b => gbase ps t)).. ))
+  (at level 202, a binder, b binder, ps at next level) : typed_match_goal_pattern_scope.
+Notation "[[ x .. y |- ps ] ] => t" :=
+  (gtele (fun x => .. (gtele (fun y => gbase ps t)).. ))
+  (at level 202, x binder, y binder, ps at next level) : typed_match_goal_pattern_scope.
+
+Notation "[[ |- 'context' C [ ps ] ] ] => t" :=
+  (gbase_context ps (fun C => t))
+  (at level 202, C at level 0, ps at next level) : typed_match_goal_pattern_scope.
+Notation "[[? a .. b | x .. y |- 'context' C [ ps ] ] ] => t" :=
+  (gtele_evar (fun a => .. (gtele_evar (fun b =>
+     gtele (fun x=> .. (gtele (fun y => gbase_context ps (fun C => t))).. ))).. ))
+  (at level 202, a binder, b binder,
+   x binder, y binder, C at level 0, ps at next level) : typed_match_goal_pattern_scope.
+Notation "[[? a .. b |- 'context' C [ ps ] ] ] => t" :=
+  (gtele_evar (fun a => .. (gtele_evar (fun b => gbase_context ps (fun C => t))).. ))
+  (at level 202, a binder, b binder, C at level 0, ps at next level) : typed_match_goal_pattern_scope.
+Notation "[[ x .. y |- 'context' C [ ps ] ] ] => t" :=
+  (gtele (fun x=> .. (gtele (fun y => gbase_context ps (fun C => t))).. ))
+  (at level 202, x binder, y binder, C at level 0, ps at next level) : typed_match_goal_pattern_scope.
+
+Delimit Scope typed_match_goal_pattern_scope with typed_match_goal_pattern.
+
+Notation "'with' | p1 | .. | pn 'end'" :=
+  ((@mcons (goal_pattern) p1%typed_match_goal_pattern (.. (@mcons (goal_pattern) pn%typed_match_goal_pattern [m:]) ..)))
+    (at level 91, p1 at level 210, pn at level 210) : typed_match_goal_with_scope.
+Notation "'with' p1 | .. | pn 'end'" :=
+  ((@mcons (goal_pattern) p1%typed_match_goal_pattern (.. (@mcons (goal_pattern) pn%typed_match_goal_pattern [m:]) ..)))
+    (at level 91, p1 at level 210, pn at level 210) : typed_match_goal_with_scope.
+
+Delimit Scope typed_match_goal_with_scope with typed_match_goal_with.
+
+Notation "'match_goal' ls" := (match_goal_base UniCoq ls%typed_match_goal_with)
+  (at level 200, ls at level 91) : typed_tactic_scope.
+Notation "'match_goal_nored' ls" := (match_goal_base UniMatchNoRed ls%typed_match_goal_with)
+  (at level 200, ls at level 91) : typed_tactic_scope.
+End notations.
 
 End TT.
