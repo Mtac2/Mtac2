@@ -20,7 +20,7 @@ Fixpoint prove_leq n m : M (n < m) :=
   | _, _ => M.failwith "n not < m"
   end.
 
-Definition to_fin_MP : T.selector unit := (fun l=>
+Definition to_fin_MP : T.selector := (fun l=>
   let n := mlength l in
   M.mapi (fun i '(m: _, g) =>
     H <- prove_leq i n;

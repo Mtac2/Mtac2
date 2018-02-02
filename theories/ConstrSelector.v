@@ -45,19 +45,19 @@ Definition index {A} (c: A) : M _ :=
     | [? d' l'] (d' :m: l') => f (S i) l'
     end)%MC 0 l.
 
-Definition snth_index {A:Type} (c:A) (t:tactic) : T.selector unit := fun l =>
+Definition snth_index {A:Type} (c:A) (t:tactic) : T.selector := fun l =>
   (i <- index c; S.nth i t l)%MC.
 
 Notation "'case' c 'do' t" := (snth_index c t) (at level 40).
 Import M.notations.
-Definition snth_indices (l : mlist dyn) (t : tactic) : selector unit := fun goals=>
-  M.fold_left (fun (accu : mlist (unit *m goal)) (d : dyn)=>
+Definition snth_indices (l : mlist dyn) (t : tactic) : selector := fun goals=>
+  M.fold_left (fun (accu : mlist goal) (d : dyn)=>
     dcase d as c in
     i <- index c;
     let ogoal := mnth_error goals i in
     match ogoal with
-    | mSome (m: _, g) =>
-      newgoals <- open_and_apply t g;
+    | mSome g =>
+      ''(m:_, newgoals) <- open_and_apply t g;
       let res := dreduce (@mapp, @mmap) (accu +m+ newgoals) in
       T.filter_goals res
     | mNone => M.failwith "snth_indices"

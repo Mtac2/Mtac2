@@ -4,6 +4,10 @@ Import ListNotations.
 Set Implicit Arguments.
 Import ProdNotations.
 
+Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
+Unset Universe Minimization ToSet.
+
 (** This is a simple example tighting up a bit the types of tactics in order to
     ensure a property.  In this case, we make sure that a variation of `apply`
     is composed with as many tactics as the number required by the number of
@@ -15,7 +19,7 @@ Import ProdNotations.
 (** For that reason, we use the following record instead of a Vector.t: we want
     to easily embed tactics into ntactics and back. *)
 Record PackedVec (A: Type) (count: nat) := mkPackedVec {
-  goals : mlist (A *m goal)
+  goals : TTs A
 }.
 
 Definition ntactic A n := goal -> M (PackedVec A n).
@@ -26,18 +30,19 @@ Import M.notations.
 Coercion n_to_g A n (nt : ntactic A n) : gtactic A := fun g=>pv <- nt g; M.ret pv.(goals).
 
 (** For the composition, we can't be generic here: we produce a gtactic out of
-    the composition of an ntactic with nth gtactics. *)
-Class NSeq (A B : Type) n (nt: ntactic A n) (l: mlist (gtactic B)) (pf: mlength l = n) :=
-  nseq : gtactic B.
-Arguments nseq {A B _} _%tactic _%tactic _ {_}.
+    the composition of an ntactic with nth tactics. *)
+Class NSeq n (nt: ntactic unit n) (l: mlist tactic) (pf: mlength l = n) :=
+  nseq : tactic.
+Arguments nseq {n} nt%tactic l%tactic _ {_}.
 
 Import Mtac2.List.
 
-Instance nseq_list {A B} n (nt: ntactic A n) (l: mlist (gtactic B)) pf: NSeq nt l pf := fun g =>
+Instance nseq_list n (nt: ntactic unit n) (l: mlist tactic) pf: NSeq nt l pf := fun g=>
   gs <- nt g;
-  ls <- T.gmap l (mmap msnd gs.(goals));
-  let res := dreduce (@mconcat, @mapp) (mconcat ls) in
-  T.filter_goals res.
+  ls <- T.gmap l (msnd gs.(goals));
+  let res := dreduce (@mconcat, @mapp, @msnd, @mmap) (mconcat (mmap msnd ls)) in
+  gs <- T.filter_goals res;
+  M.ret (m: tt, gs).
 
 Notation "t1 '&n>' ts" :=
   (nseq t1 ts eq_refl) (at level 41, left associativity) : tactic_scope.
@@ -48,14 +53,14 @@ Import Datatypes.
     It generates a subgoal for each non-dependent hypothesis in the theorem. *)
 Definition max_apply {T} (c : T) : tactic := fun g=>
   match g with @Goal SType gT eg =>
-    (mfix1 go (d : dyn) : M (mlist (unit *m goal)) :=
+    (mfix1 go (d : dyn) : M (mlist goal) :=
       (* let (_, el) := d in *)
       (* mif M.unify_cumul el eg UniCoq then M.ret [m:] else *)
-        mmatch d return M (mlist (unit *m goal)) with
+        mmatch d return M (mlist goal) with
         | [? T1 T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
-          M.ret ((m: tt, Goal SType e) :m: r)
+          M.ret ((Goal SType e) :m: r)
         | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
@@ -64,7 +69,7 @@ Definition max_apply {T} (c : T) : tactic := fun g=>
         | _ =>
           dcase d as ty, el in
           M.raise (CantApply ty gT)
-        end) (Dyn c)
+        end) (Dyn c) >>= (fun gs=>M.ret (m:tt, gs))
   | Goal SProp _ => M.failwith "It's a prop!"
   | _ => M.raise NotAGoal
   end.

@@ -53,6 +53,8 @@ module UConstrBuilder = struct
 
   let from_string (s:string) : t = s
 
+  let build = Constr.mkUConstr
+
   let build_app s sigma env args =
     let (sigma, c) = Constr.mkUConstr s sigma env in
     (sigma, mkApp (c, args))
@@ -352,19 +354,13 @@ module CoqUnit = struct
 end
 
 module MCTactics = struct
-  let gTactic = "Mtac2.Tactics.gtactic"
+  open UConstrBuilder
 
-  (* let mkConstr s = *)
-  (*   let open Nametab in let open Libnames in *)
-  (*   try Universes.constr_of_global (locate (qualid_of_string s)) *)
-  (*   with _ -> raise (Constr.Constr_not_found s) *)
+  let gtBuilder = from_string "Mtac2.Tactics.gtactic"
+  let tBuilder = from_string "Mtac2.Tactics.tactic"
 
-  let mkUConstr s env sigma =
-    let open Nametab in let open Libnames in
-    try Evd.fresh_global env sigma (locate (qualid_of_string s))
-    with _ -> raise (Constr.Constr_not_found s)
-
-  let mkGTactic = mkUConstr gTactic
+  let mkGTactic = build gtBuilder
+  let mkTactic = build tBuilder
 end
 
 module CoqPair = struct

@@ -121,7 +121,8 @@ module CoqSig : sig
 end
 
 module MCTactics : sig
-  val mkGTactic : Environ.env -> Evd.evar_map -> Evd.evar_map * Term.constr
+  val mkGTactic : Evd.evar_map -> Environ.env -> Evd.evar_map * constr
+  val mkTactic : Evd.evar_map -> Environ.env -> Evd.evar_map * constr
 end
 
 module CoqPair : sig

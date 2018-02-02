@@ -28,6 +28,7 @@ Definition MTele_of {A:Type} (T : A -> Prop) : M (A -> msigT MTele_Ty) :=
                 (* M.print_term t';; *)
                 M.ret t')).
 
+Require Import Mtac2.Tactics.
 
 Local Example test :=
 fun x => mexistT MTele_Ty (mTele (fun _ : nat => mBase)) (fun y : nat => x = y).

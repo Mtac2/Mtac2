@@ -10,7 +10,7 @@ Unset Strict Implicit.
 Module CT.
 
 Definition SimpleRewriteNoOccurrence : Exception. constructor. Qed.
-Definition simple_rewrite A {x y : A} (p : x = y) : tactic := fun g=>
+Definition simple_rewrite A {x y : A} (p : x = y) : tactic1 := fun g=>
   gT <- goal_type g;
   r <- abstract x gT;
   match r with
@@ -18,13 +18,13 @@ Definition simple_rewrite A {x y : A} (p : x = y) : tactic := fun g=>
     let reduced := dreduce (fu) (fu r y) in
     newG <- evar reduced;
     T.exact (eq_fu (r:=r) p newG) g;;
-    ret [m: (m: tt, Goal SType newG)]
+    T.ret tt (Goal SType newG)
   | mNone => M.raise SimpleRewriteNoOccurrence
   end.
 
 Import T.notations.
 Definition CVariablizeNoOccurrence : Exception. constructor. Qed.
-Definition cvariabilize_base {A} (t: A) name (cont: A -> tactic) : tactic :=
+Definition cvariabilize_base {A B gid} (t: A) name (cont: A -> tac gid B) : tac gid B :=
   gT <- T.goal_type;
   r <- abstract t gT;
   match r with
@@ -34,7 +34,7 @@ Definition cvariabilize_base {A} (t: A) name (cont: A -> tactic) : tactic :=
       T.change reduced;;
       cont x
     )
-  | mNone => M.raise CVariablizeNoOccurrence
+  | mNone => T.raise CVariablizeNoOccurrence
   end.
 
 Definition destruct {A : Type} (n : A) : tactic :=

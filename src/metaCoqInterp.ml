@@ -16,31 +16,14 @@ module MetaCoqRun = struct
     else
       (false, sigma)
 
-  let ifTactic env sigma ty c =
-    let (sigma, gtactic) = MCTactics.mkGTactic env sigma in
-    let unitType = Constrs.CoqUnit.mkType in
-    let gtactic = EConstr.mkApp(EConstr.of_constr gtactic, [|unitType|]) in
-    let open Evarsolve in
-    let res = Munify.unify_evar_conv Names.full_transparent_state env sigma Reduction.CONV gtactic ty in
-    match res with
-    | Success sigma -> (true, sigma)
-    | _ -> (false, sigma)
-
   (** Given a type concl and a term c, it checks that c has type:
       - [M concl]: then it returns [c]
       - [tactic]: then it returns [c (Goal concl evar)] *)
   let pretypeT env sigma concl evar c =
-    let ty = Retyping.get_type_of env sigma c in
-    let b, sigma = ifM env sigma concl ty c in
-    if b then
-      (false, sigma, c)
-    else
-      let b, sigma = ifTactic env sigma ty c in
-      if b then
-        let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
-        (true, sigma, EConstr.mkApp(c, [|goal|]))
-      else
-        CErrors.user_err (str "Not a Mtactic")
+    let (sigma, tactic) = MCTactics.mkTactic sigma env in
+    let (sigma, ty) = Typing.type_of env sigma (EConstr.mkCast (c, DEFAULTcast, tactic)) in
+    let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
+    (true, sigma, EConstr.mkApp(c, [|goal|]))
 
   let run env sigma concl evar c =
     let (istactic, sigma, t) = pretypeT env sigma concl evar c in
@@ -51,8 +34,8 @@ module MetaCoqRun = struct
         if not istactic then
           Refine.refine ~typecheck:false begin fun evd -> evd, v end
         else
-          let goals = Constrs.CoqList.from_coq sigma env v in
-          let goals = List.map (fun x -> snd (Constrs.CoqPair.from_coq (env, sigma) x)) goals in
+          let v, goals = Constrs.CoqPair.from_coq (env, sigma) v in
+          let goals = Constrs.CoqList.from_coq sigma env goals in
           let goals = List.map (Run.Goal.evar_of_goal sigma env) goals in
           let goals = List.filter Option.has_some goals in
           let goals = List.map Option.get goals in
@@ -77,12 +60,17 @@ module MetaCoqRun = struct
       let concl = concl gl in
       let sigma = sigma gl in
       let evar = evar_of_goal gl in
-      let (sigma, c) = Constrintern.interp_open_constr env sigma t in
+      (* let open Constrexpr in *)
+      (* let open Misctypes in *)
+      (* let open Libnames in *)
+      (* let cast = CCast (t, CastConv (CAst.make (CRef (Qualid (Loc.tag (qualid_of_string "Mtac2.Tactics.tactic")), None)))) in (CAst.make cast) *)
+      let (sigma, tactic) = MCTactics.mkTactic sigma env in
+      let (sigma, c) = Pretyping.understand_tcc env sigma ~expected_type:(OfType tactic) (Constrintern.intern_constr env t) in
       run env sigma concl (EConstr.of_constr evar) c
     end
 
 
-  let understand env sigma {Glob_term.closure=closure;term=term} =
+  let understand env sigma tactic {Glob_term.closure=closure;term=term} =
     let open Glob_ops in
     let open Glob_term in
     let open Pretyping in
@@ -92,7 +80,7 @@ module MetaCoqRun = struct
                  ltac_uconstrs = closure.untyped;
                  ltac_idents = closure.idents;
                } in
-    understand_ltac flags env sigma lvar WithoutTypeConstraint term
+    understand_ltac flags env sigma lvar (OfType tactic) term
 
   let run_tac_constr t =
     let open Proofview.Goal in
@@ -101,7 +89,8 @@ module MetaCoqRun = struct
       let concl = concl gl in
       let sigma = sigma gl in
       let evar = evar_of_goal gl in
-      let sigma, t = understand env sigma t in
+      let (sigma, tactic) = MCTactics.mkTactic sigma env in
+      let sigma, t = understand env sigma tactic t in
       run env sigma concl (EConstr.of_constr evar) t
     end
 

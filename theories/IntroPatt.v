@@ -70,7 +70,7 @@ Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
   | IntroAnon => T.introsn 1
   | IntroB binder =>
     var <- M.get_binder_name binder;
-    T.intro_simpl var
+    T.to_n (T.intro_simpl var)
   | IntroC [m:] => T.destructn 0
   | IntroC ips =>
     T.destructn 0 &> mmap_plist do_intro ips
@@ -86,7 +86,7 @@ Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
   end.
 Import ProdNotations.
 Definition do_intro :  LIP -> tactic :=
-  mfix2 do_intro (lip : LIP) (g : goal) : M (mlist (unit *m goal)) :=
+  mfix2 do_intro (lip : LIP) (g : goal) : M (TTs unit) :=
   (match lip return tactic with
   | lnil => T.idtac
   | lcons ip lnil => to_tactic ip do_intro

@@ -415,5 +415,4 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
           | AHyp _ _ => M.raise NotAGoal
           | HypRem _ _ => M.raise NotAGoal
           end);;
-          let goals' := dreduce (@mmap) (mmap (mpair tt) goals) in
-          M.ret goals'.
+          M.ret (m: tt, goals).
