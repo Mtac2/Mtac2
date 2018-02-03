@@ -70,7 +70,7 @@ Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
   | IntroAnon => T.introsn 1
   | IntroB binder =>
     var <- M.get_binder_name binder;
-    T.to_n (T.intro_simpl var)
+    T.t1_to_tn (T.intro_simpl var)
   | IntroC [m:] => T.destructn 0
   | IntroC ips =>
     T.destructn 0 &> mmap_plist do_intro ips

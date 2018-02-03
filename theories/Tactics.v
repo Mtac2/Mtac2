@@ -50,9 +50,12 @@ Bind Scope tactic_scope with gtactic.
 
 Module T.
 
-Coercion gto_n {A} (t: gtactic1 A) : gtactic A := fun g=>
+Coercion ag1_to_agn {A} (t: AG One A) : AG Many A := let '(m: x, g) := t in (m: x, [m: g]).
+Coercion g1_to_gn {A} (t: gtactic1 A) : gtactic A := fun g=>
   ''(m:x, g) <- t g; M.ret (m:x, [m:g]).
-Coercion to_n (t: tactic1) : tactic := gto_n t.
+Coercion t1_to_tn (t: tactic1) : tactic := g1_to_gn t.
+Coercion tac1_to_t1 (t: tac One unit) : tactic1 := t.
+Coercion tacn_to_tn (t: tac Many unit) : tactic := t.
 
 Definition ret {A gid} (x : A) : tac gid A :=
   match gid as f return tac f A with
@@ -63,8 +66,8 @@ Definition ret {A gid} (x : A) : tac gid A :=
 Definition with_goal {A} (f : goal -> M A) : gtactic1 A := fun g =>
   y <- f g; ret y g.
 
-Coercion gof_M {A} (x : M A) : gtactic1 A := with_goal (fun _ => x).
-Coercion tof_M {A} (x : M A) : tac One A := with_goal (fun _ => x).
+Coercion M_to_g1 {A} (x : M A) : gtactic1 A := with_goal (fun _ => x).
+Coercion M_to_tac1 {A} (x : M A) : tac One A := with_goal (fun _ => x).
 
 Definition mtry' {A} (t : gtactic A)
     (f : Exception -> gtactic A) : gtactic A := fun g =>
@@ -117,7 +120,7 @@ Definition mmatch' {A P} (E : Exception) (y : A)
 Definition idtac : tactic1 := ret tt.
 
 Definition try (t : tactic) : tactic := fun g=>
-  mtry t g with _ => to_n idtac g end.
+  mtry t g with _ => t1_to_tn idtac g end.
 
 Definition or {A} (t u : gtactic A) : gtactic A := fun g=>
   mtry t g with _ => u g end.
@@ -293,7 +296,7 @@ Definition exact {A} (x:A) : tactic := fun g =>
   | _ => M.raise NotAGoal
   end.
 
-Coercion of_M {A} (f: M A) : tactic := fun g=> f >>= (fun x=>exact x g).
+Coercion M_to_tn {A} (f: M A) : tactic := fun g=> f >>= (fun x=>exact x g).
 
 Definition eexact {A} (x:A) : tactic := fun g =>
   match g with
@@ -1203,13 +1206,13 @@ Definition symmetry_in {T} {x y: T} (H: x = y) : tactic :=
 Definition exfalso : tactic :=
   apply Coq.Init.Logic.False_ind.
 
-Coercion to_tac {A} (t: gtactic1 A) : tac Many A := gto_n t.
-Coercion to_tac1 {A} (t: tac One A) : tac Many A := gto_n t.
+Coercion g1_to_tac1 {A} (t: gtactic1 A) : tac One A := t.
+Coercion tac_1_to_tacn {A} (t: tac One A) : tac Many A := g1_to_gn t.
 
 Definition nconstructor (n : nat) : tactic :=
   A <- goal_type;
   match n with
-  | 0 => to_n (raise ConstructorsStartsFrom1)
+  | 0 => t1_to_tn (raise ConstructorsStartsFrom1)
   | S n =>
     l <- M.constrs A;
     match mnth_error (msnd l) n with
@@ -1223,7 +1226,7 @@ Definition split : tactic :=
   l <- M.constrs A;
   match msnd l with
   | [m:_] => nconstructor 1
-  | _ => to_n (raise Not1Constructor)
+  | _ => t1_to_tn (raise Not1Constructor)
   end.
 
 Definition left : tactic :=
@@ -1231,7 +1234,7 @@ Definition left : tactic :=
   l <- M.constrs A;
   match msnd l with
   | d :m: [m: _ ] => dcase d as x in apply x
-  | _ => to_n (raise Not2Constructor)
+  | _ => t1_to_tn (raise Not2Constructor)
   end.
 
 Definition right : tactic :=
@@ -1239,7 +1242,7 @@ Definition right : tactic :=
   l <- M.constrs A;
   match msnd l with
   | _ :m: [m: d] => dcase d as x in apply x
-  | _ => to_n (raise Not2Constructor)
+  | _ => t1_to_tn (raise Not2Constructor)
   end.
 
 Definition assumption : tactic :=
@@ -1264,10 +1267,22 @@ Definition first {B} : mlist (gtactic B) -> gtactic B :=
     | x :m: xs => x || go xs
     end.
 
+Print Coercions.
 End T.
-Coercion T.of_M : M >-> tactic.
-Coercion T.tof_M : M >-> tac.
-Coercion T.gof_M : M >-> gtactic1.
-Coercion T.gto_n : gtactic1 >-> gtactic.
-Coercion T.to_n : tactic1 >-> tactic.
-Coercion T.to_tac : gtactic1 >-> tac.
+
+Coercion T.tac_1_to_tacn : tac >-> tac.
+Coercion T.M_to_g1 : M >-> gtactic1.
+Coercion T.M_to_tn : M >-> tactic.
+Coercion T.g1_to_tac1 : gtactic1 >-> tac.
+Coercion T.tacn_to_tn : tac >-> tactic.
+Coercion T.t1_to_tn : tactic1 >-> tactic.
+Coercion T.tac1_to_t1 : tac >-> tactic1.
+Coercion T.g1_to_gn : gtactic1 >-> gtactic.
+Coercion T.M_to_tac1 : M >-> tac.
+Coercion T.ag1_to_agn : AG >-> AG.
+(* Coercion T.of_M : M >-> tactic. *)
+(* Coercion T.tof_M : M >-> tac. *)
+(* Coercion T.gof_M : M >-> gtactic1. *)
+(* Coercion T.gto_n : gtactic1 >-> gtactic. *)
+(* Coercion T.to_n : tactic1 >-> tactic. *)
+(* Coercion T.to_tac : gtactic1 >-> tac. *)
