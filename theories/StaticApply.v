@@ -82,8 +82,8 @@ Program Definition apply_type_of (P : Type) :
           s <- M.fresh_binder_name ft;
           M.nu s mNone (fun x_nu : X =>
           x <- M.evar X;
-          let F' := reduce RedOneStep (F x) in
-          let f' := reduce RedOneStep (ft x) in
+          let F' := reduce (RedOneStep [rl:RedBeta]) (F x) in
+          let f' := reduce (RedOneStep [rl:RedBeta]) (ft x) in
           r <- f F' f';
           mif M.is_evar x then
             o <- M.unify x_nu x UniEvarconv;

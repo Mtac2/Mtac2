@@ -121,7 +121,7 @@ Monomorphic Inductive RedFlags : Set :=
 Monomorphic Inductive Reduction : Set :=
 | RedNone
 | RedSimpl
-| RedOneStep
+| RedOneStep : redlist RedFlags -> Reduction
 | RedWhd : redlist RedFlags -> Reduction
 | RedStrong : redlist RedFlags -> Reduction
 | RedVmCompute.
@@ -153,7 +153,6 @@ Notation RedHNF := (RedWhd RedAll).
 Notation rsimpl := (reduce RedSimpl).
 Notation rhnf := (reduce RedHNF).
 Notation rcbv := (reduce RedNF).
-Notation rone_step := (reduce RedOneStep).
 Notation "'dreduce' ( l1 , .. , ln )" :=
   (reduce (RedStrong [rl:RedBeta; RedFix; RedMatch;
            RedDeltaOnly (rlcons (Dyn (@l1)) ( .. (rlcons (Dyn (@ln)) rlnil) ..))]))
@@ -750,7 +749,7 @@ Definition cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
   of <- unify_univ A B u;
   match of with
   | mSome f =>
-    let fx := reduce RedOneStep (f x) in
+    let fx := reduce (RedOneStep [rl:RedBeta]) (f x) in
     oeq <- unify fx y u;
     match oeq with mSome _ => ret true | mNone => ret false end
   | mNone => ret false
@@ -813,7 +812,7 @@ Definition fresh_binder_name {A:Type} (x : A) : t string :=
   fresh_name name).
 
 Definition unfold_projection {A} (y : A) : t A :=
-  let x := rone_step y in
+  let x := reduce (RedOneStep [rl:RedDelta]) y in
   let x := reduce (RedWhd [rl:RedBeta;RedMatch]) x in ret x.
 
 (** [coerce x] coreces element [x] of type [A] into

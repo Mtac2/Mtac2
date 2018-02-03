@@ -13,14 +13,14 @@ Definition mprojT2 {A} {P} : forall x : @msigT A P, P (mprojT1 x) := fun '(mexis
 Definition MTele_of {A:Type} (T : A -> Prop) : M (A -> msigT MTele_Ty) :=
   b <- (mtry M.fresh_binder_name T with | _ => M.fresh_name "x" end);
   M.nu b mNone (fun a =>
-  let T' := rone_step (T a) in
+  let T' := reduce (RedOneStep [rl:RedBeta]) (T a) in
   (mfix1 f (T : Prop) : M (msigT MTele_Ty) :=
     mmatch T return M (msigT MTele_Ty) with
     | [?X : Type] M X =u> M.ret (mexistT _ mBase X)
     | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =u>
       b <- M.fresh_binder_name T;
       M.nu b mNone (fun x =>
-                      let T' := rone_step (F x) in
+                      let T' := reduce (RedOneStep [rl:RedBeta]) (F x) in
                       ''(mexistT _ n T) <- f T';
                       n' <- M.abs_fun x n;
                       T' <- (M.coerce (B:=MTele_Ty (n' x)) T >>= M.abs_fun x);
@@ -113,7 +113,7 @@ Definition bluf := (fun x:(nat:Type) => forall y:(nat:Type), M (nat:Type)).
 Eval hnf in ltac:(mrun (MTele_of (bluf))).
 Local Example test1 :=
     let mt1 := ltac:(mrun (MTele_of bluf)) in
-    let _ := ltac:(mrun (let mt1 := rone_step mt1 in M.print_term mt1)) in
+    let _ := ltac:(mrun (let mt1 := reduce (RedOneStep [rl:RedDelta]) mt1 in M.print_term mt1)) in
     ltac:(mrun(tc_unify_mtac _ (fun _z : (nat:Type) => MTele_ty M (mprojT2 (mt1 _z))) ((fun x:(nat:Type) => forall y:(nat:Type), M (nat:Type))))).
 
 

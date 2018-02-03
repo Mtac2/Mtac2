@@ -34,8 +34,14 @@ Qed.
 
 Example reduce_one_step : unit.
 MProof.
-let x := reduce RedOneStep ((fun x y=>x) tt tt) in
+let x := reduce (RedOneStep [rl:RedBeta]) ((fun x y=>x) tt tt) in
 assert_eq x ((fun y=>tt) tt).
+Qed.
+
+Example reduce_one_wrong_step_does_nothing : unit.
+MProof.
+let x := reduce (RedOneStep [rl:RedDelta]) ((fun x y=>x) tt tt) in
+assert_eq x ((fun x y=>x) tt tt).
 Qed.
 
 Example reduce_whd : unit.
@@ -81,7 +87,7 @@ Qed.
 
 Example reduce_OneStepDyn : nat.
 MProof.
-let x := rone_step (elemr (Dynr p)) in
+let x := reduce (RedOneStep [rl:RedDelta]) (elemr (Dynr p)) in
 let x := reduce (RedWhd [rl:RedBeta;RedMatch]) x in M.ret x.
 Qed.
 

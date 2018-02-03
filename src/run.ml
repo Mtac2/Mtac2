@@ -259,16 +259,23 @@ module ReductionStrategy = struct
     else
       t
 
-  let one_step env sigma c =
+  let one_step flags env sigma c =
     let ts = get_ts env in
     let h, args = decompose_app sigma c in
     let h = whd_evar sigma h in
     let r =
       match kind sigma h with
-      | Lambda (_, _, trm) when args <> [] ->
+      | Lambda (_, _, trm) when args <> [] &&
+                                red_set flags fBETA->
           (Vars.subst1 (List.hd args) trm, List.tl args)
-      | LetIn (_, trm, _, body) -> (Vars.subst1 trm body, args)
-      | Var _ | Rel _ | Const _ -> (try_unfolding ts env sigma h, args)
+      | LetIn (_, trm, _, body) when red_set flags fZETA ->
+          (Vars.subst1 trm body, args)
+      | Var id when red_set flags (fVAR id) ->
+          (try_unfolding ts env sigma h, args)
+      | Rel _ when red_set flags fDELTA ->
+          (try_unfolding ts env sigma h, args)
+      | Const (c, u) when red_set flags (fCONST c) ->
+          (try_unfolding ts env sigma h, args)
       | _ -> h, args
     in applist r
 
@@ -327,7 +334,7 @@ module ReductionStrategy = struct
   let redfuns = [|
     (fun _ _ _ _ c -> c);
     (fun _ _ env sigma c -> Tacred.simpl env sigma (nf_evar sigma c));
-    (fun _ _ ->one_step);
+    (fun fs _ env sigma ->one_step (get_flags (env, sigma) fs.(0)) env sigma);
     (fun fs fixs env sigma c ->
        whdfun (get_flags (env, sigma) fs.(0)) env fixs sigma c);
     (fun fs _ env sigma->
@@ -337,6 +344,7 @@ module ReductionStrategy = struct
 
   let reduce sigma fixs env strategy c =
     try
+      (* note that [args] can be an empty array, or an array with one element: the flags *)
       let strategy, args = decompose_appvect sigma strategy in
       Some (redfuns.(get_constructor_pos sigma strategy) args fixs env sigma c)
     with RedList.NotAList _ ->
