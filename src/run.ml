@@ -443,9 +443,10 @@ let dest_Case (env, sigma) t =
   | _ ->
       Exceptions.block "Something not so specific went wrong."
 
-let make_Case (env, sigma) case =
+let make_Case (env, fixs, sigma) case =
   let (_, args) = decompose_appvect sigma case in
   let repr_ind = args.(0) in
+  let repr_ind = RE.whd_betadeltaiota env fixs sigma repr_ind in
   let repr_val = args.(1) in
   let repr_return = get_elem sigma args.(2) in
   let sigma, repr_branches = CoqList.from_coq_conv sigma env (fun sigma x -> sigma, get_elem sigma x) args.(3) in
@@ -1035,7 +1036,7 @@ let rec run' ctxt (vms : vm list) =
               let case = nth 0 in
               begin
                 try
-                  let (sigma', case) = make_Case (env, sigma) case in
+                  let (sigma', case) = make_Case (env, ctxt.fixpoints, sigma) case in
                   return sigma' case
                 with CoqList.NotAList l ->
                   fail (E.mkNotAList sigma env l)
