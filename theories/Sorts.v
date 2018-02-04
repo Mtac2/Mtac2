@@ -28,6 +28,13 @@ Arguments selem_of {!_} _ : simpl nomatch.
 Fail Local Example CannotMakeAnElementOfaSort s (P : stype_of s) (x : P) := x.
 Local Example WeCanWithElemOf s (P : stype_of s) (x : selem_of P) := x.
 
+Definition selem_lift {s : Sort} : @selem_of Sorts.SType (Sorts.stype_of s) -> Type :=
+  match s as s' return @selem_of Sorts.SType (Sorts.stype_of s') -> Type with
+  | SType => fun x => x
+  | SProp => fun y => y
+  end.
+
+
 Definition ForAll
             {sort : Sort} {A : Type} :
   (A -> stype_of sort) -> stype_of sort :=
@@ -56,6 +63,20 @@ Definition App {sort} {A : Type} : forall {F : A -> _},  selem_of (ForAll (sort 
   | SProp => fun F f a => f a
   | SType => fun F f a => f a
   end.
+
+Definition Impl_lift {sort} {A : Type} : forall {B : stype_of sort}, (A -> selem_of B) -> selem_of (Impl A B) :=
+  match sort with
+  | SProp => fun B f => f
+  | SType => fun B f => f
+  end.
+
+Definition lift_Impl {sort} {A : Type} : forall {B : stype_of sort}, selem_of (Impl A B) -> (A -> selem_of B) :=
+  match sort with
+  | SProp => fun B f => f
+  | SType => fun B f => f
+  end.
+
+
 End Sorts.
 
 Import Sorts.
