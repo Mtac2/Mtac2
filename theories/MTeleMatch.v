@@ -1,14 +1,9 @@
-From Mtac2 Require Import Base Logic Datatypes MTele MTeleMatchDef.
+From Mtac2 Require Import Base Specif Logic Datatypes MTele MTeleMatchDef.
 Import M.notations.
 
 Set Polymorphic Inductive Cumulativity.
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
-
-Inductive msigT {A : Type} (P : A -> Type) :=
-  mexistT (x : A) : P x -> msigT P.
-Definition mprojT1 {A} {P} : @msigT A P -> A := fun '(mexistT _ x _) => x.
-Definition mprojT2 {A} {P} : forall x : @msigT A P, P (mprojT1 x) := fun '(mexistT _ _ H) => H.
 
 Definition MTele_of {A:Type} (T : A -> Prop) : M (A -> msigT MTele_Ty) :=
   b <- (mtry M.fresh_binder_name T with | _ => M.fresh_name "x" end);
@@ -172,5 +167,5 @@ Notation "'mtmmatch' x 'as' y 'return' T p" :=
     let F : RET_TY _ := Ret_Ty (fun y => T) in
     let mt1 := M.eval (MTele_of (fun y => T)) in
     let mt : MTY_OF := MTt_Of (fun _z => MTele_ty M (n:=mprojT1 (mt1 _z)) (mprojT2 (mt1 _z))) in
-    mtmmatch' _ (fun y => mprojT1 (mt1 y)) (fun y => projT2 (mt1 y)) x p%with_mtpattern
+    mtmmatch' _ (fun y => mprojT1 (mt1 y)) (fun y => mprojT2 (mt1 y)) x p%with_mtpattern
   ) (at level 90, p at level 91).
