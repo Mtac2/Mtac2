@@ -582,7 +582,7 @@ Fixpoint mmatch' {A:Type} {P:A->Type} (E : Exception) (y : A) (ps : mlist (patte
   | [m:] => raise NoPatternMatches
   | p :m: ps' =>
     mtry' (open_pattern E p) (fun e =>
-      bind (unify e DoesNotMatch UniMatchNoRed) (fun b=>
+      bind (unify e E UniMatchNoRed) (fun b=>
       if b then mmatch' E y ps' else raise e))
   end.
 
