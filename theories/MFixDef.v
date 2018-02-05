@@ -2,6 +2,10 @@ From Mtac2 Require Import Base MTele.
 Import Sorts.Sorts.
 Import M.notations.
 
+Set Polymorphic Inductive Cumulativity.
+Set Universe Polymorphism.
+Unset Universe Minimization ToSet.
+
 Local Notation MFA T := (MTele_val (MTele_C SType SProp M T)).
 
 Fixpoint UNCURRY (m : MTele) : Type :=

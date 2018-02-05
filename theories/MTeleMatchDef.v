@@ -3,6 +3,11 @@ Import M.notations.
 Import Sorts.Sorts.
 Import ListNotations.
 
+Set Polymorphic Inductive Cumulativity.
+Set Universe Polymorphism.
+Unset Universe Minimization ToSet.
+
+
 Inductive mtpattern A (m : A -> Prop)  : Prop :=
 | mtpbase : forall x : A, m x -> Unification -> mtpattern A m
 | mtptele : forall {C}, (forall x : C, mtpattern A m) -> mtpattern A m.
