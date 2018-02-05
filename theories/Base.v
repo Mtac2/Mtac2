@@ -170,11 +170,19 @@ we could make it part of the B, but then higher order unification will fail. *)
 Inductive pattern (M : Type -> Prop) (A : Type) (B : A -> Type) (y : A) : Prop :=
   | pany : M (B y) -> pattern M A B y
   | pbase : forall x : A, (y =m= x ->M (B x)) -> Unification -> pattern M A B y
-  | ptele : forall {C:Type}, (forall x : C, pattern M A B y) -> pattern M A B y.
+  | ptele : forall {C:Type}, (forall x : C, pattern M A B y) -> pattern M A B y
+  | psort : (Sort -> pattern M A B y) -> pattern M A B y.
+
 
 Arguments pany {M A B y} _.
 Arguments pbase {M A B y} _ _ _.
 Arguments ptele {M A B y C} _.
+Arguments psort {M A B y} _.
+
+Notation "[¿ s .. t ] ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
+  (at level 202, s binder, t binder, ps at next level, only parsing) : pattern_scope.
+Notation "'[S?' s .. t ] ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
+  (at level 202, s binder, t binder, ps at next level) : pattern_scope.
 
 Notation "[? x .. y ] ps" := (ptele (fun x => .. (ptele (fun y => ps)).. ))
   (at level 202, x binder, y binder, ps at next level) : pattern_scope.
@@ -541,7 +549,7 @@ End monad_notations.
 
 Import monad_notations.
 
-Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
+Fixpoint open_pattern {A P y} (E : Exception) (p : pattern t A P y) : t (P y) :=
   match p with
   | pany b => b
   | pbase x f u =>
@@ -556,17 +564,29 @@ Fixpoint open_pattern {A P y} (p : pattern t A P y) : t (P y) :=
       let b := (* reduce (RedWhd [rl:RedBeta]) *) (f h) in b
     | mNone => raise DoesNotMatch
     end
-  | @ptele _ _ _ _ C f => e <- evar C; open_pattern (f e)
+  | @ptele _ _ _ _ C f => e <- evar C; open_pattern E (f e)
+  | psort f =>
+    mtry'
+      (open_pattern E (f SProp))
+      (fun e =>
+         oeq <- M.unify e E UniMatchNoRed;
+         match oeq with
+         | mSome _ => open_pattern E (f SType)
+         | mNone => raise e
+         end
+      )
   end.
 
-Fixpoint mmatch' {A:Type} {P:A->Type} (y : A) (ps : mlist (pattern t A P y)) : t (P y) :=
+Fixpoint mmatch' {A:Type} {P:A->Type} (E : Exception) (y : A) (ps : mlist (pattern t A P y)) : t (P y) :=
   match ps with
   | [m:] => raise NoPatternMatches
   | p :m: ps' =>
-    mtry' (open_pattern p) (fun e =>
+    mtry' (open_pattern E p) (fun e =>
       bind (unify e DoesNotMatch UniMatchNoRed) (fun b=>
-      if b then mmatch' y ps' else raise e))
+      if b then mmatch' E y ps' else raise e))
   end.
+
+Definition NotCaught : Exception. constructor. Qed.
 
 Module notations.
   Export monad_notations.
@@ -614,18 +634,18 @@ Module notations.
     "'[v  ' 'mfix5'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
 
   Notation "'mmatch' x ls" :=
-    (@mmatch' _ (fun _ => _) x ls%with_pattern)
+    (@mmatch' _ (fun _ => _) DoesNotMatch x ls%with_pattern)
     (at level 200, ls at level 91) : M_scope.
   Notation "'mmatch' x 'return' 'M' p ls" :=
-    (@mmatch' _ (fun _ => p%type) x ls%with_pattern)
+    (@mmatch' _ (fun _ => p%type) DoesNotMatch x ls%with_pattern)
     (at level 200, ls at level 91) : M_scope.
   Notation "'mmatch' x 'as' y 'return' 'M' p ls" :=
-    (@mmatch' _ (fun y => p%type) x ls%with_pattern)
+    (@mmatch' _ (fun y => p%type) DoesNotMatch x ls%with_pattern)
     (at level 200, ls at level 91) : M_scope.
 
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
-      (@mmatch' _ (fun _ => _) e
+      (@mmatch' _ (fun _ => _) NotCaught e
                    (mapp ls%with_pattern [m:([? x] x => raise x)%pattern]))))
       (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 

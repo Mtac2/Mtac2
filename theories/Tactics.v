@@ -86,11 +86,12 @@ Fixpoint pattern_map {A} {B : A -> Type} (g : goal) (y : A)
   | pany b => pany (b g)
   | pbase x f r => pbase x (fun Heq => f Heq g) r
   | ptele f => ptele (fun x => pattern_map g y (f x))
+  | psort f => psort (fun s => pattern_map g y (f s))
   end.
 
-Definition mmatch' {A P} (y : A)
+Definition mmatch' {A P} (E : Exception) (y : A)
     (ps : mlist (pattern gtactic A P y)) : gtactic (P y) := fun g =>
-  M.mmatch' y (mmap (pattern_map g y) ps).
+  M.mmatch' E y (mmap (pattern_map g y) ps).
 
 Definition ret {A} (x : A) : gtactic A := fun g => M.ret [m:(m: x,g)].
 Definition idtac : tactic := ret tt.
@@ -924,18 +925,18 @@ Module notations.
     "'[v  ' 'mfix4'  f  x  ..  y  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
 
   Notation "'mmatch' x ls" :=
-    (@mmatch' _ (fun _ => _) x ls%with_pattern)
+    (@mmatch' _ (fun _ => _) DoesNotMatch x ls%with_pattern)
     (at level 200, ls at level 91) : tactic_scope.
   Notation "'mmatch' x 'return' 'gtactic' p ls" :=
-    (@mmatch' _ (fun x => p%type) x ls%with_pattern)
+    (@mmatch' _ (fun x => p%type) DoesNotMatch x ls%with_pattern)
     (at level 200, ls at level 91) : tactic_scope.
   Notation "'mmatch' x 'as' y 'return' 'gtactic' p ls" :=
-    (@mmatch' _ (fun y => p%type) x ls%with_pattern)
+    (@mmatch' _ (fun y => p%type) DoesNotMatch x ls%with_pattern)
     (at level 200, ls at level 91) : tactic_scope.
 
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
-      (@mmatch' _ (fun _ => _) e
+      (@mmatch' _ (fun _ => _) M.NotCaught e
                    (mapp ls%with_pattern [m:([? x] x => raise x)%pattern]))))
       (at level 200, a at level 100, ls at level 91, only parsing) : tactic_scope.
 
