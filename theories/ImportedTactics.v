@@ -109,6 +109,7 @@ Definition ltac_destruct {A} (x:A) := T.ltac (qualify "ltac_destruct") [m:Dyn x]
     (the usual use of pattern), and another one which abstracts a term from
     another term. For the latter, we need to wrap the term in a type to make
     it work. *)
+(** NOTE that it won't work if there are evars inside *)
 Ltac pattern n := pattern n.
 
 Require Import Mtac2.Sorts.
@@ -116,9 +117,9 @@ Import Sorts. Import ProdNotations.
 Import M.notations.
 Definition abstract_from_sort {s:Sort} {A} (x:A) (B:s) : M (A -> s) :=
   t <- M.evar B;
-  ''(m: _, gs) <- T.ltac "Top.pattern" [m: Dyn x] (Goal s t);
+  gs <- T.ltac (qualify "pattern") [m: Dyn x] (Goal s t);
   mmatch gs with
-  | [? (f:A->s) t] [m: @Goal s (f x) t] => M.ret f
+  | [? (f:A->s) t] [m: (m: tt, @Goal s (f x) t)] => M.ret f
   end.
 Definition abstract_from_type := @abstract_from_sort SType.
 
@@ -127,9 +128,9 @@ Definition wrapper {A} (t: A) : Prop. exact False. Qed.
 (* FIXME: change mmatchs with decompose_app *)
 Definition abstract_from_term {A B} (x:A) (t : B) : M (A -> B) :=
   wt <- M.evar (wrapper t);
-  ''(m: _, gs) <- T.ltac "Top.pattern" [m: Dyn x] (Goal SProp wt);
+  gs <- T.ltac (qualify "pattern") [m: Dyn x] (Goal SProp wt);
   mmatch gs with
-  | [? (f:A->Prop) t] [m: @Goal SProp (f x) t] =>
+  | [? (f:A->Prop) t] [m: (m: tt, @Goal SProp (f x) t)] =>
     name <- M.fresh_binder_name f;
     M.nu name mNone (fun a:A=>
       let fa := reduce (RedOneStep [rl:RedBeta]) (f a) in
