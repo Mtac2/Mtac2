@@ -357,10 +357,12 @@ module MCTactics = struct
   open UConstrBuilder
 
   let gtBuilder = from_string "Mtac2.Tactics.gtactic"
-  let tBuilder = from_string "Mtac2.Tactics.tactic"
+  let tBuilder = from_string "Mtac2.Tactics.Tactic"
+  let to_tacticBuilder = from_string "Mtac2.Tactics.to_tactic"
 
   let mkGTactic = build gtBuilder
   let mkTactic = build tBuilder
+  let mkto_tactic sigma env ty t = build_app to_tacticBuilder sigma env [|ty; t|]
 end
 
 module CoqPair = struct

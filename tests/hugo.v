@@ -22,7 +22,7 @@ Fixpoint prove_leq n m : M (n < m) :=
 
 Definition to_fin_MP : T.selector := (fun l=>
   let n := mlength l in
-  M.mapi (fun i '(m: _, g) =>
+  M.mapi (fun i 'g =>
     H <- prove_leq i n;
     let v := rcbv (of_nat_lt H) in
     T.exact v g) l;;
@@ -31,7 +31,7 @@ Definition to_fin_MP : T.selector := (fun l=>
 Goal my_enum_type -> Fin.t 3.
 MProof.
   intro H.
-  T.destruct H &> to_fin_MP : gtactic unit. (* HACK: why do we need to specify the return type? *)
+  T.destruct H &> to_fin_MP.
 Qed.
 
 Goal my_enum_type.

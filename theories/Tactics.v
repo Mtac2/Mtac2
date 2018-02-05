@@ -50,12 +50,19 @@ Bind Scope tactic_scope with gtactic.
 
 Module T.
 
-Coercion ag1_to_agn {A} (t: AG One A) : AG Many A := let '(m: x, g) := t in (m: x, [m: g]).
-Coercion g1_to_gn {A} (t: gtactic1 A) : gtactic A := fun g=>
-  ''(m:x, g) <- t g; M.ret (m:x, [m:g]).
-Coercion t1_to_tn (t: tactic1) : tactic := g1_to_gn t.
-Coercion tac1_to_t1 (t: tac One unit) : tactic1 := t.
-Coercion tacn_to_tn (t: tac Many unit) : tactic := t.
+(* Structure Tac {gid A} := { tac_type : Type; to_tac :> tac_type -> tac gid A }. *)
+(* Arguments to_tac {gid A _} _.  *)
+(* Class GTactic {A} := { the_gtactic :> gtactic A }. *)
+(* Class Tactic1 := { the_tactic1 :> tactic1 }. *)
+(* Class Tac1 {A} := { the_tac1 :> tac One A }. *)
+(* Class GTactic1 {A} := { the_gtactic1 :> gtactic1 A }. *)
+
+(* Coercion ag1_to_agn {A} (t: AG One A) : AG Many A := let '(m: x, g) := t in (m: x, [m: g]). *)
+(* Coercion g1_to_gn {A} (t: gtactic1 A) : gtactic A := fun g=> *)
+(*   ''(m:x, g) <- t g; M.ret (m:x, [m:g]). *)
+(* Coercion t1_to_tn (t: tactic1) : tactic := g1_to_gn t. *)
+(* Coercion tac1_to_t1 (t: tac One unit) : tactic1 := t. *)
+(* Coercion tacn_to_tn (t: tac Many unit) : tactic := t. *)
 
 Definition ret {A gid} (x : A) : tac gid A :=
   match gid as f return tac f A with
@@ -66,8 +73,42 @@ Definition ret {A gid} (x : A) : tac gid A :=
 Definition with_goal {A} (f : goal -> M A) : gtactic1 A := fun g =>
   y <- f g; ret y g.
 
-Coercion M_to_g1 {A} (x : M A) : gtactic1 A := with_goal (fun _ => x).
-Coercion M_to_tac1 {A} (x : M A) : tac One A := with_goal (fun _ => x).
+Definition tac1_to_tacn {A} (t: tac One A) : tac Many A := fun g=>
+   ''(m:x, g) <- t g; M.ret (m:x, [m:g]).
+Definition tac_to_tacn {A gid}: tac gid A -> tac Many A :=
+  match gid with
+  | One => tac1_to_tacn
+  | Many => id
+  end.
+
+Coercion t1_to_tn (t: tactic1) : tactic := tac1_to_tacn t.
+Coercion M_to_g1 {A} (t: M A) : gtactic1 A := with_goal (fun _=> t).
+Coercion M_to_tac1 {A} (t: M A) : tac One A := with_goal (fun _=> t).
+(* Canonical Structure t1_tn : Tactic := *)
+(*   {| to_tactic := (tac1_to_tacn : tactic1 -> tactic) |}. *)
+(* Canonical Structure tac_tn {gid} : Tactic :=  *)
+(*   {| to_tactic := (tac_to_tacn : tac gid unit -> tactic) |}. *)
+(* Canonical Structure g1_tn : Tactic :=  *)
+(*   {| to_tactic := (tac1_to_tacn : gtactic1 unit -> tactic) |}. *)
+(* Canonical Structure gn_tn : Tactic :=  *)
+(*   {| to_tactic := (id : gtactic unit -> tactic) |}. *)
+
+(* Coercion t1_to_tn (t : tactic1) := to_tactic t. *)
+(* Coercion tac_to_tn {gid} (t : tac gid unit) := to_tactic t. *)
+Coercion g1_to_gn {A} (t : gtactic1 A) : gtactic A := tac1_to_tacn t.
+(* Coercion gn_to_tn (t : gtactic unit) := to_tactic t. *)
+
+(* Canonical Structure t1_tac := *)
+(*   {| to_tac := (id : tactic1 -> tac One unit) |}. *)
+(* Canonical Structure g1_tac {A} := *)
+(*   {| to_tac := (id : gtactic1 A -> tac One A) |}. *)
+(* Coercion t1_to_tac1 (t: tactic1) := to_tac t. *)
+(* Coercion g1_to_tac1 (t : gtactic1 unit) := to_tac t. *)
+
+(* Instance tac1_tacn {A} (t: tac One A) : Tac := {| the_tac := tac1_to_tacn t |}. *)
+(* Instance g1_gn {A} (t: gtactic1 A) : GTactic := {| the_gtactic := tac1_to_tacn t |}. *)
+(* Instance M_g1 {A} (x : M A) : GTactic1 := {| the_gtactic1 := with_goal (fun _ => x) |}. *)
+(* Instance M_tac1 {A} (x : M A) : Tac1 := {| the_tac1 := with_goal (fun _ => x) |}. *)
 
 Definition mtry' {A} (t : gtactic A)
     (f : Exception -> gtactic A) : gtactic A := fun g =>
@@ -103,11 +144,10 @@ Definition fix4 {A1} {A2 : A1 -> Type} {A3 : forall a1 : A1, A2 a1 -> Type}
       forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), gtactic (B x1 x2 x3 x4)) ->
     forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), gtactic (B x1 x2 x3 x4) :=
   @M.fix5 A1 A2 A3 A4 (fun _ _ _ _ => goal) (fun x y z z' _ => B x y z z' *m mlist goal).
-
-Program Fixpoint pattern_map {A} {B : A -> Type} (g : goal) (y : A)
+Fixpoint pattern_map {A} {B : A -> Type} (g : goal) (y : A)
     (p : pattern gtactic A B y) : pattern M A (fun y => TTs (B y)) y :=
   match p with
-  | pany b => pany (b g)
+  | pany b => @pany M A _ y (b g)
   | pbase x f r => pbase x (fun Heq => f Heq g) r
   | ptele f => ptele (fun x => pattern_map g y (f x))
   | psort f => psort (fun s => pattern_map g y (f s))
@@ -296,7 +336,11 @@ Definition exact {A} (x:A) : tactic := fun g =>
   | _ => M.raise NotAGoal
   end.
 
-Coercion M_to_tn {A} (f: M A) : tactic := fun g=> f >>= (fun x=>exact x g).
+(* Canonical Structure M_tn {A} := *)
+(*   {| to_tactic := (M_to_tn : M A -> tactic) |}. *)
+(* Canonical Structure M_tacn {A} := *)
+(*   {| to_tac := (M_to_tn : M A -> tac Many unit) |}. *)
+(* Coercion M_to_tacn {A} (f: M A) : tac Many unit := to_tac f. *)
 
 Definition eexact {A} (x:A) : tactic := fun g =>
   match g with
@@ -1060,7 +1104,7 @@ Module notations.
 
   (* We need a fresh evar to be able to use intro with ;; *)
   Notation "'intro' x" :=
-    (T <- M.evar Type; @intro_cont T _ (fun x=>idtac))
+    (T <- M.evar Type; @intro_cont T _ _ (fun x=>idtac))
     (at level 40) : tactic_scope.
   Notation "'intros' x .. y" :=
     (intro_cont (fun x=>.. (intro_cont (fun y=>idtac)) ..))
@@ -1206,8 +1250,8 @@ Definition symmetry_in {T} {x y: T} (H: x = y) : tactic :=
 Definition exfalso : tactic :=
   apply Coq.Init.Logic.False_ind.
 
-Coercion g1_to_tac1 {A} (t: gtactic1 A) : tac One A := t.
-Coercion tac_1_to_tacn {A} (t: tac One A) : tac Many A := g1_to_gn t.
+(* Coercion g1_to_tac1 {A} (t: gtactic1 A) : tac One A := t. *)
+(* Coercion tac_1_to_tacn {A} (t: tac One A) : tac Many A := g1_to_gn t. *)
 
 Definition nconstructor (n : nat) : tactic :=
   A <- goal_type;
@@ -1270,16 +1314,42 @@ Definition first {B} : mlist (gtactic B) -> gtactic B :=
 Print Coercions.
 End T.
 
-Coercion T.tac_1_to_tacn : tac >-> tac.
-Coercion T.M_to_g1 : M >-> gtactic1.
-Coercion T.M_to_tn : M >-> tactic.
-Coercion T.g1_to_tac1 : gtactic1 >-> tac.
-Coercion T.tacn_to_tn : tac >-> tactic.
+Structure Tactic := { t_type : Type; to_tactic :> t_type -> tactic }.
+Arguments to_tactic {_} _.
+
+Definition M_to_tactic {A} (f: M A) : tactic := fun g=> f >>= (fun x=>T.exact x g).
+Definition g1_to_tactic {A} (f: gtactic1 A) : tactic := fun g=>
+  f g >>= (fun '(m: x, g)=>T.exact x g;; M.ret (m: tt, [m:g])).
+Definition tac_to_tactic {gid A} (f: tac gid A) : tactic := fun g=>
+  mif M.unify A unit UniCoq then
+    T.tac_to_tacn f g >>= (fun '(m: x, gs)=> M.ret (m: tt, gs))
+  else
+    T.tac_to_tacn f g >>= (fun '(m: x, gs)=>T.exact x g;; M.ret (m: tt, gs)).
+
+Canonical Structure M_tn {A} :=
+  {| to_tactic := (M_to_tactic : M A -> tactic) |}.
+Canonical Structure g1_tn {A} :=
+  {| to_tactic := (g1_to_tactic : gtactic1 A -> tactic) |}.
+Canonical Structure t1_tn :=
+  {| to_tactic := (T.t1_to_tn : tactic1 -> tactic) |}.
+Canonical Structure tac_tn {f A} :=
+  {| to_tactic := (tac_to_tactic : tac f A -> tactic) |}.
+
 Coercion T.t1_to_tn : tactic1 >-> tactic.
-Coercion T.tac1_to_t1 : tac >-> tactic1.
-Coercion T.g1_to_gn : gtactic1 >-> gtactic.
+Coercion T.M_to_g1 : M >-> gtactic1.
 Coercion T.M_to_tac1 : M >-> tac.
-Coercion T.ag1_to_agn : AG >-> AG.
+Coercion T.g1_to_gn : gtactic1 >-> gtactic.
+
+(* Coercion T.tac_1_to_tacn : tac >-> tac. *)
+(* Coercion T.M_to_g1 : M >-> gtactic1. *)
+(* Coercion T.M_to_tn : M >-> tactic. *)
+(* Coercion T.g1_to_tac1 : gtactic1 >-> tac. *)
+(* Coercion T.tacn_to_tn : tac >-> tactic. *)
+(* Coercion T.t1_to_tn : tactic1 >-> tactic. *)
+(* Coercion T.tac1_to_t1 : tac >-> tactic1. *)
+(* Coercion T.g1_to_gn : gtactic1 >-> gtactic. *)
+(* Coercion T.M_to_tac1 : M >-> tac. *)
+(* Coercion T.ag1_to_agn : AG >-> AG. *)
 (* Coercion T.of_M : M >-> tactic. *)
 (* Coercion T.tof_M : M >-> tac. *)
 (* Coercion T.gof_M : M >-> gtactic1. *)

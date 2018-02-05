@@ -20,10 +20,12 @@ module MetaCoqRun = struct
       - [M concl]: then it returns [c]
       - [tactic]: then it returns [c (Goal concl evar)] *)
   let pretypeT env sigma concl evar c =
-    let (sigma, tactic) = MCTactics.mkTactic sigma env in
-    let (sigma, ty) = Typing.type_of env sigma (EConstr.mkCast (c, DEFAULTcast, tactic)) in
+    let (sigma, tactic_ty) = MCTactics.mkTactic sigma env in
+    let (sigma, cs_evar) = Evarutil.new_evar env sigma tactic_ty in
+    let (sigma, to_tactic) = MCTactics.mkto_tactic sigma env cs_evar c in
+    let (sigma, ty) = Typing.type_of env sigma to_tactic in
     let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
-    (true, sigma, EConstr.mkApp(c, [|goal|]))
+    (true, sigma, EConstr.mkApp(to_tactic, [|goal|]))
 
   let run env sigma concl evar c =
     let (istactic, sigma, t) = pretypeT env sigma concl evar c in
@@ -60,12 +62,8 @@ module MetaCoqRun = struct
       let concl = concl gl in
       let sigma = sigma gl in
       let evar = evar_of_goal gl in
-      (* let open Constrexpr in *)
-      (* let open Misctypes in *)
-      (* let open Libnames in *)
-      (* let cast = CCast (t, CastConv (CAst.make (CRef (Qualid (Loc.tag (qualid_of_string "Mtac2.Tactics.tactic")), None)))) in (CAst.make cast) *)
       let (sigma, tactic) = MCTactics.mkTactic sigma env in
-      let (sigma, c) = Pretyping.understand_tcc env sigma ~expected_type:(OfType tactic) (Constrintern.intern_constr env t) in
+      let (sigma, c) = Pretyping.understand_tcc env sigma (Constrintern.intern_constr env t) in
       run env sigma concl (EConstr.of_constr evar) c
     end
 
@@ -80,7 +78,7 @@ module MetaCoqRun = struct
                  ltac_uconstrs = closure.untyped;
                  ltac_idents = closure.idents;
                } in
-    understand_ltac flags env sigma lvar (OfType tactic) term
+    understand_ltac flags env sigma lvar WithoutTypeConstraint term
 
   let run_tac_constr t =
     let open Proofview.Goal in
