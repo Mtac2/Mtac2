@@ -170,3 +170,39 @@ Defined.
 in the second case *)
 Lemma are_not_equal : with_nored = with_redcons.
 Proof. Fail reflexivity. Abort.
+
+
+(* Test new `Sort` patterns *)
+
+From Mtac2 Require Import Sorts.
+Mtac Do ((fun (T : Type) =>
+            mmatch T with [¿ s] [? (T : s)] (T : Type) =u>
+              M.unify_or_fail UniMatchNoRed s Sorts.SProp;; M.ret I
+          end) (True -> True)).
+Mtac Do ((fun (T : Type) =>
+            mmatch T with [¿ s] [? (T : s)] (T : Type) =u>
+              M.unify_or_fail UniMatchNoRed s Sorts.SType;; M.ret I
+          end) (True -> nat)).
+
+
+(* Test new `Exception` parameter of `mmatch'` which is instantiated with an
+exception different from `DoesNotMatch` for our encoding of `mtry`. The test
+asserts that a `DoesNotMatch` exception can escape `mtry`. This is crucial for
+certain backtracking metaprograms and tactics. *)
+
+Mtac Do Set_Trace.
+Fail Mtac Do (
+       M.mtry'
+         (
+          mtry
+            M.raise DoesNotMatch
+          with
+          | DoesNotMatch =>
+            mtry
+              M.raise DoesNotMatch
+            with
+            | DoesNotMatch => M.raise DoesNotMatch
+            end
+          end)
+         (fun e => M.unify_or_fail UniMatchNoRed e DoesNotMatch;; M.ret tt)
+     ).
