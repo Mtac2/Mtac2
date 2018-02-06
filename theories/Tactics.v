@@ -280,7 +280,7 @@ Definition open_and_apply {A gid} (t : tac gid A) : tac gid A :=
       x <- M.fresh_binder_name f;
       M.nu x (mSome t) (fun x : C =>
         open (f x) >>= let_close_goals x)
-    | HypRem x f =>
+    | HypRem x f =>M.print_term x;;
       M.remove x (open f) >>= rem_hyp x
     end.
 
@@ -1317,7 +1317,16 @@ End T.
 Structure Tactic := { t_type : Type; to_tactic :> t_type -> tactic }.
 Arguments to_tactic {_} _.
 
-Definition M_to_tactic {A} (f: M A) : tactic := fun g=> f >>= (fun x=>T.exact x g).
+Definition DifferentTypes (A B:Type) : Exception. exact exception. Qed.
+Definition M_to_tactic {A} (f: M A) : tactic := fun g=>
+  match g with
+  | @Goal s T e =>
+    mif M.unify_univ T A UniCoq then
+      f >>= (fun x=>T.exact x g)
+    else
+      M.raise (DifferentTypes T A)
+  | _ => M.raise NotAGoal
+  end.
 Definition g1_to_tactic {A} (f: gtactic1 A) : tactic := fun g=>
   f g >>= (fun '(m: x, g)=>T.exact x g;; M.ret (m: tt, [m:g])).
 Definition tac_to_tactic {gid A} (f: tac gid A) : tactic := fun g=>

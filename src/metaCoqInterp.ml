@@ -23,9 +23,10 @@ module MetaCoqRun = struct
     let (sigma, tactic_ty) = MCTactics.mkTactic sigma env in
     let (sigma, cs_evar) = Evarutil.new_evar env sigma tactic_ty in
     let (sigma, to_tactic) = MCTactics.mkto_tactic sigma env cs_evar c in
-    let (sigma, ty) = Typing.type_of env sigma to_tactic in
     let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
-    (true, sigma, EConstr.mkApp(to_tactic, [|goal|]))
+    let to_t_goal = EConstr.mkApp(to_tactic, [|goal|]) in
+    let (sigma, _) = Typing.type_of env sigma to_t_goal in
+    (true, sigma, to_t_goal)
 
   let run env sigma concl evar c =
     let (istactic, sigma, t) = pretypeT env sigma concl evar c in
