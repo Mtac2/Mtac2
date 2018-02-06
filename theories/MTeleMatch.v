@@ -38,6 +38,11 @@ Local Example MTele_of_Test : nat -> msigT MTele_Ty :=
 Bind Scope mtpattern_prog_scope with mtpattern.
 Delimit Scope mtpattern_prog_scope with mtpattern_prog.
 
+Notation "[¿ s .. t ] ps" := (mtpsort (fun s => .. (mtpsort (fun t => ps)) ..))
+  (at level 202, s binder, t binder, ps at next level, only parsing) : mtpattern_prog_scope.
+Notation "'[S?' s .. t ] ps" := (mtpsort (fun s => .. (mtpsort (fun t => ps)) ..))
+  (at level 202, s binder, t binder, ps at next level) : mtpattern_prog_scope.
+
 Notation "[? x .. y ] ps" := (mtptele (fun x => .. (mtptele (fun y => ps)).. ))
   (at level 202, x binder, y binder, ps at next level) : mtpattern_prog_scope.
 
@@ -137,6 +142,11 @@ Arguments MTt_Of [_] _.
 Polymorphic Class RET_TY (A : Type) := Ret_Ty { ret_ty : A }.
 Arguments Ret_Ty [_] _.
 Arguments ret_ty [_ _].
+
+Notation "[¿ s .. t ] ps" := (mtpsort (m:=mty_of) (fun s => .. (mtpsort (m:=mty_of) (fun t => ps)) ..))
+  (at level 202, s binder, t binder, ps at next level, only parsing) : mtpattern_scope.
+Notation "'[S?' s .. t ] ps" := (mtpsort (m:=mty_of) (fun s => .. (mtpsort (m:=mty_of) (fun t => ps)) ..))
+  (at level 202, s binder, t binder, ps at next level) : mtpattern_scope.
 
 Notation "[? x .. y ] ps" := (mtptele (m:=mty_of) (fun x => .. (mtptele (m:=mty_of) (fun y => ps)).. ))
   (at level 202, x binder, y binder, ps at next level) : mtpattern_scope.

@@ -10,10 +10,14 @@ Unset Universe Minimization ToSet.
 
 Inductive mtpattern A (m : A -> Prop)  : Prop :=
 | mtpbase : forall x : A, m x -> Unification -> mtpattern A m
-| mtptele : forall {C}, (forall x : C, mtpattern A m) -> mtpattern A m.
+| mtptele : forall {C}, (forall x : C, mtpattern A m) -> mtpattern A m
+| mtpsort : (Sort -> mtpattern A m) -> mtpattern A m.
+
 
 Arguments mtpbase {A m} _ _.
 Arguments mtptele {A m C} _.
+Arguments mtpsort {A m} _.
+
 
 Local Notation MFA T := (MTele_val (MTele_C SType SProp M T)).
 
@@ -63,6 +67,16 @@ Polymorphic Definition mtmmatch' A m (T : forall x, MTele_Ty (m x)) (y : A)
                           (* M.print "dbg3";; *)
                           c <- M.evar _;
                           go (f c)
+                        | mtpsort f =>
+                          M.mtry'
+                            (go (f SProp))
+                            (fun e =>
+                              oeq <- M.unify e DoesNotMatch UniMatchNoRed;
+                              match oeq with
+                              | mSome _ => go (f SType)
+                              | mNone => M.raise e
+                              end
+                            )
                         end
                      ) in
             (* M.print_term p;; *)
