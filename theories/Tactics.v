@@ -242,11 +242,11 @@ Definition let_close_goals {A:Type} {B:Type} {f} (y : B) (t: AG f A) : M (AG f A
 Definition rem_hyp {A B f} (x : B): AG f A -> M (AG f A) :=
   match f as f return AG f A -> M (AG f A) with
   | One => fun t=>
-    let '(m: x, g) := t in
-    M.ret (m: x, HypRem x g)
+    let '(m: y, g) := t in
+    M.ret (m: y, HypRem x g)
   | Many => fun t=>
-    let '(m: x, l) := t in
-    let l := dreduce (@mmap) (mmap (fun g => HypRem x g) l) in M.ret (m: x, l)
+    let '(m: y, l) := t in
+    let l := dreduce (@mmap) (mmap (fun g => HypRem x g) l) in M.ret (m: y, l)
   end.
 
 (** Returns if a goal is open, i.e., a meta-variable. *)
@@ -280,7 +280,7 @@ Definition open_and_apply {A gid} (t : tac gid A) : tac gid A :=
       x <- M.fresh_binder_name f;
       M.nu x (mSome t) (fun x : C =>
         open (f x) >>= let_close_goals x)
-    | HypRem x f =>M.print_term x;;
+    | HypRem x f =>
       M.remove x (open f) >>= rem_hyp x
     end.
 

@@ -976,7 +976,6 @@ let rec run' ctxt (vms : vm list) =
 
           | _ when isremove h ->
               let x, t = nth 2, nf_evar sigma (nth 3) in
-              print_constr sigma env t;
               if isVar sigma x then
                 if check_dependencies env sigma x t then
                   let isnu = is_nu env sigma x ctxt.nus in
