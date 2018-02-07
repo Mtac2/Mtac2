@@ -385,11 +385,10 @@ end
 module CoqPTele = struct
   open UConstrBuilder
 
-  let pTeleBuilder = from_string "Mtac2.MTele.PTele"
   let pBaseBuilder = from_string "Mtac2.MTele.pBase"
   let pTeleBuilder = from_string "Mtac2.MTele.pTele"
 
-  let mkType env sigma tele = build_app pTeleBuilder sigma env [|tele|]
+  (* let mkType env sigma tele = build_app pTeleBuilder sigma env [|tele|] *)
   let mkPBase env sigma tele = build_app pBaseBuilder sigma env [|tele|]
   let mkPTele env sigma ty telefun tyval ptele = build_app pTeleBuilder sigma env [|ty; telefun; tyval; ptele|]
 

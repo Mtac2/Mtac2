@@ -804,15 +804,15 @@ type vm = Code of constr | Ret of constr | Fail of constr
         (* env and renv prior to remove, and if a nu was removed *)
         | Rem of (Environ.env * constr * bool)
 
-let vm_to_string env sigma = function
-  | Code c -> "Code " ^ constr_to_string sigma env c
-  | Bind c -> "Bind " ^ constr_to_string sigma env c
-  | Try (_, c) -> "Try " ^ constr_to_string sigma env c
-  | Ret c -> "Ret " ^ constr_to_string sigma env c
-  | Fail c -> "Fail " ^ constr_to_string sigma env c
-  | Nu _ -> "Nu"
-  | Fix -> "Fix"
-  | Rem _ -> "Rem"
+(* let vm_to_string env sigma = function *)
+(*   | Code c -> "Code " ^ constr_to_string sigma env c *)
+(*   | Bind c -> "Bind " ^ constr_to_string sigma env c *)
+(*   | Try (_, c) -> "Try " ^ constr_to_string sigma env c *)
+(*   | Ret c -> "Ret " ^ constr_to_string sigma env c *)
+(*   | Fail c -> "Fail " ^ constr_to_string sigma env c *)
+(*   | Nu _ -> "Nu" *)
+(*   | Fix -> "Fix" *)
+(*   | Rem _ -> "Rem" *)
 
 let check_evars_exception old_sigma new_sigma env c =
   try
