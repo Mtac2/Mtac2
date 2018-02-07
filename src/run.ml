@@ -1096,31 +1096,26 @@ let rec run' ctxt (vms : vm list) =
               end
 
           | _ when iscall_ltac h ->
+              let open Tacinterp in
+              let open Nametab in
+              let open Tacexpr in
+              let open Misctypes in
+              let open Loc in
+              let open Names in
               let sort, concl, name, args = nth 0, nth 1, nth 2, nth 3 in
               let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq sigma env args in
-              (* let name = Lib.make_kn (Names.Id.of_string name) in *)
-              (* let tac = Tacenv.interp_ml_tactic name in *)
-              let tac =
-                let rec aux = function
-                  | [] -> raise Not_found
-                  | (k, _)::_ when String.equal (Names.KerName.to_string k) name ->
-                      let args =
-                        let aux x =
-                          let x = CoqSig.from_coq (env, sigma) x in
-                          let x = Detyping.detype false [] env sigma x in
-                          Tacexpr.ConstrMayEval (Genredexpr.ConstrTerm (x (*Glob_term.GVar (Loc.ghost, Term.destVar x*), None))
-                        in
-                        List.map aux args
-                      in
-                      Tacexpr.TacArg (Loc.tag (Tacexpr.TacCall (Loc.tag (Misctypes.ArgArg (Loc.tag k), args))))
-                  | (k, _)::xs -> aux xs
-                in
-                aux (KNmap.bindings (Tacenv.ltac_entries ()))
-              in
+              let args = List.map (CoqSig.from_coq (env, sigma)) args in
+              let tac_name = locate_tactic (Libnames.qualid_of_string name) in
+              let arg_name = "lx_" in
+              let args = List.mapi (fun i a->(Id.of_string (arg_name ^ string_of_int i), Value.of_constr a)) args in
+              let args_var = List.map (fun (n, _) -> Reference (ArgVar (tag n))) args in
+              let to_call = TacArg (tag (TacCall (tag (ArgArg (tag tac_name), args_var)))) in
               begin
                 try
                   let undef = Evar.Map.domain (Evd.undefined_map sigma) in
-                  let (c, sigma) = Pfedit.refine_by_tactic env sigma concl (Tacinterp.eval_tactic tac) in
+                  let args_map = List.fold_left (fun m (k, v)-> Id.Map.add k v m) Id.Map.empty args in
+                  let ist = { (default_ist ()) with lfun = args_map } in
+                  let (c, sigma) = Pfedit.refine_by_tactic env sigma concl (Tacinterp.eval_tactic_ist ist to_call) in
                   let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
                   let new_undef = Evar.Set.elements new_undef in
                   let sigma, goal = Goal.mkgoal sigma env in
@@ -1132,7 +1127,7 @@ let rec run' ctxt (vms : vm list) =
                   let s = Option.default "" s in
                   fail (Exceptions.mkLtacError sigma env (s ^ ": " ^ expl))
                    | e ->
-                       fail (Exceptions.mkLtacError sigma env (Printexc.to_string e))
+                       fail (Exceptions.mkLtacError sigma env (Printexc.to_string  e))
               end
 
           | _ when islist_ltac h ->
