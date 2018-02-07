@@ -562,7 +562,7 @@ Fixpoint open_pattern {A P y} (E : Exception) (p : pattern t A P y) : t (P y) :=
       let 'meq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
       let b := (* reduce (RedWhd [rl:RedBeta]) *) (f h) in b
-    | mNone => raise DoesNotMatch
+    | mNone => raise E
     end
   | @ptele _ _ _ _ C f => e <- evar C; open_pattern E (f e)
   | psort f =>
