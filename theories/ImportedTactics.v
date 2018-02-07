@@ -114,34 +114,27 @@ Definition ssrpattern {A} (x:A) := T.ltac "Mssrpattern" [m: Dyn x].
     (the usual use of pattern), and another one which abstracts a term from
     another term. For the latter, we need to wrap the term in a type to make
     it work. *)
-(** NOTE that it won't work if there are evars inside *)
-Ltac Mpattern n := pattern n.
 
 Require Import Mtac2.Sorts.
 Import Sorts. Import ProdNotations.
 Import M.notations.
+Definition Backtrack {A} (f: A) : Exception. exact exception. Qed.
 Definition abstract_from_sort {s:Sort} {A} (x:A) (B:s) : M (A -> s) :=
-  t <- M.evar B;
-  gs <- T.ltac (qualify "Mpattern") [m: Dyn x] (Goal s t);
-  mmatch gs with
-  | [? (f:A->s) t] [m: (m: tt, @Goal s (f x) t)] => M.ret f
+  mtry
+    t <- M.evar B;
+    gs <- ssrpattern x (Goal s t);
+    mmatch gs with
+    | [? (f:A->s) t] [m: (m: tt, @Goal s (let z := x in f z) t)] =>
+      M.raise (Backtrack f)
+    end
+  with [? (f:A-> s)] Backtrack f => M.ret f
   end.
-Definition abstract_from_type := @abstract_from_sort SType.
+Definition abstract_from_type {A} := @abstract_from_sort SType A.
 
 Definition wrapper {A} (t: A) : Prop. exact False. Qed.
 
-(* FIXME: change mmatchs with decompose_app *)
 Definition abstract_from_term {A B} (x:A) (t : B) : M (A -> B) :=
-  wt <- M.evar (wrapper t);
-  gs <- T.ltac (qualify "Mpattern") [m: Dyn x] (Goal SProp wt);
-  mmatch gs with
-  | [? (f:A->Prop) t] [m: (m: tt, @Goal SProp (f x) t)] =>
-    name <- M.fresh_binder_name f;
-    M.nu name mNone (fun a:A=>
-      let fa := reduce (RedOneStep [rl:RedBeta]) (f a) in
-      mmatch fa return M (A -> B) with
-      | [? (body:B)] wrapper body =n>
-        M.abs_fun a body
-      end
-    )
+  f <- abstract_from_sort (s:=SProp) x (wrapper t);
+  mmatch f with
+  | [? g] (fun z:A=>wrapper (g z)) => M.ret g
   end.
