@@ -1,4 +1,6 @@
 From Mtac2 Require Import Base Tactics.
+Require Import ssrmatching.ssrmatching.
+
 Import M.notations.
 Import T.notations.
 
@@ -12,32 +14,32 @@ Unset Universe Minimization ToSet.
 
 Definition qualify s := String.append "Mtac2.ImportedTactics." s.
 
-Ltac trivial := trivial.
-Definition trivial : tactic := T.ltac (qualify "trivial") [m:].
+Ltac Mtrivial := trivial.
+Definition trivial : tactic := T.ltac (qualify "Mtrivial") [m:].
 
-Ltac discriminate := discriminate.
-Definition discriminate : tactic := T.ltac (qualify "discriminate") [m:].
+Ltac Mdiscriminate := discriminate.
+Definition discriminate : tactic := T.ltac (qualify "Mdiscriminate") [m:].
 
-Ltac intuition := intuition.
-Definition intuition : tactic := T.ltac (qualify "intuition") [m:].
+Ltac Mintuition := intuition.
+Definition intuition : tactic := T.ltac (qualify "Mintuition") [m:].
 
-Ltac auto := auto.
-Definition auto : tactic := T.ltac (qualify "auto") [m:].
+Ltac Mauto := auto.
+Definition auto : tactic := T.ltac (qualify "Mauto") [m:].
 
-Ltac eauto := eauto.
-Definition eauto : tactic := T.ltac (qualify "eauto") [m:].
+Ltac Meauto := eauto.
+Definition eauto : tactic := T.ltac (qualify "Meauto") [m:].
 
-Ltac subst := subst.
-Definition subst : tactic := T.ltac (qualify "subst") [m:].
+Ltac Msubst := subst.
+Definition subst : tactic := T.ltac (qualify "Msubst") [m:].
 
-Ltac contradiction := contradiction.
-Definition contradiction : tactic := T.ltac (qualify "contradiction") [m:].
+Ltac Mcontradiction := contradiction.
+Definition contradiction : tactic := T.ltac (qualify "Mcontradiction") [m:].
 
-Ltac tauto' := tauto.
-Definition tauto : tactic := T.ltac (qualify "tauto'") [m:].
+Ltac Mtauto := tauto.
+Definition tauto : tactic := T.ltac (qualify "Mtauto") [m:].
 
-Ltac unfold x := unfold x.
-Definition unfold {A} (x: A) := T.ltac (qualify "unfold") [m:Dyn x].
+Ltac Munfold x := unfold x.
+Definition unfold {A} (x: A) := T.ltac (qualify "Munfold") [m:Dyn x].
 
 Ltac rrewrite1 a := rewrite a.
 Ltac rrewrite2 a b := rewrite a, b.
@@ -80,44 +82,47 @@ Notation "'rewrite' x , .. , z" :=
   (trewrite RightRewrite (mcons (Dyn x) .. (mcons (Dyn z) [m:]) ..))
     (at level 0, x at next level, z at next level).
 
-Ltac elim h := elim h.
+Ltac Melim h := elim h.
 Definition elim {A} (x:A) : tactic :=
-  T.ltac (qualify "elim") [m: Dyn x].
+  T.ltac (qualify "Melim") [m: Dyn x].
 
-Ltac induction v := induction v.
+Ltac Minduction v := induction v.
 Definition induction {A} (x:A) : tactic :=
-  T.ltac (qualify "induction") [m: Dyn x].
+  T.ltac (qualify "Minduction") [m: Dyn x].
 
 Definition injection {A} (x: A) : tactic :=
   T.ltac ("Coq.Init.Notations.injection") [m:Dyn x].
 
-Ltac inversion H := inversion H.
+Ltac Minversion H := inversion H.
 Definition inversion {A} (x: A) : tactic :=
-  T.ltac (qualify "inversion") [m:Dyn x].
+  T.ltac (qualify "Minversion") [m:Dyn x].
 
-Ltac typeclasses_eauto := typeclasses eauto.
+Ltac Mtypeclasses_eauto := typeclasses eauto.
 Definition typeclasses_eauto : tactic :=
-  T.ltac (qualify "typeclasses_eauto") [m:].
+  T.ltac (qualify "Mtypeclasses_eauto") [m:].
 
-Ltac ltac_apply x := apply x.
-Definition ltac_apply {A} (x:A) := T.ltac (qualify "ltac_apply") [m:Dyn x].
+Ltac Mapply x := apply x.
+Definition ltac_apply {A} (x:A) := T.ltac (qualify "Mapply") [m:Dyn x].
 
-Ltac ltac_destruct x := destruct x.
-Definition ltac_destruct {A} (x:A) := T.ltac (qualify "ltac_destruct") [m:Dyn x].
+Ltac Mdestruct x := destruct x.
+Definition ltac_destruct {A} (x:A) := T.ltac (qualify "Mdestruct") [m:Dyn x].
+
+Ltac Mssrpattern p := ssrpattern p.
+Definition ssrpattern {A} (x:A) := T.ltac "Mssrpattern" [m: Dyn x].
 
 (** We wrap "pattern" in two functions: one that abstracts a term from a type
     (the usual use of pattern), and another one which abstracts a term from
     another term. For the latter, we need to wrap the term in a type to make
     it work. *)
 (** NOTE that it won't work if there are evars inside *)
-Ltac pattern n := pattern n.
+Ltac Mpattern n := pattern n.
 
 Require Import Mtac2.Sorts.
 Import Sorts. Import ProdNotations.
 Import M.notations.
 Definition abstract_from_sort {s:Sort} {A} (x:A) (B:s) : M (A -> s) :=
   t <- M.evar B;
-  gs <- T.ltac (qualify "pattern") [m: Dyn x] (Goal s t);
+  gs <- T.ltac (qualify "Mpattern") [m: Dyn x] (Goal s t);
   mmatch gs with
   | [? (f:A->s) t] [m: (m: tt, @Goal s (f x) t)] => M.ret f
   end.
@@ -128,7 +133,7 @@ Definition wrapper {A} (t: A) : Prop. exact False. Qed.
 (* FIXME: change mmatchs with decompose_app *)
 Definition abstract_from_term {A B} (x:A) (t : B) : M (A -> B) :=
   wt <- M.evar (wrapper t);
-  gs <- T.ltac (qualify "pattern") [m: Dyn x] (Goal SProp wt);
+  gs <- T.ltac (qualify "Mpattern") [m: Dyn x] (Goal SProp wt);
   mmatch gs with
   | [? (f:A->Prop) t] [m: (m: tt, @Goal SProp (f x) t)] =>
     name <- M.fresh_binder_name f;
