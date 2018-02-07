@@ -496,11 +496,8 @@ Definition ltac (t : string) (args : mlist dyn) : tactic := fun g =>
   | @Goal s ty el =>
     ''(m: v, l) <- @M.call_ltac s ty t args;
     M.unify_or_fail UniCoq v el;;
-    mif M.is_evar v then
-      M.ret [m:(m: tt, Goal s v)] (* it wasn't solved *)
-    else
-      let l' := dreduce (@mmap) (mmap (mpair tt) l) in
-      M.ret l'
+    let l' := dreduce (@mmap) (mmap (mpair tt) l) in
+    M.ret l'
   | _ => M.raise NotAGoal
   end.
 
