@@ -119,12 +119,18 @@ Definition abstract_from_sort (s:Sort) {A} (x:A) (B:s) : M (moption (A -> s)) :=
       M.raise (Backtrack y f) (* nasty HACK: we backtract so as not to get evars
       floating: we only care about the term! (which should be well typed in the
       right sigma) *)
+    | [? y (f:A->SProp) t] [m: @Goal SProp (let z := y in f z) t] =u>
+      (* sometimes it might cast down a Prop (that was previously casted to Type *)
+      match s as s' return M (moption (A -> s')) with
+      | SProp => M.print_term gs;; M.failwith "abstract_from_sort: mmatch"
+      | SType => M.raise (Backtrack (s:=SType) y (f:A->Prop))
+      end
     | _ => M.print_term gs;; M.failwith "abstract_from_sort: mmatch"
     end
   with [? (f:A-> s)] Backtrack x f => M.ret (mSome f)
   | ExceptionNotGround => M.failwith "abstract_from_sort: backtrack"
   | [?s] Failure s => M.raise (Failure s)
-  | _ => M.ret mNone
+  | [?s] LtacError s => M.ret mNone (* we suppose it's not matched *)
   end.
 Definition abstract_from_type {A} := @abstract_from_sort SType A.
 
