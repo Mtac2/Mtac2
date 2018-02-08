@@ -15,11 +15,17 @@ Import M.notations.
 (* abstract _from_sort and _from_term *)
 Goal True->True.
 MProof.
-  f <- abstract_from_sort (s:=Sorts.Sorts.SProp) 3 (3+3 = 6);
-  M.print_term f;;
+  opf <- T.abstract_from_sort Sorts.Sorts.SProp 3 (3+3 = 6);
+  match opf with
+  | mSome f=> M.print_term f
+  | mNone => M.failwith "abstract failed!"
+  end;;
   M.ret _.
 Unshelve.
-  f <- abstract_from_term 3 (_+3 = 6);
-  M.print_term f;;
+  opf <- T.abstract_from_term 3 (_+3 = 6);
+  match opf with
+  | mSome f=> M.print_term f
+  | mNone => M.failwith "abstract failed!"
+  end;;
   M.ret _.
 Abort.

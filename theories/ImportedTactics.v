@@ -109,32 +109,3 @@ Definition ltac_destruct {A} (x:A) := T.ltac (qualify "Mdestruct") [m:Dyn x].
 
 Ltac Mssrpattern p := ssrpattern p.
 Definition ssrpattern {A} (x:A) := T.ltac "Mssrpattern" [m: Dyn x].
-
-(** We wrap "pattern" in two functions: one that abstracts a term from a type
-    (the usual use of pattern), and another one which abstracts a term from
-    another term. For the latter, we need to wrap the term in a type to make
-    it work. *)
-
-Require Import Mtac2.Sorts.
-Import Sorts. Import ProdNotations.
-Import M.notations.
-Definition Backtrack {A} (f: A) : Exception. exact exception. Qed.
-Definition abstract_from_sort {s:Sort} {A} (x:A) (B:s) : M (A -> s) :=
-  mtry
-    t <- M.evar B;
-    gs <- ssrpattern x (Goal s t);
-    mmatch gs with
-    | [? (f:A->s) t] [m: (m: tt, @Goal s (let z := x in f z) t)] =>
-      M.raise (Backtrack f)
-    end
-  with [? (f:A-> s)] Backtrack f => M.ret f
-  end.
-Definition abstract_from_type {A} := @abstract_from_sort SType A.
-
-Definition wrapper {A} (t: A) : Prop. exact False. Qed.
-
-Definition abstract_from_term {A B} (x:A) (t : B) : M (A -> B) :=
-  f <- abstract_from_sort (s:=SProp) x (wrapper t);
-  mmatch f with
-  | [? g] (fun z:A=>wrapper (g z)) => M.ret g
-  end.

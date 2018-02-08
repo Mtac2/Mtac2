@@ -1,4 +1,5 @@
 Require Import Strings.String.
+Require Import ssrmatching.ssrmatching.
 From Mtac2 Require Export Base.
 From Mtac2 Require Import Logic Datatypes List Utils Logic Abstract Sorts.
 Import Sorts.
@@ -101,6 +102,41 @@ Definition try (t : tactic) : tactic := fun g=>
 
 Definition or {A} (t u : gtactic A) : gtactic A := fun g=>
   mtry t g with _ => u g end.
+
+
+(** We wrap "pattern" in two functions: one that abstracts a term from a type
+    (the usual use of pattern), and another one which abstracts a term from
+    another term. For the latter, we need to wrap the term in a type to make
+    it work. *)
+Ltac Mssrpattern p := ssrpattern p.
+
+Definition Backtrack {s:Sort} {A} (x:A) (f: A->s) : Exception. exact exception. Qed.
+Definition abstract_from_sort (s:Sort) {A} (x:A) (B:s) : M (moption (A -> s)) :=
+  mtry
+    ''(m: _, gs) <- M.call_ltac s (A:=B) "Mssrpattern" [m:Dyn x];
+    mmatch gs with
+    | [? y (f:A->s) t] [m: @Goal s (let z := y in f z) t] =u>
+      M.raise (Backtrack y f) (* nasty HACK: we backtract so as not to get evars
+      floating: we only care about the term! (which should be well typed in the
+      right sigma) *)
+    | _ => M.print_term gs;; M.failwith "abstract_from_sort: mmatch"
+    end
+  with [? (f:A-> s)] Backtrack x f => M.ret (mSome f)
+  | ExceptionNotGround => M.failwith "abstract_from_sort: backtrack"
+  | [?s] Failure s => M.raise (Failure s)
+  | _ => M.ret mNone
+  end.
+Definition abstract_from_type {A} := @abstract_from_sort SType A.
+
+Definition wrapper {A} (t: A) : Prop. exact False. Qed.
+
+Definition abstract_from_term {A} {B} (x:A) (t : B) : M (moption (A -> B)) :=
+  f <- abstract_from_sort SProp x (wrapper t);
+  mmatch f with
+  | [? g] mSome (fun z:A=>wrapper (g z)) => M.ret (mSome g)
+  | mNone => M.ret mNone
+  | [? t] mSome t => M.print_term t;; M.failwith "abstract_from_term"
+  end.
 
 Definition get_binder_name {A} (x : A) : gtactic string := fun g =>
   s <- M.get_binder_name x; M.ret [m:(m: s,g)].
@@ -435,19 +471,18 @@ Inductive goal_pattern (B : Type) : Prop :=
   | gtele : forall {C}, (C -> goal_pattern B) -> goal_pattern B
   | gtele_evar : forall {C}, (C -> goal_pattern B) -> goal_pattern B.
 Arguments gbase {B A} _ _.
-Arguments gbase_context {B A} _ _.
+Arguments gbase_context {B} {A} _ _.
 Arguments gtele {B C} _.
 Arguments gtele_evar {B C} _.
 
 Unset Printing All.
 Unset Printing Universes.
-Definition match_goal_context
-    {C A B} (x: A) (y: B) (cont: (A -> B) -> gtactic C) : gtactic C := fun g=>
-  r <- abstract x y;
+Definition match_goal_context (s2:Sort)
+    {C}{A} (x: A) (y: s2) (cont: (A -> s2) -> gtactic C) : gtactic C := fun g=>
+  r <- abstract_from_sort s2 x y;
   match r with
   | mSome r =>
-    let reduced := dreduce (fu) (fu r) in
-    cont reduced g
+    cont r g
   | mNone => M.raise DoesNotMatchGoal
   end.
 
@@ -460,8 +495,11 @@ Fixpoint match_goal_pattern' {B}
     mif M.cumul u P gT then t g
     else M.raise DoesNotMatchGoal
   | gbase_context x t, _ =>
-    gT <- M.goal_type g;
-    match_goal_context x gT t g
+    match g with
+    | @Goal s gT _ =>
+      match_goal_context s x gT t g
+    | _ => M.raise NotAGoal
+    end
   | @gtele _ C f, @ahyp A a d :m: l2' =>
     oeqCA <- M.unify C A u;
     match oeqCA with

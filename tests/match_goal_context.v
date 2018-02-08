@@ -12,7 +12,7 @@ Goal forall x, x = 0.
 MProof.
   intros x.
   match_goal with
-  | [[? y |- context C [y = 0 : Type] ]] => T.change (C (y = 0 + 0))
+  | [[? y |- context C [y = 0] ]] => T.change (C (y = 0 + 0))
   end.
 Abort.
 

@@ -1,4 +1,4 @@
-From Mtac2 Require Import Base Datatypes List MTele MTeleMatch MTeleMatchDef MFixDef Sorts.
+From Mtac2 Require Import Base Datatypes List MTele MTeleMatch MTeleMatchDef MFixDef Sorts Tactics.
 Require Import Strings.String.
 Import Sorts.
 Import M.notations.
@@ -130,8 +130,6 @@ Definition do_def n {A:Prop} (a:A) :=
 
 
 Module TT.
-
-Require Import Tactics.
 
 (** We use a synonim to prod to emulate typed goals. The idea
     is that at the left we have the hypotheses, and at the right
