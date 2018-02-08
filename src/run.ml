@@ -1119,8 +1119,9 @@ let rec run' ctxt (vms : vm list) =
                   let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
                   let new_undef = Evar.Set.elements new_undef in
                   let sigma, goal = Goal.mkgoal sigma env in
+                  let sigma, listg = CoqList.mkType sigma env goal in
                   let sigma, goals = CoqList.pto_coq env goal (fun e sigma->Goal.goal_of_evar env sigma e) new_undef sigma in
-                  let sigma, pair = CoqPair.mkPair sigma env concl goal (of_constr c) goals in
+                  let sigma, pair = CoqPair.mkPair sigma env concl listg (of_constr c) goals in
                   return sigma pair
                 with CErrors.UserError(s,ppm) ->
                   let expl = string_of_ppcmds ppm in
