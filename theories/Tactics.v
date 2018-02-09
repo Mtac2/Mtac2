@@ -502,8 +502,12 @@ Fixpoint match_goal_pattern' {B}
     else M.raise DoesNotMatchGoal
   | gbase_context x t, _ =>
     match g with
-    | @Goal s gT _ =>
-      match_goal_context s x gT t g
+    | @Goal SProp gT _ =>
+      (fun (A : Prop) =>
+      match_goal_context SProp x A t g) gT
+    | @Goal SType gT _ =>
+      (fun (A : Type) =>
+      match_goal_context SType x A t g) gT
     | _ => M.raise NotAGoal
     end
   | @gtele _ C f, @ahyp A a d :m: l2' =>
