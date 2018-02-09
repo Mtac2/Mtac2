@@ -1,7 +1,7 @@
-From Mtac2 Require Import Base DecomposeApp.
-
+From Mtac2 Require Import Base DecomposeApp Tactics.
+Unset Universe Minimization ToSet.
 Mtac Do Check ltac:(mrun (MTele_of (nat) _ (@plus))).
-
+Set Printing Universes.
 Definition pairs := <[decapp (3 + 5) @plus ]> (fun x y => M.ret (x,y)).
 Definition pairs_eq : M.eval pairs = (3, 5) := eq_refl.
 

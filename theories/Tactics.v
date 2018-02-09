@@ -1300,7 +1300,7 @@ Definition first {B} : mlist (gtactic B) -> gtactic B :=
 Print Coercions.
 End T.
 
-Class Tactic (t_type : Type) := { to_tactic :> t_type -> tactic }.
+Class Tactic (from_type : Prop) : Prop := { to_tactic : from_type -> tactic }.
 Arguments to_tactic {_ _} _.
 
 Definition DifferentTypes (A B:Type) : Exception. exact exception. Qed.
@@ -1329,6 +1329,8 @@ Instance t1_tn : Tactic tactic1 :=
   {| to_tactic := (T.t1_to_tn : tactic1 -> tactic) |}.
 Instance tac_tn {f A} : Tactic (tac f A) :=
   {| to_tactic := (tac_to_tactic : tac f A -> tactic) |}.
+Instance tn_tn : Tactic tactic :=
+  {| to_tactic := (id : tactic -> tactic) |}.
 
 Coercion T.t1_to_tn : tactic1 >-> tactic.
 Coercion T.M_to_g1 : M >-> gtactic1.

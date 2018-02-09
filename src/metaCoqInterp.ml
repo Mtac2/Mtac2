@@ -20,10 +20,10 @@ module MetaCoqRun = struct
       - [M concl]: then it returns [c]
       - [tactic]: then it returns [c (Goal concl evar)] *)
   let pretypeT env sigma concl evar c =
-    let (sigma, (tty, _)) = Evarutil.new_type_evar env sigma Evd.univ_flexible in
-    let (sigma, tactic_ty) = MCTactics.mkTactic sigma env tty in
+    let (sigma, tfrom) = Evarutil.new_evar env sigma EConstr.mkProp in
+    let (sigma, tactic_ty) = MCTactics.mkTactic sigma env tfrom in
     let (sigma, cs_evar) = Evarutil.new_evar env sigma tactic_ty in
-    let (sigma, to_tactic) = MCTactics.mkto_tactic sigma env tty cs_evar c in
+    let (sigma, to_tactic) = MCTactics.mkto_tactic sigma env tfrom cs_evar c in
     let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
     let to_t_goal = EConstr.mkApp(to_tactic, [|goal|]) in
     let (sigma, _) = Typing.type_of env sigma to_t_goal in

@@ -1,4 +1,4 @@
-From Mtac2 Require Import Base Datatypes.
+From Mtac2 Require Import Base Datatypes Tactics.
 Import M.
 Import M.notations.
 

@@ -1,5 +1,7 @@
 From Mtac2 Require Import Mtac2.
 Import M.notations.
+Unset Universe Minimization ToSet.
+
 Definition test := c <- M.declare dok_Definition "bla" false 1; M.print_term c.
 Goal unit.
   MProof.
@@ -9,7 +11,7 @@ Qed.
 Goal unit.
 MProof. test. Qed.
 
-Typeclasses eauto := debug.
+(* Typeclasses eauto := debug. *)
 Structure ST := mkS { s : nat }.
 
 Require Mtac2.List.
@@ -68,7 +70,8 @@ Search "NAT". (* Now there are no definitions like "NATS (S O)" *)
 Fail Compute ltac:(mrun (M.get_reference "NATS O")).
 
 Definition ev := c <- M.declare dok_Definition "_" true (S O); M.print_term c.
-Fail Compute (M.eval ev). (* FIX why? *)
+Mtac Do Unset_Trace.
+Compute (M.eval ev).
 
 Unset Printing All.
 

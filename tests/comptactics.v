@@ -22,6 +22,7 @@ Require Import Strings.String.
 Example exabs2' (x : nat) : S x = 1 -> 1 = S x.
 MProof.
 intro H.
+Set Use Unicoq. (* FIXME why? *)
 variabilize (S x) as t.
 assert (B:t = S x).
 reflexivity.
