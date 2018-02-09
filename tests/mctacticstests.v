@@ -35,7 +35,7 @@ Qed.
 
 Goal forall b1 : bool, b1 = b1.
 MProof.
-  intro b1 &> [m:reflexivity]%list.
+  intro b1 &> reflexivity.
 Qed.
 
 Goal forall b1 b2 b3 : bool, b1 && b2 && b3 = b3 && b2 && b1.

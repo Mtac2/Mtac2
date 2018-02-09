@@ -1,4 +1,4 @@
-From Mtac2 Require Import Base MTele.
+From Mtac2 Require Import Base MTele Tactics.
 Import TeleNotation.
 Definition test_tele : MTele := [tele (x y : nat)].
 

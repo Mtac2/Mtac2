@@ -84,31 +84,8 @@ Definition tac_to_tacn {A gid}: tac gid A -> tac Many A :=
 Coercion t1_to_tn (t: tactic1) : tactic := tac1_to_tacn t.
 Coercion M_to_g1 {A} (t: M A) : gtactic1 A := with_goal (fun _=> t).
 Coercion M_to_tac1 {A} (t: M A) : tac One A := with_goal (fun _=> t).
-(* Canonical Structure t1_tn : Tactic := *)
-(*   {| to_tactic := (tac1_to_tacn : tactic1 -> tactic) |}. *)
-(* Canonical Structure tac_tn {gid} : Tactic :=  *)
-(*   {| to_tactic := (tac_to_tacn : tac gid unit -> tactic) |}. *)
-(* Canonical Structure g1_tn : Tactic :=  *)
-(*   {| to_tactic := (tac1_to_tacn : gtactic1 unit -> tactic) |}. *)
-(* Canonical Structure gn_tn : Tactic :=  *)
-(*   {| to_tactic := (id : gtactic unit -> tactic) |}. *)
-
-(* Coercion t1_to_tn (t : tactic1) := to_tactic t. *)
-(* Coercion tac_to_tn {gid} (t : tac gid unit) := to_tactic t. *)
 Coercion g1_to_gn {A} (t : gtactic1 A) : gtactic A := tac1_to_tacn t.
-(* Coercion gn_to_tn (t : gtactic unit) := to_tactic t. *)
-
-(* Canonical Structure t1_tac := *)
-(*   {| to_tac := (id : tactic1 -> tac One unit) |}. *)
-(* Canonical Structure g1_tac {A} := *)
-(*   {| to_tac := (id : gtactic1 A -> tac One A) |}. *)
-(* Coercion t1_to_tac1 (t: tactic1) := to_tac t. *)
-(* Coercion g1_to_tac1 (t : gtactic1 unit) := to_tac t. *)
-
-(* Instance tac1_tacn {A} (t: tac One A) : Tac := {| the_tac := tac1_to_tacn t |}. *)
-(* Instance g1_gn {A} (t: gtactic1 A) : GTactic := {| the_gtactic := tac1_to_tacn t |}. *)
-(* Instance M_g1 {A} (x : M A) : GTactic1 := {| the_gtactic1 := with_goal (fun _ => x) |}. *)
-(* Instance M_tac1 {A} (x : M A) : Tac1 := {| the_tac1 := with_goal (fun _ => x) |}. *)
+Coercion t1_to_gn (t: tactic1) : gtactic unit := T.t1_to_tn t.
 
 Definition mtry' {A} (t : gtactic A)
     (f : Exception -> gtactic A) : gtactic A := fun g =>
@@ -315,8 +292,10 @@ Instance seq_tac1_gtac {B} : Seq tactic1 (gtactic B) := fun t1 t2 => bind1 t1 (f
 Instance seq_tac1_gtac1 {B} : Seq tactic1 (gtactic1 B) := fun t1 t2 => bind1 t1 (fun _=>t2).
 Instance seq_tac_tac1 : Seq tactic tactic1 := fun t1 t2 => bindN t1 t2.
 Instance seq_tac1_tac {gid B} : Seq tactic1 (tac gid B) := fun t1 t2 => bind1 t1 (fun _=>t2).
+Instance seq_M_tac1 : Seq (M unit) tactic1 := fun t1 t2 => bindN (t1_to_tn (M_to_g1 t1)) t2.
+Instance seq_M_tac : Seq (M unit) tactic := fun t1 t2 => bindN (t1_to_tn (M_to_g1 t1)) t2.
 
-Fixpoint gmap (tacs : mlist tactic) (gs : mlist goal) : M (mlist (TTs unit)) :=
+Fixpoint gmap {gid} (tacs : mlist (tac gid unit)) (gs : mlist goal) : M (mlist (AG gid unit)) :=
   match tacs, gs with
   | [m:], [m:] => M.ret [m:]
   | tac :m: tacs', g :m: gs' => mcons <$> open_and_apply tac g <*> gmap tacs' gs'
@@ -327,6 +306,13 @@ Instance seq_list : @Seq tactic (mlist tactic) _ Many := fun t f g =>
   gs <- (fun '(m:_, gs) => filter_goals gs) =<< t g;
   ls <- gmap f gs;
   let res := dreduce (@mconcat, @mapp, @mmap, @msnd) (mconcat (mmap msnd ls)) in
+  res <- filter_goals res;
+  M.ret (m: tt, res).
+
+Instance seq_list1 : @Seq tactic (mlist tactic1) _ Many := fun t f g =>
+  gs <- (fun '(m:_, gs) => filter_goals gs) =<< t g;
+  ls <- gmap f gs;
+  let res := dreduce (@mmap, @msnd) (mmap msnd ls) in
   res <- filter_goals res;
   M.ret (m: tt, res).
 
@@ -1127,7 +1113,7 @@ Module notations.
     (cassert (fun x:T=>idtac)) (at level 40, x at next level) : tactic_scope.
 
   Notation "t 'asp' n" :=
-    (seq_list t (name_pattern n%list)) (at level 40) : tactic_scope.
+    (seq_list1 t (name_pattern n%list)) (at level 40) : tactic_scope.
 
   Notation "[[ |- ps ] ] => t" :=
     (gbase ps t)
@@ -1348,7 +1334,7 @@ Coercion T.t1_to_tn : tactic1 >-> tactic.
 Coercion T.M_to_g1 : M >-> gtactic1.
 Coercion T.M_to_tac1 : M >-> tac.
 Coercion T.g1_to_gn : gtactic1 >-> gtactic.
-
+Coercion T.t1_to_gn : tactic1 >-> gtactic.
 (* Coercion T.tac_1_to_tacn : tac >-> tac. *)
 (* Coercion T.M_to_g1 : M >-> gtactic1. *)
 (* Coercion T.M_to_tn : M >-> tactic. *)
