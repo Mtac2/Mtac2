@@ -136,6 +136,7 @@ module GenericList (LP : ListParams) = struct
       if the list is ill-formed, an exception NotAList is raised. *)
   let from_coq_conv sigma env (fconv : Evd.evar_map -> constr -> Evd.evar_map * 'a) cterm =
     let rec fcc sigma cterm =
+      let cterm = Reductionops.whd_all env sigma cterm in
       match from_coq consBuilder (env, sigma) cterm with
       | None ->
           begin match from_coq nilBuilder (env, sigma) cterm with

@@ -1104,7 +1104,7 @@ Module notations.
 
   (* We need a fresh evar to be able to use intro with ;; *)
   Notation "'intro' x" :=
-    (T <- M.evar Type; @intro_cont T _ _ (fun x=>idtac))
+    ((T <- M.evar Type; @intro_cont T _ _ (fun x=>idtac)):tactic1)
     (at level 40) : tactic_scope.
   Notation "'intros' x .. y" :=
     (intro_cont (fun x=>.. (intro_cont (fun y=>idtac)) ..))
