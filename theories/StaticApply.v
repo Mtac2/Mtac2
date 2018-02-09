@@ -73,7 +73,7 @@ Set Printing Universes.
 Set Use Unicoq.
 Program Definition apply_type_of (P : Type) :
   forall {T} (t : T),
-                      M (sigT (funs_of (M P))) :=
+                      M (sigT (funs_of (M P))) := ltac:(mrun (M.ret (
   mfix f (T : _) : T -> M (sigT (funs_of (M P))) :=
      mtmmatch_prog T as T' return T' -> M (sigT (funs_of (M P))) with
      | (M P : Type) =c> fun t => M.ret (existT (funs_of (M P)) [m:] t)
@@ -102,7 +102,7 @@ Program Definition apply_type_of (P : Type) :
   | _ => fun _ =>
       M.failwith "The lemma's conclusion does not unify with the goal."
   end
-.
+))).
 
 (* Notation "'[apply_args_mtac' t 'in' P ]" := *)
 (*   ( *)

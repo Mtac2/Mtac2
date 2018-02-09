@@ -115,11 +115,11 @@ Qed.
     (\tactic g =>
        r <- M.destcase (match 3 with 0 => true | S _ => false end);
        M.print_term r;;
-                  cpose r (fun r=>idtac) g).
+                  cpose r (fun r=>idtac:tactic) g).
     (\tactic g=>
        let c := reduce RedHNF r in
        case <- M.makecase c;
-       cpose case (fun y=>idtac) g) : tactic.
+       cpose case (fun y=>idtac:tactic) g) : tactic.
   Abort.
 
   Goal forall P b, reflect P b -> P <-> b = true.
