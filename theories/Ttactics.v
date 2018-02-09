@@ -181,7 +181,7 @@ Polymorphic Definition assumption(*@{i j k k1 a1 a2 a3 a4 a5 a6 a7 a8}*) {A:Type
 (** Solves goal A provided tactic t *)
 Definition by' {A} (t: tactic) : M A :=
   e <- evar A;
-  l <- t (Goal SType e);
+  ''(m: _, l) <- t (Goal SType e);
   l' <- T.filter_goals l;
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
 
@@ -204,9 +204,9 @@ Definition dest_pair {T} (x:T) : M (dyn * dyn) :=
 
 (** Given an element with type of the form (A1 * ... * An),
     it generates a goal for each unsolved variable in the pair. *)
-Program Definition to_goals : forall {A}, A -> M (mlist (unit *m goal)) :=
+Program Definition to_goals : forall {A}, A -> M (mlist goal) :=
   mfix2 to_goals (A: Type) (a: A) : M _ :=
-  mif is_evar a then ret [m: (m: tt, Goal SType a)]
+  mif is_evar a then ret [m: Goal SType a]
   else
     mif is_prod A then
       ''(d1, d2) <- dest_pair a;
@@ -226,7 +226,7 @@ Definition to_tactic {A B} (f: M (A |m- B)) : tactic := fun g=>
     al <- to_goals a;
     ls <- T.filter_goals al;
     T.exact b g;;
-    ret ls
+    ret (m:tt, ls)
   else
     failwith "nope".
 
@@ -252,8 +252,7 @@ Delimit Scope typed_tactic_scope with TT.
 
 Definition use' {A} (t : tactic) : TT A :=
   (a <- M.evar A;
-  gs <- t (@Goal Sorts.Sorts.SType A a);
-  let gs := dreduce (@mmap) (mmap (fun '(m: _, g) => g) gs) in
+  ''(m: _, gs) <- t (@Goal Sorts.Sorts.SType A a);
   M.ret (m: a, gs))%MC.
 
 Definition lift {A} (t : M A) : TT A :=
@@ -277,8 +276,7 @@ Definition Mappend {A} (xs ys : mlist A) :=
 Definition apply {A} : (A *m mlist goal) -> tactic :=
   (fun '(m: a, gs) g =>
     T.exact a g;;
-    let gs := dreduce (@mmap) (mmap (mpair tt) gs) in
-    M.ret gs
+    M.ret (m: tt, gs)
   )%MC.
 
 Module MatchGoalTT.
@@ -306,7 +304,7 @@ Definition match_goal_context
     let reduced := dreduce (@fu) (fu r) in
     cont reduced >>=
     TT.apply
-  | mNone => M.raise DoesNotMatchGoal
+  | mNone => T.raise DoesNotMatchGoal
   end.
 
 Fixpoint match_goal_pattern'

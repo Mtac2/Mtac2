@@ -20,12 +20,14 @@ module MetaCoqRun = struct
       - [M concl]: then it returns [c]
       - [tactic]: then it returns [c (Goal concl evar)] *)
   let pretypeT env sigma concl evar c =
-    let (sigma, tactic_ty) = MCTactics.mkTactic sigma env in
+    let (sigma, (tty, _)) = Evarutil.new_type_evar env sigma Evd.univ_flexible in
+    let (sigma, tactic_ty) = MCTactics.mkTactic sigma env tty in
     let (sigma, cs_evar) = Evarutil.new_evar env sigma tactic_ty in
-    let (sigma, to_tactic) = MCTactics.mkto_tactic sigma env cs_evar c in
+    let (sigma, to_tactic) = MCTactics.mkto_tactic sigma env tty cs_evar c in
     let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
     let to_t_goal = EConstr.mkApp(to_tactic, [|goal|]) in
     let (sigma, _) = Typing.type_of env sigma to_t_goal in
+    let sigma = Typeclasses.resolve_typeclasses ~fail:false env sigma in
     (true, sigma, to_t_goal)
 
   let run env sigma concl evar c =
@@ -63,13 +65,12 @@ module MetaCoqRun = struct
       let concl = concl gl in
       let sigma = sigma gl in
       let evar = evar_of_goal gl in
-      let (sigma, tactic) = MCTactics.mkTactic sigma env in
       let (sigma, c) = Pretyping.understand_tcc env sigma (Constrintern.intern_constr env t) in
       run env sigma concl (EConstr.of_constr evar) c
     end
 
 
-  let understand env sigma tactic {Glob_term.closure=closure;term=term} =
+  let understand env sigma {Glob_term.closure=closure;term=term} =
     let open Glob_ops in
     let open Glob_term in
     let open Pretyping in
@@ -88,8 +89,7 @@ module MetaCoqRun = struct
       let concl = concl gl in
       let sigma = sigma gl in
       let evar = evar_of_goal gl in
-      let (sigma, tactic) = MCTactics.mkTactic sigma env in
-      let sigma, t = understand env sigma tactic t in
+      let sigma, t = understand env sigma t in
       run env sigma concl (EConstr.of_constr evar) t
     end
 

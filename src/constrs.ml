@@ -362,8 +362,8 @@ module MCTactics = struct
   let to_tacticBuilder = from_string "Mtac2.Tactics.to_tactic"
 
   let mkGTactic = build gtBuilder
-  let mkTactic = build tBuilder
-  let mkto_tactic sigma env ty t = build_app to_tacticBuilder sigma env [|ty; t|]
+  let mkTactic sigma env ty = build_app tBuilder sigma env [|ty|]
+  let mkto_tactic sigma env ty cs t = build_app to_tacticBuilder sigma env [|ty; cs; t|]
 end
 
 module CoqPair = struct

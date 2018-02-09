@@ -26,7 +26,9 @@ Definition lrewrite {A} (x: A) := trewrite LeftRewrite [m:Dyn x]%list.
 Goal forall n, n + 0 = n.
 MProof.
   elim0 &> case 0 do reflexivity.
-  intros &> simpl. select (_ = _) >>= rrewrite ;; reflexivity.
+  intros &> simpl.
+Set Use Unicoq. (* FIXME why do we need Unicoq to solve this simple thing? *)
+  bind1 (select (_ = _)) rrewrite;; reflexivity.
 Qed.
 
 Goal forall n, n + 0 = n.
@@ -152,7 +154,7 @@ Require Import Strings.String.
 
 Definition remember {A} (x:A) (def eq : string) : tactic :=
   cpose_base def x (fun y:A=>
-    cassert_base eq (fun H: y = x =>lrewrite H) &> [m:reflexivity | idtac]).
+    cassert_base eq (fun H: y = x =>lrewrite H) &> [m:reflexivity | idtac:tactic]).
 
 Ltac ind H := induction H.
 Definition induction {A} (x:A) := ltac "Mtac2Tests.ConstrSelector.ind" [m:Dyn x].

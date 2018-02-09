@@ -1300,8 +1300,8 @@ Definition first {B} : mlist (gtactic B) -> gtactic B :=
 Print Coercions.
 End T.
 
-Structure Tactic := { t_type : Type; to_tactic :> t_type -> tactic }.
-Arguments to_tactic {_} _.
+Class Tactic (t_type : Type) := { to_tactic :> t_type -> tactic }.
+Arguments to_tactic {_ _} _.
 
 Definition DifferentTypes (A B:Type) : Exception. exact exception. Qed.
 Definition M_to_tactic {A} (f: M A) : tactic := fun g=>
@@ -1321,13 +1321,13 @@ Definition tac_to_tactic {gid A} (f: tac gid A) : tactic := fun g=>
   else
     T.tac_to_tacn f g >>= (fun '(m: x, gs)=>T.exact x g;; M.ret (m: tt, gs)).
 
-Canonical Structure M_tn {A} :=
+Instance M_tn {A} : Tactic (M A) :=
   {| to_tactic := (M_to_tactic : M A -> tactic) |}.
-Canonical Structure g1_tn {A} :=
+Instance g1_tn {A} : Tactic (gtactic1 A) :=
   {| to_tactic := (g1_to_tactic : gtactic1 A -> tactic) |}.
-Canonical Structure t1_tn :=
+Instance t1_tn : Tactic tactic1 :=
   {| to_tactic := (T.t1_to_tn : tactic1 -> tactic) |}.
-Canonical Structure tac_tn {f A} :=
+Instance tac_tn {f A} : Tactic (tac f A) :=
   {| to_tactic := (tac_to_tactic : tac f A -> tactic) |}.
 
 Coercion T.t1_to_tn : tactic1 >-> tactic.
