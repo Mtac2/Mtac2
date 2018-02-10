@@ -87,42 +87,42 @@ Coercion M_to_tac1 {A} (t: M A) : tac One A := with_goal (fun _=> t).
 Coercion g1_to_gn {A} (t : gtactic1 A) : gtactic A := tac1_to_tacn t.
 Coercion t1_to_gn (t: tactic1) : gtactic unit := T.t1_to_tn t.
 
-Definition mtry' {A} (t : gtactic A)
-    (f : Exception -> gtactic A) : gtactic A := fun g =>
+Definition mtry' {gid A} (t : tac gid A)
+    (f : Exception ->tac gid A) : tac gid A := fun g =>
   M.mtry' (t g) (fun e => f e g).
 
 Definition raise {A gid} (e : Exception) : tac gid A := fun g=>M.raise e.
 
-Definition fix0 (B : Type) : (gtactic B -> gtactic B) -> gtactic B :=
-  @M.fix1 goal (fun _ => TTs B).
+Definition fix0 {gid} (B : Type) : (tac gid B -> tac gid B) -> tac gid B :=
+  @M.fix1 goal (fun _ => AG gid B).
 
-Definition fix1 {A} (B : A -> Type) :
-    ((forall x : A, gtactic (B x)) -> (forall x : A, gtactic (B x))) ->
-    forall x : A, gtactic (B x) :=
-  @M.fix2 A (fun _ => goal) (fun x _ => TTs (B x)).
+Definition fix1 {gid A} (B : A -> Type) :
+    ((forall x : A, tac gid (B x)) -> (forall x : A, tac gid (B x))) ->
+    forall x : A, tac gid (B x) :=
+  @M.fix2 A (fun _ => goal) (fun x _ => AG gid (B x)).
 
-Definition fix2 {A1} {A2 : A1 -> Type} (B : forall a1 : A1, A2 a1 -> Type) :
-    ((forall (x1 : A1) (x2 : A2 x1), gtactic (B x1 x2)) ->
-      forall (x1 : A1) (x2 : A2 x1), gtactic (B x1 x2)) ->
-    forall (x1 : A1) (x2 : A2 x1), gtactic (B x1 x2) :=
-  @M.fix3 A1 A2 (fun _ _ => goal) (fun x y _ => TTs (B x y)).
+Definition fix2 {gid A1} {A2 : A1 -> Type} (B : forall a1 : A1, A2 a1 -> Type) :
+    ((forall (x1 : A1) (x2 : A2 x1), tac gid (B x1 x2)) ->
+      forall (x1 : A1) (x2 : A2 x1), tac gid (B x1 x2)) ->
+    forall (x1 : A1) (x2 : A2 x1), tac gid (B x1 x2) :=
+  @M.fix3 A1 A2 (fun _ _ => goal) (fun x y _ => AG gid (B x y)).
 
-Definition fix3 {A1} {A2 : A1 -> Type} {A3 : forall a1 : A1, A2 a1 -> Type}
+Definition fix3 {gid A1} {A2 : A1 -> Type} {A3 : forall a1 : A1, A2 a1 -> Type}
   (B : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type) :
-    ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), gtactic (B x1 x2 x3)) ->
-      forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), gtactic (B x1 x2 x3)) ->
-    forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), gtactic (B x1 x2 x3) :=
-  @M.fix4 A1 A2 A3 (fun _ _ _ => goal) (fun x y z _ => TTs (B x y z)).
+    ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), tac gid (B x1 x2 x3)) ->
+      forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), tac gid (B x1 x2 x3)) ->
+    forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2), tac gid (B x1 x2 x3) :=
+  @M.fix4 A1 A2 A3 (fun _ _ _ => goal) (fun x y z _ => AG gid (B x y z)).
 
-Definition fix4 {A1} {A2 : A1 -> Type} {A3 : forall a1 : A1, A2 a1 -> Type}
+Definition fix4 {gid A1} {A2 : A1 -> Type} {A3 : forall a1 : A1, A2 a1 -> Type}
     {A4 : forall (a1 : A1) (a2 : A2 a1), A3 a1 a2 -> Type}
     (B : forall (a1 : A1) (a2 : A2 a1) (a3 : A3 a1 a2), A4 a1 a2 a3 -> Type) :
-    ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), gtactic (B x1 x2 x3 x4)) ->
-      forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), gtactic (B x1 x2 x3 x4)) ->
-    forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), gtactic (B x1 x2 x3 x4) :=
-  @M.fix5 A1 A2 A3 A4 (fun _ _ _ _ => goal) (fun x y z z' _ => B x y z z' *m mlist goal).
-Fixpoint pattern_map {A} {B : A -> Type} (g : goal) (y : A)
-    (p : pattern gtactic A B y) : pattern M A (fun y => TTs (B y)) y :=
+    ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), tac gid (B x1 x2 x3 x4)) ->
+      forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), tac gid (B x1 x2 x3 x4)) ->
+    forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), tac gid (B x1 x2 x3 x4) :=
+  @M.fix5 A1 A2 A3 A4 (fun _ _ _ _ => goal) (fun x y z z' _ => AG gid (B x y z z')).
+Fixpoint pattern_map {gid A} {B : A -> Type} (g : goal) (y : A)
+    (p : pattern (tac gid) A B y) : pattern M A (fun y => AG gid (B y)) y :=
   match p with
   | pany b => @pany M A _ y (b g)
   | pbase x f r => pbase x (fun Heq => f Heq g) r
@@ -130,16 +130,16 @@ Fixpoint pattern_map {A} {B : A -> Type} (g : goal) (y : A)
   | psort f => psort (fun s => pattern_map g y (f s))
   end.
 
-Definition mmatch' {A P} (E : Exception) (y : A)
-    (ps : mlist (pattern gtactic A P y)) : gtactic (P y) := fun g =>
+Definition mmatch' {gid A P} (E : Exception) (y : A)
+    (ps : mlist (pattern (tac gid) A P y)) : tac gid (P y) := fun g =>
   M.mmatch' E y (mmap (pattern_map g y) ps).
 
-Definition idtac : tactic1 := ret tt.
+Definition idtac {gid} : tac gid unit := ret tt.
 
-Definition try (t : tactic) : tactic := fun g=>
-  mtry t g with _ => t1_to_tn idtac g end.
+Definition try {gid} (t : tac gid unit) : tac gid unit := fun g=>
+  mtry t g with _ => idtac g end.
 
-Definition or {A} (t u : gtactic A) : gtactic A := fun g=>
+Definition or {gid A} (t u : tac gid A) : tac gid A := fun g=>
   mtry t g with _ => u g end.
 
 
@@ -685,7 +685,7 @@ Definition typed_intro (T : Type) : tactic1 := fun g =>
 Definition typed_intros (T : Type) : tactic1 := fun g =>
   (mfix1 f (g : goal) : M _ :=
     mtry bind1 (typed_intro T) (fun _=>f) g with
-    | NotThatType => idtac g
+    | NotThatType => idtac (gid:=One) g
     end) g.
 
 (** changes a hypothesis H with one of type Q and the same name *)
@@ -897,7 +897,7 @@ Definition progress {A} (t : gtactic A) : gtactic A := fun g =>
     (it should only generate at most 1 subgoal), until no
     changes or no goal is left. *)
 Definition repeat (t : tactic) : tactic :=
-  fix0 _ (fun rec g =>
+  fix0 (gid:=Many) _ (fun rec g =>
     r <- try t g; (* if it fails, the execution will stop below *)
     match r with
     | (m: _, [m:g']) =>
@@ -1071,18 +1071,18 @@ Module notations.
     "'[v  ' 'mfix4'  f  x  ..  y  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
 
   Notation "'mmatch' x ls" :=
-    (@mmatch' _ (fun _ => _) DoesNotMatch x ls%with_pattern)
+    (@mmatch' _ _ (fun _ => _) DoesNotMatch x ls%with_pattern)
     (at level 200, ls at level 91) : tactic_scope.
   Notation "'mmatch' x 'return' 'gtactic' p ls" :=
-    (@mmatch' _ (fun x => p%type) DoesNotMatch x ls%with_pattern)
+    (@mmatch' _ _ (fun x => p%type) DoesNotMatch x ls%with_pattern)
     (at level 200, ls at level 91) : tactic_scope.
   Notation "'mmatch' x 'as' y 'return' 'gtactic' p ls" :=
-    (@mmatch' _ (fun y => p%type) DoesNotMatch x ls%with_pattern)
+    (@mmatch' _ _ (fun y => p%type) DoesNotMatch x ls%with_pattern)
     (at level 200, ls at level 91) : tactic_scope.
 
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
-      (@mmatch' _ (fun _ => _) M.NotCaught e
+      (@mmatch' _ _ (fun _ => _) M.NotCaught e
                    (mapp ls%with_pattern [m:([? x] x => raise x)%pattern]))))
       (at level 200, a at level 100, ls at level 91, only parsing) : tactic_scope.
 
