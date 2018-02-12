@@ -47,17 +47,17 @@ open MtacNames
 
 
 module RedList = GenericList (struct
-    let nilname = metaCoq_module_name ^ ".rlnil"
-    let consname = metaCoq_module_name ^ ".rlcons"
-    let typename = metaCoq_module_name ^ ".rllist"
+    let nilname  = metaCoq_module_name ^ ".Reduction.rlnil"
+    let consname = metaCoq_module_name ^ ".Reduction.rlcons"
+    let typename = metaCoq_module_name ^ ".Reduction.rllist"
   end)
 
 
 module Goal = struct
 
-  let mkgoal = mkUConstr "goal"
-  let mkGoal = mkUConstr "Goal"
-  let mkAHyp = mkUConstr "AHyp"
+  let mkgoal = mkUConstr "Goals.goal"
+  let mkGoal = mkUConstr "Goals.Goal"
+  let mkAHyp = mkUConstr "Goals.AHyp"
 
   let mkSType = Constr.mkConstr "Mtac2.Sorts.Sorts.SType"
   let mkSProp = Constr.mkConstr "Mtac2.Sorts.Sorts.SProp"
@@ -137,18 +137,18 @@ module Exceptions = struct
 
   let mkCannotRemoveVar sigma env x =
     let varname = CoqString.to_coq (constr_to_string sigma env x) in
-    let sigma, exc = mkUConstr "CannotRemoveVar" sigma env in
+    let sigma, exc = mkUConstr "Exceptions.CannotRemoveVar" sigma env in
     debug_exception sigma env exc x;
     sigma, mkApp(exc, [|varname|])
 
   let mkRefNotFound sigma env s =
     let msg = CoqString.to_coq s in
-    let sigma, exc = (mkUConstr "RefNotFound" sigma env) in
+    let sigma, exc = (mkUConstr "Exceptions.RefNotFound" sigma env) in
     debug_exception sigma env exc msg;
     sigma, mkApp (exc, [|msg|])
 
   let mkDebugEx s sigma env t =
-    let sigma, exc = mkUConstr s sigma env in
+    let sigma, exc = mkUConstr ("Exceptions." ^ s) sigma env in
     debug_exception sigma env exc t;
     sigma, exc
 
@@ -189,14 +189,14 @@ module Exceptions = struct
   let mkTypeErrorUnboundVar = mkDebugEx "UnboundVar"
 
   let mkLtacError sigma env msg =
-    let sigma, exc = mkUConstr "LtacError" sigma env in
+    let sigma, exc = mkUConstr "Exceptions.LtacError" sigma env in
     let coqmsg = CoqString.to_coq msg in
     let e = mkApp(exc, [|coqmsg|]) in
     debug_exception sigma env exc coqmsg;
     sigma, e
 
   let mkNameExists sigma env s =
-    let sigma, exc = (mkUConstr "NameExistsInContext" sigma env) in
+    let sigma, exc = (mkUConstr "Exceptions.NameExistsInContext" sigma env) in
     let e = mkApp (exc, [|s|]) in
     debug_exception sigma env exc s;
     sigma, e
@@ -212,7 +212,7 @@ module ReductionStrategy = struct
   open CClosure.RedFlags
   open Context
 
-  let isReduce sigma env c = isUConstr sigma env "reduce" c
+  let isReduce sigma env c = isUConstr sigma env "Reduction.reduce" c
 
   let has_definition ts env sigma t =
     if isVar sigma t then
@@ -496,7 +496,7 @@ let get_Constrs (env, fixs, sigma) t =
 
 module Hypotheses = struct
 
-  let ahyp_constr = mkUBuilder "ahyp"
+  let ahyp_constr = mkUBuilder "Goals.ahyp"
 
   let mkAHyp sigma env ty n t =
     let sigma, t = match t with
@@ -504,7 +504,7 @@ module Hypotheses = struct
       | Some t -> CoqOption.mkSome sigma env ty t
     in UConstrBuilder.build_app ahyp_constr sigma env [|ty; n; t|]
 
-  let mkHypType = mkUConstr "Hyp"
+  let mkHypType = mkUConstr "Goals.Hyp"
 
   let cons_hyp ty n t renv sigma env =
     let (sigma, hyptype) = mkHypType sigma env in
@@ -1437,7 +1437,7 @@ let run (env0, sigma) t =
       Val (sigma', v)
 
 (** set the run function in unicoq *)
-let _ = Munify.set_lift_constr (fun env sigma -> (mkUConstr "lift" sigma env))
+let _ = Munify.set_lift_constr (fun env sigma -> (mkUConstr "Lift.lift" sigma env))
 let _ = Munify.set_run (fun env sigma t ->
   match run (env, sigma) t with
   | Err _ -> None

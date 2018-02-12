@@ -45,3 +45,13 @@ theories/ConstrSelector.v
 theories/StaticApply.v
 theories/SumRun.v
 theories/Ttactics.v
+theories/Pattern.v
+theories/intf/Dyn.v
+theories/intf/Exceptions.v
+theories/intf/Reduction.v
+theories/intf/DeclarationDefs.v
+theories/intf/Unification.v
+theories/intf/Case.v
+theories/intf/Goals.v
+theories/intf/Lift.v
+theories/intf/M.v
