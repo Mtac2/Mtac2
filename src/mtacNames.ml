@@ -20,7 +20,7 @@ let isUConstr sigma env e =
   eq_constr_nounivs sigma c
 
 let mkCase ind v ret branch sigma env =
-  let sigma, c = mkUConstr "Dyn.mkCase" sigma env in
+  let sigma, c = mkUConstr "Case.mkCase" sigma env in
   sigma, mkApp(c, [|ind;v;ret;branch|])
 
 let mkelem d sigma env =

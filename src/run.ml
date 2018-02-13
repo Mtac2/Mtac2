@@ -175,13 +175,13 @@ module Exceptions = struct
   let mkVarAppearsInValue = mkDebugEx "VarAppearsInValue"
 
   let mkNotAReference sigma env ty t =
-    let sigma, exc = (mkUConstr "NotAReference" sigma env) in
+    let sigma, exc = (mkUConstr "Exceptions.NotAReference" sigma env) in
     let e = mkApp (exc, [|ty; t|]) in
     debug_exception sigma env exc t;
     sigma, e
 
   let mkAlreadyDeclared sigma env name =
-    let sigma, exc = (mkUConstr "AlreadyDeclared" sigma env) in
+    let sigma, exc = (mkUConstr "Exceptions.AlreadyDeclared" sigma env) in
     let e = mkApp (exc, [|name|]) in
     debug_exception sigma env exc name;
     sigma, e
