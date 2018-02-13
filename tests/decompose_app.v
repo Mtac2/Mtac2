@@ -1,4 +1,4 @@
-From Mtac2 Require Import Base MTele.
+From Mtac2 Require Import Base MTele DecomposeApp Tactics.
 Import TeleNotation.
 Definition test_tele : MTele := [tele (x y : nat)].
 
@@ -35,3 +35,9 @@ Check ltac:(mrun (
                   (Logic.meq_refl)
                   (fun x y => M.ret (x,y)))
            ).
+
+Import T.notations.
+Goal True.
+MProof.
+(<[decapp (3+5) @plus]> (fun x y => M.print_term (x,y);; T.idtac)).
+Abort.
