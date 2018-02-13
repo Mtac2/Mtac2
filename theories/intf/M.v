@@ -17,50 +17,52 @@ Module M.
 
 Inductive t : Type -> Prop := mkt : forall{a}, t a.
 
+Local Ltac make := refine (mkt) || (intro; make).
+
 Definition ret : forall {A : Type}, A -> t A.
-  refine (fun a _=>mkt). Qed.
+  make. Qed.
 
 Definition bind : forall {A : Type} {B : Type}, t A -> (A -> t B) -> t B.
-  refine (fun a b _ _=>mkt). Qed.
+  make. Qed.
 
 Definition mtry' : forall {A : Type}, t A -> (Exception -> t A) -> t A.
-  refine (fun A _ _ => mkt). Qed.
+  make. Qed.
 
 Definition raise' : forall {A : Type}, Exception -> t A.
-  refine (fun A _ => mkt). Qed.
+  make. Qed.
 
 Definition fix1 : forall{A: Type} (B: A->Type),
   ((forall x: A, t (B x))->(forall x: A, t (B x))) ->
   forall x: A, t (B x).
-  refine (fun A B _ x=>mkt). Qed.
+  make. Qed.
 
 Definition fix2 : forall {A1: Type} {A2: A1->Type} (B: forall (a1 : A1), A2 a1->Type),
   ((forall (x1: A1) (x2: A2 x1), t (B x1 x2)) ->
     (forall (x1: A1) (x2: A2 x1), t (B x1 x2))) ->
   forall (x1: A1) (x2: A2 x1), t (B x1 x2).
-  refine (fun A1 A2 B _ x1 x2=>mkt). Qed.
+  make. Qed.
 
 Definition fix3 : forall {A1: Type} {A2: A1->Type} {A3 : forall (a1: A1), A2 a1->Type} (B: forall (a1: A1) (a2: A2 a1), A3 a1 a2->Type),
   ((forall (x1: A1) (x2: A2 x1) (x3: A3 x1 x2), t (B x1 x2 x3)) ->
     (forall (x1: A1) (x2: A2 x1) (x3: A3 x1 x2), t (B x1 x2 x3))) ->
   forall (x1: A1) (x2: A2 x1) (x3: A3 x1 x2), t (B x1 x2 x3).
-  refine (fun A1 A2 A3 B _ x1 x2 x3=>mkt). Qed.
+  make. Qed.
 
 Definition fix4 : forall {A1: Type} {A2: A1->Type} {A3: forall (a1: A1), A2 a1->Type} {A4: forall (a1: A1) (a2: A2 a1), A3 a1 a2->Type} (B: forall (a1: A1) (a2: A2 a1) (a3: A3 a1 a2), A4 a1 a2 a3->Type),
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), t (B x1 x2 x3 x4)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), t (B x1 x2 x3 x4))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), t (B x1 x2 x3 x4).
-  refine (fun A1 A2 A3 A4 B _ x1 x2 x3 x4=>mkt). Qed.
+  make. Qed.
 
 Definition fix5: forall{A1: Type} {A2: A1->Type} {A3: forall(a1: A1), A2 a1->Type} {A4: forall(a1: A1)(a2: A2 a1), A3 a1 a2->Type} {A5: forall(a1: A1)(a2: A2 a1)(a3: A3 a1 a2), A4 a1 a2 a3->Type} (B: forall(a1: A1)(a2: A2 a1)(a3: A3 a1 a2)(a4: A4 a1 a2 a3), A5 a1 a2 a3 a4->Type),
   ((forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), t (B x1 x2 x3 x4 x5)) ->
     (forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), t (B x1 x2 x3 x4 x5))) ->
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), t (B x1 x2 x3 x4 x5).
-  refine (fun A1 A2 A3 A4 A5 B _ x1 x2 x3 x4 x5=>mkt). Qed.
+  make. Qed.
 
 (** [is_var e] returns if [e] is a variable. *)
 Definition is_var: forall{A : Type}, A->t bool.
-  refine (fun _ _=>mkt). Qed.
+  make. Qed.
 
 (* [nu x od f] executes [f x] where variable [x] is added to the local context,
    optionally with definition [d] with [od = Some d].  It raises
@@ -68,36 +70,36 @@ Definition is_var: forall{A : Type}, A->t bool.
    [VarAppearsInValue] if executing [f x] results in a term containing variable
    [x]. *)
 Definition nu: forall{A: Type}{B: Type}, string -> moption A -> (A -> t B) -> t B.
-  refine (fun _ _ _ _ _ =>mkt). Qed.
+  make. Qed.
 
 (** [abs_fun x e] abstracts variable [x] from [e]. It raises [NotAVar] if [x]
     is not a variable, or [AbsDependencyError] if [e] or its type [P] depends on
     a variable also depending on [x]. *)
 Definition abs_fun: forall{A: Type} {P: A->Type} (x: A), P x -> t (forall x, P x).
-  refine (fun _ _ _ _ => mkt). Qed.
+  make. Qed.
 
 (** [abs_let x d e] returns [let x := d in e]. It raises [NotAVar] if [x] is not
     a variable, or [AbsDependencyError] if [e] or its type [P] depends on a
     variable also depending on [x]. *)
 Definition abs_let: forall{A: Type} {P: A->Type} (x: A) (y: A), P x -> t (let x := y in P x).
-  refine (fun _ _ _ _ _=> mkt). Qed.
+  make. Qed.
 
 (** [abs_prod x e] returns [forall x, e]. It raises [NotAVar] if [x] is not a
     variable, or [AbsDependencyError] if [e] or its type [P] depends on a
     variable also depending on [x]. *)
 Definition abs_prod_type: forall{A: Type} (x : A), Type -> t Type.
-  refine (fun _ _ _=> mkt). Qed.
+  make. Qed.
 
 (** [abs_prod x e] returns [forall x, e]. It raises [NotAVar] if [x] is not a
     variable, or [AbsDependencyError] if [e] or its type [P] depends on a
     variable also depending on [x]. *)
 Definition abs_prod_prop: forall{A: Type} (x : A), Prop -> t Prop.
-  refine (fun _ _ _=> mkt). Qed.
+  make. Qed.
 
 (** [abs_fix f t n] returns [fix f {struct n} := t].
     [f]'s type must have n products, that is, be [forall x1, ..., xn, T] *)
 Definition abs_fix: forall{A: Type}, A -> A -> N -> t A.
-  refine (fun _ _ _ _=> mkt). Qed.
+  make. Qed.
 
 (** [get_binder_name t] returns the name of variable [x] if:
     - [t = x],
@@ -107,13 +109,13 @@ Definition abs_fix: forall{A: Type}, A -> A -> N -> t A.
     It raises [WrongTerm] in any other case.
 *)
 Definition get_binder_name: forall{A: Type}, A -> t string.
-  refine (fun _ _=> mkt). Qed.
+  make. Qed.
 
 (** [remove x t] executes [t] in a context without variable [x].
     Raises [NotAVar] if [x] is not a variable, and
     [CannotRemoveVar "x"] if [t] or the environment depends on [x]. *)
 Definition remove : forall{A: Type} {B: Type}, A -> t B -> t B.
-  refine (fun _ _ _ _=> mkt). Qed.
+  make. Qed.
 
 (** [gen_evar A ohyps] creates a meta-variable with type [A] and,
     optionally, in the context resulting from [ohyp].
@@ -131,85 +133,85 @@ Definition remove : forall{A: Type} {B: Type}, A -> t B -> t B.
     occurrences of a variable, it raises a [DuplicatedVariable].
 *)
 Definition gen_evar: forall(A: Type), moption (mlist Hyp) -> t A.
-  refine (fun _ _=>mkt). Qed.
+  make. Qed.
 
 (** [is_evar e] returns if [e] is a meta-variable. *)
 Definition is_evar: forall{A: Type}, A -> t bool.
-  refine (fun _ _=>mkt). Qed.
+  make. Qed.
 
 (** [hash e n] returns a number smaller than [n] representing
     a hash of term [e] *)
 Definition hash: forall{A: Type}, A -> N -> t N.
-  refine (fun _ _ _=>mkt). Qed.
+  make. Qed.
 
 (** [solve_typeclasses] calls type classes resolution. *)
 Definition solve_typeclasses : t unit.
-  refine mkt. Qed.
+  make. Qed.
 
 (** [print s] prints string [s] to stdout. *)
 Definition print : string -> t unit.
-  refine (fun _=>mkt). Qed.
+  make. Qed.
 
 (** [pretty_print e] converts term [e] to string. *)
 Definition pretty_print : forall{A: Type}, A -> t string.
-  refine (fun _ _ =>mkt). Qed.
+  make. Qed.
 
 (** [hyps] returns the list of hypotheses. *)
 Definition hyps: t (mlist Hyp).
-  refine mkt. Qed.
+  make. Qed.
 
 Definition destcase: forall{A: Type} (a: A), t (Case).
-  refine (fun _ _ =>mkt). Qed.
+  make. Qed.
 
 (** Given an inductive type A, applied to all its parameters (but not
     necessarily indices), it returns the type applied to exactly the
     parameters, and a list of constructors (applied to the parameters). *)
 Definition constrs: forall{A: Type} (a: A), t (mprod dyn (mlist dyn)).
-  refine (fun _ _ =>mkt). Qed.
+  make. Qed.
 
 Definition makecase: forall(C: Case), t dyn.
-  refine (fun _ =>mkt). Qed.
+  make. Qed.
 
 (** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
     It uses convertibility of universes, meaning that it fails if [x]
     is [Prop] and [y] is [Type]. If they are both types, it will
     try to equate its leveles. *)
 Definition unify {A: Type} (x y: A) : Unification -> t (moption (meq x y)).
-  refine (fun _=>mkt). Qed.
+  make. Qed.
 
 (** [munify_univ A B r] uses reduction strategy [r] to equate universes
     [A] and [B].  It uses cumulativity of universes, e.g., it succeeds if
     [x] is [Prop] and [y] is [Type]. *)
 Definition unify_univ (A: Type) (B: Type) : Unification -> t (moption (A->B)).
-  refine (fun _=>mkt). Qed.
+  make. Qed.
 
 (** [get_reference s] returns the constant that is reference by s. *)
 Definition get_reference: string -> t dyn.
-  refine (fun _=>mkt). Qed.
+  make. Qed.
 
 (** [get_var s] returns the var named after s. *)
 Definition get_var: string -> t dyn.
-  refine (fun _=>mkt). Qed.
+  make. Qed.
 
 Definition call_ltac : forall(sort: Sort) {A: sort}, string->mlist dyn -> t (mprod A (mlist goal)).
-  refine (fun _ _ _ _ =>mkt). Qed.
+  make. Qed.
 
 Definition list_ltac: t unit.
-  refine mkt. Qed.
+  make. Qed.
 
 (** [read_line] returns the string from stdin. *)
 Definition read_line: t string.
-  refine mkt. Qed.
+  make. Qed.
 
 (** [decompose x] decomposes value [x] into a head and a spine of
     arguments. For instance, [decompose (3 + 3)] returns
     [(Dyn add, [Dyn 3; Dyn 3])] *)
 Definition decompose : forall {A: Type}, A -> t (mprod dyn (mlist dyn)).
-  refine (fun _ _  =>mkt). Qed.
+  make. Qed.
 
 (** [solve_typeclass A] calls type classes resolution for [A] and returns the result or fail. *)
 Definition solve_typeclass : forall (A:Type), t (moption A).
-  refine (fun _  =>mkt). Qed.
+  make. Qed.
 
 (** [declare dok name opaque t] defines [name] as definition kind
     [dok] with content [t] and opacity [opaque] *)
@@ -217,27 +219,27 @@ Definition declare: forall (dok: definition_object_kind)
                    (name: string)
                    (opaque: bool),
     forall{A : Type}, A -> t A.
-  refine (fun _ _ _ _ _ =>mkt). Qed.
+  make. Qed.
 
 (** [declare_implicits r l] declares implicit arguments for global
     reference [r] according to [l] *)
 Definition declare_implicits: forall {A: Type} (a : A),
     mlist implicit_arguments -> t unit.
-  refine (fun _ _ _ => mkt). Qed.
+  make. Qed.
 
 (** [os_cmd cmd] executes the command and returns its error number. *)
 Definition os_cmd: string -> t Z.
-  refine (fun _ => mkt). Qed.
+  make. Qed.
 
 Definition get_debug_exceptions: t bool.
-  refine mkt. Qed.
+  make. Qed.
 Definition set_debug_exceptions: bool -> t unit.
-  refine (fun _ => mkt). Qed.
+  make. Qed.
 
 Definition get_trace: t bool.
-  refine mkt. Qed.
+  make. Qed.
 Definition set_trace: bool -> t unit.
-  refine (fun _ => mkt). Qed.
+  make. Qed.
 
 Definition decompose_app' :
   forall {A : Type} {B : Type} {m} {p : PTele m},
@@ -247,22 +249,22 @@ Definition decompose_app' :
       (MTele_sort (PTele_Sort p T) =m= MTele_ConstT A p) ->
     MTele_ConstP (t B) p ->
     t B.
-  refine (fun _ _ _ _ _ _ _ _ _ => mkt). Qed.
+  make. Qed.
 
 Definition new_timer : forall {A} (a : A), t unit.
-  refine (fun _ _ => mkt). Qed.
+  make. Qed.
 
 Definition start_timer : forall {A} (a : A) (reset : bool), t unit.
-  refine (fun _ _ _ => mkt). Qed.
+  make. Qed.
 
 Definition stop_timer : forall {A} (a : A), t unit.
-  refine (fun _ _ => mkt). Qed.
+  make. Qed.
 
 Definition reset_timer : forall {A} (a : A), t unit.
-  refine (fun _ _ => mkt). Qed.
+  make. Qed.
 
 Definition print_timer : forall {A} (a : A), t unit.
-  refine (fun _ _ => mkt). Qed.
+  make. Qed.
 
 Arguments t _%type.
 
