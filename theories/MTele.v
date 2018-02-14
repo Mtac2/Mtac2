@@ -15,7 +15,8 @@ Inductive MTele : Type :=
 | mTele {X : Type} (F : X -> MTele) : MTele
 .
 
-(** MTele_Const : A constant (i.e. binder independent) type-level interpretation of MTele *)
+(** MTele_Const : A constant (i.e. binder independent) type-level interpretation
+of MTele. It constructs `∀ x .. z, T`. *)
 Fixpoint MTele_Const {s : Sort} (T : s) (n : MTele) : s :=
 match n with
 | mBase => T
@@ -23,6 +24,15 @@ match n with
 end.
 Definition MTele_ConstP (T : Prop) (n : MTele) := @MTele_Const SProp T n.
 Definition MTele_ConstT (T : Type) (n : MTele) := @MTele_Const SType T n.
+
+Fixpoint MTele_const {s : Sort} {T : s} {n : MTele} : @MTele_Const s T n -> stype_of s :=
+  match n return MTele_Const T n -> _ with
+  | mBase => fun _ => T
+  | mTele F => fun C => ForAll (fun x => MTele_const (App C x))
+  end.
+
+Definition MTele_constP {T : Prop} {n} := @MTele_const SProp T n.
+Definition MTele_constT {T : Type} {n} := @MTele_const SType T n.
 
 (** MTele_Sort: compute `∀ x .. z, Type` from a given MTele *)
 Set Printing Universes.
@@ -67,6 +77,20 @@ Definition MTele_valP {n} : MTele_Pr n -> Prop :=
 
 (* Coercion MTele_valT : MTele_Ty >-> Sortclass. *)
 
+
+(** Convert a MTele_Const `C : ∀ x .. z, T` into a dependently-typed
+telescope type `∀ x .. z, C x .. z` *)
+Fixpoint MTele_ConstSort {s : Sort} {n : MTele} : forall {T : s} (C : MTele_Const T n), MTele_Sort s n :=
+  match n with
+  | mBase => fun T _ => T
+  | mTele F => fun _ C t => MTele_ConstSort (App C t)
+  end.
+
+Fixpoint MTele_ConstMap {si : Sort} (so : Sort) {n : MTele} {T : si} (G : T -> so) : forall (C : MTele_Const T n), MTele_Sort so n :=
+  match n with
+  | mBase => fun C => G C
+  | mTele F => fun C t => MTele_ConstMap so G (App C t)
+  end.
 
 (** MTele_To: recursively apply the given functor G to binders and return B at
 the base. MTele_Sort and MTele_val could be instances of this if we were to wrap
