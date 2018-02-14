@@ -59,77 +59,58 @@ Definition MTele_of (A : Type) : forall T, T -> M (msigT (MTele_Const (s:=SType)
           ]
     ).
 
-Definition decompose_app {m : MTele} (p : PTele m) {A B T: Type} (a : A) (t : T):
-  M (MTele_Const (s:=SProp) (M B) p -> M B) :=
+Definition decompose_app {m : MTele} {A : Type} {B : A -> Type} {C : MTele_ConstT A m} {T: Type} (a : A) (t : T)
+  :
+  M (Unification -> MTele_sort (MTele_ConstMap (si:=SType) SProp (fun a : A => M (B a)) C) -> M (B a)) :=
   (
     ''(mexistT _ m' T') <- MTele_of A T t;
     M.unify m m' UniCoq;;
-    MT <- M.evar _;
-    t' <- M.coerce t;
-    eq <- M.unify_or_fail UniCoq _ _;
-    let x := @M.decompose_app' A B m p a MT t' eq in
+    M.cumul UniCoq C t;;
+    let x := fun u => @M.decompose_app' A B m u a C in
     M.ret x
   ).
 
-Notation "'<[decapp' a b 'with' x , .. , z ]>" :=
+Notation "'<[decapp' a 'return' T 'with' b ]>" :=
   (
-      let p := (pTele x .. (pTele z pBase) ..) in
-      ltac:(mrun (decompose_app p a b))
+    ltac:(mrun (decompose_app (B:=T) a b))
   )
   (at level 0, a at next level, b at next level) : M_scope.
 
-Notation "'<[decapp' a b ]>" :=
+Notation "'<[decapp' a 'with' b ]>" :=
   (
-    let p := pBase in
-    ltac:(mrun (decompose_app p a b))
+    ltac:(mrun (decompose_app (A:=?[A]) (B:=fun _ : ?A => _) a b))
   )
   (at level 0, a at next level, b at next level) : M_scope.
 
-Local Definition mtele_convert {B : Prop} {G : Type} {mt} (p : PTele mt) :
-  (G -> MTele_Const (s:=SProp) B p) ->
-  (MTele_Const (s:=SProp) (G -> B) p).
-induction p.
-- cbn. induction n.
-  + cbn. refine (fun x => x).
-  + cbn. intros. refine (H _ _). intro. now refine (H0 _ _).
-- cbn.
-  refine IHp.
+
+Local Definition mtele_convert' {A : Type} {B : A -> Prop} {G : Type} {mt} {C : MTele_ConstT A mt} :
+  MTele_sort (MTele_ConstMap (si:=SType) SProp (fun a => G -> B a) C)
+  -> (G -> MTele_sort (MTele_ConstMap (si:=SType) SProp B C)).
+induction mt as [|X F IHmt].
+- cbn. refine (fun x => x).
+- cbn. intros ? ? ?.
+  refine (IHmt _ _ _ _); auto.
 Defined.
 
-Local Definition mtele_convert' {B : Prop} {G : Type} {mt} (p : PTele mt) :
-  (MTele_Const (s:=SProp) (G -> B) p) ->
-  (G -> MTele_Const (s:=SProp) (B) p).
-induction p.
-- cbn. induction n.
-  + cbn. refine (fun x => x).
-  + cbn. intros. refine (H _ _ _); [now refine (H0 _)|assumption].
-- cbn.
-  refine IHp.
-Defined.
-
-Definition decompose_app_tactic {m : MTele} (p : PTele m) {A B T: Type} (a : A) (t : T):
-  M ((MTele_Const (s:=SProp) (gtactic B) p) -> gtactic B) :=
+Definition decompose_app_tactic {m : MTele} {A : Type} {B : A -> Type} {C : MTele_ConstT A m} {T: Type} (a : A) (t : T) :
+  M (Unification -> MTele_sort (MTele_ConstMap (si:=SType) SProp (fun a : A => gtactic (B a)) C) -> gtactic (B a)) :=
   (
     ''(mexistT _ m' T') <- MTele_of A T t;
     M.unify m m' UniCoq;;
-    MT <- M.evar _;
-    t' <- M.coerce t;
-    eq <- M.unify_or_fail UniCoq _ _;
-    let x := fun f (g : goal) => @M.decompose_app' A (mlist (mprod B goal)) m p a MT t' eq (f g) in
-    let y := fun f => x (mtele_convert' _ f) in
+    M.cumul UniCoq C t;;
+    let x := fun uni f (g : goal) => @M.decompose_app' A (fun a => mlist (mprod (B a) goal)) m uni a C (f g) in
+    let y := fun uni f => x uni (mtele_convert' f) in
     M.ret y
   ).
 
-Notation "'<[decapp' a b 'with' x , .. , z ]>" :=
+Notation "'<[decapp' a 'return' T 'with' b ]>" :=
   (
-      let p := (pTele x .. (pTele z pBase) ..) in
-      ltac:(mrun (decompose_app_tactic p a b))
+      ltac:(mrun (decompose_app_tactic (B:=T) a b))
   )
   (at level 0, a at next level, b at next level) : tactic_scope.
 
-Notation "'<[decapp' a b ]>" :=
+Notation "'<[decapp' a 'with' b ]>" :=
   (
-    let p := pBase in
-    ltac:(mrun (decompose_app_tactic p a b))
+    ltac:(mrun (decompose_app_tactic (A:=?[A]) (B:=fun _ : ?A => _) a b))
   )
   (at level 0, a at next level, b at next level) : tactic_scope.

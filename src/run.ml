@@ -1202,23 +1202,31 @@ let rec run' ctxt (vms : vm list) =
               return sigma CoqUnit.mkTT
 
           | _ when isdecompose_app h ->
+              (* : A B m uni a C cont  *)
               let (t_head, t_args) = decompose_app sigma (nth 4) in
-              let head = nth 6 in
-              if eq_constr_nounivs sigma (t_head) head then
-                let cont = nth 8 in
-                let ptele = nth 3 in
-                let rec traverse ptele t_args =
-                  let ptele = ReductionStrategy.whd_betadeltaiota env ctxt.fixpoints sigma ptele in
-                  match CoqPTele.from_coq sigma env ptele with
-                  | None ->
+              let (c_head, c_args) = decompose_app sigma (nth 5) in
+              if eq_constr_nounivs sigma t_head c_head then
+                let cont = nth 6 in
+                let uni = nth 3 in
+                let rec traverse sigma t_args c_args =
+                  match c_args with
+                  | [] ->
                       let code = (applist (cont, t_args)) in
-                      (run'[@tailcall]) ctxt (upd code)
-                  | Some (x, ptele) ->
-                      traverse ptele (tl t_args)
+                      (run'[@tailcall]) {ctxt with sigma = sigma} (upd code)
+                  | c_h :: c_args ->
+                      match t_args with
+                      | t_h :: t_args ->
+                          let (unires, _) = UnificationStrategy.unify None sigma env uni Reduction.CONV t_h c_h in
+                          begin
+                            match unires with
+                            | Success (sigma) -> traverse sigma t_args c_args
+                            | UnifFailure _ -> fail (E.mkWrongTerm sigma env c_head)
+                          end
+                      | _ -> fail (E.mkWrongTerm sigma env c_head)
                 in
-                traverse ptele t_args
+                traverse sigma t_args c_args
               else
-                fail (E.mkWrongTerm sigma env head)
+                fail (E.mkWrongTerm sigma env c_head)
 
           | _ when isnew_timer h ->
               let t_arg = nth 1 in

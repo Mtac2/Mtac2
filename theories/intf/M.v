@@ -241,15 +241,17 @@ Definition get_trace: t bool.
 Definition set_trace: bool -> t unit.
   make. Qed.
 
+(** [decompose_app' uni a (h u .. w) (fun x .. z => t)] executes
+    [t[i..k/x..z]] iff [a] is [H u' .. w' i .. k]
+    where [u' .. w'] unify with [u .. w] according to the
+    unification stragety [uni].
+ *)
 Definition decompose_app' :
-  forall {A : Type} {B : Type} {m} {p : PTele m},
-    A ->
-    forall {T : MTele_Ty m},
-      MTele_valT T ->
-      (MTele_sort (PTele_Sort p T) =m= MTele_ConstT A p) ->
-    MTele_ConstP (t B) p ->
-    t B.
+  forall {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m),
+    MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C) ->
+    t (B a).
   make. Qed.
+
 
 Definition new_timer : forall {A} (a : A), t unit.
   make. Qed.
@@ -427,7 +429,7 @@ Module notations.
 
   Import TeleNotation.
   Notation "'dcase' v 'as' A ',' x 'in' t" :=
-    (@M.decompose_app' _ _ [tele A (_:A)] [ptele] v _ (@Dyn) (meq_refl) (fun A x => t)) (at level 91, t at level 200).
+    (@M.decompose_app' _ (fun _ => _) [tele A (_:A)] UniMatchNoRed v (@Dyn) (fun A x => t)) (at level 91, t at level 200).
   Notation "'dcase' v 'as' x 'in' t" :=
     (dcase v as _ , x in t) (at level 91, t at level 200).
 End notations.
