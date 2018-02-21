@@ -27,7 +27,7 @@ Qed.
 Example mirror_nu : True.
 MProof.
   (* The type of [x] and  [y] is determined by the function given to [\nu_m] *)
-  (\nu_m for (fun hopefully_unused0 hopefully_unused1 : True => True) as x y,
+  (\nu_m for (fun (hopefully_unused0 : True) (hopefully_unused1 : hopefully_unused0 = I) => True) as x y,
     n0 <- M.get_binder_name x;
     M.coerce (B:=n0 = "hopefully_unused0") (@eq_refl _ n0);;
     n1 <- M.get_binder_name y;

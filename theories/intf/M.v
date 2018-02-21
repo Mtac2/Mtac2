@@ -621,7 +621,9 @@ Module notations.
     bind_nu F (fun x => .. (bind_nu F (fun z => a)) .. )
   ) (at level 200, a at level 200, x binder, z binder).
 
-  Local Definition bind_nu_rec {A B C} (a : A -> B -> t C) (F : A -> B) :=
+  Local Definition bind_nu_rec {A} {B : A -> Type} {C}
+        (a : forall x : A, B x -> t C)
+        (F : forall x : A, B x) :=
     bind (fresh_binder_name F)
          (fun n => M.nu n mNone (fun x : A => let F := reduce (RedOneStep [rl: RedBeta]) (F x) in a x F)).
 
