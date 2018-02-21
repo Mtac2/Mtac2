@@ -14,3 +14,24 @@ Example nu_returning_x_fails (x: nat) : forall y:nat, 0 <= y.
 MProof.
   (mtry M.nu "z" mNone (fun y=>M.ret y) with VarAppearsInValue => M.ret _ end)%MC.
 Abort.
+
+Example fresh_nu : True.
+MProof.
+  (\nu_f for (fun hopefully_unused : True => True) as (x : nat),
+    n <- M.get_binder_name x;
+    M.coerce (B:=n = "hopefully_unused") (@eq_refl _ n);;
+    M.ret I
+  )%MC.
+Qed.
+
+Example mirror_nu : True.
+MProof.
+  (* The type of [x] and  [y] is determined by the function given to [\nu_m] *)
+  (\nu_m for (fun hopefully_unused0 hopefully_unused1 : True => True) as x y,
+    n0 <- M.get_binder_name x;
+    M.coerce (B:=n0 = "hopefully_unused0") (@eq_refl _ n0);;
+    n1 <- M.get_binder_name y;
+    M.coerce (B:=n1 = "hopefully_unused1") (@eq_refl _ n1);;
+    M.ret I
+  )%MC.
+Qed.

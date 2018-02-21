@@ -366,7 +366,7 @@ Fixpoint mmatch' {A:Type} {P:A->Type} (E : Exception) (y : A) (ps : mlist (patte
 
 Definition NotCaught : Exception. constructor. Qed.
 
-Module notations.
+Module notations_pre.
   Export monad_notations.
 
   (* We cannot make this notation recursive, so we loose
@@ -432,9 +432,9 @@ Module notations.
     (@M.decompose_app' _ (fun _ => _) [tele A (_:A)] UniMatchNoRed v (@Dyn) (fun A x => t)) (at level 91, t at level 200).
   Notation "'dcase' v 'as' x 'in' t" :=
     (dcase v as _ , x in t) (at level 91, t at level 200).
-End notations.
+End notations_pre.
 
-Import notations.
+Import notations_pre.
 
 (* Utilities for lists *)
 Definition map {A B} (f : A -> t B) :=
@@ -608,6 +608,37 @@ Definition fresh_name (name: string) : t string :=
 Definition fresh_binder_name {A:Type} (x : A) : t string :=
   bind (mtry' (get_binder_name x) (fun _ => ret "x"%string)) (fun name=>
   fresh_name name).
+
+Module notations.
+  Export notations_pre.
+
+  Local Definition bind_nu {A B C} (F : A) (a : B -> t C) :=
+    bind (fresh_binder_name F) (fun n => M.nu n mNone a).
+
+  (* Fresh names. This notation is declared recursive to allow optional type
+     annotations but it only works for a single binder *)
+  Notation "'\nu_f' 'for' F 'as' x .. z , a " := (
+    bind_nu F (fun x => .. (bind_nu F (fun z => a)) .. )
+  ) (at level 200, a at level 200, x binder, z binder).
+
+  Local Definition bind_nu_rec {A B C} (a : A -> B -> t C) (F : A -> B) :=
+    bind (fresh_binder_name F)
+         (fun n => M.nu n mNone (fun x : A => let F := reduce (RedOneStep [rl: RedBeta]) (F x) in a x F)).
+
+  (* Fresh names _m_irroring the shape of the [F]'s type.
+
+     The names will only be related to [F]'s binder names if [F] is
+     syntactically equal to [fun x .. z => ..]. Otherwise, the reduction
+     strategy will not reduce the term far enough for the next call to
+     [fresh_binder_name] to find the correct name.
+
+     This notation is let-expanded because Coq's notation mechanism is unable to
+     recognize it as [(<recursive part>) F]. *)
+  Notation "'\nu_m' 'for' F 'as' x .. z , a " := (
+    let t := (bind_nu_rec (fun x => .. (bind_nu_rec (fun z => fun _ => a)) .. )) in t F
+  ) (at level 200, a at level 200, x binder, z binder).
+
+End notations.
 
 Definition unfold_projection {A} (y : A) : t A :=
   let x := reduce (RedOneStep [rl:RedDelta]) y in
