@@ -640,6 +640,10 @@ Module notations.
     let t := (bind_nu_rec (fun x => .. (bind_nu_rec (fun z => fun _ => a)) .. )) in t F
   ) (at level 200, a at level 200, x binder, z binder).
 
+  Notation "'\nu_M' 'for' F 'as' x .. z ; f , a " := (
+    let t := (bind_nu_rec (fun x => .. (bind_nu_rec (fun z => fun f => a)) .. )) in t F
+  ) (at level 200, a at level 200, x binder, z binder).
+
 End notations.
 
 Definition unfold_projection {A} (y : A) : t A :=

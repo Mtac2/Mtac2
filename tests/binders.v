@@ -35,3 +35,16 @@ MProof.
     M.ret I
   )%MC.
 Qed.
+
+Example mirror_nu_with_func : True.
+MProof.
+  (* The type of [x] and  [y] is determined by the function given to [\nu_m] *)
+  (\nu_M for (fun (hopefully_unused0 : True) (hopefully_unused1 : hopefully_unused0 = I) => True) as x y ; f,
+    M.unify_or_fail UniMatchNoRed f True;;
+    n0 <- M.get_binder_name x;
+    M.coerce (B:=n0 = "hopefully_unused0") (@eq_refl _ n0);;
+    n1 <- M.get_binder_name y;
+    M.coerce (B:=n1 = "hopefully_unused1") (@eq_refl _ n1);;
+    M.ret I
+  )%MC.
+Qed.
