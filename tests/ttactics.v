@@ -25,7 +25,7 @@ Qed.
 Goal 1 < 3 -> 3 < 4 -> 1 < 4.
 MProof.
   intros.
-  compl tt_lt_trans [t: use T.assumption |  assumption].
+  compl tt_lt_trans [t: Muse T.assumption |  assumption].
 Qed.
 
 Goal 1 < 3 -> 3 < 4 -> 1 < 4.
