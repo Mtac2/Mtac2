@@ -274,7 +274,7 @@ Definition Mappend {A} (xs ys : mlist A) :=
   M.ret zs.
 
 
-Definition apply {A} : (A *m mlist goal) -> tactic :=
+Definition to_T {A} : (A *m mlist goal) -> tactic :=
   (fun '(m: a, gs) g =>
     T.exact a g;;
     let gs := dreduce (@mmap) (mmap (mpair tt) gs) in
@@ -305,7 +305,7 @@ Definition match_goal_context
   | mSome r =>
     let reduced := dreduce (@fu) (fu r) in
     cont reduced >>=
-    TT.apply
+    TT.to_T
   | mNone => M.raise DoesNotMatchGoal
   end.
 
@@ -315,7 +315,7 @@ Fixpoint match_goal_pattern'
   match p, l2 with
   | gbase P t, _ =>
     gT <- M.goal_type g;
-    mif M.cumul u P gT then (r <- t; TT.apply r g)
+    mif M.cumul u P gT then (r <- t; TT.to_T r g)
     else M.raise DoesNotMatchGoal
   | gbase_context x t, _ =>
     gT <- M.goal_type g;
