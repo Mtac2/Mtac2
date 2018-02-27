@@ -179,13 +179,13 @@ Polymorphic Definition assumption(*@{i j k k1 a1 a2 a3 a4 a5 a6 a7 a8}*) {A:Type
   @find(*@{i j k k1 a1 a2 a3 a4 a5 a6 a7 a8}*) A l.
 
 (** Solves goal A provided tactic t *)
-Definition by' {A} (t: tactic) : M A :=
+Definition Mby' {A} (t: tactic) : M A :=
   e <- evar A;
   l <- t (Goal SType e);
   l' <- T.filter_goals l;
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
 
-Definition use {A} (t: tactic) : M A :=
+Definition Muse {A} (t: tactic) : M A :=
   e <- evar A;
   t (Goal SType e);;
   ret e.
