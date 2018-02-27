@@ -286,11 +286,11 @@ Import Abstract.
 Import T.notations.
 Import Mtac2.Logic.
 Inductive goal_pattern : Prop :=
-  | gbase : forall {A}, A -> TT A -> goal_pattern
+  | gbase : forall (A : _), TT A -> goal_pattern
   | gbase_context : forall {A} (a : A), (forall (C : A -> Type), TT (C a)) -> goal_pattern
   | gtele : forall {C}, (C -> goal_pattern) -> goal_pattern
   | gtele_evar : forall {C}, (C -> goal_pattern) -> goal_pattern.
-Arguments gbase {A} _ _.
+Arguments gbase _ _.
 Arguments gbase_context {A} _ _.
 Arguments gtele {C} _.
 Arguments gtele_evar {C} _.
