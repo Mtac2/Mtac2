@@ -250,11 +250,20 @@ Definition TT A := M (A *m mlist goal).
 Bind Scope typed_tactic_scope with TT.
 Delimit Scope typed_tactic_scope with TT.
 
-Definition use' {A} (t : tactic) : TT A :=
+Definition use {A} (t : tactic) : TT A :=
   (a <- M.evar A;
   gs <- t (@Goal Sorts.Sorts.SType A a);
   let gs := dreduce (@mmap) (mmap (fun '(m: _, g) => g) gs) in
   M.ret (m: a, gs))%MC.
+
+Definition by' {A} (t : tactic) : TT A :=
+  e <- evar A;
+  l <- t (Goal SType e);
+  l' <- T.filter_goals l;
+  match l' with
+  | [m:] => ret (m: e, [m:])
+  | _ => failwith "couldn't solve"
+  end.
 
 Definition lift {A} (t : M A) : TT A :=
   t >>= (fun a => M.ret (m: a,  [m:])).
@@ -280,6 +289,10 @@ Definition to_T {A} : (A *m mlist goal) -> tactic :=
     let gs := dreduce (@mmap) (mmap (mpair tt) gs) in
     M.ret gs
   )%MC.
+
+
+Definition apply {A} (a : A) : TT A :=
+  M.ret (m: a, [m:]).
 
 Module MatchGoalTT.
 Import Abstract.
