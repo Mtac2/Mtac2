@@ -163,7 +163,6 @@ Definition compi {A} {B} (g : M A) (h : M B) : M (A * B) :=
   g >>= fun xg=> h >>= fun xh => ret (xg, xh).
 
 (** A typed assumption tactic *)
-Set Print Universes.
 Open Scope pattern_scope.
 Polymorphic Definition find(*@{i j k k1 a1 a2 a3 a4 a5 a6 a7 a8}*) {A:Type(*@{i}*)} :=
   mfix1 f (l : mlist(*@{j}*) Hyp(*@{k}*)) : M A :=
