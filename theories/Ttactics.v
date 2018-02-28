@@ -297,6 +297,9 @@ Definition apply {A} (a : A) : TT A :=
 Definition apply_ {A} : TT A :=
   by' T.apply_.
 
+Definition try {A} (t : TT A) : TT A :=
+  mtry t with _ => (use T.idtac) : M _ end.
+
 
 Module MatchGoalTT.
 Import Abstract.
