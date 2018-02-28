@@ -293,6 +293,11 @@ Definition to_T {A} : (A *m mlist goal) -> tactic :=
 Definition apply {A} (a : A) : TT A :=
   M.ret (m: a, [m:]).
 
+
+Definition apply_ {A} : TT A :=
+  by' T.apply_.
+
+
 Module MatchGoalTT.
 Import Abstract.
 Import T.notations.
