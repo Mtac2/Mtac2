@@ -242,6 +242,7 @@ Definition eexact {A} (x:A) : tactic := fun g =>
   end.
 
 Definition goal_type : gtactic Type := with_goal M.goal_type.
+Definition goal_prop : gtactic Prop := with_goal M.goal_prop.
 
 (** [intro_base n t] introduces variable or definition named [n]
     in the context and executes [t n].

@@ -678,6 +678,23 @@ Definition goal_type (g : goal) : t Type :=
   | _ => raise NotAGoal
   end.
 
+(** [goal_prop g] extracts the prop of the goal or raises [NotAGoal]
+    if [g] is not [Goal], or [CantCoerce] its type can't be cast to a Prop. *)
+Definition goal_prop (g : goal) : t Prop :=
+  match g with
+  | @Goal s A _ =>
+    match s as s return forall A:stype_of s, t Prop with
+      | SProp => fun A:Prop => ret A
+      | SType => fun A:Type =>
+        gP <- evar Prop;
+        mtry
+         cumul_or_fail UniMatch gP A;;
+         ret gP
+        with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
+    end A
+  | _ => raise NotAGoal
+  end.
+
 (** Convertion functions from [dyn] to [goal]. *)
 Definition dyn_to_goal (d : dyn) : t goal :=
   mmatch d with
