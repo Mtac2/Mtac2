@@ -49,3 +49,4 @@ val isstart_timer : EConstr.t -> bool
 val isstop_timer : EConstr.t -> bool
 val isreset_timer : EConstr.t -> bool
 val isprint_timer : EConstr.t -> bool
+val iskind_of_term : EConstr.t -> bool

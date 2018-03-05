@@ -156,3 +156,6 @@ let isreset_timer = isconstr mkreset_timer
 
 let mkprint_timer = mkconstr "print_timer"
 let isprint_timer = isconstr mkprint_timer
+
+let mkkind_of_term = mkconstr "kind_of_term"
+let iskind_of_term = isconstr mkkind_of_term

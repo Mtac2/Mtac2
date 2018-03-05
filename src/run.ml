@@ -792,6 +792,25 @@ let run_declare_implicits env sigma gr impls =
   (sigma, CoqUnit.mkTT)
 
 
+let koft sigma t =
+  let lf n = Lazy.force (MtacNames.mkConstr ("Tm_kind." ^ n)) in
+  let open Term in
+  match kind sigma t with
+  | Var _ -> lf "tmVar"
+  | Evar _ -> lf "tmEvar"
+  | Sort _ -> lf "tmSort"
+  | Const _ -> lf "tmConst"
+  | Construct _ -> lf "tmConstruct"
+  | Lambda _ -> lf "tmLambda"
+  | Prod _ -> lf "tmProd"
+  | LetIn _ -> lf "tmLetIn"
+  | App _ -> lf "tmApp"
+  | Cast _ -> lf "tmCast"
+  | Ind _ -> lf "tmInd"
+  | Case _ -> lf "tmCase"
+  | Fix _ -> lf "tmFix"
+  | CoFix _ -> lf "tmCoFix"
+  | _ -> failwith "unsupported"
 
 type ctxt = {env: Environ.env; renv: constr; sigma: Evd.evar_map; nus: int;
              fixpoints: (EConstr.t, EConstr.t) Context.Named.pt;
@@ -1287,6 +1306,8 @@ let rec run' ctxt (vms : vm list) =
               let () = Feedback.msg_info (Pp.str (Printf.sprintf "%f" total)) in
               return sigma CoqUnit.mkTT
 
+          | _ when iskind_of_term h ->
+              return sigma (koft sigma (nth 1))
 
           | _ ->
               fail (E.mkStuckTerm sigma env h)

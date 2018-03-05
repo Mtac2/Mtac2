@@ -36,10 +36,6 @@ Import M.notations.
 Notation "t 'mwith' ( k := u )" :=
   (elemr (ltac:(mrun (M.mwith t k u)))) (at level 0).
 
-(* FIXME: where should this function go? and we should create a better way of testing these kind of things. *)
-Definition iscase {A} (e: A) : M bool :=
-  mtry M.destcase e;; M.ret true with _ => M.ret false end.
-
 (** creation of exceptions *)
 Definition new_exception name := M.declare dok_Definition name true exception;; M.ret tt.
 Definition binder_exception (f: unit->unit) := M.get_binder_name f >>= new_exception.

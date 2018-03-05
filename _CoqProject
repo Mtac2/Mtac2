@@ -54,4 +54,5 @@ theories/intf/Unification.v
 theories/intf/Case.v
 theories/intf/Goals.v
 theories/intf/Lift.v
+theories/intf/Tm_kind.v
 theories/intf/M.v

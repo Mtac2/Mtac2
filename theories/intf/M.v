@@ -4,7 +4,7 @@ From Mtac2 Require Import Logic Datatypes Logic List Utils Sorts MTele Pattern.
 Import Sorts.
 Import ListNotations.
 Import ProdNotations.
-From Mtac2.intf Require Export Exceptions Dyn Reduction Unification DeclarationDefs Goals Case.
+From Mtac2.intf Require Export Exceptions Dyn Reduction Unification DeclarationDefs Goals Case Tm_kind.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
@@ -266,6 +266,10 @@ Definition reset_timer : forall {A} (a : A), t unit.
   make. Qed.
 
 Definition print_timer : forall {A} (a : A), t unit.
+  make. Qed.
+
+(** [kind_of_term t] returns the term kind of t *)
+Definition kind_of_term: forall{A: Type}, A -> t tm_kind.
   make. Qed.
 
 Arguments t _%type.
@@ -779,6 +783,77 @@ Definition collect_evars {A} (x: A) :=
     ) (Dyn x);
   let red := dreduce (@mapp, @mconcat) res in
   ret red.
+
+(** Query functions *)
+Definition isVar {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmVar => ret true
+  | _ => ret false
+  end.
+
+Definition isEvar {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmEvar => ret true
+  | _ => ret false
+  end.
+
+Definition isConst {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmConst => ret true
+  | _ => ret false
+  end.
+
+Definition isConstruct {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmConstruct => ret true
+  | _ => ret false
+  end.
+
+Definition isApp {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmApp => ret true
+  | _ => ret false
+  end.
+
+Definition isLambda {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmLambda => ret true
+  | _ => ret false
+  end.
+
+Definition isProd {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmProd => ret true
+  | _ => ret false
+  end.
+
+Definition isCast {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmCast => ret true
+  | _ => ret false
+  end.
+
+Definition isSort {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmSort => ret true
+  | _ => ret false
+  end.
+
+Definition isCase {A} (x: A) :=
+  kind_of_term x >>= fun k=>
+  match k with
+  | tmCase => ret true
+  | _ => ret false
+  end.
 
 End M.
 
