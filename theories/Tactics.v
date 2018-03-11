@@ -154,9 +154,9 @@ Definition close_goals {A B} (y : B) : mlist (A *m goal) -> M (mlist (A *m goal)
 
 (** [let_close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] with its definition to each of them (it assumes it is defined). *)
-Definition let_close_goals(*@{a b g1 g2 l}*) {A: Type(*@{a}*)} {B:Type(*@{b}*)} (y : B) : mlist(*@{l}*) (A *m goal(*@{g1 g2}*)) -> M (mlist(*@{l}*) (mprod(*@{a l}*) A goal(*@{g1 g2}*))) :=
-  let t := reduce(*@{b}*) (RedOneStep [rl:RedDelta]) y in (* to obtain x's definition *)
-  M.map (fun '(m: x,g') => r <- M.abs_fun(*@{b l l}*) y g'; M.ret (m: x, @AHyp B (mSome t) r)).
+Definition let_close_goals {A: Type} {B:Type} (y : B) : mlist (A *m goal) -> M (mlist (mprod A goal)) :=
+  let t := reduce (RedOneStep [rl:RedDelta]) y in (* to obtain x's definition *)
+  M.map (fun '(m: x,g') => r <- M.abs_fun y g'; M.ret (m: x, @AHyp B (mSome t) r)).
 
 (** [rem_hyp x l] "removes" hypothesis [x] from the list of goals [l]. *)
 Definition rem_hyp {A B} (x : B) (l: mlist (A *m goal)) : M (mlist (A *m goal)) :=
@@ -181,16 +181,16 @@ Definition filter_goals {A} : mlist (A *m goal) -> M (mlist (A *m goal)) :=
 (** [open_and_apply t] is a tactic that "opens" the current goal
     (pushes all the hypotheses in the context) and applies tactic [t]
     to the so-opened goal. The result is "closed" back. *)
-Definition open_and_apply(* @{a g1 g2 rg1 rg2 l I J c} *) {A} (t : gtactic(* @{a g1 g2 rg1 rg2 l} *) A) : gtactic(* @{a g1 g2 rg1 rg2 l} *) A :=
+Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
   fix open g :=
     match g return M _ with
     | Goal _ _ => t g
     | @AHyp C mNone f =>
-      x <- M.fresh_binder_name(* @{c I J} *) f;
+      x <- M.fresh_binder_name f;
       M.nu x mNone (fun x : C =>
         open (f x) >>= close_goals x)
     | @AHyp C (mSome t) f =>
-      x <- M.fresh_binder_name(* @{c I J} *) f;
+      x <- M.fresh_binder_name f;
       M.nu x (mSome t) (fun x : C =>
         open (f x) >>= let_close_goals x)
     | HypRem x f =>
@@ -231,7 +231,7 @@ Definition exact {A} (x:A) : tactic := fun g =>
   | Goal _ g => M.cumul_or_fail UniCoq x g;; M.ret [m:]
   | _ => M.raise NotAGoal
   end.
-Set Printing All. Set Printing Universes.
+
 Definition eexact {A} (x:A) : tactic := fun g =>
   match g with
   | Goal _ g =>
