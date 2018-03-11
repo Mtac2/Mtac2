@@ -50,6 +50,7 @@ Definition snth_index {A:Type} (c:A) (t:tactic) : T.selector unit := fun l =>
 
 Notation "'case' c 'do' t" := (snth_index c t) (at level 40).
 Import M.notations.
+Local Close Scope tactic_scope.
 Definition snth_indices (l : mlist dyn) (t : tactic) : selector unit := fun goals=>
   M.fold_left (fun (accu : mlist (unit *m goal)) (d : dyn)=>
     dcase d as c in
@@ -61,7 +62,8 @@ Definition snth_indices (l : mlist dyn) (t : tactic) : selector unit := fun goal
       let res := dreduce (@mapp, @mmap) (accu +m+ newgoals) in
       T.filter_goals res
     | mNone => M.failwith "snth_indices"
-    end)%MC l goals.
+    end) l goals.
+Open Scope tactic_scope.
 
 Notation "'case' c , .. , d 'do' t" :=
   (snth_indices (Dyn c :m: .. (Dyn d :m: [m:]) ..) t) (at level 40).

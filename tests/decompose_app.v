@@ -52,3 +52,18 @@ Goal True.
 MProof.
 (<[decapp (3+5) with @plus]> UniMatchNoRed (fun x y => M.print_term (x,y);; T.idtac)).
 Abort.
+
+Example dep_type (n1 n2: nat) :
+  match n1 with
+  | O => bool
+  | S _ => unit
+  end -> n2 = n2 := fun _ => eq_refl n2.
+
+Local Close Scope tactic_scope.
+Local Open Scope M_scope.
+Import M.notations.
+Mtac Do (
+       mtry
+       <[decapp dep_type O 2 true with dep_type 1 2]> UniCoq (fun u => M.print_term u)
+       with | WrongTerm => M.ret tt end
+     ).

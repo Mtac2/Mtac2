@@ -613,6 +613,43 @@ Definition fresh_binder_name {A:Type} (x : A) : t string :=
   bind (mtry' (get_binder_name x) (fun _ => ret "x"%string)) (fun name=>
   fresh_name name).
 
+
+Fixpoint string_rev_app (s1 s2 : string) :=
+  match s1 with
+  | EmptyString => s2
+  | String c s1 => string_rev_app s1 (String c s2)
+  end.
+
+Definition string_rev s := string_rev_app s EmptyString.
+
+(* string_rev_flatten: takes a list of reversed strings and computes
+the string that consists of the unreversed strings. *)
+Fixpoint string_rev_flatten (ss : mlist string) :=
+  match ss with
+  | [m:] => EmptyString
+  | s :m: ss => string_rev_app s (string_rev_flatten ss)
+  end.
+
+Definition fail_strs (l : mlist dyn) : M.t string :=
+  fix2 (fun _ _ => string) (fun go l (acc : mlist string) =>
+  match l with
+  | [m: ] =>
+    let r := reduce (RedVmCompute) (string_rev (string_rev_flatten acc)) in
+    M.ret r
+  | D :m: l =>
+    mmatch D with
+    | [? s] @Dyn string s =>
+      (* let r := reduce (RedVmCompute) (string_rev s) in *)
+      go l (s :m: acc)
+    | _ =>
+      dcase D as t in
+      s <- M.pretty_print t;
+      (* let r := reduce (RedVmCompute) (string_rev s) in *)
+      go l (s :m: acc)
+    end
+  end) l [m:].
+
+
 Module notations.
   Export notations_pre.
 
@@ -648,6 +685,12 @@ Module notations.
     let t := (bind_nu_rec (fun x => .. (bind_nu_rec (fun z => fun f => a)) .. )) in t F
   ) (at level 200, a at level 200, x binder, z binder).
 
+
+  (* This `fail` notation mirrors Ltac's `fail` notation, with one exception: no
+  automagic spaces are inserted between the arguments. *)
+  Notation "'mfail' s1 .. sn" :=
+    ((fail_strs (mcons (Dyn s1) .. (mcons (Dyn sn) mnil) ..)) >>= M.failwith)
+      (at level 0, s1 at next level, sn at next level) : M_scope.
 End notations.
 
 Definition unfold_projection {A} (y : A) : t A :=
