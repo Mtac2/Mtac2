@@ -527,16 +527,21 @@ Module MTac2.
     Inductive var_context {var : Type} := nil | cons (n : nat) (v : var) (xs : var_context).
   End var_context.
 
-  Definition find_in_ctx {var : Type} (term : nat) (ctx : @var_context.var_context var) : M (option var)
-    := (mfix1 find_in_ctx (ctx : @var_context.var_context var) : M (option var) :=
-          (mmatch ctx with
-          | [? v xs] (var_context.cons term v xs)
-            =n> M.ret (Some v)
-          | [? x v xs] (var_context.cons x v xs)
-            =n> find_in_ctx xs
-          | _ => M.ret None
-           end)) ctx.
+  Fixpoint find_in_ctx {var : Type} (term : nat) (ctx : @var_context.var_context var) {struct ctx} : M (option var)
+    := match ctx with
+        | var_context.cons term' v xs =>
+          mif M.unify term term' UniMatchNoRed then
+            M.ret (Some v)
+          else
+            find_in_ctx term xs
+        | _ => M.ret None
+       end.
 
+  Definition mor {A} (t1 t2 : M A) : M A :=
+    mtry t1 with _ => t2 end.
+  Notation "a '_or_' b" := (mor a b)  (at level 50).
+Require Import Mtac2.DecomposeApp.
+Import M.notations.
   Definition reify_helper {var : Type} (term : nat) (ctx : @var_context.var_context var) : M (@expr var)
     := ((mfix2 reify_helper (term : nat) (ctx : @var_context.var_context var) : M (@expr var) :=
            lvar <- find_in_ctx term ctx;
@@ -544,16 +549,15 @@ Module MTac2.
              | Some v => M.ret (@Var var v)
              | None
                =>
+               <[decapp term with O]> UniMatchNoRed (M.ret (@NatO var)) _or_
+               <[decapp term with S]> UniMatchNoRed (fun x:nat=>
+                  rx <- reify_helper x ctx;
+                  M.ret (@NatS var rx)) _or_
+               <[decapp term with Nat.mul]> UniMatchNoRed (fun x y:nat=>
+                  rx <- reify_helper x ctx;
+                  ry <- reify_helper y ctx;
+                  M.ret (@NatMul var rx ry)) _or_
                (mmatch term with
-               | O
-                 =n> M.ret (@NatO var)
-               | [? x] (S x)
-                 =n> (rx <- reify_helper x ctx;
-                        M.ret (@NatS var rx))
-               | [? x y] (x * y)
-                 =n> (rx <- reify_helper x ctx;
-                        ry <- reify_helper y ctx;
-                        M.ret (@NatMul var rx ry))
                | [? v f] (@Let_In nat (fun _ => nat) v f)
                  =n> (rv <- reify_helper v ctx;
                         x <- M.fresh_binder_name f;

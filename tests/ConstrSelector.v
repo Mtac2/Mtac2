@@ -154,9 +154,6 @@ Definition remember {A} (x:A) (def eq : string) : tactic :=
   cpose_base def x (fun y:A=>
     cassert_base eq (fun H: y = x =>lrewrite H) &> [m:reflexivity | idtac]).
 
-Ltac ind H := induction H.
-Definition induction {A} (x:A) := ltac "Mtac2Tests.ConstrSelector.ind" [m:Dyn x].
-
 Lemma WHILE_true_nonterm : forall b c st st',
      bequiv b BTrue ->
      ~( (WHILE b DO c END) / st \\ st' ).
