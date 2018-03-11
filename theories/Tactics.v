@@ -1094,8 +1094,8 @@ Module notations.
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
 
 
-  Notation "'dcase' v 'as' x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200).
-  Notation "'dcase' v 'as' A, x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200).
+  Notation "'dcase' v 'as' x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200) : tactic_scope.
+  Notation "'dcase' v 'as' A, x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200) : tactic_scope.
 
 End notations.
 
