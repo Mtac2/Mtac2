@@ -184,11 +184,23 @@ Definition Mby' {A} (t: tactic) : M A :=
   l' <- T.filter_goals l;
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
 
+Mtac Do New Exception NotAProp.
 Definition Muse {A} (t: tactic) : M A :=
-  e <- evar A;
-  t (Goal SType e);;
-  ret e.
-
+  mtry
+    P <- evar Prop;
+    of <- unify_univ P A UniMatchNoRed;
+    match of with
+    | mSome f => e <- M.evar P;
+                 t (Goal SProp e);;
+                 let e := reduce (RedOneStep [rl: RedBeta]) (f e) in
+                 ret e
+    | mNone => raise NotAProp
+    end
+  with | NotAProp =>
+    e <- evar A;
+    t (Goal SType e);;
+    ret e
+  end.
 
 Definition is_prod T :=
   mmatch T with
@@ -250,17 +262,49 @@ Bind Scope typed_tactic_scope with TT.
 Delimit Scope typed_tactic_scope with TT.
 
 Definition use {A} (t : tactic) : TT A :=
-  (a <- M.evar A;
-  gs <- t (@Goal Sorts.Sorts.SType A a);
-  let gs := dreduce (@mmap) (mmap (fun '(m: _, g) => g) gs) in
-  M.ret (m: a, gs))%MC.
+  (
+    ''(m: a, gs) <- (
+          mtry
+            P <- evar Prop;
+            of <- unify_univ P A UniMatchNoRed;
+            match of with
+            | mSome f => a <- M.evar P;
+                         gs <- t (Goal SProp a);
+                         let a := reduce (RedOneStep [rl: RedBeta]) (f a) in
+                         ret (m: a, gs)
+            | mNone => raise NotAProp
+            end
+          with | NotAProp =>
+            a <- evar A;
+            gs <- t (Goal SType a);
+            M.ret (m: a, gs)
+          end
+        );
+    let gs := dreduce (@mmap) (mmap (fun '(m: _, g) => g) gs) in
+    M.ret (m: a, gs)
+  )%MC.
 
 Definition by' {A} (t : tactic) : TT A :=
-  e <- evar A;
-  l <- t (Goal SType e);
-  l' <- T.filter_goals l;
-  match l' with
-  | [m:] => ret (m: e, [m:])
+    ''(m: a, gs) <- (
+          mtry
+            P <- evar Prop;
+            of <- unify_univ P A UniMatchNoRed;
+            match of with
+            | mSome f => a <- M.evar P;
+                         gs <- t (Goal SProp a);
+                         let a := reduce (RedOneStep [rl: RedBeta]) (f a) in
+                         ret (m: a, gs)
+            | mNone => raise NotAProp
+            end
+          with | NotAProp =>
+            a <- evar A;
+            gs <- t (Goal SType a);
+            M.ret (m: a, gs)
+          end
+        );
+  gs' <- T.filter_goals gs;
+  match gs' with
+  | [m:] => ret (m: a, [m:])
   | _ => failwith "couldn't solve"
   end.
 
