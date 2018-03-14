@@ -283,6 +283,7 @@ Definition use {A} (t : tactic) : TT A :=
     let gs := dreduce (@mmap) (mmap (fun '(m: _, g) => g) gs) in
     M.ret (m: a, gs)
   )%MC.
+Arguments use [_] _%tactic.
 
 Definition by' {A} (t : tactic) : TT A :=
     ''(m: a, gs) <- (
@@ -307,6 +308,7 @@ Definition by' {A} (t : tactic) : TT A :=
   | [m:] => ret (m: a, [m:])
   | _ => failwith "couldn't solve"
   end.
+Arguments by' [_] _%tactic.
 
 Definition lift {A} (t : M A) : TT A :=
   t >>= (fun a => M.ret (m: a,  [m:])).
@@ -414,6 +416,8 @@ Fixpoint match_goal_base (u : Unification)
   end%MC.
 End MatchGoalTT.
 Import MatchGoalTT.
+
+Arguments match_goal_base _ _%TT.
 
 Module notations.
 Notation "[t: x | .. | y ]" := (TT.compi x (.. (TT.compi y (M.ret I)) ..)).
