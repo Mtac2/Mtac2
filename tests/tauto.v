@@ -109,7 +109,7 @@ Module Mtac_V3.
   Import T.notations.
   Mtac Do New Exception TautoFail.
 
-  Program Definition solve_tauto : tactic :=
+  Definition solve_tauto : tactic :=
     mfix0 solve_tauto : gtactic _ :=
       apply I || (apply conj &> solve_tauto) || (apply or_introl &> solve_tauto) ||
             (apply or_intror &> solve_tauto) || introsn 1 &> solve_tauto ||
@@ -122,3 +122,84 @@ Module Mtac_V3.
   Qed.
 
 End Mtac_V3.
+
+
+Module Mtac_V4.
+  Import TT.
+  Import TT.notations.
+  Definition TautoFail : Exception. constructor. Qed.
+
+  Import Tactics.T.notations.
+  Import ProdNotations.
+  Definition tintro {A P} (f: forall (x:A), TT.TT (P x))
+  : TT.TT (forall (x:A), P x) :=
+  (n <- M.fresh_binder_name f;
+  M.nu n mNone (fun x=>
+    ''(m: v, gs) <- f x;
+    a <- M.abs_fun x v;
+    b <- T.close_goals x (mmap (fun g=>(m: tt, g)) gs);
+    let b := mmap msnd b in
+    M.ret (m: a, b)))%MC.
+  Definition pass {A} := TT.lift (M.evar A).
+
+Definition texists {A} {Q:A->Prop} : TT (exists (x:A), Q x) :=
+  (e <- M.evar A;
+  pf <- M.evar (Q e);
+  M.ret (m: ex_intro _ e pf, [m: Goal Sorts.Sorts.SProp pf]))%MC.
+
+  Mtac Do New Exception NotFound.
+
+  Definition find {A:Type} :=
+    (mfix1 f (l : mlist Hyp) : M A :=
+      mmatch l with
+      | [? x d (l': mlist Hyp)] (@ahyp A x d) :m: l' => M.ret x
+      | [? ah l'] ah :m: l' => f l'
+      | _ => M.raise NotFound
+      end)%MC.
+
+Definition tassumption {A:Type} : TT A :=
+  lift (hyps >>= find).
+
+Definition tor {A:Type} (t u : TT A) : TT A := (mtry r <- t; M.ret r with _ => r <- u; M.ret r end)%MC.
+Require Import Strings.String.
+Definition ucomp1 {A B:Prop} (t: TT A) (u: TT B) : TT A :=
+  (''(m: v1, gls1) <- t;
+  match gls1 with
+  | [m: gl] =>
+    ''(m: v2, gls) <- u;
+    T.exact v2 gl;;
+    M.ret (m: v1, gls)
+  | _ => mfail "more than a goal"%string
+  end)%MC.
+
+  Program Definition solve_tauto : forall {P:Prop}, TT P :=
+    (mfix1 solve_tauto (P : Prop) : M (P *m (mlist goal)) :=
+      mmatch P as P' return M (P' *m (mlist goal)) with
+      | True:Prop => apply I : M (True *m (mlist goal))
+      | [? Q1 Q2] Q1 /\ Q2 =>
+        apply (@conj _ _)
+        <**> solve_tauto Q1
+        <**> solve_tauto Q2
+      | [? Q1 Q2] Q1 \/ Q2 =>
+        mtry
+          apply (@or_introl _ _) <**> solve_tauto Q1
+        with
+        | TautoFail =>
+          apply (@or_intror _ _) <**> solve_tauto Q2
+        end
+      | [? (Q1 Q2 : Prop)] Q1 -> Q2 =>
+        tintro (fun x:Q1=> solve_tauto Q2)
+      | [? X (Q : X -> Prop)] (exists x : X, Q x) =>
+        P <- M.evar Prop;
+        ucomp1 texists (solve_tauto P)
+      | _ => tor tassumption (lift (raise TautoFail))
+      end
+    )%MC.
+
+ Ltac solve_tauto := mrun solve_tauto.
+
+  Goal 5 = 7 -> exists x, x = 7.
+  MProof.
+    (r <- solve_tauto; M.ret (mfst r))%MC.
+  Qed.
+End Mtac_V4.
