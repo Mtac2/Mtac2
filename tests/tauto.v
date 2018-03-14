@@ -58,6 +58,7 @@ Module Mtac_V1.
   Qed.
 End Mtac_V1.
 
+
 From Mtac2 Require Import Ttactics List.
 From Mtac2 Require Import Tactics.
 Open Scope M_scope.
@@ -101,3 +102,23 @@ Module Mtac_V2.
     solve_tauto.
   Qed.
 End Mtac_V2.
+
+
+Module Mtac_V3.
+  Import T.
+  Import T.notations.
+  Mtac Do New Exception TautoFail.
+
+  Program Definition solve_tauto : tactic :=
+    mfix0 solve_tauto : gtactic _ :=
+      apply I || (apply conj &> solve_tauto) || (apply or_introl &> solve_tauto) ||
+            (apply or_intror &> solve_tauto) || introsn 1 &> solve_tauto ||
+            (eexists |1> solve_tauto) || assumption || raise TautoFail.
+  Ltac solve_tauto := mrun solve_tauto.
+
+  Goal 5 = 7 -> exists x, x = 7.
+  Proof.
+    solve_tauto.
+  Qed.
+
+End Mtac_V3.
