@@ -173,9 +173,9 @@ Definition ucomp1 {A B:Prop} (t: TT A) (u: TT B) : TT A :=
   end)%MC.
 
   Program Definition solve_tauto : forall {P:Prop}, TT P :=
-    (mfix1 solve_tauto (P : Prop) : M (P *m (mlist goal)) :=
-      mmatch P as P' return M (P' *m (mlist goal)) with
-      | True:Prop => apply I : M (True *m (mlist goal))
+    (mfix1 solve_tauto (P : Prop) : M _ :=
+      mmatch P as P' return M (P' *m _) with
+      | True:Prop => apply I
       | [? Q1 Q2] Q1 /\ Q2 =>
         apply (@conj _ _)
         <**> solve_tauto Q1
@@ -192,7 +192,7 @@ Definition ucomp1 {A B:Prop} (t: TT A) (u: TT B) : TT A :=
       | [? X (Q : X -> Prop)] (exists x : X, Q x) =>
         P <- M.evar Prop;
         ucomp1 texists (solve_tauto P)
-      | _ => tor tassumption (lift (raise TautoFail))
+      | _ => tor tassumption (raise TautoFail)
       end
     )%MC.
 
