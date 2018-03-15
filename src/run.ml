@@ -172,6 +172,8 @@ module Exceptions = struct
 
   let mkNotAMatchExp = mkDebugEx "NotAMatchExp"
 
+  let mkNotAnInductive = mkDebugEx "NotAnInductive"
+
   let mkVarAppearsInValue = mkDebugEx "VarAppearsInValue"
 
   let mkNotAReference sigma env ty t =
@@ -490,9 +492,9 @@ let get_Constrs (env, fixs, sigma) t =
     let sigma, indtydyn = mkDyn indtyty indty sigma env in
     let sigma, listty = CoqList.mkType sigma env dyn in
     let sigma, pair = CoqPair.mkPair sigma env dyn listty indtydyn l in
-    (sigma, pair)
+    Some (sigma, pair)
   else
-    Exceptions.block "The argument of Mconstrs is not an inductive type"
+    None
 
 module Hypotheses = struct
 
@@ -1048,8 +1050,12 @@ let rec run' ctxt (vms : vm list) =
 
           | _ when isconstrs h ->
               let t = nth 1 in
-              let (sigma', constrs) = get_Constrs (env, ctxt.fixpoints, sigma) t in
-              return sigma' constrs
+              let oval = get_Constrs (env, ctxt.fixpoints, sigma) t in
+              begin
+                match oval with
+                | Some (sigma', constrs) -> return sigma' constrs
+                | None -> fail (E.mkNotAnInductive sigma env t)
+              end
 
           | _ when ismakecase h ->
               let case = nth 0 in

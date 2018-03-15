@@ -111,8 +111,8 @@ Module Mtac_V3.
 
   Definition solve_tauto : tactic :=
     mfix0 solve_tauto : gtactic _ :=
-      apply I || (apply conj &> solve_tauto) || (apply or_introl &> solve_tauto) ||
-            (apply or_intror &> solve_tauto) || introsn 1 &> solve_tauto ||
+      apply I || (split &> solve_tauto) || (left &> solve_tauto) ||
+            (right &> solve_tauto) || (introsn_cont solve_tauto 1) ||
             (eexists |1> solve_tauto) || assumption || raise TautoFail.
   Ltac solve_tauto := mrun solve_tauto.
 
@@ -152,8 +152,8 @@ Definition texists {A} {Q:A->Prop} : TT (exists (x:A), Q x) :=
   Definition find {A:Type} :=
     (mfix1 f (l : mlist Hyp) : M A :=
       mmatch l with
-      | [? x d (l': mlist Hyp)] (@ahyp A x d) :m: l' => M.ret x
-      | [? ah l'] ah :m: l' => f l'
+      | [? x d (l': mlist Hyp)] (@ahyp A x d) :m: l' =u> M.ret x
+      | [? ah l'] ah :m: l' =n> f l'
       | _ => M.raise NotFound
       end)%MC.
 
@@ -190,14 +190,16 @@ Definition ucomp1 {A B:Prop} (t: TT A) (u: TT B) : TT A :=
       | [? (Q1 Q2 : Prop)] Q1 -> Q2 =>
         tintro (fun x:Q1=> solve_tauto Q2)
       | [? X (Q : X -> Prop)] (exists x : X, Q x) =>
-        P <- M.evar Prop;
-        ucomp1 texists (solve_tauto P)
+        x <- M.evar X;
+        apply (@ex_intro _ _ _) <**> solve_tauto (Q x)
+        (* P <- M.evar Prop; *)
+        (* ucomp1 texists (solve_tauto P) *)
       | _ => tor tassumption (raise TautoFail)
       end
     )%MC.
 
  Ltac solve_tauto := mrun solve_tauto.
-
+Mtac Do Unset_Trace.
   Goal 5 = 7 -> exists x, x = 7.
   MProof.
     (r <- solve_tauto; M.ret (mfst r))%MC.

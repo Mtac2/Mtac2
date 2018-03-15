@@ -61,5 +61,6 @@ Definition AlreadyDeclared (name : string) : Exception. exact exception. Qed.
 Definition UnboundVar : Exception. exact exception. Qed.
 
 Definition NotAMatchExp : Exception. exact exception. Qed.
+Definition NotAnInductive : Exception. exact exception. Qed.
 
 Definition NoClassInstance (A : Type) : Exception. exact exception. Qed.

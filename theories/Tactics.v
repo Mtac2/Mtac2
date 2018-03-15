@@ -320,11 +320,11 @@ Definition intros_all : tactic :=
 
 (** Introduces up to n binders. Throws [NotAProduct] if there
     aren't enough products in the goal.  *)
-Definition introsn : nat -> tactic :=
+Definition introsn_cont (cont: tactic) : nat -> tactic :=
   mfix2 f (n : nat) (g : goal) : M (mlist (unit *m goal)) :=
     open_and_apply (fun g =>
       match n, g with
-      | 0, g => M.ret [m:(m: tt,g)]
+      | 0, g => cont g
       | S n', @Goal s T _ =>
         mtry intro_anonymous T M.ret g >>= f n' with
         | WrongTerm => M.raise NotAProduct
@@ -332,6 +332,7 @@ Definition introsn : nat -> tactic :=
         end
       | _, _ => M.failwith "introsn"
       end) g.
+Definition introsn := introsn_cont idtac.
 
 (** Overloaded binding *)
 Definition copy_ctx {A} (B : A -> Type) : dyn -> M Type :=
