@@ -111,9 +111,10 @@ Module Mtac_V3.
 
   Definition solve_tauto : tactic :=
     mfix0 solve_tauto : gtactic _ :=
-      apply I || (split &> solve_tauto) || (left &> solve_tauto) ||
-            (right &> solve_tauto) || (introsn_cont solve_tauto 1) ||
-            (eexists |1> solve_tauto) || assumption || raise TautoFail.
+      assumption || exact I || (split &> solve_tauto)
+      || (left &> solve_tauto) || (right &> solve_tauto)
+      || (introsn_cont solve_tauto 1)
+      || (eexists |1> solve_tauto) || raise TautoFail.
   Ltac solve_tauto := mrun solve_tauto.
 
   Goal 5 = 7 -> exists x, x = 7.
