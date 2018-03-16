@@ -261,48 +261,31 @@ Definition TT A := M (A *m mlist goal).
 Bind Scope typed_tactic_scope with TT.
 Delimit Scope typed_tactic_scope with TT.
 
+Definition to_goal (A : Type) :=
+  mtry
+    P <- evar Prop;
+    of <- unify_univ P A UniMatchNoRed;
+    match of with
+    | mSome f => a <- M.evar P;
+                let a' := reduce (RedOneStep [rl: RedBeta]) (f a) in
+                ret (m: a', Goal SProp a)
+    | mNone => raise NotAProp
+    end
+  with | NotAProp =>
+          a <- evar A;
+          M.ret (m: a, Goal SType a)
+  end.
+
 Definition use {A} (t : tactic) : TT A :=
-  (
-    ''(m: a, gs) <- (
-          mtry
-            P <- evar Prop;
-            of <- unify_univ P A UniMatchNoRed;
-            match of with
-            | mSome f => a <- M.evar P;
-                         gs <- t (Goal SProp a);
-                         let a := reduce (RedOneStep [rl: RedBeta]) (f a) in
-                         ret (m: a, gs)
-            | mNone => raise NotAProp
-            end
-          with | NotAProp =>
-            a <- evar A;
-            gs <- t (Goal SType a);
-            M.ret (m: a, gs)
-          end
-        );
+    ''(m: a, g) <- to_goal A;
+    gs <- t g;
     let gs := dreduce (@mmap) (mmap (fun '(m: _, g) => g) gs) in
-    M.ret (m: a, gs)
-  )%MC.
+    M.ret (m: a, gs).
 Arguments use [_] _%tactic.
 
 Definition by' {A} (t : tactic) : TT A :=
-    ''(m: a, gs) <- (
-          mtry
-            P <- evar Prop;
-            of <- unify_univ P A UniMatchNoRed;
-            match of with
-            | mSome f => a <- M.evar P;
-                         gs <- t (Goal SProp a);
-                         let a := reduce (RedOneStep [rl: RedBeta]) (f a) in
-                         ret (m: a, gs)
-            | mNone => raise NotAProp
-            end
-          with | NotAProp =>
-            a <- evar A;
-            gs <- t (Goal SType a);
-            M.ret (m: a, gs)
-          end
-        );
+  ''(m: a, g) <- to_goal A;
+  gs <- t g;
   gs' <- T.filter_goals gs;
   match gs' with
   | [m:] => ret (m: a, [m:])
