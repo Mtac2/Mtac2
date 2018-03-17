@@ -152,7 +152,7 @@ Require Import Strings.String.
 
 Definition remember {A} (x:A) (def eq : string) : tactic :=
   cpose_base def x (fun y:A=>
-    cassert_base eq (fun H: y = x =>lrewrite H) &> [m:reflexivity | idtac]).
+    cassert_base eq (fun H: y = x =>lrewrite H) |1> reflexivity).
 
 Lemma WHILE_true_nonterm : forall b c st st',
      bequiv b BTrue ->

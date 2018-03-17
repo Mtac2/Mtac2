@@ -267,13 +267,13 @@ Definition to_goal (A : Type) :=
     of <- unify_univ P A UniMatchNoRed;
     match of with
     | mSome f => a <- M.evar P;
-                let a' := reduce (RedOneStep [rl: RedBeta]) (f a) in
-                ret (m: a', Goal SProp a)
-    | mNone => raise NotAProp
+                 let a' := reduce (RedOneStep [rl: RedBeta]) (f a) in
+                 ret (m: a', Goal SProp a)
+    | mNone => raise NotAProp (* we backtrack to erase P *)
     end
-  with | NotAProp =>
-          a <- evar A;
-          M.ret (m: a, Goal SType a)
+  with NotAProp =>
+    a <- evar A;
+    M.ret (m: a, Goal SType a)
   end.
 
 Definition use {A} (t : tactic) : TT A :=

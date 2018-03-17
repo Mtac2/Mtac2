@@ -27,9 +27,9 @@ The archive has 3 subdirectories:
 Installation
 ============
 
-The plugin works currently with Coq v8.5pl2. It requires
+The plugin works currently with Coq v8.7. It requires
 [UniCoq](http://github.com/unicoq/unicoq) to be
-installed. MetaCoq will be available in OPAM soon.
+installed. Mtac2 will be available in OPAM soon.
 For the moment you should have coqc, ocamlc and make in your path.
 Then simply do:
 ```
