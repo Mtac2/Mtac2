@@ -132,8 +132,8 @@ Module Mtac_V4.
 
   Import Tactics.T.notations.
   Import ProdNotations.
-  Definition tintro {A P} (f: forall (x:A), TT.TT (P x))
-  : TT.TT (forall (x:A), P x) :=
+  Definition tintro {A P} (f: forall (x:A), TT.ttac (P x))
+  : TT.ttac (forall (x:A), P x) :=
   (n <- M.fresh_binder_name f;
   M.nu n mNone (fun x=>
     ''(m: v, gs) <- f x;
@@ -143,7 +143,7 @@ Module Mtac_V4.
     M.ret (m: a, b)))%MC.
   Definition pass {A} := TT.lift (M.evar A).
 
-Definition texists {A} {Q:A->Prop} : TT (exists (x:A), Q x) :=
+Definition texists {A} {Q:A->Prop} : ttac (exists (x:A), Q x) :=
   (e <- M.evar A;
   pf <- M.evar (Q e);
   M.ret (m: ex_intro _ e pf, [m: Goal Sorts.Sorts.SProp pf]))%MC.
@@ -158,12 +158,12 @@ Definition texists {A} {Q:A->Prop} : TT (exists (x:A), Q x) :=
       | _ => M.raise NotFound
       end)%MC.
 
-Definition tassumption {A:Type} : TT A :=
+Definition tassumption {A:Type} : ttac A :=
   lift (hyps >>= find).
 
-Definition tor {A:Type} (t u : TT A) : TT A := (mtry r <- t; M.ret r with _ => r <- u; M.ret r end)%MC.
+Definition tor {A:Type} (t u : ttac A) : ttac A := (mtry r <- t; M.ret r with _ => r <- u; M.ret r end)%MC.
 Require Import Strings.String.
-Definition ucomp1 {A B:Prop} (t: TT A) (u: TT B) : TT A :=
+Definition ucomp1 {A B:Prop} (t: ttac A) (u: ttac B) : ttac A :=
   (''(m: v1, gls1) <- t;
   match gls1 with
   | [m: gl] =>
@@ -173,7 +173,7 @@ Definition ucomp1 {A B:Prop} (t: TT A) (u: TT B) : TT A :=
   | _ => mfail "more than a goal"%string
   end)%MC.
 
-  Program Definition solve_tauto : forall {P:Prop}, TT P :=
+  Program Definition solve_tauto : forall {P:Prop}, ttac P :=
     (mfix1 solve_tauto (P : Prop) : M _ :=
       mmatch P as P' return M (P' *m _) with
       | True:Prop => apply I

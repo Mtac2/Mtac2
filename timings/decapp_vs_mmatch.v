@@ -28,7 +28,7 @@ Definition with_decapp: forall {P:Prop}, M P := mfix1 f (P: Prop) : M P :=
       M.ret (conj r1 r2)
     )
   end.
-
+(*
 Section Mmatch.
 
 Example test1_mmatch : goal 10.
@@ -109,7 +109,7 @@ MProof.
 Qed.
 
 End Decapp.
-
+*)
 Require Import Strings.String.
 
 Fixpoint pollute n :=

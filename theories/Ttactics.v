@@ -257,8 +257,8 @@ Definition doTT {A:Prop} (x:A) :=
   print s;;
   do_def s x.
 
-Definition TT A := M (A *m mlist goal).
-Bind Scope typed_tactic_scope with TT.
+Definition ttac A := M (A *m mlist goal).
+Bind Scope typed_tactic_scope with ttac.
 Delimit Scope typed_tactic_scope with TT.
 
 Definition to_goal (A : Type) :=
@@ -276,14 +276,14 @@ Definition to_goal (A : Type) :=
     M.ret (m: a, Goal SType a)
   end.
 
-Definition use {A} (t : tactic) : TT A :=
+Definition use {A} (t : tactic) : ttac A :=
     ''(m: a, g) <- to_goal A;
     gs <- t g;
     let gs := dreduce (@mmap) (mmap (fun '(m: _, g) => g) gs) in
     M.ret (m: a, gs).
 Arguments use [_] _%tactic.
 
-Definition by' {A} (t : tactic) : TT A :=
+Definition by' {A} (t : tactic) : ttac A :=
   ''(m: a, g) <- to_goal A;
   gs <- t g;
   gs' <- T.filter_goals gs;
@@ -293,10 +293,10 @@ Definition by' {A} (t : tactic) : TT A :=
   end.
 Arguments by' [_] _%tactic.
 
-Definition lift {A} (t : M A) : TT A :=
+Definition lift {A} (t : M A) : ttac A :=
   t >>= (fun a => M.ret (m: a,  [m:])).
 
-Coercion lift : M.t >-> TT.
+Coercion lift : M.t >-> ttac.
 Definition fappgl {A B C} (comb : C -> C -> M C) (f : M ((A -> B) *m C)) (x : M (A *m C)) : M (B *m C) :=
   (f >>=
      (fun '(m: b, cb) =>
@@ -319,14 +319,14 @@ Definition to_T {A} : (A *m mlist goal) -> tactic :=
   )%MC.
 
 
-Definition apply {A} (a : A) : TT A :=
+Definition apply {A} (a : A) : ttac A :=
   M.ret (m: a, [m:]).
 
 
-Definition apply_ {A} : TT A :=
+Definition apply_ {A} : ttac A :=
   by' T.apply_.
 
-Definition try {A} (t : TT A) : TT A :=
+Definition try {A} (t : ttac A) : ttac A :=
   mtry t with _ => (use T.idtac) : M _ end.
 
 
@@ -335,8 +335,8 @@ Import Abstract.
 Import T.notations.
 Import Mtac2.Logic.
 Inductive goal_pattern : Prop :=
-  | gbase : forall (A : _), TT A -> goal_pattern
-  | gbase_context : forall {A} (a : A), (forall (C : A -> Type), TT (C a)) -> goal_pattern
+  | gbase : forall (A : _), ttac A -> goal_pattern
+  | gbase_context : forall {A} (a : A), (forall (C : A -> Type), ttac (C a)) -> goal_pattern
   | gtele : forall {C}, (C -> goal_pattern) -> goal_pattern
   | gtele_evar : forall {C}, (C -> goal_pattern) -> goal_pattern.
 Arguments gbase _ _.
@@ -346,7 +346,7 @@ Arguments gtele_evar {C} _.
 
 Set Printing Implicit.
 Definition match_goal_context
-    {A} (x: A) (y: Type) (cont: forall (C : A -> Type), TT (C x)) : tactic :=
+    {A} (x: A) (y: Type) (cont: forall (C : A -> Type), ttac (C x)) : tactic :=
   r <- abstract x y;
   M.print_term (x,y);;
   M.print_term r;;
