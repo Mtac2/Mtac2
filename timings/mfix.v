@@ -26,12 +26,12 @@ Definition Mtest2 : nat -> nat -> nat -> nat -> M nat :=
 
 Time Compute ltac:(mrun
                 (
-                   Mtest 4000 4000 4000 4000
+                   Mtest 300 300 300 300
                 )
              ).
 
 Time Compute ltac:(mrun
                 (
-                   Mtest2 4000 4000 4000 4000
+                   Mtest2 300 300 300 300
                 )
              ).
