@@ -59,3 +59,17 @@ Qed.
 Print testMmatch.
 (* These are the universe constraints: i <= j, i < m, i < test_match.k
    I think m is the univere free from mmatch. But why is it required to be > instead of >= i? *)
+
+Definition testdef : Type -> Type := fun x=>x.
+Lemma testret : Type -> Type.
+MProof.
+M.ret (fun x=>x).
+Fail Qed. (* fails, I think it is not inferring the right universes? *)
+Abort.
+Fail Print testret.
+
+Polymorphic Lemma testexact : Type -> Type.
+MProof.
+T.exact (fun x=>x).
+Qed.
+About testexact. (* there are way too many universes in this *)
