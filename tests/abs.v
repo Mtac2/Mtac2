@@ -80,3 +80,10 @@ Goal forall A (x : A), True.
   intros A x.
   mrun (mtry e <- M.evar True; r <- M.abs_fun A e; M.ret e with AbsDependencyError => M.ret I end)%MC.
 Qed.
+
+
+(* Test soundness *)
+Goal forall A (x y : A), x = y.
+  intros A x y.
+  Fail mrun (M.abs_fun (P:=fun x => x = y) y (@eq_refl _ _) >>= M.print_term;; M.evar _)%MC.
+Abort.
