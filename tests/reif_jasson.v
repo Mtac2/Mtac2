@@ -519,6 +519,68 @@ End Ltac2LowLevel.
 *)
 
 Require Mtac2.Mtac2.
+
+Module Mtac2Mmatch.
+  Import Mtac2.Mtac2.
+  Import M.notations.
+
+  Module var_context.
+    Inductive var_context {var : Type} := nil | cons (n : nat) (v : var) (xs : var_context).
+  End var_context.
+
+  Definition find_in_ctx {var : Type} (term : nat) (ctx : @var_context.var_context var) : M (option var)
+    := (mfix1 find_in_ctx (ctx : @var_context.var_context var) : M (option var) :=
+          (mmatch ctx with
+          | [? v xs] (var_context.cons term v xs)
+            =n> M.ret (Some v)
+          | [? x v xs] (var_context.cons x v xs)
+            =n> find_in_ctx xs
+          | _ => M.ret None
+           end)) ctx.
+
+   Definition reify_helper {var : Type} (term : nat) (ctx : @var_context.var_context var) : M (@expr var)
+     := ((mfix2 reify_helper (term : nat) (ctx : @var_context.var_context var) : M (@expr var) :=
+            lvar <- find_in_ctx term ctx;
+              match lvar with
+              | Some v => M.ret (@Var var v)
+              | None =>
+                 mmatch term with
+                 | O
+                   =n> M.ret (@NatO var)
+                 | [? x] (S x)
+                   =n> (rx <- reify_helper x ctx;
+                          M.ret (@NatS var rx))
+                 | [? x y] (x * y)
+                   =n> (rx <- reify_helper x ctx;
+                          ry <- reify_helper y ctx;
+                          M.ret (@NatMul var rx ry))
+                  | [? v f] (@Let_In nat (fun _ => nat) v f)
+                    =n> (rv <- reify_helper v ctx;
+                        x <- M.fresh_binder_name f;
+                        let vx := String.append "var_" x in
+                        rf <- (M.nu x mNone
+                                    (fun x : nat
+                                     => M.nu vx mNone
+                                             (fun vx : var
+                                              => let fx := reduce (RedWhd [rl:RedBeta]) (f x) in
+                                                 rf <- reify_helper fx (var_context.cons x vx ctx);
+                                                   M.abs_fun vx rf)));
+                          M.ret (@LetIn var rv rf))
+                end
+             end) term ctx).
+
+  Definition reify (var : Type) (term : nat) : M (@expr var)
+    := reify_helper term var_context.nil.
+
+  Definition Reify (term : nat) : M Expr
+    := \nu var:Type, r <- reify var term; M.abs_fun var r.
+
+
+  Ltac Reify' x := constr:(ltac:(mrun (@Reify x))).
+  Ltac Reify x := Reify' x.
+
+End Mtac2Mmatch.
+
 Module MTac2.
   Import Mtac2.Mtac2.
   Import M.notations.
@@ -557,20 +619,18 @@ Import M.notations.
                   rx <- reify_helper x ctx;
                   ry <- reify_helper y ctx;
                   M.ret (@NatMul var rx ry)) _or_
-               (mmatch term with
-               | [? v f] (@Let_In nat (fun _ => nat) v f)
-                 =n> (rv <- reify_helper v ctx;
-                        x <- M.fresh_binder_name f;
-                        let vx := String.append "var_" x in
-                        rf <- (M.nu x mNone
-                                    (fun x : nat
-                                     => M.nu vx mNone
-                                             (fun vx : var
-                                              => let fx := reduce (RedWhd [rl:RedBeta]) (f x) in
-                                                 rf <- reify_helper fx (var_context.cons x vx ctx);
-                                                   M.abs_fun vx rf)));
-                          M.ret (@LetIn var rv rf))
-                end)
+               <[decapp term with @Let_In nat (fun _=>nat)]> UniMatchNoRed (fun v f=>
+                  rv <- reify_helper v ctx;
+                  x <- M.fresh_binder_name f;
+                  let vx := String.append "var_" x in
+                  rf <- (M.nu x mNone
+                              (fun x : nat
+                               => M.nu vx mNone
+                                       (fun vx : var
+                                        => let fx := reduce (RedWhd [rl:RedBeta]) (f x) in
+                                           rf <- reify_helper fx (var_context.cons x vx ctx);
+                                             M.abs_fun vx rf)));
+                  M.ret (@LetIn var rv rf))
              end) term ctx).
 
   Definition reify (var : Type) (term : nat) : M (@expr var)

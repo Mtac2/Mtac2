@@ -19,15 +19,18 @@ Goal True.
   assert (H : exists e, Denote e = big 1 n_small).
   { cbv [big].
     eexists.
-    Fail Time let v := lazymatch goal with |- _ = ?x => x end in
-         let k := Ltac2LowLevel.Reify v in
-         idtac. (* 0.005 s *)
+    (* Time let v := lazymatch goal with |- _ = ?x => x end in *)
+    (*      let k := Ltac2LowLevel.Reify v in *)
+    (*      idtac. (* 0.005 s *) *)
     Time let v := lazymatch goal with |- _ = ?x => x end in
          let k := LtacTacInTermExplicitCtx.Reify v in
          idtac. (* 0.044 s *)
     Time let v := lazymatch goal with |- _ = ?x => x end in
+         let k := Mtac2Mmatch.Reify v in
+         idtac. (* 11.657 s *)
+    Time let v := lazymatch goal with |- _ = ?x => x end in
          let k := MTac2.Reify v in
-         idtac. (* 9.771 s *)
+         idtac. (* 7.771 s *)
     CanonicalStructuresPHOAS.pre_Reify_rhs ().
     Focus 2.
     Time refine eq_refl. (* 1.893 s *)
@@ -41,12 +44,15 @@ Goal True.
     (*      idtac. (* 0.065 s *) *)
     Time let v := lazymatch goal with |- _ = ?x => x end in
          let k := LtacTacInTermExplicitCtx.Reify v in
-         idtac. (* 0.19 s *)
+         idtac. (* 0.198 s *)
+    Time let v := lazymatch goal with |- _ = ?x => x end in
+         let k := Mtac2Mmatch.Reify v in
+         idtac. (* 4.386 s *)
     Time let v := lazymatch goal with |- _ = ?x => x end in
          let k := MTac2.Reify v in
-         idtac. (* 2.712 s *)
+         idtac. (* 0.504 s *)
     CanonicalStructuresPHOAS.pre_Reify_rhs ().
     Focus 2.
-    Time refine eq_refl. (* 0.359 s *)
+    Time refine eq_refl. (* 0.599 s *)
     admit. }
 Abort.
