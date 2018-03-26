@@ -600,7 +600,7 @@ Module MTac2.
        end.
 
   Definition mor {A} (t1 t2 : M A) : M A :=
-    mtry t1 with _ => t2 end.
+    M.mtry' t1 (fun _ => t2).
   Notation "a '_or_' b" := (mor a b)  (at level 50).
 Require Import Mtac2.DecomposeApp.
 Import M.notations.

@@ -13,7 +13,7 @@ Goal True.
     (*      idtac. (* 0.096 s *) *)
     Time let v := lazymatch goal with |- _ = ?x => x end in
          let k := LtacTacInTermExplicitCtx.Reify v in
-         idtac. (* 7.62 s *)
+         idtac. (* 9.87 s *)
     admit. }
   clear H.
   assert (H : exists e, Denote e = big 1 n_small).
@@ -44,13 +44,13 @@ Goal True.
     (*      idtac. (* 0.065 s *) *)
     Time let v := lazymatch goal with |- _ = ?x => x end in
          let k := LtacTacInTermExplicitCtx.Reify v in
-         idtac. (* 0.198 s *)
+         idtac. (* 0.223 s *)
     Time let v := lazymatch goal with |- _ = ?x => x end in
          let k := Mtac2Mmatch.Reify v in
-         idtac. (* 4.386 s *)
+         idtac. (* 4.157 s *)
     Time let v := lazymatch goal with |- _ = ?x => x end in
          let k := MTac2.Reify v in
-         idtac. (* 0.504 s *)
+         idtac. (* 0.219 s *)
     CanonicalStructuresPHOAS.pre_Reify_rhs ().
     Focus 2.
     Time refine eq_refl. (* 0.599 s *)
