@@ -329,6 +329,36 @@ Definition apply_ {A} : ttac A :=
 Definition try {A} (t : ttac A) : ttac A :=
   mtry t with _ => (use T.idtac) : M _ end.
 
+Mtac Do (new_exception "TTchange_Exception").
+Definition change A {B} (f : TT.ttac A) : TT.ttac B :=
+  (oeq <- M.unify A B UniCoq;
+   match oeq with
+   | mSome eq =>
+     match eq in Logic.meq _ X return TT.ttac X with
+     | Logic.meq_refl => f
+     end
+   | mNone => M.raise TTchange_Exception
+   end
+  )%MC.
+
+Definition vm_compute {A} : TT.ttac (A -> A) :=
+  (
+    M.ret (m: (fun a : A => a <: A), [m:])
+  )%MC.
+
+Definition vm_change_dep {X} (B : X -> Type) x {y} (f : TT.ttac (B x)) : TT.ttac (B y) :=
+  (
+    let x' := reduce RedVmCompute x in
+    let y' := reduce RedVmCompute y in
+  e <- M.unify x' y' UniMatchNoRed;
+  match e with
+  | mSome e =>
+      match e in Logic.meq _ z return TT.ttac (B z) with
+      | Logic.meq_refl => f
+      end
+  | mNone => M.raise TTchange_Exception
+  end
+  )%MC.
 
 Module MatchGoalTT.
 Import Abstract.
