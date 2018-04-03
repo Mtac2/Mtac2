@@ -523,14 +523,12 @@ let mconstr_of (type a) args (h : a mconstr_head) =
       MConstr (Mdecompose_app', (args 0, args 1, args 2, args 3, args 4, args 5, args 6))
   | Mnew_timer ->
       MConstr (Mnew_timer, (args 0, args 1))
-  | Mnew_timer ->
-      MConstr (Mnew_timer, (args 0, args 1))
-  | Mnew_timer ->
-      MConstr (Mnew_timer, (args 0, args 1))
-  | Mnew_timer ->
-      MConstr (Mnew_timer, (args 0, args 1))
-  | Mnew_timer ->
-      MConstr (Mnew_timer, (args 0, args 1))
+  | Mstart_timer ->
+      MConstr (Mstart_timer, (args 0, args 1, args 2))
+  | Mstop_timer ->
+      MConstr (Mstop_timer, (args 0, args 1))
+  | Mreset_timer ->
+      MConstr (Mreset_timer, (args 0, args 1))
   | Mkind_of_term ->
       MConstr (Mkind_of_term, (args 0, args 1))
   | _ -> raise Not_found
