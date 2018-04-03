@@ -170,6 +170,10 @@ module Exceptions = struct
 
   let mkNotAVar = mkDebugEx "NotAVar"
 
+  let mkNotAForall = mkDebugEx "NotAForall"
+
+  let mkNotAnApplication = mkDebugEx "NotAnApplication"
+
   let mkAbsDependencyError = mkDebugEx "AbsDependencyError"
 
   let mkExceptionNotGround = mkDebugEx "ExceptionNotGround"
@@ -1337,6 +1341,44 @@ let rec run' ctxt (vms : vm list) =
                           traverse sigma (List.map of_econstr t_args) c_args
                         else
                           efail (E.mkWrongTerm sigma env c_head)
+
+                    | MConstr (Mdecompose_forallT, (_, _, t, cont)) ->
+                        let t = to_econstr t in
+                        begin
+                          match EConstr.destProd sigma t with
+                          | (_, a, b) ->
+                              let (a, b) = (of_econstr a, of_econstr b) in
+                              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|a; b|] :: stack} (upd cont)
+                          | exception Term.DestKO ->
+                              efail (E.mkNotAForall sigma env t)
+                        end
+
+                    | MConstr (Mdecompose_forallP, (_, _, t, cont)) ->
+                        let t = to_econstr t in
+                        begin
+                          match EConstr.destProd sigma t with
+                          | (_, a, b) ->
+                              let (a, b) = (of_econstr a, of_econstr b) in
+                              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|a; b|] :: stack} (upd cont)
+                          | exception Term.DestKO ->
+                              efail (E.mkNotAForall sigma env t)
+                        end
+
+                    | MConstr (Mdecompose_app'', (_, _, t, cont)) ->
+                        let t = to_econstr t in
+                        begin
+                          match EConstr.destApp sigma t with
+                          | (h, args) ->
+                              let args, arg = Array.chop (Array.length args - 1) args in
+                              let h = EConstr.mkApp (h, args) in
+                              let arg = arg.(0) in
+                              let h_type = Retyping.get_type_of env sigma h in
+                              let arg_type = Retyping.get_type_of env sigma arg in
+                              let (h_type, arg_type, h, arg) = (of_econstr h_type, of_econstr arg_type, of_econstr h, of_econstr arg) in
+                              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|h_type; arg_type; h; arg|] :: stack} (upd cont)
+                          | exception Term.DestKO ->
+                              efail (E.mkNotAnApplication sigma env t)
+                        end
 
                     | MConstr (Mnew_timer, (_, t_arg)) ->
                         let t_arg = to_econstr t_arg in

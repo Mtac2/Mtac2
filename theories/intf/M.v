@@ -252,6 +252,32 @@ Definition decompose_app' :
     t (B a).
   make. Qed.
 
+(** [decompose_forallT T (fun A B => t)] executes [t[A'/A, B'/B]] iff T is
+    [forall a : A, B']. *)
+Definition decompose_forallT :
+  forall {A : Type} {B : Type -> Type} (T : Type),
+    (forall (A : Type) (b : A -> Type), t (B (forall a : A, b a))) ->
+    t (B T).
+  make. Qed.
+
+(** [decompose_forallP T (fun A B => t)] executes [t[A'/A, B'/B]] iff T is
+    [forall a : A, B'] and [B'].
+
+    This is a specialized version of [decompose_forallT] that makes sure to not
+    insert any casts from [Prop] to [Type]. *)
+Definition decompose_forallP :
+  forall {A : Type} {B : Prop -> Type} (P : Prop),
+    (forall (A : Type) (b : A -> Prop), t (B (forall a : A, b a))) ->
+    t (B P).
+  make. Qed.
+
+(** [decompose_app'' m (fun A B f x => t)] executes [A' .. x'/A .. x] iff m is
+    [f x] with [f : forall a : A, B a] and [x : A]. *)
+Definition decompose_app'' :
+  forall {S : forall T, T -> Type} {T : Type} (m : T),
+    (forall A (B : A -> Type) (f : forall a, B a) (a : A), t (S _ (f a))) ->
+    t (S T m).
+  make. Qed.
 
 Definition new_timer : forall {A} (a : A), t unit.
   make. Qed.

@@ -73,6 +73,9 @@ type 'a mconstr_head =
   | Mget_trace
   | Mset_trace : (arg_bool) mconstr_head
   | Mdecompose_app' : (arg_type * arg_fun * arg_any * arg_any * arg_any * arg_any * arg_any) mconstr_head
+  | Mdecompose_forallT : (arg_type * arg_fun * arg_type * arg_any) mconstr_head
+  | Mdecompose_forallP : (arg_type * arg_fun * arg_type * arg_any) mconstr_head
+  | Mdecompose_app'' : (arg_fun * arg_fun * arg_any * arg_any) mconstr_head
   | Mnew_timer : (arg_type * arg_any) mconstr_head
   | Mstart_timer : (arg_type * arg_any * arg_bool) mconstr_head
   | Mstop_timer : (arg_type * arg_any) mconstr_head
@@ -129,6 +132,9 @@ let num_args_of_mconstr (type a) (mh : a mconstr_head) =
   | Mget_trace -> 0
   | Mset_trace -> 1
   | Mdecompose_app' -> 7
+  | Mdecompose_forallT -> 4
+  | Mdecompose_forallP -> 4
+  | Mdecompose_app'' -> 4
   | Mnew_timer -> 2
   | Mstart_timer -> 3
   | Mstop_timer -> 2
@@ -278,6 +284,15 @@ let isset_trace  = isconstr mkset_trace
 let mkdecompose_app = mkconstr "decompose_app'"
 let isdecompose_app = isconstr mkdecompose_app
 
+let mkdecompose_forallT = mkconstr "decompose_forallT"
+let isdecompose_forallT = isconstr mkdecompose_forallT
+
+let mkdecompose_forallP = mkconstr "decompose_forallP"
+let isdecompose_forallP = isconstr mkdecompose_forallP
+
+let mkdecompose_app'' = mkconstr "decompose_app''"
+let isdecompose_app'' = isconstr mkdecompose_app''
+
 let mknew_timer = mkconstr "new_timer"
 let isnew_timer = isconstr mknew_timer
 
@@ -388,6 +403,12 @@ let mconstr_head_of h =
       MHead Mset_trace
   | _ when isdecompose_app h ->
       MHead Mdecompose_app'
+  | _ when isdecompose_forallT h ->
+      MHead Mdecompose_forallT
+  | _ when isdecompose_forallP h ->
+      MHead Mdecompose_forallP
+  | _ when isdecompose_app'' h ->
+      MHead Mdecompose_app''
   | _ when isnew_timer h ->
       MHead Mnew_timer
   | _ when isstart_timer h ->
@@ -521,6 +542,12 @@ let mconstr_of (type a) args (h : a mconstr_head) =
       MConstr (Mset_trace, (args 0))
   | Mdecompose_app' ->
       MConstr (Mdecompose_app', (args 0, args 1, args 2, args 3, args 4, args 5, args 6))
+  | Mdecompose_forallT ->
+      MConstr (Mdecompose_forallT, (args 0, args 1, args 2, args 3))
+  | Mdecompose_forallP ->
+      MConstr (Mdecompose_forallP, (args 0, args 1, args 2, args 3))
+  | Mdecompose_app'' ->
+      MConstr (Mdecompose_app'', (args 0, args 1, args 2, args 3))
   | Mnew_timer ->
       MConstr (Mnew_timer, (args 0, args 1))
   | Mstart_timer ->

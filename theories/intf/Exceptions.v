@@ -19,6 +19,9 @@ Definition TypeMissesDependency : Exception. exact exception. Qed.
 Definition DuplicatedVariable : Exception. exact exception. Qed.
 Definition NotAVar : Exception. exact exception. Qed.
 
+Definition NotAForall : Exception. exact exception. Qed.
+Definition NotAnApplication : Exception. exact exception. Qed.
+
 Definition LtacError (s:string) : Exception. exact exception. Qed.
 
 Definition NotUnifiable {A} (x y : A) : Exception. exact exception. Qed.

@@ -70,6 +70,9 @@ type 'a mconstr_head =
   | Mget_trace
   | Mset_trace : (arg_bool) mconstr_head
   | Mdecompose_app' : (arg_type * arg_fun * arg_any * arg_any * arg_any * arg_any * arg_any) mconstr_head
+  | Mdecompose_forallT : (arg_type * arg_fun * arg_type * arg_any) mconstr_head
+  | Mdecompose_forallP : (arg_type * arg_fun * arg_type * arg_any) mconstr_head
+  | Mdecompose_app'' : (arg_fun * arg_fun * arg_any * arg_any) mconstr_head
   | Mnew_timer : (arg_type * arg_any) mconstr_head
   | Mstart_timer : (arg_type * arg_any * arg_bool) mconstr_head
   | Mstop_timer : (arg_type * arg_any) mconstr_head
@@ -129,6 +132,9 @@ val isset_debug_ex : EConstr.t -> bool
 val isget_trace : EConstr.t -> bool
 val isset_trace : EConstr.t -> bool
 val isdecompose_app : EConstr.t -> bool
+val isdecompose_forallT : EConstr.t -> bool
+val isdecompose_forallP : EConstr.t -> bool
+val isdecompose_app'' : EConstr.t -> bool
 val isnew_timer : EConstr.t -> bool
 val isstart_timer : EConstr.t -> bool
 val isstop_timer : EConstr.t -> bool
