@@ -2,9 +2,8 @@
 
 A typed tactic language for Coq.
 
-Copyright (c) 2015 Beta Ziliani <bziliani@famaf.unc.edu.ar>,
-	           Yann Régis-Gianas <yrg@irif.fr>,
-		   Jan-Oliver Kaiser <janno@mpi-sws.org>
+Copyright (c) 2018 Jan-Oliver Kaiser <janno@mpi-sws.org>
+                   Beta Ziliani <beta@mpi-sws.org>
 
 Distributed under the terms of the MIT License,
 see LICENSE for details.
