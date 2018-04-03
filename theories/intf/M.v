@@ -69,7 +69,8 @@ Definition is_var: forall{A : Type}, A->t bool.
    [NameExistsInContext] if the name "x" is in the context, or
    [VarAppearsInValue] if executing [f x] results in a term containing variable
    [x]. *)
-Definition nu: forall{A: Type}{B: Type}, string -> moption A -> (A -> t B) -> t B.
+Inductive name := TheName (n: string) | FreshName (n: string) | Generate.
+Definition nu: forall{A: Type}{B: Type}, name -> moption A -> (A -> t B) -> t B.
   make. Qed.
 
 (** [abs_fun x e] abstracts variable [x] from [e]. It raises [NotAVar] if [x]
@@ -596,23 +597,8 @@ Definition anonymize (s : string) : t string :=
   let s' := rcbv ("__" ++ s)%string in
   ret s'.
 
-Definition fresh_name (name: string) : t string :=
-  names <- names_of_hyp;
-  let find name : t bool :=
-    let res := reduce RedNF (mfind (fun n => dec_bool (string_dec name n)) names) in
-    match res with mNone => ret false | _ => ret true end
-  in
-  fix1 _ (fun f (name: string) =>
-     bind (find name) (fun b=>
-     if b then
-       let name := reduce RedNF (name ++ "_")%string in
-       f name : t string
-     else ret name)) name.
-
-Definition fresh_binder_name {A:Type} (x : A) : t string :=
-  bind (mtry' (get_binder_name x) (fun _ => ret "x"%string)) (fun name=>
-  fresh_name name).
-
+Definition def_binder_name {A:Type} (x : A) : t string :=
+  mtry' (get_binder_name x) (fun _ => ret "x"%string).
 
 Fixpoint string_rev_app (s1 s2 : string) :=
   match s1 with
@@ -654,7 +640,7 @@ Module notations.
   Export notations_pre.
 
   Local Definition bind_nu {A B C} (F : A) (a : B -> t C) :=
-    bind (fresh_binder_name F) (fun n => M.nu n mNone a).
+    bind (def_binder_name F) (fun n => M.nu (FreshName n) mNone a).
 
   (* Fresh names. This notation is declared recursive to allow optional type
      annotations but it only works for a single binder *)
@@ -665,8 +651,8 @@ Module notations.
   Local Definition bind_nu_rec {A} {B : A -> Type} {C}
         (a : forall x : A, B x -> t C)
         (F : forall x : A, B x) :=
-    bind (fresh_binder_name F)
-         (fun n => M.nu n mNone (fun x : A => let F := reduce (RedOneStep [rl: RedBeta]) (F x) in a x F)).
+    bind (def_binder_name F)
+         (fun n => M.nu (FreshName n) mNone (fun x : A => let F := reduce (RedOneStep [rl: RedBeta]) (F x) in a x F)).
 
   (* Fresh names _m_irroring the shape of the [F]'s type.
 
