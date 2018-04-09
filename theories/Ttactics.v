@@ -62,8 +62,7 @@ Definition lift_lemma : forall (A : Prop), A ->
              [m:
               (mtptele (fun B:Prop => mtptele (fun (C:Prop) => (mtpbase ( m:=fun A:Prop => A -> M _)) _ (
               fun (f : B -> C) =>
-                n <- M.fresh_binder_name A;
-                M.nu n mNone (fun b : B =>
+                M.nu (FreshFrom A) mNone (fun b : B =>
                                ''(mexistT _ t X) <- rec C (f b);
                                match t as t return tty t -> M (_) with
                                | tttele _ =>
@@ -82,8 +81,7 @@ Definition lift_lemma : forall (A : Prop), A ->
              |
              (mtptele (fun B:Type => mtptele (fun (C:B -> Prop) => (mtpbase ( m:=fun A:Prop => A -> M _)) _ (
               fun (f : forall b:B, C b) =>
-                n <- M.fresh_binder_name A;
-                M.nu n mNone (fun b : B =>
+                M.nu (FreshFrom A) mNone (fun b : B =>
                                ''(mexistT _ t X) <- rec _ (f b);
                                t' <- M.abs_fun b t;
                                X <- M.coerce X;

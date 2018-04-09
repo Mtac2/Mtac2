@@ -18,8 +18,7 @@ Definition MTele_of' :=
                                       (existT (fun mT : MTele_Ty mBase => T =m= MFA mT) _ H)
                               )
      | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =c> [H]
-       b <- M.fresh_binder_name F;
-       M.nu b mNone (fun x =>
+       M.nu (FreshFrom F) mNone (fun x =>
                        ''(existT _ m (existT _ mT E)) <- f (F x);
                        m' <- M.abs_fun x m;
                        mT' <- (M.coerce mT >>=
@@ -43,8 +42,7 @@ Definition MTele_of : Prop -> M (sigT MTele_Ty) :=
      mmatch T return M (sigT MTele_Ty) with
      | [?X : Type] M X =u> M.ret (existT _ mBase X)
      | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =c>
-       b <- M.fresh_binder_name F;
-       M.nu b mNone (fun x =>
+       M.nu (FreshFrom F) mNone (fun x =>
                        ''(existT _ n T) <- f (F x);
                        n' <- M.abs_fun (P:=fun _ => MTele) x n;
                        T' <- M.abs_fun x T;

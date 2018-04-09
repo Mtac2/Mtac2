@@ -47,6 +47,7 @@ theories/SumRun.v
 theories/Ttactics.v
 theories/Pattern.v
 theories/intf/Dyn.v
+theories/intf/Name.v
 theories/intf/Exceptions.v
 theories/intf/Reduction.v
 theories/intf/DeclarationDefs.v

@@ -6,15 +6,13 @@ Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 
 Definition MTele_of {A:Type} (T : A -> Prop) : M (A -> msigT MTele_Ty) :=
-  b <- (mtry M.fresh_binder_name T with | _ => M.fresh_name "x" end);
-  M.nu b mNone (fun a =>
+  M.nu (FreshFrom T) mNone (fun a =>
   let T' := reduce (RedOneStep [rl:RedBeta]) (T a) in
   (mfix1 f (T : Prop) : M (msigT MTele_Ty) :=
     mmatch T return M (msigT MTele_Ty) with
     | [?X : Type] M X =u> M.ret (mexistT _ mBase X)
     | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =u>
-      b <- M.fresh_binder_name T;
-      M.nu b mNone (fun x =>
+      M.nu (FreshFrom T) mNone (fun x =>
                       let T' := reduce (RedOneStep [rl:RedBeta]) (F x) in
                       ''(mexistT _ n T) <- f T';
                       n' <- M.abs_fun x n;

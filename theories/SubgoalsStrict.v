@@ -3,6 +3,7 @@ Import Sorts.
 Import ListNotations.
 Set Implicit Arguments.
 Import ProdNotations.
+Require Import Strings.String.
 
 (** This is a simple example tighting up a bit the types of tactics in order to
     ensure a property.  In this case, we make sure that a variation of `apply`
@@ -76,8 +77,7 @@ Definition count_nondep_binders (T: Type) : M nat :=
       r <- go T2;
       M.ret (S r)
     | [? T1 T2] (forall x:T1, T2 x) =>
-      name <- M.fresh_name "Z";
-      nu name mNone (fun e:T1=>go (T2 e))
+      nu (FreshFrom "name"%string) mNone (fun e:T1=>go (T2 e))
     | _ => M.ret 0
     end) T.
 

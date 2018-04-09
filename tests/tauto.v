@@ -134,8 +134,7 @@ Module Mtac_V4.
   Import ProdNotations.
   Definition tintro {A P} (f: forall (x:A), TT.ttac (P x))
   : TT.ttac (forall (x:A), P x) :=
-  (n <- M.fresh_binder_name f;
-  M.nu n mNone (fun x=>
+  (M.nu (FreshFrom f) mNone (fun x=>
     ''(m: v, gs) <- f x;
     a <- M.abs_fun x v;
     b <- T.close_goals x (mmap (fun g=>(m: tt, g)) gs);

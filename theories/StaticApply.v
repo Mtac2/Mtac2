@@ -79,8 +79,7 @@ Program Definition apply_type_of (P : Type) :
      | (M P : Type) =c> fun t => M.ret (existT (funs_of (M P)) [m:] t)
      | [? X F] (forall x : X, F x) =c>
         fun ft =>
-          s <- M.fresh_binder_name ft;
-          M.nu s mNone (fun x_nu : X =>
+          M.nu (FreshFrom ft) mNone (fun x_nu : X =>
           x <- M.evar X;
           let F' := reduce (RedOneStep [rl:RedBeta]) (F x) in
           let f' := reduce (RedOneStep [rl:RedBeta]) (ft x) in

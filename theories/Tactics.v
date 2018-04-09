@@ -167,10 +167,9 @@ Fixpoint is_open (g : goal) : M bool :=
   match g with
   | Goal _ e => M.is_evar e
   | @AHyp C _ f =>
-    x <- M.fresh_binder_name f;
     (* we get the name in order to avoid inserting existing names
       (nu will raise an exception otherwise) *)
-    M.nu x mNone (fun x : C => is_open (f x))
+    M.nu Generate mNone (fun x : C => is_open (f x))
   | HypRem _ g => is_open g (* we don't care about the variable *)
   end.
 
@@ -186,12 +185,10 @@ Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
     match g return M _ with
     | Goal _ _ => t g
     | @AHyp C mNone f =>
-      x <- M.fresh_binder_name f;
-      M.nu x mNone (fun x : C =>
+      M.nu (FreshFrom f) mNone (fun x : C =>
         open (f x) >>= close_goals x)
     | @AHyp C (mSome t) f =>
-      x <- M.fresh_binder_name f;
-      M.nu x (mSome t) (fun x : C =>
+      M.nu (FreshFrom f) (mSome t) (fun x : C =>
         open (f x) >>= let_close_goals x)
     | HypRem x f =>
       M.remove x (open f) >>= rem_hyp x
@@ -247,7 +244,7 @@ Definition goal_prop : gtactic Prop := with_goal M.goal_prop.
 (** [intro_base n t] introduces variable or definition named [n]
     in the context and executes [t n].
     Raises [NotAProduct] if the goal is not a product or a let-binding. *)
-Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := fun g =>
+Definition intro_base {A B} (var : name) (t : A -> gtactic B) : gtactic B := fun g =>
   mmatch g return M (mlist (B *m goal)) with
   | [? B (def: B) P e] @Goal SProp (let x := def in P x) e =n>
     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
@@ -289,19 +286,16 @@ Definition intro_base {A B} (var : string) (t : A -> gtactic B) : gtactic B := f
 
 Definition intro_cont {A B} (t : A -> gtactic B) : gtactic B := fun g=>
   n <- M.get_binder_name t;
-  intro_base n t g.
+  intro_base (TheName n) t g.
 
 (** Given a name of a variable, it introduces it in the context *)
-Definition intro_simpl (var : string) : tactic := fun g =>
+Definition intro_simpl (var : name) : tactic := fun g =>
   A <- M.evar Type;
   intro_base var (fun _ : A => idtac) g.
 
 (** Introduces an anonymous name based on a binder *)
-Definition intro_anonymous {A} (T : A) (f : string -> M string) (g : goal) : M goal :=
-  name <- M.get_binder_name T;
-  axn <- M.anonymize name;
-  axn <- f axn;
-  res <- intro_simpl axn g >>= M.hd;
+Definition intro_anonymous {A} (T : A) (g : goal) : M goal :=
+  res <- intro_simpl (FreshFrom T) g >>= M.hd;
   M.ret (msnd res).
 
 (** Introduces all hypotheses. Does not fail if there are 0. *)
@@ -310,10 +304,8 @@ Definition intros_all : tactic :=
     open_and_apply (fun g =>
       match g return M (mlist (unit *m goal)) with
       | @Goal s T _ =>
-        mtry intro_anonymous T M.ret g >>= f with
-        | WrongTerm => M.ret [m:(m: tt,g)]
+        mtry intro_anonymous T g >>= f with
         | NotAProduct => M.ret [m:(m: tt,g)]
-        | [? s] NameExistsInContext s => intro_anonymous T M.fresh_name g >>= f
         end
       | _ => M.raise NotAGoal
       end) g.
@@ -326,10 +318,7 @@ Definition introsn_cont (cont: tactic) : nat -> tactic :=
       match n, g with
       | 0, g => cont g
       | S n', @Goal s T _ =>
-        mtry intro_anonymous T M.ret g >>= f n' with
-        | WrongTerm => M.raise NotAProduct
-        | [? s] NameExistsInContext s => intro_anonymous T M.fresh_name g >>= f n'
-        end
+        intro_anonymous T g >>= f n'
       | _, _ => M.failwith "introsn"
       end) g.
 Definition introsn := introsn_cont idtac.
@@ -342,13 +331,11 @@ Definition copy_ctx {A} (B : A -> Type) : dyn -> M Type :=
       let Bc := reduce (RedWhd [rl:RedBeta]) (B c) in
       M.ret Bc
     | [? C (D : C -> Type) (c : forall y:C, D y)] Dyn c =>
-      n <- M.fresh_binder_name c;
-      M.nu n mNone (fun y=>
+      M.nu (FreshFrom c) mNone (fun y=>
         r <- rec (Dyn (c y));
         M.abs_prod_type y r)
     | [? C D (c : C->D)] Dyn c =>
-      n <- M.fresh_binder_name c;
-      M.nu n mNone (fun y=>
+      M.nu (FreshFrom c) mNone (fun y=>
         r <- rec (Dyn (c y));
         M.abs_prod_type y r)
     | _ => M.print_term A;; M.raise (SomethingNotRight d)
@@ -424,8 +411,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
 Definition destructn (n : nat) : tactic :=
   bind (introsn n) (fun _ g =>
     A <- M.evar Type;
-    n <- M.fresh_name "tmp";
-    @intro_base A _ n destruct g).
+    @intro_base A _ (FreshFrom "tmp"%string) destruct g).
 
 (** [apply t] applies theorem t to the current goal.
     It generates a subgoal for each hypothesis in the theorem.
@@ -580,8 +566,7 @@ Definition typed_intro (T : Type) : tactic := fun g =>
   U <- M.goal_type g;
   mmatch U with
   | [? P:T->Type] forall x:T, P x =>
-    xn <- M.get_binder_name U;
-    intro_simpl xn g
+    intro_simpl (FreshFrom U) g
   | _ => M.raise NotThatType
   end.
 
@@ -593,10 +578,9 @@ Definition typed_intros (T : Type) : tactic := fun g =>
 
 (** changes a hypothesis H with one of type Q and the same name *)
 Definition change_hyp {P Q} (H : P) (newH: Q) : tactic := fun g=>
-  name <- M.get_binder_name H;
   match g with
   | @Goal sort gT _ =>
-     ''(m: gabs, abs) <- M.remove H (M.nu name mNone (fun nH: Q=>
+     ''(m: gabs, abs) <- M.remove H (M.nu (FreshFrom H) mNone (fun nH: Q=>
        r <- M.evar gT;
        abs <- M.abs_fun nH r;
        gabs <- M.abs_fun nH (Goal sort r);
@@ -606,7 +590,7 @@ Definition change_hyp {P Q} (H : P) (newH: Q) : tactic := fun g=>
   | _ => M.raise NotAGoal
   end.
 
-Definition cassert_with_base {A B} (name : string) (t : A)
+Definition cassert_with_base {A B} (name : name) (t : A)
     (cont : A -> gtactic B) : gtactic B := fun g =>
   M.nu name (mSome t) (fun x=>
     match g with
@@ -618,7 +602,7 @@ Definition cassert_with_base {A B} (name : string) (t : A)
     | _ => M.raise NotAGoal
     end).
 
-Definition cpose_base {A B} (name : string) (t : A)
+Definition cpose_base {A B} (name : name) (t : A)
     (cont : A -> gtactic B) : gtactic B := fun g =>
   M.nu name (mSome t) (fun x=>
     match g with
@@ -631,12 +615,11 @@ Definition cpose_base {A B} (name : string) (t : A)
     end).
 
 Definition cpose {A} (t: A) (cont : A -> tactic) : tactic := fun g =>
-  n <- M.get_binder_name cont;
-  cpose_base n t cont g.
+  cpose_base (FreshFrom cont) t cont g.
 
 (* FIX: seriously need to abstract these set of functions!
    Too much duplication! *)
-Definition cassert_base {A} (name : string)
+Definition cassert_base {A} (name : name)
     (cont : A -> tactic) : tactic := fun g =>
   a <- M.evar A; (* [a] will be the goal to solve [A] *)
   M.nu name mNone (fun x =>
@@ -653,8 +636,7 @@ Definition cassert_base {A} (name : string)
   ). (* append the goal for a to the top of the goals *)
 
 Definition cassert {A} (cont : A -> tactic) : tactic := fun g=>
-  n <- M.get_binder_name cont;
-  cassert_base n cont g.
+  cassert_base (FreshFrom cont) cont g.
 
 (** [cut U] creates two goals with types [U -> T] and [U], where
     [T] is the type of the current goal. *)
@@ -754,8 +736,7 @@ Definition n_etas (n : nat) {A} (f : A) : M A :=
        mmatch d with
        | [? B (T:B->Type) f] @Dynr (forall x:B, T x) f =>
          ty <- M.unfold_projection (typer d);
-         name <- M.get_binder_name ty;
-         M.nu name mNone (fun x:B =>
+         M.nu (FreshFrom ty) mNone (fun x:B =>
            loop n' (Dynr (f x)) >>= M.abs_fun x
          )
        | _ => M.raise NotAProduct
@@ -766,7 +747,7 @@ Definition n_etas (n : nat) {A} (f : A) : M A :=
     with a new goal as body, containing a variable named [f] with
     the current goal as type. The goal is expected to have at least
     [n] products. *)
-Definition fix_tac (f : string) (n : N) : tactic := fun g =>
+Definition fix_tac (f : name) (n : N) : tactic := fun g =>
   gT <- M.goal_type g;
   ''(f, new_goal) <- M.nu f mNone (fun f : gT =>
     (* We introduce the recursive definition f and create the new
@@ -819,13 +800,11 @@ Definition map_term (f : forall d:dynr, M d.(typer)) : forall d : dynr, M d.(typ
       d2 <- rec (Dynr b);
       M.ret (d1 d2)
     | [? B (A: B -> Type) (a: forall x, A x)] Dynr (fun x:B=>a x) =n>
-      n <- M.get_binder_name el;
-      M.nu n mNone (fun x : B =>
+      M.nu (FreshFrom el) mNone (fun x : B =>
         d1 <- rec (Dynr (a x));
         M.abs_fun x d1)
     | [? B (A: B -> Type) a] Dynr (forall x:B, a x) =n>
-      n <- M.get_binder_name el;
-      M.nu n mNone (fun x : B =>
+      M.nu (FreshFrom el) mNone (fun x : B =>
         d1 <- rec (Dynr (a x));
         M.abs_prod_type x d1)
     | [? d'] d' =n> f d'
@@ -878,7 +857,7 @@ Definition unfold_in {A B} (x : A) (h : B) : tactic :=
 Fixpoint intros_simpl (l : list string) : tactic :=
   match l with
   | nil => idtac
-  | n :: l => bind (intro_simpl n) (fun _ => intros_simpl l)
+  | n :: l => bind (intro_simpl (TheName n)) (fun _ => intros_simpl l)
   end%list.
 
 Fixpoint name_pattern (l : list (list string)) : mlist tactic :=
