@@ -992,7 +992,7 @@ let rec run' ctxt (vms : vm list) =
         (* RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t *)
         in
 
-        (* filter out Zupdate nodes in stack because pmo said so :) *)
+        (* filter out Zupdate nodes in stack because PMP said so :) *)
         let stack = List.filter (function | Zupdate _ -> false | _ -> true) stack in
 
         (* Feedback.msg_debug (Pp.int (List.length stack)); *)
