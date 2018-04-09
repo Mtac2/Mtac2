@@ -43,8 +43,7 @@ Definition MTele_of (A : Type) : forall T, T -> M (msigT (MTele_Const (s:=SType)
                 (fun T => T -> M (msigT (MTele_Const (s:=SType) A)))
                 (forall x : X, F x)
                 (fun t : _ =>
-                   b <- M.fresh_binder_name T;
-                   M.nu b mNone (fun x =>
+                   M.nu (M.FreshFrom T) mNone (fun x =>
                                    let Fx := reduce (RedOneStep [rl:RedBeta]) (F x) in
                                    let tx := (* rone_step *) (t x) in
                                    ''(mexistT _ n T) <- f Fx tx;

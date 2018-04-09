@@ -61,10 +61,10 @@ Definition to_dynr (d: dyn) : M dynr := dcase d as e in ret (Dynr e).
 
 Import ProdNotations.
 Import Mtac2.List.ListNotations.
+Require Import Strings.String.
 Definition construct_case A (x: A) (loop: forall r: dynr, M (moption (result x (elemr r)))) C :=
   let 'mkCase _ val retrn branches := C in
-  name <- M.fresh_name "v";
-  nu name mNone (fun v=>
+  nu (FreshFrom "v"%string) mNone (fun v=>
     new_val_opt <- loop (Dynr val);
     ''(m: some_branch_depends, new_branches) <-
      M.fold_right (

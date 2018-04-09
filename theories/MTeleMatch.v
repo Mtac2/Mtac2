@@ -6,15 +6,13 @@ Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 
 Definition MTele_of {A:Type} (T : A -> Prop) : M (A -> msigT MTele_Ty) :=
-  b <- (mtry M.fresh_binder_name T with | _ => M.fresh_name "x" end);
-  M.nu b mNone (fun a =>
+  M.nu (M.FreshFrom T) mNone (fun a =>
   let T' := reduce (RedOneStep [rl:RedBeta]) (T a) in
   (mfix1 f (T : Prop) : M (msigT MTele_Ty) :=
     mmatch T return M (msigT MTele_Ty) with
     | [?X : Type] M X =u> M.ret (mexistT _ mBase X)
     | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =u>
-      b <- M.fresh_binder_name T;
-      M.nu b mNone (fun x =>
+      M.nu (M.FreshFrom T) mNone (fun x =>
                       let T' := reduce (RedOneStep [rl:RedBeta]) (F x) in
                       ''(mexistT _ n T) <- f T';
                       n' <- M.abs_fun x n;
@@ -178,4 +176,4 @@ Notation "'mtmmatch' x 'as' y 'return' T p" :=
     let mt1 := M.eval (MTele_of (fun y => T)) in
     let mt : MTY_OF := MTt_Of (fun _z => MTele_ty M (n:=mprojT1 (mt1 _z)) (mprojT2 (mt1 _z))) in
     mtmmatch' _ (fun y => mprojT1 (mt1 y)) (fun y => mprojT2 (mt1 y)) x p%with_mtpattern
-  ) (at level 90, p at level 91).
+  ) (at level 90, p at level 91).y

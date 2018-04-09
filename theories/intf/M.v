@@ -69,7 +69,7 @@ Definition is_var: forall{A : Type}, A->t bool.
    [NameExistsInContext] if the name "x" is in the context, or
    [VarAppearsInValue] if executing [f x] results in a term containing variable
    [x]. *)
-Inductive name := TheName (n: string) | FreshName (n: string) | Generate.
+Inductive name := TheName (n: string) | FreshFrom {A} (b: A) | Generate.
 Definition nu: forall{A: Type}{B: Type}, name -> moption A -> (A -> t B) -> t B.
   make. Qed.
 
@@ -404,18 +404,15 @@ Module notations_pre.
      notation in favor of naming. *)
   Notation "'\nu' x , a" := (
     let f := fun x => a in
-    n <- get_binder_name f;
-    nu n mNone f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
+    nu (FreshFrom f) mNone f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
 
   Notation "'\nu' x : A , a" := (
     let f := fun x:A=>a in
-    n <- get_binder_name f;
-    nu n mNone f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
+    nu (FreshFrom f) mNone f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
 
   Notation "'\nu' x := t , a" := (
     let f := fun x => a in
-    n <- get_binder_name f;
-    nu n (mSome t) f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
+    nu (FreshFrom f) (mSome t) f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
 
   Notation "'mfix1' f x .. y : 'M' T := b" :=
     (fix1 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b) ..))
@@ -666,7 +663,7 @@ Module notations.
   Export notations_pre.
 
   Local Definition bind_nu {A B C} (F : A) (a : B -> t C) :=
-    bind (def_binder_name F) (fun n => M.nu (FreshName n) mNone a).
+    M.nu (FreshFrom F) mNone a.
 
   (* Fresh names. This notation is declared recursive to allow optional type
      annotations but it only works for a single binder *)
@@ -677,8 +674,7 @@ Module notations.
   Local Definition bind_nu_rec {A} {B : A -> Type} {C}
         (a : forall x : A, B x -> t C)
         (F : forall x : A, B x) :=
-    bind (def_binder_name F)
-         (fun n => M.nu (FreshName n) mNone (fun x : A => let F := reduce (RedOneStep [rl: RedBeta]) (F x) in a x F)).
+    M.nu (FreshFrom F) mNone (fun x : A => let F := reduce (RedOneStep [rl: RedBeta]) (F x) in a x F).
 
   (* Fresh names _m_irroring the shape of the [F]'s type.
 
