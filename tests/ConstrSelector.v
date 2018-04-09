@@ -16,9 +16,8 @@ Qed.
 
 Definition elim0 : tactic :=
   gT <- goal_type;
-  m <- M.fresh_binder_name gT;
   A <- M.evar Type;
-  intro_base m (fun x:A=>elim x).
+  intro_base (FreshFrom gT) (fun x:A=>elim x).
 
 Definition rrewrite {A} (x: A) := trewrite RightRewrite [m:Dyn x]%list.
 Definition lrewrite {A} (x: A) := trewrite LeftRewrite [m:Dyn x]%list.
@@ -151,8 +150,8 @@ Inductive ceval : com -> state -> state -> Prop :=
 Require Import Strings.String.
 
 Definition remember {A} (x:A) (def eq : string) : tactic :=
-  cpose_base def x (fun y:A=>
-    cassert_base eq (fun H: y = x =>lrewrite H) |1> reflexivity).
+  cpose_base (TheName def) x (fun y:A=>
+    cassert_base (TheName eq) (fun H: y = x =>lrewrite H) |1> reflexivity).
 
 Lemma WHILE_true_nonterm : forall b c st st',
      bequiv b BTrue ->

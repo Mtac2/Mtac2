@@ -247,8 +247,7 @@ Program Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : na
     mtmmatch_prog A as A return selem_of A -> M (CTele it) with
     | [? B (F : B -> isort)] ForAll F =u>
         fun f =>
-        n <- M.fresh_binder_name F;
-        M.nu n mNone (fun b : B =>
+        M.nu (FreshFrom F) mNone (fun b : B =>
           r <- rec (F b) (App f b);
           f' <- abs b r;
           M.ret (cProd f'))
@@ -275,8 +274,7 @@ Program Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : 
     mtmmatch_prog A as A return selem_of A -> M (NDCTele it) with
     | [? B (F : B -> isort)] ForAll F =u>
         fun f =>
-        n <- M.fresh_binder_name F;
-        M.nu n mNone (fun b : B =>
+        M.nu (FreshFrom F) mNone (fun b : B =>
                       r <- rec (F b) (App f b);
                       let '(existT _ l F) := r in
                       r' <- (M.abs_fun b F) : M (B -> _);
@@ -329,8 +327,7 @@ Program Definition get_ITele : forall {T : Type} (ind : T), M (nat *m (sigT ITel
     mtmmatch_prog T as T return T -> M (nat *m sigT ITele)%type with
     | [? (A : Type) (F : A -> Type)] forall a, F a =m>
       fun indFun =>
-      name <- M.fresh_binder_name T;
-      M.nu name mNone (fun a : A =>
+      M.nu (FreshFrom T) mNone (fun a : A =>
         r <- f (F a) (indFun a);
         let (n, sit) := r in
         let (sort, it) := sit in

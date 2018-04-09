@@ -4,7 +4,7 @@ From Mtac2 Require Import Logic Datatypes Logic List Utils Sorts MTele Pattern.
 Import Sorts.
 Import ListNotations.
 Import ProdNotations.
-From Mtac2.intf Require Export Exceptions Dyn Reduction Unification DeclarationDefs Goals Case Tm_kind.
+From Mtac2.intf Require Export Exceptions Dyn Reduction Unification DeclarationDefs Goals Case Tm_kind Name.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
@@ -69,7 +69,6 @@ Definition is_var: forall{A : Type}, A->t bool.
    [NameExistsInContext] if the name "x" is in the context, or
    [VarAppearsInValue] if executing [f x] results in a term containing variable
    [x]. *)
-Inductive name := TheName (n: string) | FreshFrom {A} (b: A) | Generate.
 Definition nu: forall{A: Type}{B: Type}, name -> moption A -> (A -> t B) -> t B.
   make. Qed.
 

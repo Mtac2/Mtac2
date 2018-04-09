@@ -43,11 +43,11 @@ Definition destruct {A : Type} (n : A) : tactic :=
   mif M.is_var n then
     T.destruct n
   else
-    cvariabilize_base n (M.FreshFrom "dn"%string) (fun x=>T.destruct x).
+    cvariabilize_base n (FreshFrom "dn"%string) (fun x=>T.destruct x).
 
 Program Definition destruct_eq {A} (t: A) : tactic :=
-  cvariabilize_base t (M.FreshFrom "v"%string) (fun var=>
-    T.cassert_base (M.FreshFrom "eqn"%string) (fun (eqnv : t = var)=>
+  cvariabilize_base t (FreshFrom "v"%string) (fun var=>
+    T.cassert_base (FreshFrom "eqn"%string) (fun (eqnv : t = var)=>
       T.cmove_back eqnv (T.destruct var))
       |1> T.reflexivity
   ).
@@ -57,7 +57,7 @@ Module notations.
 Notation "'uid' v" := (fun v:unit=>unit) (at level 0).
 Notation "'variabilize' t 'as' v" :=
   (
-    cvariabilize_base t (M.FreshFrom (uid v)) (fun _=>T.idtac)
+    cvariabilize_base t (FreshFrom (uid v)) (fun _=>T.idtac)
   ) (at level 0, t at next level, v at next level).
 
 End notations.

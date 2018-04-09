@@ -137,7 +137,6 @@ module Goal = struct
 
 end
 
-
 module Exceptions = struct
 
   let debug_exception sigma env e t =
@@ -417,6 +416,64 @@ module UnificationStrategy = struct
 
 end
 
+(** Everything about name generation *)
+module MNames = struct
+
+  (* let mkTheName = Constr.mkConstr "Mtac2.M.TheName" *)
+  (* let mkFreshFrom = Constr.mkConstr "Mtac2.M.FreshFrom" *)
+  (* let mkGenerate = Constr.mkConstr "Mtac2.M.Generate" *)
+
+  let get_name_base (env, sigma) (t: constr) : Names.Name.t option =
+    (* If t is a defined variable it is reducing it *)
+    let t = EConstr.of_constr (RE.whd_all_novars env sigma (of_econstr t)) in
+    if isVar sigma t then Some (Name (destVar sigma t))
+    else if isLambda sigma t then
+      let (n, _, _) = destLambda sigma t in Some n
+    else if isProd sigma t then
+      let (n, _, _) = destProd sigma t in Some n
+    else if isLetIn sigma t then
+      let (n, _, _, _) = destLetIn sigma t in Some n
+    else None
+
+  let get_name (env, sigma as ctx) (t: constr) : constr option =
+    let name = get_name_base ctx t in
+    match name with
+    | Some (Name i) -> Some (CoqString.to_coq (Names.Id.to_string i))
+    | Some _ -> (* it is Anonymous. We generate a fresh name. *)
+        let n = Namegen.next_name_away (Name (Names.Id.of_string "x")) (ids_of_context env) in
+        Some (CoqString.to_coq (Names.Id.to_string n))
+    | _ -> None
+
+  let get_from_name (env, sigma as ctx) (t: constr) : string option =
+    let t = EConstr.of_constr (RE.whd_betadeltaiota env sigma (of_econstr t)) in
+    let (h, args) = decompose_appvect sigma t in
+    try
+      match get_constructor_pos sigma h with
+      | 0 -> (* TheName *)
+          Some (CoqString.from_coq ctx args.(0))
+      | 1 -> (* FreshFrom *)
+          let name = get_name_base ctx args.(1) in
+          let name =
+            match name with
+            | Some (Name i) -> Names.Id.to_string i
+            | Some Anonymous -> "ann"
+            | None ->
+                try
+                  CoqString.from_coq ctx args.(1)
+                with CoqString.NotAString ->
+                  "nn"
+          in
+          let name = Namegen.next_name_away (Name (Names.Id.of_string name)) (ids_of_context env) in
+          Some (Names.Id.to_string name)
+      | 2 -> (* Generate *)
+          let name = Namegen.next_name_away (Name (Names.Id.of_string "ann")) (ids_of_context env) in
+          Some (Names.Id.to_string name)
+      | _ ->
+          None
+    with Term.DestKO ->
+      None
+end
+
 module ExistentialSet = Evar.Set
 
 type elem_stack = (evar_map * fconstr * stack)
@@ -654,25 +711,6 @@ let make_evar sigma env ty =
     let sigma, evar = Evarutil.new_evar env sigma ty in
     sigma, evar
 
-let get_name (env, sigma) (t: constr) : constr option =
-  (* If t is a defined variable it is reducing it *)
-  let t = EConstr.of_constr (RE.whd_all_novars env sigma (of_econstr t)) in
-  let name =
-    if isVar sigma t then Some (Name (destVar sigma t))
-    else if isLambda sigma t then
-      let (n, _, _) = destLambda sigma t in Some n
-    else if isProd sigma t then
-      let (n, _, _) = destProd sigma t in Some n
-    else if isLetIn sigma t then
-      let (n, _, _, _) = destLetIn sigma t in Some n
-    else None
-  in
-  match name with
-  | Some (Name i) -> Some (CoqString.to_coq (Names.Id.to_string i))
-  | Some _ -> (* it is Anonymous. We generate a fresh name. *)
-      let n = Namegen.next_name_away (Name (Names.Id.of_string "x")) (ids_of_context env) in
-      Some (CoqString.to_coq (Names.Id.to_string n))
-  | _ -> None
 
 (* return the reflected hash of a term *)
 let hash env sigma c size =
@@ -1044,22 +1082,27 @@ let rec run' ctxt (vms : vm list) =
                           ereturn sigma CoqBool.mkTrue
                         else
                           ereturn sigma CoqBool.mkFalse
+
                     | MConstr (Mnu, (a, _, s, ot, f)) ->
                         let a = to_econstr a in
                         let s = to_econstr s in
                         (* print_constr sigma env s; *)
-                        let namestr = CoqString.from_coq (env, sigma) s in
-                        let name = Names.Id.of_string namestr in
-                        if Id.Set.mem name (vars_of_env env) then
-                          efail (Exceptions.mkNameExists sigma env s)
-                        else
-                          begin
-                            let ot = CoqOption.from_coq sigma env (to_econstr ot) in
-                            let env' = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
-                            let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
-                            (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
-                              (Code f :: Nu (name, env, ctxt.renv) :: vms)
-                          end
+                        begin
+                          match MNames.get_from_name (env, sigma) s with
+                          | Some namestr ->
+                              let name = Names.Id.of_string namestr in
+                              if Id.Set.mem name (vars_of_env env) then
+                                efail (Exceptions.mkNameExists sigma env s)
+                              else
+                                begin
+                                  let ot = CoqOption.from_coq sigma env (to_econstr ot) in
+                                  let env' = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
+                                  let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
+                                  (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
+                                    (Code f :: Nu (name, env, ctxt.renv) :: vms)
+                                end
+                          | None -> efail (Exceptions.mkWrongTerm sigma env s)
+                        end
 
                     | MConstr (Mabs_fun, (a, p, x, y)) ->
                         abs vms AbsFun ctxt a p x y 0 mkProp
@@ -1085,7 +1128,7 @@ let rec run' ctxt (vms : vm list) =
                            For now, we assume there is at most one
                         *)
                         let t = try let (c, _, _) =  destCast sigma t in c with Term.DestKO -> t in
-                        let s = get_name (env, sigma) t in
+                        let s = MNames.get_name (env, sigma) t in
                         begin
                           match s with
                           | Some s -> return sigma (of_econstr s)

@@ -394,7 +394,7 @@ Abort.
 
 Example fix_tac_ex: forall x:nat, 0 <= x.
 MProof.
-  fix_tac "f" 1;; apply le_0_n.
+  fix_tac (TheName "f") 1;; apply le_0_n.
 Qed.
 
 Example intros_def: let x := 0 in forall y, x <= y.

@@ -69,7 +69,7 @@ Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
   | IntroNoOp => T.idtac
   | IntroAnon => T.introsn 1
   | IntroB binder =>
-    T.intro_simpl (M.FreshFrom binder)
+    T.intro_simpl (FreshFrom binder)
   | IntroC [m:] => T.destructn 0
   | IntroC ips =>
     T.destructn 0 &> mmap_plist do_intro ips

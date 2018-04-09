@@ -26,8 +26,7 @@ Definition get_constrs :=
     mmatch T return M (mlist dyn) with
     | [? A B] A -> B => fill B
     | [? A (P:A->Type)] forall x, P x =>
-      name <- M.fresh_binder_name T;
-      M.nu name mNone (fun x=>
+      M.nu (FreshFrom T) mNone (fun x=>
         fill (P x)
       )
     | _ =>

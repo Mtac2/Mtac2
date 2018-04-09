@@ -556,11 +556,9 @@ Module Mtac2Mmatch.
                           M.ret (@NatMul var rx ry))
                   | [? v f] (@Let_In nat (fun _ => nat) v f)
                     =n> (rv <- reify_helper v ctx;
-                        x <- M.fresh_binder_name f;
-                        let vx := String.append "var_" x in
-                        rf <- (M.nu x mNone
+                        rf <- (M.nu (FreshFrom f) mNone
                                     (fun x : nat
-                                     => M.nu vx mNone
+                                     => M.nu (FreshFrom "vx") mNone
                                              (fun vx : var
                                               => let fx := reduce (RedWhd [rl:RedBeta]) (f x) in
                                                  rf <- reify_helper fx (var_context.cons x vx ctx);
@@ -621,11 +619,9 @@ Import M.notations.
                   M.ret (@NatMul var rx ry)) _or_
                <[decapp term with @Let_In nat (fun _=>nat)]> UniMatchNoRed (fun v f=>
                   rv <- reify_helper v ctx;
-                  x <- M.fresh_binder_name f;
-                  let vx := String.append "var_" x in
-                  rf <- (M.nu x mNone
+                  rf <- (M.nu (FreshFrom f) mNone
                               (fun x : nat
-                               => M.nu vx mNone
+                               => M.nu Generate mNone
                                        (fun vx : var
                                         => let fx := reduce (RedWhd [rl:RedBeta]) (f x) in
                                            rf <- reify_helper fx (var_context.cons x vx ctx);
