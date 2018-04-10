@@ -153,8 +153,7 @@ Fixpoint unfold_funs {A} (t: A) (n: nat) {struct n} : M A :=
     mmatch A as A' return M A' with
     | [? B (fty : B -> Type)] forall x, fty x => [H]
       let t' := reduce RedSimpl match H in meq _ P return P with meq_refl => t end in (* we need to reduce this *)
-      name <- M.fresh_name "A";
-      M.nu name mNone (fun x=>
+      M.nu (FreshFrom "A") mNone (fun x=>
         r <- unfold_funs (t' x) n';
         abs x r)
     | [? A'] A' => [H]

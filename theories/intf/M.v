@@ -4,7 +4,7 @@ From Mtac2 Require Import Logic Datatypes Logic List Utils Sorts MTele Pattern.
 Import Sorts.
 Import ListNotations.
 Import ProdNotations.
-From Mtac2.intf Require Export Exceptions Dyn Reduction Unification DeclarationDefs Goals Case Tm_kind.
+From Mtac2.intf Require Export Exceptions Dyn Reduction Unification DeclarationDefs Goals Case Tm_kind Name.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
@@ -69,7 +69,7 @@ Definition is_var: forall{A : Type}, A->t bool.
    [NameExistsInContext] if the name "x" is in the context, or
    [VarAppearsInValue] if executing [f x] results in a term containing variable
    [x]. *)
-Definition nu: forall{A: Type}{B: Type}, string -> moption A -> (A -> t B) -> t B.
+Definition nu: forall{A: Type}{B: Type}, name -> moption A -> (A -> t B) -> t B.
   make. Qed.
 
 (** [abs_fun x e] abstracts variable [x] from [e]. It raises [NotAVar] if [x]
@@ -403,18 +403,15 @@ Module notations_pre.
      notation in favor of naming. *)
   Notation "'\nu' x , a" := (
     let f := fun x => a in
-    n <- get_binder_name f;
-    nu n mNone f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
+    nu (FreshFrom f) mNone f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
 
   Notation "'\nu' x : A , a" := (
     let f := fun x:A=>a in
-    n <- get_binder_name f;
-    nu n mNone f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
+    nu (FreshFrom f) mNone f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
 
   Notation "'\nu' x := t , a" := (
     let f := fun x => a in
-    n <- get_binder_name f;
-    nu n (mSome t) f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
+    nu (FreshFrom f) (mSome t) f) (at level 200, x ident, a at level 200, right associativity) : M_scope.
 
   Notation "'mfix1' f x .. y : 'M' T := b" :=
     (fix1 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b) ..))
@@ -622,23 +619,8 @@ Definition anonymize (s : string) : t string :=
   let s' := rcbv ("__" ++ s)%string in
   ret s'.
 
-Definition fresh_name (name: string) : t string :=
-  names <- names_of_hyp;
-  let find name : t bool :=
-    let res := reduce RedNF (mfind (fun n => dec_bool (string_dec name n)) names) in
-    match res with mNone => ret false | _ => ret true end
-  in
-  fix1 _ (fun f (name: string) =>
-     bind (find name) (fun b=>
-     if b then
-       let name := reduce RedNF (name ++ "_")%string in
-       f name : t string
-     else ret name)) name.
-
-Definition fresh_binder_name {A:Type} (x : A) : t string :=
-  bind (mtry' (get_binder_name x) (fun _ => ret "x"%string)) (fun name=>
-  fresh_name name).
-
+Definition def_binder_name {A:Type} (x : A) : t string :=
+  mtry' (get_binder_name x) (fun _ => ret "x"%string).
 
 Fixpoint string_rev_app (s1 s2 : string) :=
   match s1 with
@@ -680,7 +662,7 @@ Module notations.
   Export notations_pre.
 
   Local Definition bind_nu {A B C} (F : A) (a : B -> t C) :=
-    bind (fresh_binder_name F) (fun n => M.nu n mNone a).
+    M.nu (FreshFrom F) mNone a.
 
   (* Fresh names. This notation is declared recursive to allow optional type
      annotations but it only works for a single binder *)
@@ -691,8 +673,7 @@ Module notations.
   Local Definition bind_nu_rec {A} {B : A -> Type} {C}
         (a : forall x : A, B x -> t C)
         (F : forall x : A, B x) :=
-    bind (fresh_binder_name F)
-         (fun n => M.nu n mNone (fun x : A => let F := reduce (RedOneStep [rl: RedBeta]) (F x) in a x F)).
+    M.nu (FreshFrom F) mNone (fun x : A => let F := reduce (RedOneStep [rl: RedBeta]) (F x) in a x F).
 
   (* Fresh names _m_irroring the shape of the [F]'s type.
 

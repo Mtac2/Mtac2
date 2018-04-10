@@ -95,7 +95,7 @@ Qed.
 
 Theorem plus_n_O : forall n:nat, n = n + 0.
 MProof.
-  fix_tac "IH" 1.
+  fix_tac (TheName "IH") 1.
   destructn 0.
   - reflexivity.
   - intro n'. simpl. rewrite <- IH.

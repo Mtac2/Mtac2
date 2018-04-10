@@ -22,7 +22,7 @@ Qed.
 
 Goal True.
 MProof.
-  M.nu "name" mNone (fun x:nat=>
+  M.nu (TheName "name") mNone (fun x:nat=>
   s <- M.get_binder_name x;
   match String.string_dec s "name" with
   | Specif.left _ => M.ret I
@@ -32,27 +32,9 @@ Qed.
 
 Goal True.
 MProof.
-  (r <- M.nu "name" mNone (fun x:nat => M.abs_fun x x);
+  (r <- M.nu (TheName "name") mNone (fun x:nat => M.abs_fun x x);
   s <- M.get_binder_name r;
   match String.string_dec s "name" with
-  | Specif.left _ => M.ret I
-  | _ => M.raise exception
-  end)%MC.
-Qed.
-
-Example fresh_name_works_with_same_name (x:nat) : True.
-MProof.
-  (s <- M.fresh_binder_name (fun y:nat=>y);
-  match String.string_dec s "y" with
-  | Specif.left _ => M.ret I
-  | _ => M.raise exception
-  end)%MC.
-Qed.
-
-Example existing_name_works_with_diff_name (x:nat) : True.
-MProof.
-  (s <- M.fresh_binder_name (fun x:nat=>x);
-  match String.string_dec s "x_" with
   | Specif.left _ => M.ret I
   | _ => M.raise exception
   end)%MC.
