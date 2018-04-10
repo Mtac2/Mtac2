@@ -434,6 +434,7 @@ Arguments match_goal_base _ _%TT.
 
 Module notations.
 Notation "[t: x | .. | y ]" := (TT.compi x (.. (TT.compi y (M.ret I)) ..)).
+Set Warnings "(-[non-reversible-notation,parsing])".
 Notation "'doTT' t" := (ltac:(mrun (doTT t))) (at level 0).
 Infix "<**>" := (fappgl Mappend) (at level 61, left associativity) : M_scope.
 
