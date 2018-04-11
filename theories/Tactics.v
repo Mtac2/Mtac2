@@ -411,7 +411,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
 Definition destructn (n : nat) : tactic :=
   bind (introsn n) (fun _ g =>
     A <- M.evar Type;
-    @intro_base A _ (FreshFrom "tmp"%string) destruct g).
+    @intro_base A _ (FreshFromStr "tmp") destruct g).
 
 (** [apply t] applies theorem t to the current goal.
     It generates a subgoal for each hypothesis in the theorem.

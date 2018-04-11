@@ -77,7 +77,7 @@ Definition count_nondep_binders (T: Type) : M nat :=
       r <- go T2;
       M.ret (S r)
     | [? T1 T2] (forall x:T1, T2 x) =>
-      nu (FreshFrom "name"%string) mNone (fun e:T1=>go (T2 e))
+      nu (FreshFromStr "name") mNone (fun e:T1=>go (T2 e))
     | _ => M.ret 0
     end) T.
 

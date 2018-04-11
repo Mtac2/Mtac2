@@ -444,30 +444,37 @@ module MNames = struct
         Some (CoqString.to_coq (Names.Id.to_string n))
     | _ -> None
 
-  let get_from_name (env, sigma as ctx) (t: constr) : string option =
+  let next_name_away s env = Namegen.next_name_away (Name s) (ids_of_context env)
+
+  (* returns if the name generated is fresh or not *)
+  let get_from_name (env, sigma as ctx) (t: constr) : (bool * string) option =
     let t = EConstr.of_constr (RE.whd_betadeltaiota env sigma (of_econstr t)) in
     let (h, args) = decompose_appvect sigma t in
     try
       match get_constructor_pos sigma h with
       | 0 -> (* TheName *)
-          Some (CoqString.from_coq ctx args.(0))
+          Some (false, CoqString.from_coq ctx args.(0))
+
       | 1 -> (* FreshFrom *)
           let name = get_name_base ctx args.(1) in
           let name =
             match name with
             | Some (Name i) -> Names.Id.to_string i
             | Some Anonymous -> "ann"
-            | None ->
-                try
-                  CoqString.from_coq ctx args.(1)
-                with CoqString.NotAString ->
-                  "nn"
+            | None -> "x"
           in
-          let name = Namegen.next_name_away (Name (Names.Id.of_string name)) (ids_of_context env) in
-          Some (Names.Id.to_string name)
-      | 2 -> (* Generate *)
-          let name = Namegen.next_name_away (Name (Names.Id.of_string "ann")) (ids_of_context env) in
-          Some (Names.Id.to_string name)
+          let name = next_name_away (Names.Id.of_string name) env in
+          Some (true, Names.Id.to_string name)
+
+      | 2 -> (* FreshFromStr *)
+          let name = CoqString.from_coq ctx args.(0) in
+          let name = next_name_away (Names.Id.of_string name) env in
+          Some (true, Names.Id.to_string name)
+
+      | 3 -> (* Generate *)
+          let name = next_name_away (Names.Id.of_string "ann") env in
+          Some (true, Names.Id.to_string name)
+
       | _ ->
           None
     with Term.DestKO ->
@@ -1089,9 +1096,9 @@ let rec run' ctxt (vms : vm list) =
                         (* print_constr sigma env s; *)
                         begin
                           match MNames.get_from_name (env, sigma) s with
-                          | Some namestr ->
+                          | Some (fresh, namestr) ->
                               let name = Names.Id.of_string namestr in
-                              if Id.Set.mem name (vars_of_env env) then
+                              if (not fresh) && (Id.Set.mem name (vars_of_env env)) then
                                 efail (Exceptions.mkNameExists sigma env s)
                               else
                                 begin
