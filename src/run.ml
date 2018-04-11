@@ -5,7 +5,6 @@ open Ltac_plugin
 open Declarations
 
 open List
-open String
 
 open Pp
 open Environ
@@ -366,7 +365,7 @@ module ReductionStrategy = struct
     with RedList.NotAList _ ->
       None
 
-  let whd_betadeltaiota_nolet = whdfun CClosure.allnolet
+  (* let whd_betadeltaiota_nolet = whdfun CClosure.allnolet *)
 
   let whd_all_novars =
     let flags = red_add_transparent betaiota Names.cst_full_transparent_state in
@@ -1057,13 +1056,13 @@ let rec run' ctxt (vms : vm list) =
                   let ctxt = {ctxt with stack} in
 
 
-                  (* repetition :( *)
-                  let return sigma c = (run'[@tailcall]) {ctxt with sigma} (Ret c :: vms) in
-                  let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
+                  (* (\* repetition :( *\) *)
+                  (* let return sigma c = (run'[@tailcall]) {ctxt with sigma} (Ret c :: vms) in *)
+                  (* let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in *)
 
-                  (* wrappers for return and fail to conveniently return/fail with EConstrs *)
-                  let ereturn s fc = return s (of_econstr fc) in
-                  let efail (sigma, fc) = fail (sigma, of_econstr fc) in
+                  (* (\* wrappers for return and fail to conveniently return/fail with EConstrs *\) *)
+                  (* let ereturn s fc = return s (of_econstr fc) in *)
+                  (* let efail (sigma, fc) = fail (sigma, of_econstr fc) in *)
 
                   (* Array.iter (fun x -> print_constr sigma ctxt.env (to_econstr x)) args; *)
                   begin
@@ -1105,7 +1104,7 @@ let rec run' ctxt (vms : vm list) =
                                   let ot = CoqOption.from_coq sigma env (to_econstr ot) in
                                   let env' = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
                                   let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
-                                  (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
+                                  (run'[@tailcall]) {env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
                                     (Code f :: Nu (name, env, ctxt.renv) :: vms)
                                 end
                           | None -> efail (Exceptions.mkWrongTerm sigma env s)
