@@ -456,9 +456,9 @@ Module notations_pre.
 
   Import TeleNotation.
   Notation "'dcase' v 'as' A ',' x 'in' t" :=
-    (@M.decompose_app' _ (fun _ => _) [tele A (_:A)] UniMatchNoRed v (@Dyn) (fun A x => t)) (at level 91, t at level 200).
+    (@M.decompose_app' _ (fun _ => _) [tele A (_:A)] UniMatchNoRed v (@Dyn) (fun A x => t)) (at level 91, t at level 200) : M_scope.
   Notation "'dcase' v 'as' x 'in' t" :=
-    (dcase v as _ , x in t) (at level 91, t at level 200).
+    (dcase v as _ , x in t) (at level 91, t at level 200) : M_scope.
 End notations_pre.
 
 Import notations_pre.
