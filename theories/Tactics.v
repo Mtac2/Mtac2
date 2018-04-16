@@ -1073,9 +1073,9 @@ Module notations.
     (t1 &> S.last t2)
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
 
-
-  Notation "'dcase' v 'as' x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200) : tactic_scope.
-  Notation "'dcase' v 'as' A, x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200) : tactic_scope.
+  Import MTele.TeleNotation.
+  Notation "'dcase' v 'as' A ',' x 'in' t" := (fun g => @M.decompose_app' _ (fun _ => _) [tele A (_:A)] UniMatchNoRed v (@Dyn) (fun A x => t g)) (at level 91, t at level 200) : tactic_scope.
+  Notation "'dcase' v 'as' x 'in' t" := (dcase v as _, x in t) (at level 91, t at level 200) : tactic_scope.
 
 End notations.
 
