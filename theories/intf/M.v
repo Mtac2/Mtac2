@@ -451,7 +451,7 @@ Module notations_pre.
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
       (@mmatch' _ (fun _ => _) NotCaught e
-                   (mapp ls%with_pattern [m:([? x] x => raise x)%pattern]))))
+                   (mapp ls%with_pattern [m:(e => raise e)%pattern]))))
       (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 
   Import TeleNotation.
