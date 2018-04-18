@@ -813,9 +813,10 @@ let run_declare_def env sigma kind name opaque ty bod =
   let gr = Globnames.ConstRef kn in
   let () = Lemmas.call_hook fix_exn (vernac_definition_hook false kind) Global gr  in
   let c = (Universes.constr_of_global gr) in
+  let env = Global.env () in
   (* Feedback.msg_notice *)
   (*   (Termops.print_constr_env env c); *)
-  (sigma, c)
+  (sigma, env, c)
 
 (** declare implicits *)
 let run_declare_implicits env sigma gr impls =
@@ -976,11 +977,11 @@ let rec run' ctxt (vms : vm list) =
   | Code t, _ ->
       begin
         let upd c = (Code c :: vms) in
-        let return sigma c = (run'[@tailcall]) {ctxt with sigma} (Ret c :: vms) in
+        let return ?new_env:(new_env=env) sigma c = (run'[@tailcall]) {ctxt with sigma; env=new_env} (Ret c :: vms) in
         let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
 
         (* wrappers for return and fail to conveniently return/fail with EConstrs *)
-        let ereturn s fc = return s (of_econstr fc) in
+        let ereturn ?new_env s fc = return ?new_env:new_env s (of_econstr fc) in
         let efail (sigma, fc) = fail (sigma, of_econstr fc) in
 
         (* let cont ctxt h args = (run'[@tailcall]) {ctxt with stack=Zapp args::stack} (Code h :: vms) in *)
@@ -1333,7 +1334,7 @@ let rec run' ctxt (vms : vm list) =
                         let ty = EConstr.to_constr sigma ty in
                         let bod = EConstr.to_constr sigma bod in
                         (match run_declare_def env sigma kind name (CoqBool.from_coq sigma opaque) ty bod with
-                         | (sigma, ret) -> ereturn sigma (of_constr ret)
+                         | (sigma, env, ret) -> ereturn ~new_env:env sigma (of_constr ret)
                          | exception CErrors.AlreadyDeclared _ ->
                              efail (E.mkAlreadyDeclared sigma env name)
                          | exception Type_errors.TypeError(env, Type_errors.UnboundVar v) ->
