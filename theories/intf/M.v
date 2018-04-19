@@ -385,11 +385,42 @@ Fixpoint open_pattern {A P y} (E : Exception) (p : pattern t A P y) : t (P y) :=
       )
   end.
 
-Fixpoint mmatch' {A:Type} {P:A->Type} (E : Exception) (y : A) (ps : mlist (pattern t A P y)) : t (P y) :=
+(* Class MMatchItem (M : Type -> Prop) (A : Type) (B : A -> Type) (a : A) := *)
+(*   mmatch_item : Exception -> forall a', a' =m= a -> M (B a). *)
+
+(* Arguments mmatch_item [_ _ _ _] _. *)
+
+(* Instance pattern_MMatchItem {A : Type} {P : A -> Type} {y : A} (p : pattern t A P y) : *)
+(*   MMatchItem t A P y := fun E a' eq => ltac:(rewrite <-eq; refine (open_pattern (y:=a') E ltac:(rewrite eq; refine p))). *)
+
+Definition branch_pattern {A P y} (p : pattern t A P y) : Branch t A P y :=
+  @BRANCH t A P y (fun E y' eq => open_pattern E (ltac:(rewrite eq; apply p))).
+
+Structure pattern_cs : Type :=
+  PATTERN_CS {
+      pattern_kind : Type -> Prop;
+      pattern_type : forall (A : Type) (P : A -> Type) (y : A), Type;
+      _ : forall (A : Type) (P : A -> Type) (y : A), pattern_type A P y -> Branch pattern_kind A P y
+    }.
+
+(* Definition pattern_type (p : pattern_cs) : forall (A : Type) (P : A -> Type) (y : A), Type. *)
+(*   now destruct p. Defined. *)
+Definition pattern_branch (p : pattern_cs) : forall (A : Type) (P : A -> Type) (y : A), pattern_type p A P y -> Branch (pattern_kind p) A P y.
+  now destruct p. Defined.
+
+Canonical Structure BranchType_pattern {A P y} p : BranchType _ _ _ _ := BRANCH_TYPE (pattern_type p A P y) (pattern_branch p _ _ _).
+
+Definition Mpattern := pattern t.
+Canonical Structure pattern_M := PATTERN_CS t (Mpattern) (@branch_pattern).
+
+Definition branch_always {A P y} (m : t (P y)) : Branch t A P y :=
+  @BRANCH t A P y (fun _ _ eq => let '(meq_refl) := meq_sym eq in m).
+
+Fixpoint mmatch' {A:Type} {P:A->Type} (E : Exception) (y : A) (ps : mlist (Branch t A P y)) : t (P y) :=
   match ps with
   | [m:] => raise NoPatternMatches
   | p :m: ps' =>
-    mtry' (open_pattern E p) (fun e =>
+    mtry' (branch_exec p E y meq_refl) (fun e =>
       bind (unify e E UniMatchNoRed) (fun b=>
       if b then mmatch' E y ps' else raise e))
   end.
@@ -398,6 +429,94 @@ Definition NotCaught : Exception. constructor. Qed.
 
 Module notations_pre.
   Export monad_notations.
+
+
+  (* Pattern notations which now mention definitions from M.v and, thus, cannot be
+  lcoated in Pattern.v anymore. *)
+
+  Delimit Scope inner_pattern_scope with inner_pattern.
+  (* Bind Scope pattern_base_scope with pattern. *)
+
+  Notation "[¿ s .. t ] ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
+    (at level 202, s binder, t binder, ps at next level, only parsing) : inner_pattern_scope.
+  Notation "'[S?' s .. t ] ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
+    (at level 202, s binder, t binder, ps at next level) : inner_pattern_scope.
+
+  Notation "[? x .. y ] ps" := (ptele (fun x => .. (ptele (fun y => ps)).. ))
+    (at level 202, x binder, y binder, ps at next level) : inner_pattern_scope.
+  Notation "p => b" := (pbase p%core (fun _ => b%core) UniMatch)
+    (no associativity, at level 201) : inner_pattern_base.
+  Notation "p => b" := (pbase p%core (fun _ => b%core) UniMatch)
+    (no associativity, at level 201) : inner_pattern_scope.
+  Notation "p => [ H ] b" := (pbase p%core (fun H => b%core) UniMatch)
+    (no associativity, at level 201, H at next level) : inner_pattern_scope.
+  Notation "p => [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniMatch)
+    (no associativity, at level 201, H binder, G binder) : inner_pattern_scope.
+  Notation "'_' => b " := (pany b%core)
+    (at level 201, b at next level) : inner_pattern_scope.
+
+  Notation "p '=n>' b" := (pbase p%core (fun _ => b%core) UniMatchNoRed)
+    (no associativity, at level 201) : inner_pattern_scope.
+  Notation "p '=n>' [ H ] b" := (pbase p%core (fun H => b%core) UniMatchNoRed)
+    (no associativity, at level 201, H at next level) : inner_pattern_scope.
+  Notation "p =n> [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniMatchNoRed)
+    (no associativity, at level 201, H binder, G binder) : inner_pattern_scope.
+
+  Notation "p '=u>' b" := (pbase p%core (fun _ => b%core) UniCoq)
+    (no associativity, at level 201) : inner_pattern_scope.
+  Notation "p '=u>' [ H ] b" := (pbase p%core (fun H => b%core) UniCoq)
+    (no associativity, at level 201, H at next level) : inner_pattern_scope.
+  Notation "p =u> [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniCoq)
+    (no associativity, at level 201, H binder, G binder) : inner_pattern_scope.
+
+  Notation "p '=c>' b" := (pbase p%core (fun _ => b%core) UniEvarconv)
+    (no associativity, at level 201) : inner_pattern_scope.
+  Notation "p '=c>' [ H ] b" := (pbase p%core (fun H => b%core) UniEvarconv)
+    (no associativity, at level 201, H at next level) : inner_pattern_scope.
+  Notation "p =c> [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniEvarconv)
+    (no associativity, at level 201, H binder, G binder) : inner_pattern_scope.
+
+
+  Notation "[¿ s .. t ] ps" := (branch_of (psort (fun s => .. (psort (fun t => ps%inner_pattern)) ..)))
+    (at level 202, s binder, t binder, ps at next level, only parsing) : pattern_scope.
+  Notation "'[S?' s .. t ] ps" := (branch_of (psort (fun s => .. (psort (fun t => ps%inner_pattern)) ..)))
+    (at level 202, s binder, t binder, ps at next level) : pattern_scope.
+
+
+  Notation "[? x .. y ] ps" := (branch_of (ptele (fun x => .. (ptele (fun y => ps%inner_pattern)).. )))
+    (at level 202, x binder, y binder, ps at next level) : pattern_scope.
+  Notation "p => b" := (branch_of (pbase p%core (fun _ => b%core) UniMatch))
+    (no associativity, at level 201) : pattern_base.
+  Notation "p => b" := (branch_of (pbase p%core (fun _ => b%core) UniMatch))
+    (no associativity, at level 201) : pattern_scope.
+  Notation "p => [ H ] b" := (branch_of (pbase p%core (fun H => b%core) UniMatch))
+    (no associativity, at level 201, H at next level) : pattern_scope.
+  Notation "p => [ H .. G ] b" := (branch_of (pbase p%core (fun H => .. (fun G => b%core) .. ) UniMatch))
+    (no associativity, at level 201, H binder, G binder) : pattern_scope.
+  Notation "'_' => b " := (branch_of (pany b%core))
+    (at level 201, b at next level) : pattern_scope.
+
+  Notation "p '=n>' b" := (branch_of (pbase p%core (fun _ => b%core) UniMatchNoRed))
+    (no associativity, at level 201) : pattern_scope.
+  Notation "p '=n>' [ H ] b" := (branch_of (pbase p%core (fun H => b%core) UniMatchNoRed))
+    (no associativity, at level 201, H at next level) : pattern_scope.
+  Notation "p =n> [ H .. G ] b" := (branch_of (pbase p%core (fun H => .. (fun G => b%core) .. ) UniMatchNoRed))
+    (no associativity, at level 201, H binder, G binder) : pattern_scope.
+
+  Notation "p '=u>' b" := (branch_of (pbase p%core (fun _ => b%core) UniCoq))
+    (no associativity, at level 201) : pattern_scope.
+  Notation "p '=u>' [ H ] b" := (branch_of (pbase p%core (fun H => b%core) UniCoq))
+    (no associativity, at level 201, H at next level) : pattern_scope.
+  Notation "p =u> [ H .. G ] b" := (branch_of (pbase p%core (fun H => .. (fun G => b%core) .. ) UniCoq))
+    (no associativity, at level 201, H binder, G binder) : pattern_scope.
+
+  Notation "p '=c>' b" := (branch_of (pbase p%core (fun _ => b%core) UniEvarconv))
+    (no associativity, at level 201) : pattern_scope.
+  Notation "p '=c>' [ H ] b" := (branch_of (pbase p%core (fun H => b%core) UniEvarconv))
+    (no associativity, at level 201, H at next level) : pattern_scope.
+  Notation "p =c> [ H .. G ] b" := (branch_of (pbase p%core (fun H => .. (fun G => b%core) .. ) UniEvarconv))
+    (no associativity, at level 201, H binder, G binder) : pattern_scope.
+
 
   (* We cannot make this notation recursive, so we loose
      notation in favor of naming. *)
@@ -451,7 +570,7 @@ Module notations_pre.
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
       (@mmatch' _ (fun _ => _) NotCaught e
-                   (mapp ls%with_pattern [m:(e => raise e)%pattern]))))
+                   (mapp ls%with_pattern [m: branch_always (raise e)]))))
       (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 
   Import TeleNotation.
@@ -461,7 +580,13 @@ Module notations_pre.
     (dcase v as _ , x in t) (at level 91, t at level 200) : M_scope.
 End notations_pre.
 
+
 Import notations_pre.
+
+From Unicoq Require Import Unicoq.
+Set Unicoq Debug.
+Definition fu (x : unit) : t unit := (mmatch x with x => M.ret tt end).
+
 
 (* Utilities for lists *)
 Definition map {A B} (f : A -> t B) :=

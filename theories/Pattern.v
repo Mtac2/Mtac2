@@ -1,4 +1,4 @@
-From Mtac2 Require Import Logic List intf.Unification Sorts.
+From Mtac2 Require Import Logic List intf.Unification Sorts intf.Exceptions.
 Import Sorts.
 Import ListNotations.
 
@@ -21,50 +21,37 @@ Arguments pbase {M A B y} _ _ _.
 Arguments ptele {M A B y C} _.
 Arguments psort {M A B y} _.
 
-Notation "[¿ s .. t ] ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
-  (at level 202, s binder, t binder, ps at next level, only parsing) : pattern_scope.
-Notation "'[S?' s .. t ] ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
-  (at level 202, s binder, t binder, ps at next level) : pattern_scope.
-
-Notation "[? x .. y ] ps" := (ptele (fun x => .. (ptele (fun y => ps)).. ))
-  (at level 202, x binder, y binder, ps at next level) : pattern_scope.
-Notation "p => b" := (pbase p%core (fun _ => b%core) UniMatch)
-  (no associativity, at level 201) : pattern_scope.
-Notation "p => [ H ] b" := (pbase p%core (fun H => b%core) UniMatch)
-  (no associativity, at level 201, H at next level) : pattern_scope.
-Notation "p => [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniMatch)
-  (no associativity, at level 201, H binder, G binder) : pattern_scope.
-Notation "'_' => b " := (pany b%core)
-  (at level 201, b at next level) : pattern_scope.
-
-Notation "p '=n>' b" := (pbase p%core (fun _ => b%core) UniMatchNoRed)
-  (no associativity, at level 201) : pattern_scope.
-Notation "p '=n>' [ H ] b" := (pbase p%core (fun H => b%core) UniMatchNoRed)
-  (no associativity, at level 201, H at next level) : pattern_scope.
-Notation "p =n> [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniMatchNoRed)
-  (no associativity, at level 201, H binder, G binder) : pattern_scope.
-
-Notation "p '=u>' b" := (pbase p%core (fun _ => b%core) UniCoq)
-  (no associativity, at level 201) : pattern_scope.
-Notation "p '=u>' [ H ] b" := (pbase p%core (fun H => b%core) UniCoq)
-  (no associativity, at level 201, H at next level) : pattern_scope.
-Notation "p =u> [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniCoq)
-  (no associativity, at level 201, H binder, G binder) : pattern_scope.
-
-Notation "p '=c>' b" := (pbase p%core (fun _ => b%core) UniEvarconv)
-  (no associativity, at level 201) : pattern_scope.
-Notation "p '=c>' [ H ] b" := (pbase p%core (fun H => b%core) UniEvarconv)
-  (no associativity, at level 201, H at next level) : pattern_scope.
-Notation "p =c> [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) .. ) UniEvarconv)
-  (no associativity, at level 201, H binder, G binder) : pattern_scope.
-
 Delimit Scope pattern_scope with pattern.
+Delimit Scope with_pattern_scope with with_pattern.
+
+
+Set Primitive Projections.
+
+Definition BranchExec (M : Type -> Prop) (A : Type) (B : A -> Type) (a : A) :=
+  Exception -> forall a', a' =m= a -> M (B a').
+
+Record Branch (M : Type -> Prop) (A : Type) (B : A -> Type) (a : A) :=
+ BRANCH { branch_exec : BranchExec M A B a }.
+Arguments branch_exec [_ _ _ _] _ _ _.
+Arguments BRANCH [_ _ _ _] _.
+
+Record BranchType M A B a  :=
+  BRANCH_TYPE {
+      branch_type : Type;
+      branch_of : branch_type -> Branch M A B a
+    }.
+Arguments BRANCH_TYPE [_ _ _ _].
+Arguments branch_type [_ _ _ _].
+Arguments branch_of [_ _ _ _ _].
+
+Unset Primitive Projections.
+
+
+
 
 Notation "'with' | p1 | .. | pn 'end'" :=
-  ((@mcons (pattern _ _ _ _) p1%pattern (.. (@mcons (pattern _ _ _ _) pn%pattern [m:]) ..)))
+  ((@mcons (Branch _ _ _ _) (p1%pattern) (.. (@mcons (Branch _ _ _ _) (pn%pattern) [m:]) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_pattern_scope.
 Notation "'with' p1 | .. | pn 'end'" :=
-  ((@mcons (pattern _ _ _ _) p1%pattern (.. (@mcons (pattern _ _ _ _) pn%pattern [m:]) ..)))
+  ((@mcons (Branch _ _ _ _) (p1%pattern) (.. (@mcons (Branch _ _ _ _) (pn%pattern) [m:]) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_pattern_scope.
-
-Delimit Scope with_pattern_scope with with_pattern.
