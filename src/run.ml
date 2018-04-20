@@ -66,8 +66,8 @@ module Goal = struct
   let mkGoal = mkUConstr "Goals.Goal"
   let mkAHyp = mkUConstr "Goals.AHyp"
 
-  let mkSType = Constr.mkConstr "Mtac2.Sorts.Sorts.SType"
-  let mkSProp = Constr.mkConstr "Mtac2.Sorts.Sorts.SProp"
+  let mkSType = Constrs.mkConstr "Mtac2.Sorts.Sorts.SType"
+  let mkSProp = Constrs.mkConstr "Mtac2.Sorts.Sorts.SProp"
 
   let mkTheGoal ty ev sigma env =
     let tt = Retyping.get_type_of env sigma ty in
@@ -129,9 +129,9 @@ module Goal = struct
               l1
         | l1, _ -> l1 in
       List.rev (remove (List.rev evenv, List.rev (named_context env))) in
-    let ids = List.map (fun v -> Term.mkVar (Declaration.get_id v)) evenv in
+    let ids = List.map (fun v -> Constr.mkVar (Declaration.get_id v)) evenv in
     let evar = (ev, Array.of_list ids) in
-    let sigma, tg = mkTheGoal (of_constr @@ Evd.existential_type sigma evar) (of_constr @@ Term.mkEvar evar) sigma env in
+    let sigma, tg = mkTheGoal (of_constr @@ Evd.existential_type sigma evar) (of_constr @@ Constr.mkEvar evar) sigma env in
     fold_inside (fun (sigma,s) v -> mkAHypOrDef (Declaration.to_tuple v) s sigma env) newenv ~init:(sigma,tg)
 
 end
@@ -260,7 +260,7 @@ module ReductionStrategy = struct
     else if isConst sigma t then
       let (c,ui) = destConst sigma t in
       let ui = EInstance.kind sigma ui in
-      let (d,_) = Environ.constant_value env (c,ui) in
+      let d = Environ.constant_value_in env (c,ui) in
       of_constr d
     else
       CErrors.anomaly (Pp.str "get_definition didn't have definition!")
@@ -344,7 +344,7 @@ module ReductionStrategy = struct
      * Stack.zip sigma s *)
     let evars ev = safe_evar_value sigma ev in
     let infos = CClosure.create_clos_infos ~evars flags env in
-    (CClosure.whd_val infos c)
+    (CClosure.whd_val infos (CClosure.create_tab ()) c)
 
   let redfuns = [|
     (fun _ _ _ c -> c);
@@ -386,7 +386,7 @@ module UnificationStrategy = struct
     (fun _ ts env sigma conv_pb t1 t2->
        try
          match evar_conv_x ts env sigma conv_pb t1 t2 with
-         | Success sigma -> Success (consider_remaining_unif_problems env sigma)
+         | Success sigma -> Success (solve_unif_constraints_with_heuristics env sigma)
          | e -> e
        with _ -> UnifFailure (sigma, Pretype_errors.ProblemBeyondCapabilities))
   |]
@@ -439,11 +439,11 @@ module MNames = struct
     match name with
     | Some (Name i) -> Some (CoqString.to_coq (Names.Id.to_string i))
     | Some _ -> (* it is Anonymous. We generate a fresh name. *)
-        let n = Namegen.next_name_away (Name (Names.Id.of_string "x")) (ids_of_context env) in
+        let n = Namegen.next_name_away (Name (Names.Id.of_string "x")) (vars_of_env env) in
         Some (CoqString.to_coq (Names.Id.to_string n))
     | _ -> None
 
-  let next_name_away s env = Namegen.next_name_away (Name s) (ids_of_context env)
+  let next_name_away s env = Namegen.next_name_away (Name s) (vars_of_env env)
 
   (* returns if the name generated is fresh or not *)
   let get_from_name (env, sigma as ctx) (t: constr) : (bool * string) option =
@@ -476,11 +476,9 @@ module MNames = struct
 
       | _ ->
           None
-    with Term.DestKO ->
+    with Constr.DestKO ->
       None
 end
-
-module ExistentialSet = Evar.Set
 
 type elem_stack = (evar_map * fconstr * stack)
 type elem = (evar_map * constr)
@@ -523,7 +521,7 @@ let dest_Case (env, sigma) t =
   with
   | Not_found ->
       Exceptions.block "Something specific went wrong. TODO: find out what!"
-  | Term.DestKO ->
+  | Constr.DestKO ->
       None
   | _ ->
       Exceptions.block "Something not so specific went wrong."
@@ -627,7 +625,7 @@ let multi_subst sigma l c =
   substrec 0 c
 
 let name_depends_on sigma deps ty ot =
-  let open Idset in let open Termops in
+  let open Id.Set in let open Termops in
   let vars = collect_vars sigma ty in
   let vars = if Option.has_some ot then
       union (collect_vars sigma (Option.get ot)) vars
@@ -637,12 +635,12 @@ let name_depends_on sigma deps ty ot =
 (* given a named_context env and a variable x it returns all the
    (named) variables that depends transitively on x *)
 let depends_on env sigma x =
-  let open Idset in let open Context.Named in
+  let open Id.Set in let open Context.Named in
   let deps = singleton x in
   fold_outside (fun v deps->
     let (n, ot, ty) = Declaration.to_tuple v in
     if name_depends_on sigma deps ty ot then
-      Idset.add n deps
+      Id.Set.add n deps
     else
       deps) env ~init:deps
 
@@ -658,7 +656,7 @@ let compute_deps env sigma x =
 (* given a rel or var x and a term t and its type ty, it checks if t or ty does not depend on x *)
 let check_abs_deps env sigma x t ty =
   let ndeps = compute_deps env sigma x in
-  let open Idset in
+  let open Id.Set in
   is_empty ndeps ||
   (* The term might depend on x, which by invariant we now is a
      variable (since ndeps is not empty) *)
@@ -680,9 +678,9 @@ type abs = AbsProd | AbsFun | AbsLet | AbsFix
 (** checks if (option) definition od and type ty has named
     vars included in vars *)
 let check_vars sigma od ty vars =
-  Idset.subset (Termops.collect_vars sigma ty) vars &&
+  Id.Set.subset (Termops.collect_vars sigma ty) vars &&
   if Option.has_some od then
-    Idset.subset (Termops.collect_vars sigma (Option.get od)) vars
+    Id.Set.subset (Termops.collect_vars sigma (Option.get od)) vars
   else true
 
 exception MissingDep
@@ -703,10 +701,10 @@ let new_env (env, sigma) hyps =
          be defined in the named context *)
       if check_vars sigma odef ty idset then
         let id = destVar sigma var in
-        (id::idlist, Idset.add id idset, subs, push_named (Context.Named.Declaration.of_tuple (id, odef, ty)) env')
+        (id::idlist, Id.Set.add id idset, subs, push_named (Context.Named.Declaration.of_tuple (id, odef, ty)) env')
       else
         raise MissingDep
-    ) hyps ([], Idset.empty, [], empty_env)
+    ) hyps ([], Id.Set.empty, [], empty_env)
   in subs, env
 
 let make_evar sigma env ty =
@@ -721,7 +719,7 @@ let make_evar sigma env ty =
 (* return the reflected hash of a term *)
 let hash env sigma c size =
   let size = CoqN.from_coq (env, sigma) size in
-  let h = Term.hash_constr (EConstr.to_constr sigma c) in
+  let h = Constr.hash (EConstr.to_constr sigma c) in
   CoqN.to_coq (Pervasives.abs (h mod size))
 
 (* reflects the hypotheses in [env] in a list of [ahyp] *)
@@ -809,7 +807,7 @@ let run_declare_def env sigma kind name opaque ty bod =
   let kind = kinds.(kind_pos) in
   let name = CoqString.from_coq (env, sigma) name in
   let id = Names.Id.of_string name in
-  let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, ctx) in
+  let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, Entries.Monomorphic_const_entry ctx) in
   let gr = Globnames.ConstRef kn in
   let () = Lemmas.call_hook fix_exn (vernac_definition_hook false kind) Global gr  in
   let c = (Universes.constr_of_global gr) in
@@ -860,8 +858,8 @@ let run_declare_implicits env sigma gr impls =
 
 let koft sigma t =
   let lf n = Lazy.force (MtacNames.mkConstr ("Tm_kind." ^ n)) in
-  let open Term in
-  match kind sigma t with
+  let open Constr in
+  match kind t with
   | Var _ -> lf "tmVar"
   | Evar _ -> lf "tmEvar"
   | Sort _ -> lf "tmSort"
@@ -988,7 +986,7 @@ let rec run' ctxt (vms : vm list) =
         let evars ev = safe_evar_value sigma ev in
         let infos = CClosure.create_clos_infos ~evars CClosure.allnolet env in
 
-        let reduced_term, stack = reduce_noshare infos t stack
+        let reduced_term, stack = reduce_noshare infos (CClosure.create_tab ()) t stack
         (* RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t *)
         in
 
@@ -1133,7 +1131,7 @@ let rec run' ctxt (vms : vm list) =
                         (* With the new reduction machine, there may still be casts left in t.
                            For now, we assume there is at most one
                         *)
-                        let t = try let (c, _, _) =  destCast sigma t in c with Term.DestKO -> t in
+                        let t = try let (c, _, _) =  destCast sigma t in c with Constr.DestKO -> t in
                         let s = MNames.get_name (env, sigma) t in
                         begin
                           match s with
@@ -1265,7 +1263,6 @@ let rec run' ctxt (vms : vm list) =
 
                     | MConstr (Mcall_ltac, (sort, concl, name, args)) ->
                         let open Tacinterp in
-                        let open Nametab in
                         let open Tacexpr in
                         let open Misctypes in
                         let open Loc in
@@ -1273,10 +1270,10 @@ let rec run' ctxt (vms : vm list) =
                         let concl, name, args = to_econstr concl, to_econstr name, to_econstr args in
                         let name, args = CoqString.from_coq (env, sigma) name, CoqList.from_coq sigma env args in
                         let args = List.map (CoqSig.from_coq (env, sigma)) args in
-                        let tac_name = locate_tactic (Libnames.qualid_of_string name) in
+                        let tac_name = Tacenv.locate_tactic (Libnames.qualid_of_string name) in
                         let arg_name = "lx_" in
                         let args = List.mapi (fun i a->(Id.of_string (arg_name ^ string_of_int i), Value.of_constr a)) args in
-                        let args_var = List.map (fun (n, _) -> Reference (ArgVar (tag n))) args in
+                        let args_var = List.map (fun (n, _) -> Reference (ArgVar (CAst.make n))) args in
                         let to_call = TacArg (tag (TacCall (tag (ArgArg (tag tac_name), args_var)))) in
                         begin
                           try
@@ -1398,7 +1395,7 @@ let rec run' ctxt (vms : vm list) =
                           | (_, a, b) ->
                               let (a, b) = (of_econstr a, of_econstr b) in
                               (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|a; b|] :: stack} (upd cont)
-                          | exception Term.DestKO ->
+                          | exception Constr.DestKO ->
                               efail (E.mkNotAForall sigma env t)
                         end
 
@@ -1409,7 +1406,7 @@ let rec run' ctxt (vms : vm list) =
                           | (_, a, b) ->
                               let (a, b) = (of_econstr a, of_econstr b) in
                               (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|a; b|] :: stack} (upd cont)
-                          | exception Term.DestKO ->
+                          | exception Constr.DestKO ->
                               efail (E.mkNotAForall sigma env t)
                         end
 
@@ -1425,14 +1422,14 @@ let rec run' ctxt (vms : vm list) =
                               let arg_type = Retyping.get_type_of env sigma arg in
                               let (h_type, arg_type, h, arg) = (of_econstr h_type, of_econstr arg_type, of_econstr h, of_econstr arg) in
                               (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|h_type; arg_type; h; arg|] :: stack} (upd cont)
-                          | exception Term.DestKO ->
+                          | exception Constr.DestKO ->
                               efail (E.mkNotAnApplication sigma env t)
                         end
 
                     | MConstr (Mnew_timer, (_, t_arg)) ->
                         let t_arg = to_econstr t_arg in
                         let name, _ = destConst sigma t_arg in
-                        let fname = Names.canonical_con name in
+                        let fname = Constant.canonical name in
                         let last = None in
                         let () = Hashtbl.add timers fname ((ref last, ref 0.0)) in
                         ereturn sigma CoqUnit.mkTT
@@ -1441,7 +1438,7 @@ let rec run' ctxt (vms : vm list) =
                         let reset = CoqBool.from_coq sigma (to_econstr reset) in
                         let t_arg = to_econstr t_arg in
                         let name, _ = destConst sigma t_arg in
-                        let fname = Names.canonical_con name in
+                        let fname = Constant.canonical name in
                         begin
                           match Hashtbl.find timers fname with
                           | t ->
@@ -1454,7 +1451,7 @@ let rec run' ctxt (vms : vm list) =
                     | MConstr (Mstop_timer, (_, t_arg)) ->
                         let t_arg = to_econstr t_arg in
                         let name, _ = destConst sigma t_arg in
-                        let fname = Names.canonical_con name in
+                        let fname = Constant.canonical name in
                         begin
                           match Hashtbl.find timers fname with
                           | t ->
@@ -1473,7 +1470,7 @@ let rec run' ctxt (vms : vm list) =
                     | MConstr (Mreset_timer, (_, t_arg)) ->
                         let t_arg = to_econstr t_arg in
                         let name, _ = destConst sigma t_arg in
-                        let fname = Names.canonical_con name in
+                        let fname = Constant.canonical name in
                         let t = Hashtbl.find timers fname in
                         let () = fst t := None in
                         let () = snd t := 0.0 in
@@ -1482,14 +1479,14 @@ let rec run' ctxt (vms : vm list) =
                     | MConstr (Mprint_timer, (_, t_arg)) ->
                         let t_arg = to_econstr t_arg in
                         let name, _ = destConst sigma t_arg in
-                        let fname = Names.canonical_con name in
+                        let fname = Constant.canonical name in
                         let t = Hashtbl.find timers fname in
                         let total = !(snd t) in
                         let () = Feedback.msg_info (Pp.str (Printf.sprintf "%f" total)) in
                         ereturn sigma CoqUnit.mkTT
 
                     | MConstr (Mkind_of_term, (_, t)) ->
-                        ereturn sigma (koft sigma (to_econstr t))
+                        ereturn sigma (koft sigma (CClosure.term_of_fconstr t))
                   end
               | exception Not_found ->
                   efail (E.mkStuckTerm sigma env h)
@@ -1582,7 +1579,7 @@ and cvar vms ctxt ty ohyps =
 let db_to_named sigma env =
   let open Context in
   let env' = push_named_context (named_context env) (reset_context env) in
-  let vars = Id.Set.elements (Named.to_vars (named_context env)) in
+  let vars = Named.to_vars (named_context env) in
   let _, subs, env = CList.fold_right_i (fun n var (vars, subs, env') ->
     (* the definition might refer to previously defined indices
        so we perform the substitution *)
@@ -1597,7 +1594,7 @@ let db_to_named sigma env =
       | Name n ->
           Namegen.next_name_away name vars in
     let nvar = Named.Declaration.of_tuple (id, odef, ty) in
-    id::vars, (n, mkVar id) :: subs, push_named nvar env'
+    Id.Set.add id vars, (n, mkVar id) :: subs, push_named nvar env'
   ) 1 (rel_context env) (vars, [], env') in
   subs, env
 
@@ -1611,7 +1608,7 @@ let multi_subst_inv sigma l c =
           try mkRel (List.assoc (mkVar n) l + depth)
           with Not_found -> mkVar n
         end
-      with | Term.DestKO ->
+      with Constr.DestKO ->
         map_with_binders sigma succ substrec depth c
     end
   in substrec 0 c

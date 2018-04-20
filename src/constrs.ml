@@ -9,7 +9,7 @@ let decompose_appvect sigma c =
   | App (f,cl) -> (f, cl)
   | _ -> (c,[||])
 
-module Constr = struct
+module Constrs = struct
   exception Constr_not_found of string
   exception Constr_poly of string
 
@@ -34,14 +34,16 @@ module Constr = struct
 end
 
 module ConstrBuilder = struct
+  open Constrs
+
   type t = string
 
   let from_string (s:string) : t = s
 
-  let build s = Lazy.force (Constr.mkConstr s)
-  let build_app s args = mkApp (Lazy.force (Constr.mkConstr s), args)
+  let build s = Lazy.force (mkConstr s)
+  let build_app s args = mkApp (Lazy.force (mkConstr s), args)
 
-  let equal sigma s = Constr.isConstr sigma (Constr.mkConstr s)
+  let equal sigma s = isConstr sigma (mkConstr s)
 
   let from_coq s (_, sigma) cterm =
     let (head, args) = decompose_appvect sigma cterm in
@@ -49,15 +51,17 @@ module ConstrBuilder = struct
 end
 
 module UConstrBuilder = struct
+  open Constrs
+
   type t = string
 
   let from_string (s:string) : t = s
 
   let build_app s sigma env args =
-    let (sigma, c) = Constr.mkUConstr s sigma env in
+    let (sigma, c) = mkUConstr s sigma env in
     (sigma, mkApp (c, args))
 
-  let equal = Constr.isUConstr
+  let equal = isUConstr
 
   let from_coq s (env, sigma) cterm =
     let (head, args) = decompose_appvect sigma cterm in
@@ -190,13 +194,15 @@ module CoqSig = struct
 end
 
 module CoqPositive = struct
-  let xI = Constr.mkConstr "Coq.Numbers.BinNums.xI"
-  let xO = Constr.mkConstr "Coq.Numbers.BinNums.xO"
-  let xH = Constr.mkConstr "Coq.Numbers.BinNums.xH"
+  open Constrs
 
-  let isH sigma = Constr.isConstr sigma xH
-  let isI sigma = Constr.isConstr sigma xI
-  let isO sigma = Constr.isConstr sigma xO
+  let xI = mkConstr "Coq.Numbers.BinNums.xI"
+  let xO = mkConstr "Coq.Numbers.BinNums.xO"
+  let xH = mkConstr "Coq.Numbers.BinNums.xH"
+
+  let isH sigma = isConstr sigma xH
+  let isI sigma = isConstr sigma xI
+  let isO sigma = isConstr sigma xO
 
   let from_coq (env, evd) c =
     let rec fc i c =
@@ -226,12 +232,13 @@ module CoqPositive = struct
 end
 
 module CoqN = struct
+  open Constrs
   (* let tN = Constr.mkConstr "Coq.Numbers.BinNums.N" *)
-  let h0 = Constr.mkConstr "Coq.Numbers.BinNums.N0"
-  let hP = Constr.mkConstr "Coq.Numbers.BinNums.Npos"
+  let h0 = mkConstr "Coq.Numbers.BinNums.N0"
+  let hP = mkConstr "Coq.Numbers.BinNums.Npos"
 
-  let is0 sigma = Constr.isConstr sigma h0
-  let isP sigma = Constr.isConstr sigma hP
+  let is0 sigma = isConstr sigma h0
+  let isP sigma = isConstr sigma hP
 
   exception NotAnN
 
@@ -259,9 +266,11 @@ module CoqN = struct
 end
 
 module CoqZ = struct
-  let z0 = Constr.mkConstr "Coq.Numbers.BinNums.Z0"
-  let zpos = Constr.mkConstr "Coq.Numbers.BinNums.Zpos"
-  let zneg = Constr.mkConstr "Coq.Numbers.BinNums.Zneg"
+  open Constrs
+
+  let z0 = mkConstr "Coq.Numbers.BinNums.Z0"
+  let zpos = mkConstr "Coq.Numbers.BinNums.Zpos"
+  let zneg = mkConstr "Coq.Numbers.BinNums.Zneg"
 
   let to_coq n =
     if n = 0 then
@@ -362,7 +371,7 @@ module MCTactics = struct
   let mkUConstr s env sigma =
     let open Nametab in let open Libnames in
     try Evd.fresh_global env sigma (locate (qualid_of_string s))
-    with _ -> raise (Constr.Constr_not_found s)
+    with _ -> raise (Constrs.Constr_not_found s)
 
   let mkGTactic = mkUConstr gTactic
 end

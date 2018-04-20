@@ -9,19 +9,17 @@ Definition test@{i j} : Type@{i} -> Type@{max(i,j)} := id.
 Lemma testL@{i j} : Type@{i} -> Type@{max(i,j)}.
 Proof. exact id. Qed.
 
-(* FIX: M.ret Now is failing right *)
+(* M.ret somehow works in 8.8 *)
 Lemma testM@{i j} : Type@{i} -> Type@{max(i,j)}.
 MProof.
 M.ret id.
-Fail Qed.
-Abort.
+Qed.
 
-(* FIX: runTac now fails, too *)
+(* runTac works too *)
 Lemma testMTac@{i j} : Type@{i} -> Type@{max(i,j)}.
 MProof.
 T.exact id.
-Fail Qed.
-Abort.
+Qed.
 
 (* apply generates a universe index *)
 Lemma testMTacApply@{i j} : Type@{i} -> Type@{max(i,j)}.
@@ -30,9 +28,9 @@ T.apply (@id).
 Fail Qed.
 Abort.
 
-(* but ltac's apply does that too *)
+(* but ltac's 8.8  doesn't do that *)
 Lemma testLApply@{i j} : Type@{i} -> Type@{max(i,j)}.
-Proof. apply @id. Fail Qed. Abort.
+Proof. apply @id. Qed.
 
 Notation "p '=e>' b" := (pbase p%core (fun _ => b%core) UniEvarconv)
   (no associativity, at level 201) : pattern_scope.
@@ -47,16 +45,15 @@ Definition test_match {A:Type(*k*)} (x:A) : tactic :=
 
 Lemma testMmatch@{i j} : Type@{i} -> Type@{max(i,j)}.
 MProof.
-Set Unicoq Debug. Set Printing Universes. Set Printing All.
 test_match (fun x=>x).
-Fail Qed. (* I think the universe created by B above is left unbound, although it is not used *)
-Abort.
+Qed.
 
-Lemma testMmatch : Type -> Type.
+Lemma testMmatch' : Type -> Type.
 MProof.
 test_match (fun x=>x).
 Qed.
 Print testMmatch.
+Print testMmatch'.
 (* These are the universe constraints: i <= j, i < m, i < test_match.k
    I think m is the univere free from mmatch. But why is it required to be > instead of >= i? *)
 

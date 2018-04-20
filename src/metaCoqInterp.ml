@@ -1,5 +1,6 @@
 open Constrs
 open Pp
+open Ltac_pretype
 
 module MetaCoqRun = struct
   (** This module run the interpretation of a constr
@@ -18,7 +19,7 @@ module MetaCoqRun = struct
 
   let ifTactic env sigma ty c =
     let (sigma, gtactic) = MCTactics.mkGTactic env sigma in
-    let unitType = Constrs.CoqUnit.mkType in
+    let unitType = CoqUnit.mkType in
     let gtactic = EConstr.mkApp(EConstr.of_constr gtactic, [|unitType|]) in
     let open Evarsolve in
     let res = Munify.unify_evar_conv Names.full_transparent_state env sigma Reduction.CONV gtactic ty in
@@ -51,11 +52,11 @@ module MetaCoqRun = struct
         if not istactic then
           Refine.refine ~typecheck:false begin fun evd -> evd, v end
         else
-          let goals = Constrs.CoqList.from_coq sigma env v in
-          let goals = List.map (fun x -> snd (Constrs.CoqPair.from_coq (env, sigma) x)) goals in
+          let goals = CoqList.from_coq sigma env v in
+          let goals = List.map (fun x -> snd (CoqPair.from_coq (env, sigma) x)) goals in
           let goals = List.map (Run.Goal.evar_of_goal sigma env) goals in
           let goals = List.filter Option.has_some goals in
-          let goals = List.map Option.get goals in
+          let goals = List.map (fun e->Proofview_monad.with_empty_state (Option.get e)) goals in
           Unsafe.tclSETGOALS goals
 
     | Run.Err (_, e) ->
@@ -63,8 +64,8 @@ module MetaCoqRun = struct
 
   let evar_of_goal gl =
     let open Proofview.Goal in
-    let ids = List.map (fun d->Term.mkVar (Context.Named.Declaration.get_id d)) (Environ.named_context (env gl)) in
-    Term.mkEvar (goal gl, Array.of_list ids)
+    let ids = List.map (fun d->Constr.mkVar (Context.Named.Declaration.get_id d)) (Environ.named_context (env gl)) in
+    Constr.mkEvar (goal gl, Array.of_list ids)
 
   (** Get back the context given a goal, interp the constr_expr to obtain a constr
       Then run the interpretation fo the constr, and returns the tactic value,
@@ -82,9 +83,8 @@ module MetaCoqRun = struct
     end
 
 
-  let understand env sigma {Glob_term.closure=closure;term=term} =
+  let understand env sigma {closure=closure;term=term} =
     let open Glob_ops in
-    let open Glob_term in
     let open Pretyping in
     let flags = all_no_fail_flags in
     let lvar = { empty_lvar with
@@ -126,13 +126,13 @@ end
     - Print subgoals *)
 [@@@ocaml.warning "-3"] (* deprecated use of set_proof_mode *)
 let interp_mproof_command () =
-  let pf = Proof_global.give_me_the_proof () in
-  if Proof.is_done pf then
+  let proof = Proof_global.give_me_the_proof () in
+  if Proof.is_done proof then
     CErrors.user_err (str "Nothing left to prove here.")
   else
     begin
       Proof_global.set_proof_mode "MProof";
-      Feedback.msg_info @@ Printer.pr_open_subgoals ();
+      Feedback.msg_info @@ Printer.pr_open_subgoals ~proof;
     end
 
 (** Interpreter of a mtactic *)
@@ -182,4 +182,4 @@ let end_proof () =
     remove_dangling_evars ();
   (* The following invokes the usual Qed. *)
   let open Vernacexpr in
-  Lemmas.save_proof (Proved (Opaque None,None))
+  Lemmas.save_proof (Proved (Opaque,None))

@@ -8,7 +8,7 @@
 
 open Util
 open Names
-open Term
+open Constr
 open Termops
 open Univ
 open Evd
@@ -111,16 +111,16 @@ module Stack :
 sig
   open EConstr
   type 'a app_node
-  val pr_app_node : ('a -> Pp.std_ppcmds) -> 'a app_node -> Pp.std_ppcmds
+  val pr_app_node : ('a -> Pp.t) -> 'a app_node -> Pp.t
 
   type cst_member =
     | Cst_const of pconstant
-    | Cst_proj of projection
+    | Cst_proj of Projection.t
 
   type 'a member =
     | App of 'a app_node
     | Case of case_info * 'a * 'a array * Cst_stack.t
-    | Proj of int * int * projection * Cst_stack.t
+    | Proj of int * int * Projection.t * Cst_stack.t
     | Fix of ('a, 'a) pfixpoint * 'a t * Cst_stack.t
     | Cst of cst_member * int * int list * 'a t * Cst_stack.t
     | Shift of int
@@ -129,7 +129,7 @@ sig
 
   exception IncompatibleFold2
 
-  val pr : ('a -> Pp.std_ppcmds) -> 'a t -> Pp.std_ppcmds
+  val pr : ('a -> Pp.t) -> 'a t -> Pp.t
   val empty : 'a t
   val is_empty : 'a t -> bool
   val append_app : 'a array -> 'a t -> 'a t
@@ -168,12 +168,12 @@ struct
 
   type cst_member =
     | Cst_const of pconstant
-    | Cst_proj of projection
+    | Cst_proj of Projection.t
 
   type 'a member =
     | App of 'a app_node
-    | Case of Term.case_info * 'a * 'a array * Cst_stack.t
-    | Proj of int * int * projection * Cst_stack.t
+    | Case of case_info * 'a * 'a array * Cst_stack.t
+    | Proj of int * int * Projection.t * Cst_stack.t
     | Fix of ('a, 'a) pfixpoint * 'a t * Cst_stack.t
     | Cst of cst_member * int * int list * 'a t * Cst_stack.t
     | Shift of int
@@ -191,7 +191,7 @@ struct
         ++ str ")"
     | Proj (n,m,p,cst) ->
         str "ZProj(" ++ int n ++ pr_comma () ++ int m ++
-        pr_comma () ++ pr_con (Projection.constant p) ++ str ")"
+        pr_comma () ++ Constant.print (Projection.constant p) ++ str ")"
     | Fix (f,args,cst) ->
         str "ZFix(" ++ Termops.pr_fix pr_c f
         ++ pr_comma () ++ pr pr_c args ++ str ")"
@@ -468,7 +468,7 @@ let magicaly_constant_of_fixbody env sigma reference bd = function
         match constant_opt_value_in env (cst,u) with
         | None -> bd
         | Some t ->
-            let csts = EConstr.eq_constr_universes sigma (EConstr.of_constr t) bd in
+            let csts = EConstr.eq_constr_universes env sigma (EConstr.of_constr t) bd in
             begin match csts with
             | Some csts ->
                 let subst = Universes.Constraints.fold (fun (l,d,r) acc ->

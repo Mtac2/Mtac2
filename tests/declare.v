@@ -68,7 +68,7 @@ Search "NAT". (* Now there are no definitions like "NATS (S O)" *)
 Fail Compute ltac:(mrun (M.get_reference "NATS O")).
 
 Definition ev := c <- M.declare dok_Definition "_" true (S O); M.print_term c.
-Fail Compute (M.eval ev). (* FIX why? *)
+Compute (M.eval ev). (* it was failing *)
 
 Unset Printing All.
 

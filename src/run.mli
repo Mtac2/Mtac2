@@ -2,8 +2,6 @@ open Environ
 open Evd
 open EConstr
 
-module ExistentialSet : Set.S with type elt = Term.existential_key
-
 type elem_stack = (evar_map * CClosure.fconstr * CClosure.stack)
 type elem = (evar_map * constr)
 

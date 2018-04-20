@@ -92,7 +92,7 @@ Polymorphic Definition mtmmatch' A m (T : forall x, MTele_Ty (m x)) (y : A)
 
 Module TestFin.
 Require Fin.
-Polymorphic Definition mt@{i} : nat -> MTele@{i} := fun n => mTele (fun _ : Fin.t n => mBase).
+Polymorphic Definition mt : nat -> MTele := fun n => mTele (fun _ : Fin.t n => mBase).
 Definition T : forall n, MTele_Ty (mt n) := fun n _ => True.
 Definition pO u : mtpattern nat _ := @mtpbase _ (fun x => MTele_ty M (n:=mt x) (T x)) 0 ((* ex_intro _ 0 *) (fun x => Fin.case0 (fun _ => M True) x)) u.
 Definition p1 u : mtpattern nat _ := @mtpbase _ (fun x => MTele_ty M (n:=mt x) (T x)) 1 ((* ex_intro _ 1 *) (fun n => M.ret I)) u.

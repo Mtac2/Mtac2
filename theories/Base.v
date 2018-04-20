@@ -34,7 +34,8 @@ Hint Extern 20 (M.runner ?f) =>
 Import M.notations.
 
 Notation "t 'mwith' ( k := u )" :=
-  (elemr (ltac:(mrun (M.mwith t k u)))) (at level 0).
+  (ltac:(mrun (r <- M.mwith t k u; dcase r with _ as x in M.ret x)%MC))
+    (at level 0).
 
 (** creation of exceptions *)
 Definition new_exception name := M.declare dok_Definition name true exception;; M.ret tt.

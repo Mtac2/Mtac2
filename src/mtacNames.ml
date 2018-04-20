@@ -4,12 +4,12 @@ open Termops
 open Constrs
 
 let metaCoq_module_name = "Mtac2.intf"
-let mkConstr e = Constr.mkConstr (metaCoq_module_name ^ "." ^ e)
-let mkUConstr e = Constr.mkUConstr (metaCoq_module_name ^ "." ^ e)
+let mkConstr e = Constrs.mkConstr (metaCoq_module_name ^ "." ^ e)
+let mkUConstr e = Constrs.mkUConstr (metaCoq_module_name ^ "." ^ e)
 let mkBuilder e = ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
 let mkUBuilder e = UConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
 let mkT_lazy = mkUConstr "M.M.t"
-let mkUConstr e = Constr.mkUConstr (metaCoq_module_name ^ "." ^ e)
+let mkUConstr e = Constrs.mkUConstr (metaCoq_module_name ^ "." ^ e)
 
 let isConstr sigma e =
   let c = Lazy.force (mkConstr e) in

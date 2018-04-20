@@ -3,7 +3,7 @@ open EConstr
 
 val decompose_appvect : evar_map -> constr -> constr * constr array
 
-module Constr : sig
+module Constrs : sig
   exception Constr_not_found of string
   exception Constr_poly of string
 
@@ -121,6 +121,7 @@ module CoqSig : sig
 end
 
 module MCTactics : sig
+  [@@@warning "-3"] (* Term.constr is deprecated in favor of Constr.t, but Constr.t is not accessible to the compiler for some reason :-/ *)
   val mkGTactic : Environ.env -> Evd.evar_map -> Evd.evar_map * Term.constr
 end
 

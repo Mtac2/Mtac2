@@ -7,7 +7,7 @@
 (************************************************************************)
 
 open Names
-open Term
+open Constr
 open EConstr
 open Evd
 (* open Environ *)
@@ -62,22 +62,22 @@ module Cst_stack : sig
   val best_cst : t -> (constr * constr list) option
   val best_replace : Evd.evar_map -> constr -> t -> constr -> constr
   val reference : Evd.evar_map -> t -> Constant.t option
-  val pr : t -> Pp.std_ppcmds
+  val pr : t -> Pp.t
 end
 
 module Stack : sig
   type 'a app_node
 
-  val pr_app_node : ('a -> Pp.std_ppcmds) -> 'a app_node -> Pp.std_ppcmds
+  val pr_app_node : ('a -> Pp.t) -> 'a app_node -> Pp.t
 
   type cst_member =
     | Cst_const of pconstant
-    | Cst_proj of projection
+    | Cst_proj of Projection.t
 
   type 'a member =
     | App of 'a app_node
     | Case of case_info * 'a * 'a array * Cst_stack.t
-    | Proj of int * int * projection * Cst_stack.t
+    | Proj of int * int * Projection.t * Cst_stack.t
     | Fix of ('a, 'a) pfixpoint * 'a t * Cst_stack.t
     | Cst of cst_member * int (** current foccussed arg *) * int list (** remaining args *)
              * 'a t * Cst_stack.t
@@ -85,7 +85,7 @@ module Stack : sig
     | Update of 'a
   and 'a t = 'a member list
 
-  val pr : ('a -> Pp.std_ppcmds) -> 'a t -> Pp.std_ppcmds
+  val pr : ('a -> Pp.t) -> 'a t -> Pp.t
 
   val empty : 'a t
   val is_empty : 'a t -> bool

@@ -455,6 +455,8 @@ Module notations_pre.
       (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 
   Import TeleNotation.
+  Notation "'dcase' v 'with' A 'as' x 'in' t" :=
+    (@M.decompose_app' _ (fun _ => _) [tele (_:A)] UniCoq v (@Dyn A) (fun x => t)) (at level 91, t at level 200) : M_scope.
   Notation "'dcase' v 'as' A ',' x 'in' t" :=
     (@M.decompose_app' _ (fun _ => _) [tele A (_:A)] UniMatchNoRed v (@Dyn) (fun A x => t)) (at level 91, t at level 200) : M_scope.
   Notation "'dcase' v 'as' x 'in' t" :=
@@ -545,11 +547,11 @@ Definition iterate {A} (f : A -> t unit) : mlist A -> t unit :=
     end.
 
 (** More utilitie *)
-Definition mwith {A B} (c : A) (n : string) (v : B) : t dynr :=
-  (mfix1 app (d : dynr) : M _ :=
-    let (ty, el) := d in
+Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
+  (mfix1 app (d : dyn) : M _ :=
+    dcase d as ty, el in
     mmatch d with
-    | [? T1 T2 f] @Dynr (forall x:T1, T2 x) f =>
+    | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
       let ty := reduce (RedWhd [rl:RedBeta]) ty in
       binder <- get_binder_name ty;
       mif unify binder n UniMatchNoRed then
@@ -557,15 +559,15 @@ Definition mwith {A B} (c : A) (n : string) (v : B) : t dynr :=
         match oeq' with
         | mSome eq' =>
           let v' := reduce (RedWhd [rl:RedMatch]) match eq' as x in _ =m= x with meq_refl=> v end in
-          ret (Dynr (f v'))
+          ret (Dyn (f v'))
         | _ => raise (WrongType T1)
         end
       else
         e <- evar T1;
-        app (Dynr (f e))
+        app (Dyn (f e))
     | _ => raise (NameNotFound n)
     end
-  ) (Dynr c).
+  ) (Dyn c).
 
 Definition type_of {A} (x : A) : Type := A.
 Definition type_inside {A} (x : t A) : Type := A.

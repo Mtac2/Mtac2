@@ -53,7 +53,6 @@ MProof.
   cintros n {-
     r <- M.hyps; M.print_term r;; destructn 0;; intros m Hm
   -}.
-Set Printing All.
   simpl.
   mexists (2 + m).
   apply Hm.
