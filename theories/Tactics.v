@@ -963,7 +963,7 @@ Module notations.
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
       (@mmatch' _ (fun _ => _) M.NotCaught e
-                   (mapp ls%with_pattern [m:(e => raise e)%pattern]))))
+                   (mapp ls%with_pattern [m:(pany (raise e))%pattern]))))
       (at level 200, a at level 100, ls at level 91, only parsing) : tactic_scope.
 
   Notation "t || u" := (or t u) : tactic_scope.
