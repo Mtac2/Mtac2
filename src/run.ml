@@ -1392,7 +1392,7 @@ let rec run' ctxt (vms : vm list) =
                         else
                           efail (E.mkWrongTerm sigma env c_head)
 
-                    | MConstr (Mdecompose_forallT, (_, _, t, cont)) ->
+                    | MConstr (Mdecompose_forallT, (_, t, cont)) ->
                         let t = to_econstr t in
                         begin
                           match EConstr.destProd sigma t with
@@ -1403,7 +1403,7 @@ let rec run' ctxt (vms : vm list) =
                               efail (E.mkNotAForall sigma env t)
                         end
 
-                    | MConstr (Mdecompose_forallP, (_, _, t, cont)) ->
+                    | MConstr (Mdecompose_forallP, (_, t, cont)) ->
                         let t = to_econstr t in
                         begin
                           match EConstr.destProd sigma t with

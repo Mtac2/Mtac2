@@ -70,8 +70,8 @@ type 'a mconstr_head =
   | Mget_trace
   | Mset_trace : (arg_bool) mconstr_head
   | Mdecompose_app' : (arg_type * arg_fun * arg_any * arg_any * arg_any * arg_any * arg_any) mconstr_head
-  | Mdecompose_forallT : (arg_type * arg_fun * arg_type * arg_any) mconstr_head
-  | Mdecompose_forallP : (arg_type * arg_fun * arg_type * arg_any) mconstr_head
+  | Mdecompose_forallT : (arg_fun * arg_type * arg_any) mconstr_head
+  | Mdecompose_forallP : (arg_fun * arg_type * arg_any) mconstr_head
   | Mdecompose_app'' : (arg_fun * arg_fun * arg_any * arg_any) mconstr_head
   | Mnew_timer : (arg_type * arg_any) mconstr_head
   | Mstart_timer : (arg_type * arg_any * arg_bool) mconstr_head

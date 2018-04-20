@@ -101,12 +101,12 @@ Fail Mtac Do (decompose_app app). (* TODO: why does this fail? *)
 
 Notation FA := (forall n : nat, n = n).
 
-Definition test3 := M.decompose_forallT (A:=unit) (B:=fun _ => _) FA (fun A B => M.ret tt).
+Definition test3 := M.decompose_forallT (B:=fun _ => _) FA (fun A B => M.ret tt).
 
 Mtac Do (test3).
 
 Notation FA_Prop := (forall n : nat, n = n).
 
-Definition test3_Prop := M.decompose_forallP (A:=unit) (B:=fun _ => _) FA_Prop (fun A B => M.ret tt).
+Definition test3_Prop := M.decompose_forallP (B:=fun _ => _) FA_Prop (fun A B => M.ret tt).
 
 Mtac Do (test3_Prop).

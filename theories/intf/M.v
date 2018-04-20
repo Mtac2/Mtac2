@@ -255,7 +255,7 @@ Definition decompose_app' :
 (** [decompose_forallT T (fun A B => t)] executes [t[A'/A, B'/B]] iff T is
     [forall a : A, B']. *)
 Definition decompose_forallT :
-  forall {A : Type} {B : Type -> Type} (T : Type),
+  forall {B : Type -> Type} (T : Type),
     (forall (A : Type) (b : A -> Type), t (B (forall a : A, b a))) ->
     t (B T).
   make. Qed.
@@ -266,7 +266,7 @@ Definition decompose_forallT :
     This is a specialized version of [decompose_forallT] that makes sure to not
     insert any casts from [Prop] to [Type]. *)
 Definition decompose_forallP :
-  forall {A : Type} {B : Prop -> Type} (P : Prop),
+  forall {B : Prop -> Type} (P : Prop),
     (forall (A : Type) (b : A -> Prop), t (B (forall a : A, b a))) ->
     t (B P).
   make. Qed.
