@@ -1367,16 +1367,20 @@ let rec run' ctxt (vms : vm list) =
                         trace := CoqBool.from_coq sigma (to_econstr b);
                         ereturn sigma CoqUnit.mkTT
 
-                    | MConstr (Mdecompose_app', (_, _, _, uni, t, c, cont)) ->
+                    | MConstr (Mdecompose_app', (_, _, _, uni, t, c, cont_success, cont_failure)) ->
                         (* : A B m uni a C cont  *)
                         let (t_head, t_args) = decompose_app sigma (to_econstr t) in
                         let (c_head, c_args) = decompose_app sigma (to_econstr c) in
                         if eq_constr_nounivs sigma t_head c_head then
                           let uni = to_econstr uni in
+                          (* We need to capture the initial sigma here, as
+                             unification of initial arguments will yield new
+                             sigmas *)
+                          let fail () = (run'[@tailcall]) ctxt (upd cont_failure) in
                           let rec traverse sigma t_args c_args =
                             match c_args with
                             | [] ->
-                                (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp (Array.of_list t_args) :: stack} (upd cont)
+                                (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp (Array.of_list t_args) :: stack} (upd cont_success)
                             | c_h :: c_args ->
                                 match t_args with
                                 | t_h :: t_args ->
@@ -1384,13 +1388,18 @@ let rec run' ctxt (vms : vm list) =
                                     begin
                                       match unires with
                                       | Success (sigma) -> traverse sigma t_args c_args
-                                      | UnifFailure _ -> efail (E.mkWrongTerm sigma env c_head)
+                                      | UnifFailure _ ->
+                                          (* efail (E.mkWrongTerm sigma env c_head) *)
+                                          fail ()
                                     end
-                                | _ -> efail (E.mkWrongTerm sigma env c_head)
+                                | _ ->
+                                    (* efail (E.mkWrongTerm sigma env c_head) *)
+                                    fail ()
                           in
                           traverse sigma (List.map of_econstr t_args) c_args
                         else
-                          efail (E.mkWrongTerm sigma env c_head)
+                          (* efail (E.mkWrongTerm sigma env c_head) *)
+                          (run'[@tailcall]) ctxt (upd cont_failure)
 
                     | MConstr (Mdecompose_forallT, (_, t, cont)) ->
                         let t = to_econstr t in

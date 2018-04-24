@@ -241,14 +241,17 @@ Definition get_trace: t bool.
 Definition set_trace: bool -> t unit.
   make. Qed.
 
-(** [decompose_app' uni a (h u .. w) (fun x .. z => t)] executes
-    [t[i..k/x..z]] iff [a] is [H u' .. w' i .. k]
-    where [u' .. w'] unify with [u .. w] according to the
-    unification stragety [uni].
+(** [is_head uni a (h u .. w) (fun x .. z => t)] executes
+    1. [t[i..k/x..z]] if [a] is [H u' .. w' i .. k]
+       where [u' .. w'] unify with [u .. w] according to the
+       unification stragety [uni]
+    2. [f] if [a] is any other term or any of [u' .. w'] do not
+       unify with the respective given candidate in [u .. w].
  *)
-Definition decompose_app' :
-  forall {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m),
-    MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C) ->
+Definition is_head :
+  forall {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m)
+         (success : MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C))
+         (failure: t (B a)),
     t (B a).
   make. Qed.
 
@@ -326,6 +329,15 @@ Definition print_term {A} (x : A) : t unit :=
 
 Definition dbg_term {A} (s: string) (x : A) : t unit :=
   bind (pretty_print x) (fun t=> print (s++t)).
+
+
+
+Definition decompose_app'
+           {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m)
+           (success : MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C)) :
+  t (B a) :=
+  is_head uni a C success (raise WrongTerm).
+
 
 Module monad_notations.
   Bind Scope M_scope with t.
