@@ -258,8 +258,9 @@ Definition is_head :
 (** [decompose_forallT T (fun A B => t)] executes [t[A'/A, B'/B]] iff T is
     [forall a : A, B']. *)
 Definition decompose_forallT :
-  forall {B : Type -> Type} (T : Type),
-    (forall (A : Type) (b : A -> Type), t (B (forall a : A, b a))) ->
+  forall {B : Type -> Type} (T : Type)
+         (success : forall (A : Type) (b : A -> Type), t (B (forall a : A, b a)))
+         (failure : t (B T)),
     t (B T).
   make. Qed.
 
@@ -269,8 +270,9 @@ Definition decompose_forallT :
     This is a specialized version of [decompose_forallT] that makes sure to not
     insert any casts from [Prop] to [Type]. *)
 Definition decompose_forallP :
-  forall {B : Prop -> Type} (P : Prop),
-    (forall (A : Type) (b : A -> Prop), t (B (forall a : A, b a))) ->
+  forall {B : Prop -> Type} (P : Prop)
+         (success : forall (A : Type) (b : A -> Prop), t (B (forall a : A, b a)))
+         (failure : t (B P)),
     t (B P).
   make. Qed.
 

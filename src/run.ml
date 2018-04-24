@@ -1401,26 +1401,26 @@ let rec run' ctxt (vms : vm list) =
                           (* efail (E.mkWrongTerm sigma env c_head) *)
                           (run'[@tailcall]) ctxt (upd cont_failure)
 
-                    | MConstr (Mdecompose_forallT, (_, t, cont)) ->
+                    | MConstr (Mdecompose_forallT, (_, t, cont_success, cont_failure)) ->
                         let t = to_econstr t in
                         begin
                           match EConstr.destProd sigma t with
                           | (_, a, b) ->
                               let (a, b) = (of_econstr a, of_econstr b) in
-                              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|a; b|] :: stack} (upd cont)
+                              (run'[@tailcall]) {ctxt with stack=Zapp [|a; b|] :: stack} (upd cont_success)
                           | exception Term.DestKO ->
-                              efail (E.mkNotAForall sigma env t)
+                              (run'[@tailcall]) ctxt (upd cont_failure)
                         end
 
-                    | MConstr (Mdecompose_forallP, (_, t, cont)) ->
+                    | MConstr (Mdecompose_forallP, (_, t, cont_success, cont_failure)) ->
                         let t = to_econstr t in
                         begin
                           match EConstr.destProd sigma t with
                           | (_, a, b) ->
                               let (a, b) = (of_econstr a, of_econstr b) in
-                              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|a; b|] :: stack} (upd cont)
+                              (run'[@tailcall]) {ctxt with stack=Zapp [|a; b|] :: stack} (upd cont_success)
                           | exception Term.DestKO ->
-                              efail (E.mkNotAForall sigma env t)
+                              (run'[@tailcall]) ctxt (upd cont_failure)
                         end
 
                     | MConstr (Mdecompose_app'', (_, _, t, cont)) ->
