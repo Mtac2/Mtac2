@@ -97,7 +97,9 @@ Definition decompose_app {A} (a : A) : M (dyn *m mlist dyn) :=
 
 Mtac Do (M.decompose app >>= M.print_term).
 Mtac Do (decompose_app app >>= M.print_term).
-Fail Mtac Do (decompose_app app). (* TODO: why does this fail? *)
+(* To see if the resulting term is actually well-typed, we return it. Printing
+   is not concerned by ill-typedness. *)
+Mtac Do (decompose_app app).
 
 Notation FA := (forall n : nat, n = n).
 

@@ -1432,9 +1432,12 @@ let rec run' ctxt (vms : vm list) =
                               let h = EConstr.mkApp (h, args) in
                               let arg = arg.(0) in
                               let h_type = Retyping.get_type_of env sigma h in
-                              let arg_type = Retyping.get_type_of env sigma arg in
-                              let (h_type, arg_type, h, arg) = (of_econstr h_type, of_econstr arg_type, of_econstr h, of_econstr arg) in
-                              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|h_type; arg_type; h; arg|] :: stack} (upd cont)
+                              (* let arg_type = Retyping.get_type_of env sigma arg in *)
+                              let h_type = ReductionStrategy.whdfun (CClosure.all) env sigma (of_econstr (h_type)) in
+                              let h_typefun = to_lambda sigma 1 (EConstr.of_constr h_type) in
+                              let arg_type = (match EConstr.destLambda sigma h_typefun with | (_, ty, _) -> ty) in
+                              let (h_type, arg_type, h, arg) = (of_econstr h_typefun, of_econstr arg_type, of_econstr h, of_econstr arg) in
+                              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|arg_type; h_type; h; arg|] :: stack} (upd cont)
                           | exception Term.DestKO ->
                               efail (E.mkNotAnApplication sigma env t)
                         end
