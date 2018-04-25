@@ -80,7 +80,6 @@ module MetaCoqRun = struct
     else
       (false, sigma)
 
-
   (** Given a type concl and a term c, it checks that c has type:
       - [M concl]: then it returns [c]
       - [tactic]: then it returns [c (Goal concl evar)] *)
