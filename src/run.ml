@@ -1405,7 +1405,8 @@ let rec run' ctxt (vms : vm list) =
                         let t = to_econstr t in
                         begin
                           match EConstr.destProd sigma t with
-                          | (_, a, b) ->
+                          | (n, a, b) ->
+                              let b = EConstr.mkLambda (n, a, b) in
                               let (a, b) = (of_econstr a, of_econstr b) in
                               (run'[@tailcall]) {ctxt with stack=Zapp [|a; b|] :: stack} (upd cont_success)
                           | exception Term.DestKO ->
@@ -1416,7 +1417,8 @@ let rec run' ctxt (vms : vm list) =
                         let t = to_econstr t in
                         begin
                           match EConstr.destProd sigma t with
-                          | (_, a, b) ->
+                          | (n, a, b) ->
+                              let b = EConstr.mkLambda (n, a, b) in
                               let (a, b) = (of_econstr a, of_econstr b) in
                               (run'[@tailcall]) {ctxt with stack=Zapp [|a; b|] :: stack} (upd cont_success)
                           | exception Term.DestKO ->
