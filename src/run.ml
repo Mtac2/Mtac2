@@ -117,7 +117,7 @@ module Goal = struct
   let goal_of_evar (env:env) sigma ev =
     let open Context.Named in
     let evinfo = Evd.find_undefined sigma ev in
-    let evenv = named_context_of_val (evar_hyps evinfo) in
+    let evenv = EConstr.named_context_of_val (evar_hyps evinfo) in
     (* we remove the elements in the hypotheses that are shared with
        the current env (old to new). *)
     let newenv =
@@ -129,9 +129,9 @@ module Goal = struct
               l1
         | l1, _ -> l1 in
       List.rev (remove (List.rev evenv, List.rev (named_context env))) in
-    let ids = List.map (fun v -> Constr.mkVar (Declaration.get_id v)) evenv in
+    let ids = List.map (fun v -> EConstr.mkVar (Declaration.get_id v)) evenv in
     let evar = (ev, Array.of_list ids) in
-    let sigma, tg = mkTheGoal (of_constr @@ Evd.existential_type sigma evar) (of_constr @@ Constr.mkEvar evar) sigma env in
+    let sigma, tg = mkTheGoal (Evd.existential_type sigma evar) (EConstr.mkEvar evar) sigma env in
     fold_inside (fun (sigma,s) v -> mkAHypOrDef (Declaration.to_tuple v) s sigma env) newenv ~init:(sigma,tg)
 
 end
@@ -719,7 +719,7 @@ let make_evar sigma env ty =
 (* return the reflected hash of a term *)
 let hash env sigma c size =
   let size = CoqN.from_coq (env, sigma) size in
-  let h = Constr.hash (EConstr.to_constr sigma c) in
+  let h = Constr.hash (Unsafe.to_constr c) in
   CoqN.to_coq (Pervasives.abs (h mod size))
 
 (* reflects the hypotheses in [env] in a list of [ahyp] *)
@@ -1244,8 +1244,8 @@ let rec run' ctxt (vms : vm list) =
                         begin
                           match Evd.fresh_global env sigma (locate (qualid_of_string s)) with
                           | (sigma, v) ->
-                              let ty = Retyping.get_type_of env sigma (of_constr v) in
-                              let sigma, dyn = mkDyn ty (of_constr v) sigma env in
+                              let ty = Retyping.get_type_of env sigma v in
+                              let sigma, dyn = mkDyn ty v sigma env in
                               ereturn sigma dyn
                           | exception _ -> efail (Exceptions.mkRefNotFound sigma env s)
                         end
@@ -1327,8 +1327,8 @@ let rec run' ctxt (vms : vm list) =
 
                     | MConstr (Mdeclare, (kind, name, opaque, ty, bod)) ->
                         let kind, name, opaque, ty, bod = to_econstr kind, to_econstr name, to_econstr opaque, to_econstr ty, to_econstr bod in
-                        let ty = EConstr.to_constr sigma ty in
-                        let bod = EConstr.to_constr sigma bod in
+                        let ty = Unsafe.to_constr ty in
+                        let bod = Unsafe.to_constr bod in
                         (match run_declare_def env sigma kind name (CoqBool.from_coq sigma opaque) ty bod with
                          | (sigma, ret) -> ereturn sigma (of_constr ret)
                          | exception CErrors.AlreadyDeclared _ ->
@@ -1339,7 +1339,7 @@ let rec run' ctxt (vms : vm list) =
 
                     | MConstr (Mdeclare_implicits, (t, reference, impls)) ->
                         let reference, impls = to_econstr reference, to_econstr impls in
-                        let reference_t = EConstr.to_constr sigma reference in
+                        let reference_t = EConstr.Unsafe.to_constr reference in
                         (match run_declare_implicits env sigma reference_t impls with
                          | (sigma, ret) -> ereturn sigma ret
                          | exception Not_found ->

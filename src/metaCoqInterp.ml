@@ -20,7 +20,7 @@ module MetaCoqRun = struct
   let ifTactic env sigma ty c =
     let (sigma, gtactic) = MCTactics.mkGTactic env sigma in
     let unitType = CoqUnit.mkType in
-    let gtactic = EConstr.mkApp(EConstr.of_constr gtactic, [|unitType|]) in
+    let gtactic = EConstr.mkApp(gtactic, [|unitType|]) in
     let open Evarsolve in
     let res = Munify.unify_evar_conv Names.full_transparent_state env sigma Reduction.CONV gtactic ty in
     match res with

@@ -10,7 +10,7 @@ Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 Structure result A B x t := R { fu : A -> B; pf : t =m= fu x }.
-Implicit Arguments R [A B x t].
+Arguments R [A B x t].
 
 
 Notation reduce_dyns := (reduce (RedStrong [rl:RedBeta; RedMatch; RedZeta;
@@ -47,7 +47,7 @@ rewrite b1, b2, b3.
 exact (R (fun y=>if (f1 y) then (f2 y) else f3 y) (meq_refl _)).
 Defined.
 
-Implicit Arguments match_eq [A x r b P Q].
+Arguments match_eq [A B x r b P Q].
 
 Definition non_dep_eq {A P Q} (x:A) (P' : result x P) (Q' : result x Q) :
   result x (P -> Q).
