@@ -3,6 +3,7 @@ CAMLDEBUG = "-g"
 -I src
 -R theories Mtac2
 -Q tests Mtac2Tests
+-arg -bt
 src/metaCoqInit.ml4
 src/metaCoqInstr.mli
 src/constrs.ml
