@@ -1432,7 +1432,6 @@ let rec run' ctxt (vms : vm list) =
                               let h = EConstr.mkApp (h, args) in
                               let arg = arg.(0) in
                               let h_type = Retyping.get_type_of env sigma h in
-                              (* let arg_type = Retyping.get_type_of env sigma arg in *)
                               let h_type = ReductionStrategy.whdfun (CClosure.all) env sigma (of_econstr (h_type)) in
                               let h_typefun = to_lambda sigma 1 (EConstr.of_constr h_type) in
                               let arg_type = (match EConstr.destLambda sigma h_typefun with | (_, ty, _) -> ty) in
