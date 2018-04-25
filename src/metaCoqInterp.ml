@@ -80,12 +80,6 @@ module MetaCoqRun = struct
     else
       (false, sigma)
 
-  (* let ifTactic env sigma ty c = let (sigma, gtactic) = MCTactics.mkGTactic
-     env sigma in let unitType = CoqUnit.mkType in let gtactic =
-     EConstr.mkApp(EConstr.of_constr gtactic, [|unitType|]) in let open
-     Evarsolve in let res = Munify.unify_evar_conv Names.full_transparent_state
-     env sigma Reduction.CONV gtactic ty in match res with | Success sigma ->
-     (true, sigma) | _ -> (false, sigma) *)
 
   (** Given a type concl and a term c, it checks that c has type:
       - [M concl]: then it returns [c]
