@@ -399,11 +399,32 @@ Fixpoint open_pattern {A P y} (E : Exception) (p : pattern t A P y) : t (P y) :=
       )
   end.
 
-Fixpoint mmatch' {A:Type} {P:A->Type} (E : Exception) (y : A) (ps : mlist (pattern t A P y)) : t (P y) :=
+Definition open_branch {A P y} (E : Exception) (b : branch t A P y) : t (P y) :=
+  match b in branch _ A' P y' return forall z: A', z =m= y' -> t (P y') with
+  | branch_pattern p =>
+    fun z eq =>
+      let op := open_pattern (y:=z) E ltac:(rewrite <- eq in p; exact p) in
+      ltac:(rewrite eq in op; exact op)
+  | @branch_app_static _ A B y m U _ cont =>
+    fun z eq =>
+      let op := is_head (B:=B) U z _ cont (raise E) in
+      ltac:(rewrite eq in op; exact op)
+  | branch_forallT cont =>
+    fun z eq =>
+      let op := decompose_forallT z cont (raise E) in
+      ltac:(rewrite eq in op; exact op)
+  | branch_forallP cont =>
+    fun z eq =>
+      let op := decompose_forallP z cont (raise E) in
+      ltac:(rewrite eq in op; exact op)
+  (* | _ => fun _ _ => M.failwith "not implemented" *)
+  end y meq_refl.
+
+Fixpoint mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist (branch t A P y)) : t (P y) :=
   match ps with
   | [m:] => raise NoPatternMatches
   | p :m: ps' =>
-    mtry' (open_pattern E p) (fun e =>
+    mtry' (open_branch (y:=y) E p) (fun e =>
       bind (unify e E UniMatchNoRed) (fun b=>
       if b then mmatch' E y ps' else raise e))
   end.
@@ -461,11 +482,14 @@ Module notations_pre.
   Notation "'mmatch' x 'as' y 'return' 'M' p ls" :=
     (@mmatch' _ (fun y => p%type) DoesNotMatch x ls%with_pattern)
     (at level 200, ls at level 91) : M_scope.
+  Notation "'mmatch' x 'in' T 'as' y 'return' 'M' p ls" :=
+    (@mmatch' _ (fun y : T => p%type) DoesNotMatch x ls%with_pattern)
+    (at level 200, ls at level 91) : M_scope.
 
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
       (@mmatch' _ (fun _ => _) NotCaught e
-                   (mapp ls%with_pattern [m:(pany (raise e))%pattern]))))
+                   (mapp ls%with_pattern [m:branch_pattern (pany (raise e))%pattern]))))
       (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 
   Import TeleNotation.

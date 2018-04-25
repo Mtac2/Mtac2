@@ -92,6 +92,16 @@ Fixpoint MTele_ConstMap {si : Sort} (so : Sort) {n : MTele} {T : si} (G : T -> s
   | mTele F => fun C t => MTele_ConstMap so G (App C t)
   end.
 
+Fixpoint MTele_constmap_app {si : Sort} (so : Sort) {n : MTele} {T : si} {A : Type} (G : T -> A -> so) {struct n} :
+  forall (C : MTele_Const T n), MTele_sort (@MTele_ConstMap si so n T ((fun x => ForAll (fun a => G x a))) C) ->
+                                forall a : A,
+                                  MTele_sort (@MTele_ConstMap si so n T (fun x => G x a) C) :=
+  match n with
+  | mBase => fun C f a => App f a
+  | mTele F => fun C f a t => MTele_constmap_app _ _ _ (f _) a
+  end.
+
+
 (** MTele_To: recursively apply the given functor G to binders and return B at
 the base. MTele_Sort and MTele_val could be instances of this if we were to wrap
 ∀ and λ in definitions. *)

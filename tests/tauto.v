@@ -22,7 +22,7 @@ Module Mtac_V1.
         lookup P l
       with
       | NotFound =>
-        mmatch P as P' return M P' with
+        mmatch P in Prop as P' return M P' with
         | True => ret I
         | [? Q1 Q2] Q1 /\ Q2 =>
           q1 <- f l Q1;
@@ -174,8 +174,8 @@ Definition ucomp1 {A B:Prop} (t: ttac A) (u: ttac B) : ttac A :=
 
   Program Definition solve_tauto : forall {P:Prop}, ttac P :=
     (mfix1 solve_tauto (P : Prop) : M _ :=
-      mmatch P as P' return M (P' *m _) with
-      | True:Prop => apply I
+      mmatch P in Prop as P' return M (P' *m _) with
+      | True => apply I
       | [? Q1 Q2] Q1 /\ Q2 =>
         apply (@conj _ _)
         <**> solve_tauto Q1

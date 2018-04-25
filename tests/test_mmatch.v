@@ -205,3 +205,62 @@ Mtac Do (
           end)
          (fun e => M.unify_or_fail UniMatchNoRed e DoesNotMatch;; M.ret tt)
      ).
+
+
+(** Test new branch types of `mmatch` *)
+
+(* [is_head] *)
+Mtac Do (
+       mmatch (3 + 5) with
+       | branch_app_static
+             (m :=MTele.mTele (fun x : nat => MTele.mTele (fun y : nat => MTele.mBase)))
+             UniMatchNoRed
+             plus
+             (fun x y => M.unify_or_fail UniMatchNoRed (x,y) (3,5))
+      end
+     ).
+
+(* With nice syntax *)
+Mtac Do (
+       mmatch (3 + 5) with
+       | [!APP] plus $n x y =n> M.unify_or_fail UniMatchNoRed (x,y) (3,5)
+      end
+     ).
+
+(* This example will fail because it does perform any reduction on the initial
+   arguments *)
+Fail Mtac Do (
+       mmatch (3 + 3) with
+       | [!APP] plus (2+1) $n y =n> M.unify_or_fail UniMatchNoRed (y) (5)
+      end
+     ).
+(* But this one succeeds, as it uses conversion by calling Unicoq's unification. *)
+Mtac Do (
+       mmatch (3 + 5) with
+       | [!APP] plus (2+1) $u y =n> M.unify_or_fail UniMatchNoRed (y) (5)
+      end
+     ).
+
+(* [decompose_forall[P|T]] *)
+Mtac Do (
+       mmatch (forall x : nat, x = x) with
+       | branch_forallP (fun X P => M.unify_or_fail UniMatchNoRed P (fun x => x = x))
+      end
+     ).
+Mtac Do (
+       mmatch (nat -> Type) with
+       | branch_forallT (fun X P => M.unify_or_fail UniMatchNoRed P (fun x => Type))
+      end
+     ).
+
+(* With nice syntax *)
+Mtac Do (
+       mmatch (forall x : nat, x = x) with
+       | [!Prop] forall _ : X, P =n> M.unify_or_fail UniMatchNoRed P (fun x => x = x)
+      end
+     ).
+Mtac Do (
+       mmatch (nat -> Type) with
+       | [!Type] forall _ : X, P =n> M.unify_or_fail UniMatchNoRed P (fun x => Type)
+      end
+     ).

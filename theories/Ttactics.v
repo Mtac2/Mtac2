@@ -165,9 +165,9 @@ Open Scope pattern_scope.
 Polymorphic Definition find(*@{i j k k1 a1 a2 a3 a4 a5 a6 a7 a8}*) {A:Type(*@{i}*)} :=
   mfix1 f (l : mlist(*@{j}*) Hyp(*@{k}*)) : M A :=
     mmatch'(*@{a1 a2 a3 a4 a5 a6 a7 a8}*) DoesNotMatch l (mcons(*@{j}*)
-      ([? x d (l': mlist(*@{j}*) Hyp(*@{k}*))] (mcons(*@{j}*) (@ahyp(*@{k}*) A x d) l') => M.ret x)
-      (mcons(*@{j}*) ([? (ah:Hyp(*@{k}*)) (l': mlist(*@{j}*) Hyp(*@{k}*))] (mcons(*@{j}*) ah l') => f l')
-      (mcons(*@{j}*) ([? l': mlist(*@{j}*) Hyp(*@{k}*)] l' => M.raise(*@{k1}*) exception)
+      ([? x d (l': mlist(*@{j}*) Hyp(*@{k}*))] (mcons(*@{j}*) (@ahyp(*@{k}*) A x d) l') => M.ret x)%branch
+      (mcons(*@{j}*) ([? (ah:Hyp(*@{k}*)) (l': mlist(*@{j}*) Hyp(*@{k}*))] (mcons(*@{j}*) ah l') => f l')%branch
+      (mcons(*@{j}*) ([? l': mlist(*@{j}*) Hyp(*@{k}*)] l' => M.raise(*@{k1}*) exception)%branch
        mnil(*@{j}*))))
     .
 
