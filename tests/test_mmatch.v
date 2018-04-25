@@ -190,7 +190,6 @@ exception different from `DoesNotMatch` for our encoding of `mtry`. The test
 asserts that a `DoesNotMatch` exception can escape `mtry`. This is crucial for
 certain backtracking metaprograms and tactics. *)
 
-Mtac Do Set_Trace.
 Mtac Do (
        M.mtry'
          (
