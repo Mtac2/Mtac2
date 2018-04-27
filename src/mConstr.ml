@@ -145,281 +145,337 @@ let num_args_of_mconstr (type a) (mh : a mconstr_head) =
 
 let mkconstr s = lazy (let (_, c) = mkUConstr ("M.M." ^ s) Evd.empty (Global.env ()) in c)
 let isconstr c h = eq_constr_nounivs Evd.empty (Lazy.force c) h
+let isconstant sigma n h = isConstant sigma ("M.M." ^ n) h
 
-let mkret = mkconstr "ret"
-let isret  = isconstr mkret
+let name_ret = "ret"
+let mkret = mkconstr name_ret
+let isret sigma = isconstant sigma name_ret
 
-let mkbind = mkconstr "bind"
-let isbind  = isconstr mkbind
+let name_bind = "bind"
+let mkbind = mkconstr name_bind
+let isbind sigma = isconstant sigma name_bind
 
-let mktry' = mkconstr "mtry'"
-let istry'  = isconstr mktry'
+let name_try' = "mtry'"
+let mktry' = mkconstr name_try'
+let istry' sigma = isconstant sigma name_try'
 
-let mkraise = mkconstr "raise'"
-let israise  = isconstr mkraise
+let name_raise = "raise'"
+let mkraise = mkconstr name_raise
+let israise sigma = isconstant sigma name_raise
 
-let mkfix1 = mkconstr "fix1"
-let isfix1  = isconstr mkfix1
+let name_fix1 = "fix1"
+let mkfix1 = mkconstr name_fix1
+let isfix1 sigma = isconstant sigma name_fix1
 
-let mkfix2 = mkconstr "fix2"
-let isfix2  = isconstr mkfix2
+let name_fix2 = "fix2"
+let mkfix2 = mkconstr name_fix2
+let isfix2 sigma = isconstant sigma name_fix2
 
-let mkfix3 = mkconstr "fix3"
-let isfix3  = isconstr mkfix3
+let name_fix3 = "fix3"
+let mkfix3 = mkconstr name_fix3
+let isfix3 sigma = isconstant sigma name_fix3
 
-let mkfix4 = mkconstr "fix4"
-let isfix4  = isconstr mkfix4
+let name_fix4 = "fix4"
+let mkfix4 = mkconstr name_fix4
+let isfix4 sigma = isconstant sigma name_fix4
 
-let mkfix5 = mkconstr "fix5"
-let isfix5  = isconstr mkfix5
+let name_fix5 = "fix5"
+let mkfix5 = mkconstr name_fix5
+let isfix5 sigma = isconstant sigma name_fix5
 
-let mkis_var = mkconstr "is_var"
-let isis_var  = isconstr mkis_var
+let name_is_var = "is_var"
+let mkis_var = mkconstr name_is_var
+let isis_var sigma = isconstant sigma name_is_var
 
-let mknu = mkconstr "nu"
-let isnu  = isconstr mknu
+let name_nu = "nu"
+let mknu = mkconstr name_nu
+let isnu sigma = isconstant sigma name_nu
 
-let mkabs_fun = mkconstr "abs_fun"
-let isabs_fun  = isconstr mkabs_fun
+let name_abs_fun = "abs_fun"
+let mkabs_fun = mkconstr name_abs_fun
+let isabs_fun sigma = isconstant sigma name_abs_fun
 
-let mkabs_let = mkconstr "abs_let"
-let isabs_let  = isconstr mkabs_let
+let name_abs_let = "abs_let"
+let mkabs_let = mkconstr name_abs_let
+let isabs_let sigma = isconstant sigma name_abs_let
 
-let mkabs_prod_prop = mkconstr "abs_prod_prop"
-let isabs_prod_prop  = isconstr mkabs_prod_prop
+let name_abs_prod_prop = "abs_prod_prop"
+let mkabs_prod_prop = mkconstr name_abs_prod_prop
+let isabs_prod_prop sigma = isconstant sigma name_abs_prod_prop
 
-let mkabs_prod_type = mkconstr "abs_prod_type"
-let isabs_prod_type  = isconstr mkabs_prod_type
+let name_abs_prod_type = "abs_prod_type"
+let mkabs_prod_type = mkconstr name_abs_prod_type
+let isabs_prod_type sigma = isconstant sigma name_abs_prod_type
 
-let mkabs_fix = mkconstr "abs_fix"
-let isabs_fix  = isconstr mkabs_fix
+let name_abs_fix = "abs_fix"
+let mkabs_fix = mkconstr name_abs_fix
+let isabs_fix sigma = isconstant sigma name_abs_fix
 
-let mkget_binder_name = mkconstr "get_binder_name"
-let isget_binder_name  = isconstr mkget_binder_name
+let name_get_binder_name = "get_binder_name"
+let mkget_binder_name = mkconstr name_get_binder_name
+let isget_binder_name sigma = isconstant sigma name_get_binder_name
 
-let mkremove = mkconstr "remove"
-let isremove  = isconstr mkremove
+let name_remove = "remove"
+let mkremove = mkconstr name_remove
+let isremove sigma = isconstant sigma name_remove
 
-let mkgen_evar = mkconstr "gen_evar"
-let isgen_evar  = isconstr mkgen_evar
+let name_gen_evar = "gen_evar"
+let mkgen_evar = mkconstr name_gen_evar
+let isgen_evar sigma = isconstant sigma name_gen_evar
 
-let mkis_evar = mkconstr "is_evar"
-let isis_evar  = isconstr mkis_evar
+let name_is_evar = "is_evar"
+let mkis_evar = mkconstr name_is_evar
+let isis_evar sigma = isconstant sigma name_is_evar
 
-let mkhash = mkconstr "hash"
-let ishash  = isconstr mkhash
+let name_hash = "hash"
+let mkhash = mkconstr name_hash
+let ishash sigma = isconstant sigma name_hash
 
-let mksolve_typeclasses = mkconstr "solve_typeclasses"
-let issolve_typeclasses  = isconstr mksolve_typeclasses
+let name_solve_typeclasses = "solve_typeclasses"
+let mksolve_typeclasses = mkconstr name_solve_typeclasses
+let issolve_typeclasses sigma = isconstant sigma name_solve_typeclasses
 
-let mkprint = mkconstr "print"
-let isprint  = isconstr mkprint
+let name_print = "print"
+let mkprint = mkconstr name_print
+let isprint sigma = isconstant sigma name_print
 
-let mkpretty_print = mkconstr "pretty_print"
-let ispretty_print  = isconstr mkpretty_print
+let name_pretty_print = "pretty_print"
+let mkpretty_print = mkconstr name_pretty_print
+let ispretty_print sigma = isconstant sigma name_pretty_print
 
-let mkhyps = mkconstr "hyps"
-let ishyps  = isconstr mkhyps
+let name_hyps = "hyps"
+let mkhyps = mkconstr name_hyps
+let ishyps sigma = isconstant sigma name_hyps
 
-let mkdestcase = mkconstr "destcase"
-let isdestcase  = isconstr mkdestcase
+let name_destcase = "destcase"
+let mkdestcase = mkconstr name_destcase
+let isdestcase sigma = isconstant sigma name_destcase
 
-let mkconstrs = mkconstr "constrs"
-let isconstrs  = isconstr mkconstrs
+let name_constrs = "constrs"
+let mkconstrs = mkconstr name_constrs
+let isconstrs sigma = isconstant sigma name_constrs
 
-let mkmakecase = mkconstr "makecase"
-let ismakecase  = isconstr mkmakecase
+let name_makecase = "makecase"
+let mkmakecase = mkconstr name_makecase
+let ismakecase sigma = isconstant sigma name_makecase
 
-let mkunify = mkconstr "unify"
-let isunify  = isconstr mkunify
+let name_unify = "unify"
+let mkunify = mkconstr name_unify
+let isunify sigma = isconstant sigma name_unify
 
-let mkunify_univ = mkconstr "unify_univ"
-let isunify_univ  = isconstr mkunify_univ
+let name_unify_univ = "unify_univ"
+let mkunify_univ = mkconstr name_unify_univ
+let isunify_univ sigma = isconstant sigma name_unify_univ
 
-let mkget_reference = mkconstr "get_reference"
-let isget_reference  = isconstr mkget_reference
+let name_get_reference = "get_reference"
+let mkget_reference = mkconstr name_get_reference
+let isget_reference sigma = isconstant sigma name_get_reference
 
-let mkget_var = mkconstr "get_var"
-let isget_var  = isconstr mkget_var
+let name_get_var = "get_var"
+let mkget_var = mkconstr name_get_var
+let isget_var sigma = isconstant sigma name_get_var
 
-let mkcall_ltac = mkconstr "call_ltac"
-let iscall_ltac  = isconstr mkcall_ltac
+let name_call_ltac = "call_ltac"
+let mkcall_ltac = mkconstr name_call_ltac
+let iscall_ltac sigma = isconstant sigma name_call_ltac
 
-let mklist_ltac = mkconstr "list_ltac"
-let islist_ltac  = isconstr mklist_ltac
+let name_list_ltac = "list_ltac"
+let mklist_ltac = mkconstr name_list_ltac
+let islist_ltac sigma = isconstant sigma name_list_ltac
 
-let mkread_line = mkconstr "read_line"
-let isread_line  = isconstr mkread_line
+let name_read_line = "read_line"
+let mkread_line = mkconstr name_read_line
+let isread_line sigma = isconstant sigma name_read_line
 
-let mkbreak = mkconstr "break"
-let isbreak  = isconstr mkbreak
+let name_break = "break"
+let mkbreak = mkconstr name_break
+let isbreak sigma = isconstant sigma name_break
 
-let mkdecompose = mkconstr "decompose"
-let isdecompose  = isconstr mkdecompose
+let name_decompose = "decompose"
+let mkdecompose = mkconstr name_decompose
+let isdecompose sigma = isconstant sigma name_decompose
 
-let mksolve_typeclass = mkconstr "solve_typeclass"
-let issolve_typeclass  = isconstr mksolve_typeclass
+let name_solve_typeclass = "solve_typeclass"
+let mksolve_typeclass = mkconstr name_solve_typeclass
+let issolve_typeclass sigma = isconstant sigma name_solve_typeclass
 
-let mkdeclare = mkconstr "declare"
-let isdeclare  = isconstr mkdeclare
+let name_declare = "declare"
+let mkdeclare = mkconstr name_declare
+let isdeclare sigma = isconstant sigma name_declare
 
-let mkdeclare_implicits = mkconstr "declare_implicits"
-let isdeclare_implicits  = isconstr mkdeclare_implicits
+let name_declare_implicits = "declare_implicits"
+let mkdeclare_implicits = mkconstr name_declare_implicits
+let isdeclare_implicits sigma = isconstant sigma name_declare_implicits
 
-let mkos_cmd = mkconstr "os_cmd"
-let isos_cmd  = isconstr mkos_cmd
+let name_os_cmd = "os_cmd"
+let mkos_cmd = mkconstr name_os_cmd
+let isos_cmd sigma = isconstant sigma name_os_cmd
 
-let mkget_debug_ex = mkconstr "get_debug_exceptions"
-let isget_debug_ex  = isconstr mkget_debug_ex
+let name_get_debug_ex = "get_debug_exceptions"
+let mkget_debug_ex = mkconstr name_get_debug_ex
+let isget_debug_ex sigma = isconstant sigma name_get_debug_ex
 
-let mkset_debug_ex = mkconstr "set_debug_exceptions"
-let isset_debug_ex  = isconstr mkset_debug_ex
+let name_set_debug_ex = "set_debug_exceptions"
+let mkset_debug_ex = mkconstr name_set_debug_ex
+let isset_debug_ex sigma = isconstant sigma name_set_debug_ex
 
-let mkget_trace = mkconstr "get_trace"
-let isget_trace  = isconstr mkget_trace
+let name_get_trace = "get_trace"
+let mkget_trace = mkconstr name_get_trace
+let isget_trace sigma = isconstant sigma name_get_trace
 
-let mkset_trace = mkconstr "set_trace"
-let isset_trace  = isconstr mkset_trace
+let name_set_trace = "set_trace"
+let mkset_trace = mkconstr name_set_trace
+let isset_trace sigma = isconstant sigma name_set_trace
 
-let mkdecompose_app = mkconstr "is_head"
-let isdecompose_app = isconstr mkdecompose_app
+let name_decompose_app = "is_head"
+let mkdecompose_app = mkconstr name_decompose_app
+let isdecompose_app sigma = isconstant sigma name_decompose_app
 
-let mkdecompose_forallT = mkconstr "decompose_forallT"
-let isdecompose_forallT = isconstr mkdecompose_forallT
+let name_decompose_forallT = "decompose_forallT"
+let mkdecompose_forallT = mkconstr name_decompose_forallT
+let isdecompose_forallT sigma = isconstant sigma name_decompose_forallT
 
-let mkdecompose_forallP = mkconstr "decompose_forallP"
-let isdecompose_forallP = isconstr mkdecompose_forallP
+let name_decompose_forallP = "decompose_forallP"
+let mkdecompose_forallP = mkconstr name_decompose_forallP
+let isdecompose_forallP sigma = isconstant sigma name_decompose_forallP
 
-let mkdecompose_app'' = mkconstr "decompose_app''"
-let isdecompose_app'' = isconstr mkdecompose_app''
+let name_decompose_app'' = "decompose_app''"
+let mkdecompose_app'' = mkconstr name_decompose_app''
+let isdecompose_app'' sigma = isconstant sigma name_decompose_app''
 
-let mknew_timer = mkconstr "new_timer"
-let isnew_timer = isconstr mknew_timer
+let name_new_timer = "new_timer"
+let mknew_timer = mkconstr name_new_timer
+let isnew_timer sigma = isconstant sigma name_new_timer
 
-let mkstart_timer = mkconstr "start_timer"
-let isstart_timer = isconstr mkstart_timer
+let name_start_timer = "start_timer"
+let mkstart_timer = mkconstr name_start_timer
+let isstart_timer sigma = isconstant sigma name_start_timer
 
-let mkstop_timer = mkconstr "stop_timer"
-let isstop_timer = isconstr mkstop_timer
+let name_stop_timer = "stop_timer"
+let mkstop_timer = mkconstr name_stop_timer
+let isstop_timer sigma = isconstant sigma name_stop_timer
 
-let mkreset_timer = mkconstr "reset_timer"
-let isreset_timer = isconstr mkreset_timer
+let name_reset_timer = "reset_timer"
+let mkreset_timer = mkconstr name_reset_timer
+let isreset_timer sigma = isconstant sigma name_reset_timer
 
-let mkprint_timer = mkconstr "print_timer"
-let isprint_timer = isconstr mkprint_timer
+let name_print_timer = "print_timer"
+let mkprint_timer = mkconstr name_print_timer
+let isprint_timer sigma = isconstant sigma name_print_timer
 
-let mkkind_of_term = mkconstr "kind_of_term"
-let iskind_of_term = isconstr mkkind_of_term
+let name_kind_of_term = "kind_of_term"
+let mkkind_of_term = mkconstr name_kind_of_term
+let iskind_of_term sigma = isconstant sigma name_kind_of_term
 
-let mconstr_head_of h =
+let mconstr_head_of sigma h =
   match h with
-  | _ when isret h ->
+  | _ when isret sigma h ->
       MHead Mret
-  | _ when isbind h ->
+  | _ when isbind sigma h ->
       MHead Mbind
-  | _ when istry' h ->
+  | _ when istry' sigma h ->
       MHead Mmtry'
-  | _ when israise h ->
+  | _ when israise sigma h ->
       MHead Mraise'
-  | _ when isfix1 h ->
+  | _ when isfix1 sigma h ->
       MHead Mfix1
-  | _ when isfix2 h ->
+  | _ when isfix2 sigma h ->
       MHead Mfix2
-  | _ when isfix3 h ->
+  | _ when isfix3 sigma h ->
       MHead Mfix3
-  | _ when isfix4 h ->
+  | _ when isfix4 sigma h ->
       MHead Mfix4
-  | _ when isfix5 h ->
+  | _ when isfix5 sigma h ->
       MHead Mfix5
-  | _ when isis_var h ->
+  | _ when isis_var sigma h ->
       MHead Mis_var
-  | _ when isnu h ->
+  | _ when isnu sigma h ->
       MHead Mnu
-  | _ when isabs_fun h ->
+  | _ when isabs_fun sigma h ->
       MHead Mabs_fun
-  | _ when isabs_let h ->
+  | _ when isabs_let sigma h ->
       MHead Mabs_let
-  | _ when isabs_prod_type h ->
+  | _ when isabs_prod_type sigma h ->
       MHead Mabs_prod_type
-  | _ when isabs_prod_prop h ->
+  | _ when isabs_prod_prop sigma h ->
       MHead Mabs_prod_prop
-  | _ when isabs_fix h ->
+  | _ when isabs_fix sigma h ->
       MHead Mabs_fix
-  | _ when isget_binder_name h ->
+  | _ when isget_binder_name sigma h ->
       MHead Mget_binder_name
-  | _ when isremove h ->
+  | _ when isremove sigma h ->
       MHead Mremove
-  | _ when isgen_evar h->
+  | _ when isgen_evar sigma h ->
       MHead Mgen_evar
-  | _ when isis_evar h ->
+  | _ when isis_evar sigma h ->
       MHead Mis_evar
-  | _ when ishash h ->
+  | _ when ishash sigma h ->
       MHead Mhash
-  | _ when issolve_typeclasses h ->
+  | _ when issolve_typeclasses sigma h ->
       MHead Msolve_typeclasses
-  | _ when isprint h ->
+  | _ when isprint sigma h ->
       MHead Mprint
-  | _ when ispretty_print h ->
+  | _ when ispretty_print sigma h ->
       MHead Mpretty_print
-  | _ when ishyps h ->
+  | _ when ishyps sigma h ->
       MHead Mhyps
-  | _ when isdestcase h ->
+  | _ when isdestcase sigma h ->
       MHead Mdestcase
-  | _ when isconstrs h ->
+  | _ when isconstrs sigma h ->
       MHead Mconstrs
-  | _ when ismakecase h ->
+  | _ when ismakecase sigma h ->
       MHead Mmakecase
-  | _ when isunify h ->
+  | _ when isunify sigma h ->
       MHead Munify
-  | _ when isunify_univ h ->
+  | _ when isunify_univ sigma h ->
       MHead Munify_univ
-  | _ when isget_reference h ->
+  | _ when isget_reference sigma h ->
       MHead Mget_reference
-  | _ when isget_var h ->
+  | _ when isget_var sigma h ->
       MHead Mget_var
-  | _ when iscall_ltac h ->
+  | _ when iscall_ltac sigma h ->
       MHead Mcall_ltac
-  | _ when islist_ltac h ->
+  | _ when islist_ltac sigma h ->
       MHead Mlist_ltac
-  | _ when isread_line h ->
+  | _ when isread_line sigma h ->
       MHead Mread_line
-  | _ when isdecompose h ->
+  | _ when isdecompose sigma h ->
       MHead Mdecompose
-  | _ when issolve_typeclass h ->
+  | _ when issolve_typeclass sigma h ->
       MHead Msolve_typeclass
-  | _ when isdeclare h ->
+  | _ when isdeclare sigma h ->
       MHead Mdeclare
-  | _ when isdeclare_implicits h ->
+  | _ when isdeclare_implicits sigma h ->
       MHead Mdeclare_implicits
-  | _ when isos_cmd h ->
+  | _ when isos_cmd sigma h ->
       MHead Mos_cmd
-  | _ when isget_debug_ex h ->
+  | _ when isget_debug_ex sigma h ->
       MHead Mget_debug_exceptions
-  | _ when isset_debug_ex h ->
+  | _ when isset_debug_ex sigma h ->
       MHead Mset_debug_exceptions
-  | _ when isget_trace h ->
+  | _ when isget_trace sigma h ->
       MHead Mget_trace
-  | _ when isset_trace h ->
+  | _ when isset_trace sigma h ->
       MHead Mset_trace
-  | _ when isdecompose_app h ->
+  | _ when isdecompose_app sigma h ->
       MHead Mdecompose_app'
-  | _ when isdecompose_forallT h ->
+  | _ when isdecompose_forallT sigma h ->
       MHead Mdecompose_forallT
-  | _ when isdecompose_forallP h ->
+  | _ when isdecompose_forallP sigma h ->
       MHead Mdecompose_forallP
-  | _ when isdecompose_app'' h ->
+  | _ when isdecompose_app'' sigma h ->
       MHead Mdecompose_app''
-  | _ when isnew_timer h ->
+  | _ when isnew_timer sigma h ->
       MHead Mnew_timer
-  | _ when isstart_timer h ->
+  | _ when isstart_timer sigma h ->
       MHead Mnew_timer
-  | _ when isstop_timer h ->
+  | _ when isstop_timer sigma h ->
       MHead Mnew_timer
-  | _ when isreset_timer h ->
+  | _ when isreset_timer sigma h ->
       MHead Mnew_timer
-  | _ when isprint_timer h ->
+  | _ when isprint_timer sigma h ->
       MHead Mnew_timer
-  | _ when iskind_of_term h ->
+  | _ when iskind_of_term sigma h ->
       MHead Mkind_of_term
   | _ -> raise Not_found
 
