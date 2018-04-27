@@ -121,7 +121,7 @@ val isget_var : Evd.evar_map -> EConstr.t -> bool
 val iscall_ltac : Evd.evar_map -> EConstr.t -> bool
 val islist_ltac : Evd.evar_map -> EConstr.t -> bool
 val isread_line : Evd.evar_map -> EConstr.t -> bool
-val isbreak : Evd.evar_map -> EConstr.t -> bool
+(* val isbreak : Evd.evar_map -> EConstr.t -> bool *)
 val isdecompose : Evd.evar_map -> EConstr.t -> bool
 val issolve_typeclass : Evd.evar_map -> EConstr.t -> bool
 val isdeclare : Evd.evar_map -> EConstr.t -> bool

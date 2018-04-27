@@ -20,36 +20,20 @@ let isUConstr sigma env e =
   eq_constr_nounivs sigma c
 
 let constant_of_string e =
-  let p = Libnames.path_of_string (metaCoq_module_name ^ "." ^ e) in
+  let full_name = metaCoq_module_name ^ "." ^ e in
+  let p = Libnames.path_of_string full_name in
   let q = Libnames.qualid_of_path p in
   Nametab.locate_constant q
 
-let isConstant sigma e c =
-  match EConstr.destConst sigma c with
-  | (n, _) ->
-      let n = Names.Constant.canonical n in
-      let n = Names.KerName.to_string n in
-      let n' = metaCoq_module_name ^ "." ^ e in
-      (* let open Pp in
-       * Feedback.msg_info (str n ++ str " =?= " ++ str n'); *)
-      0 == String.compare n n'
-  (* let open Pp in
-   * Feedback.msg_info (Names.Constant.debug_print n ++ Pp.str e); *)
-  (* Names.Constant.equal n (constant_of_string e) *)
-  | exception Term.DestKO -> false
+let isConstant sigma const c =
+  match EConstr.kind sigma c with
+  | Const (n, _) -> Names.Constant.equal n const
+  | _ -> false
 
-let isFConstant e fc =
+let isFConstant const fc =
   match CClosure.fterm_of fc with
   | CClosure.FFlex (Names.ConstKey (n, _)) ->
-      let n = Names.Constant.canonical n in
-      let n = Names.KerName.to_string n in
-      let n' = metaCoq_module_name ^ "." ^ e in
-      (* let open Pp in
-       * Feedback.msg_info (str n ++ str " =?= " ++ str n'); *)
-      0 == String.compare n n'
-  (* let open Pp in
-   * Feedback.msg_info (Names.Constant.debug_print n ++ Pp.str e); *)
-  (* Names.Constant.equal n (constant_of_string e) *)
+      Names.Constant.equal n const
   | _ -> false
 
 let mkCase ind v ret branch sigma env =

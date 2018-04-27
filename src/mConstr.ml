@@ -145,226 +145,228 @@ let num_args_of_mconstr (type a) (mh : a mconstr_head) =
 
 let mkconstr s = lazy (let (_, c) = mkUConstr ("M.M." ^ s) Evd.empty (Global.env ()) in c)
 let isconstr c h = eq_constr_nounivs Evd.empty (Lazy.force c) h
-let isconstant sigma n h = isConstant sigma ("M.M." ^ n) h
+let isconstant sigma n h = isConstant sigma n h
 
-let name_ret = "ret"
-let mkret = mkconstr name_ret
+let constant_of_string s = constant_of_string ("M.M." ^ s)
+
+let name_ret = constant_of_string "ret"
+(* let mkret = mkconstr name_ret *)
 let isret sigma = isconstant sigma name_ret
 
-let name_bind = "bind"
-let mkbind = mkconstr name_bind
+let name_bind = constant_of_string "bind"
+(* let mkbind = mkconstr name_bind *)
 let isbind sigma = isconstant sigma name_bind
 
-let name_try' = "mtry'"
-let mktry' = mkconstr name_try'
+let name_try' = constant_of_string "mtry'"
+(* let mktry' = mkconstr name_try' *)
 let istry' sigma = isconstant sigma name_try'
 
-let name_raise = "raise'"
-let mkraise = mkconstr name_raise
+let name_raise = constant_of_string "raise'"
+(* let mkraise = mkconstr name_raise *)
 let israise sigma = isconstant sigma name_raise
 
-let name_fix1 = "fix1"
-let mkfix1 = mkconstr name_fix1
+let name_fix1 = constant_of_string "fix1"
+(* let mkfix1 = mkconstr name_fix1 *)
 let isfix1 sigma = isconstant sigma name_fix1
 
-let name_fix2 = "fix2"
-let mkfix2 = mkconstr name_fix2
+let name_fix2 = constant_of_string "fix2"
+(* let mkfix2 = mkconstr name_fix2 *)
 let isfix2 sigma = isconstant sigma name_fix2
 
-let name_fix3 = "fix3"
-let mkfix3 = mkconstr name_fix3
+let name_fix3 = constant_of_string "fix3"
+(* let mkfix3 = mkconstr name_fix3 *)
 let isfix3 sigma = isconstant sigma name_fix3
 
-let name_fix4 = "fix4"
-let mkfix4 = mkconstr name_fix4
+let name_fix4 = constant_of_string "fix4"
+(* let mkfix4 = mkconstr name_fix4 *)
 let isfix4 sigma = isconstant sigma name_fix4
 
-let name_fix5 = "fix5"
-let mkfix5 = mkconstr name_fix5
+let name_fix5 = constant_of_string "fix5"
+(* let mkfix5 = mkconstr name_fix5 *)
 let isfix5 sigma = isconstant sigma name_fix5
 
-let name_is_var = "is_var"
-let mkis_var = mkconstr name_is_var
+let name_is_var = constant_of_string "is_var"
+(* let mkis_var = mkconstr name_is_var *)
 let isis_var sigma = isconstant sigma name_is_var
 
-let name_nu = "nu"
-let mknu = mkconstr name_nu
+let name_nu = constant_of_string "nu"
+(* let mknu = mkconstr name_nu *)
 let isnu sigma = isconstant sigma name_nu
 
-let name_abs_fun = "abs_fun"
-let mkabs_fun = mkconstr name_abs_fun
+let name_abs_fun = constant_of_string "abs_fun"
+(* let mkabs_fun = mkconstr name_abs_fun *)
 let isabs_fun sigma = isconstant sigma name_abs_fun
 
-let name_abs_let = "abs_let"
-let mkabs_let = mkconstr name_abs_let
+let name_abs_let = constant_of_string "abs_let"
+(* let mkabs_let = mkconstr name_abs_let *)
 let isabs_let sigma = isconstant sigma name_abs_let
 
-let name_abs_prod_prop = "abs_prod_prop"
-let mkabs_prod_prop = mkconstr name_abs_prod_prop
+let name_abs_prod_prop = constant_of_string "abs_prod_prop"
+(* let mkabs_prod_prop = mkconstr name_abs_prod_prop *)
 let isabs_prod_prop sigma = isconstant sigma name_abs_prod_prop
 
-let name_abs_prod_type = "abs_prod_type"
-let mkabs_prod_type = mkconstr name_abs_prod_type
+let name_abs_prod_type = constant_of_string "abs_prod_type"
+(* let mkabs_prod_type = mkconstr name_abs_prod_type *)
 let isabs_prod_type sigma = isconstant sigma name_abs_prod_type
 
-let name_abs_fix = "abs_fix"
-let mkabs_fix = mkconstr name_abs_fix
+let name_abs_fix = constant_of_string "abs_fix"
+(* let mkabs_fix = mkconstr name_abs_fix *)
 let isabs_fix sigma = isconstant sigma name_abs_fix
 
-let name_get_binder_name = "get_binder_name"
-let mkget_binder_name = mkconstr name_get_binder_name
+let name_get_binder_name = constant_of_string "get_binder_name"
+(* let mkget_binder_name = mkconstr name_get_binder_name *)
 let isget_binder_name sigma = isconstant sigma name_get_binder_name
 
-let name_remove = "remove"
-let mkremove = mkconstr name_remove
+let name_remove = constant_of_string "remove"
+(* let mkremove = mkconstr name_remove *)
 let isremove sigma = isconstant sigma name_remove
 
-let name_gen_evar = "gen_evar"
-let mkgen_evar = mkconstr name_gen_evar
+let name_gen_evar = constant_of_string "gen_evar"
+(* let mkgen_evar = mkconstr name_gen_evar *)
 let isgen_evar sigma = isconstant sigma name_gen_evar
 
-let name_is_evar = "is_evar"
-let mkis_evar = mkconstr name_is_evar
+let name_is_evar = constant_of_string "is_evar"
+(* let mkis_evar = mkconstr name_is_evar *)
 let isis_evar sigma = isconstant sigma name_is_evar
 
-let name_hash = "hash"
-let mkhash = mkconstr name_hash
+let name_hash = constant_of_string "hash"
+(* let mkhash = mkconstr name_hash *)
 let ishash sigma = isconstant sigma name_hash
 
-let name_solve_typeclasses = "solve_typeclasses"
-let mksolve_typeclasses = mkconstr name_solve_typeclasses
+let name_solve_typeclasses = constant_of_string "solve_typeclasses"
+(* let mksolve_typeclasses = mkconstr name_solve_typeclasses *)
 let issolve_typeclasses sigma = isconstant sigma name_solve_typeclasses
 
-let name_print = "print"
-let mkprint = mkconstr name_print
+let name_print = constant_of_string "print"
+(* let mkprint = mkconstr name_print *)
 let isprint sigma = isconstant sigma name_print
 
-let name_pretty_print = "pretty_print"
-let mkpretty_print = mkconstr name_pretty_print
+let name_pretty_print = constant_of_string "pretty_print"
+(* let mkpretty_print = mkconstr name_pretty_print *)
 let ispretty_print sigma = isconstant sigma name_pretty_print
 
-let name_hyps = "hyps"
-let mkhyps = mkconstr name_hyps
+let name_hyps = constant_of_string "hyps"
+(* let mkhyps = mkconstr name_hyps *)
 let ishyps sigma = isconstant sigma name_hyps
 
-let name_destcase = "destcase"
-let mkdestcase = mkconstr name_destcase
+let name_destcase = constant_of_string "destcase"
+(* let mkdestcase = mkconstr name_destcase *)
 let isdestcase sigma = isconstant sigma name_destcase
 
-let name_constrs = "constrs"
-let mkconstrs = mkconstr name_constrs
+let name_constrs = constant_of_string "constrs"
+(* let mkconstrs = mkconstr name_constrs *)
 let isconstrs sigma = isconstant sigma name_constrs
 
-let name_makecase = "makecase"
-let mkmakecase = mkconstr name_makecase
+let name_makecase = constant_of_string "makecase"
+(* let mkmakecase = mkconstr name_makecase *)
 let ismakecase sigma = isconstant sigma name_makecase
 
-let name_unify = "unify"
-let mkunify = mkconstr name_unify
+let name_unify = constant_of_string "unify"
+(* let mkunify = mkconstr name_unify *)
 let isunify sigma = isconstant sigma name_unify
 
-let name_unify_univ = "unify_univ"
-let mkunify_univ = mkconstr name_unify_univ
+let name_unify_univ = constant_of_string "unify_univ"
+(* let mkunify_univ = mkconstr name_unify_univ *)
 let isunify_univ sigma = isconstant sigma name_unify_univ
 
-let name_get_reference = "get_reference"
-let mkget_reference = mkconstr name_get_reference
+let name_get_reference = constant_of_string "get_reference"
+(* let mkget_reference = mkconstr name_get_reference *)
 let isget_reference sigma = isconstant sigma name_get_reference
 
-let name_get_var = "get_var"
-let mkget_var = mkconstr name_get_var
+let name_get_var = constant_of_string "get_var"
+(* let mkget_var = mkconstr name_get_var *)
 let isget_var sigma = isconstant sigma name_get_var
 
-let name_call_ltac = "call_ltac"
-let mkcall_ltac = mkconstr name_call_ltac
+let name_call_ltac = constant_of_string "call_ltac"
+(* let mkcall_ltac = mkconstr name_call_ltac *)
 let iscall_ltac sigma = isconstant sigma name_call_ltac
 
-let name_list_ltac = "list_ltac"
-let mklist_ltac = mkconstr name_list_ltac
+let name_list_ltac = constant_of_string "list_ltac"
+(* let mklist_ltac = mkconstr name_list_ltac *)
 let islist_ltac sigma = isconstant sigma name_list_ltac
 
-let name_read_line = "read_line"
-let mkread_line = mkconstr name_read_line
+let name_read_line = constant_of_string "read_line"
+(* let mkread_line = mkconstr name_read_line *)
 let isread_line sigma = isconstant sigma name_read_line
 
-let name_break = "break"
-let mkbreak = mkconstr name_break
-let isbreak sigma = isconstant sigma name_break
+(* let name_break = constant_of_string "break"
+ * (\* let mkbreak = mkconstr name_break *\)
+ * let isbreak sigma = isconstant sigma name_break *)
 
-let name_decompose = "decompose"
-let mkdecompose = mkconstr name_decompose
+let name_decompose = constant_of_string "decompose"
+(* let mkdecompose = mkconstr name_decompose *)
 let isdecompose sigma = isconstant sigma name_decompose
 
-let name_solve_typeclass = "solve_typeclass"
-let mksolve_typeclass = mkconstr name_solve_typeclass
+let name_solve_typeclass = constant_of_string "solve_typeclass"
+(* let mksolve_typeclass = mkconstr name_solve_typeclass *)
 let issolve_typeclass sigma = isconstant sigma name_solve_typeclass
 
-let name_declare = "declare"
-let mkdeclare = mkconstr name_declare
+let name_declare = constant_of_string "declare"
+(* let mkdeclare = mkconstr name_declare *)
 let isdeclare sigma = isconstant sigma name_declare
 
-let name_declare_implicits = "declare_implicits"
-let mkdeclare_implicits = mkconstr name_declare_implicits
+let name_declare_implicits = constant_of_string "declare_implicits"
+(* let mkdeclare_implicits = mkconstr name_declare_implicits *)
 let isdeclare_implicits sigma = isconstant sigma name_declare_implicits
 
-let name_os_cmd = "os_cmd"
-let mkos_cmd = mkconstr name_os_cmd
+let name_os_cmd = constant_of_string "os_cmd"
+(* let mkos_cmd = mkconstr name_os_cmd *)
 let isos_cmd sigma = isconstant sigma name_os_cmd
 
-let name_get_debug_ex = "get_debug_exceptions"
-let mkget_debug_ex = mkconstr name_get_debug_ex
+let name_get_debug_ex = constant_of_string "get_debug_exceptions"
+(* let mkget_debug_ex = mkconstr name_get_debug_ex *)
 let isget_debug_ex sigma = isconstant sigma name_get_debug_ex
 
-let name_set_debug_ex = "set_debug_exceptions"
-let mkset_debug_ex = mkconstr name_set_debug_ex
+let name_set_debug_ex = constant_of_string "set_debug_exceptions"
+(* let mkset_debug_ex = mkconstr name_set_debug_ex *)
 let isset_debug_ex sigma = isconstant sigma name_set_debug_ex
 
-let name_get_trace = "get_trace"
-let mkget_trace = mkconstr name_get_trace
+let name_get_trace = constant_of_string "get_trace"
+(* let mkget_trace = mkconstr name_get_trace *)
 let isget_trace sigma = isconstant sigma name_get_trace
 
-let name_set_trace = "set_trace"
-let mkset_trace = mkconstr name_set_trace
+let name_set_trace = constant_of_string "set_trace"
+(* let mkset_trace = mkconstr name_set_trace *)
 let isset_trace sigma = isconstant sigma name_set_trace
 
-let name_decompose_app = "is_head"
-let mkdecompose_app = mkconstr name_decompose_app
+let name_decompose_app = constant_of_string "is_head"
+(* let mkdecompose_app = mkconstr name_decompose_app *)
 let isdecompose_app sigma = isconstant sigma name_decompose_app
 
-let name_decompose_forallT = "decompose_forallT"
-let mkdecompose_forallT = mkconstr name_decompose_forallT
+let name_decompose_forallT = constant_of_string "decompose_forallT"
+(* let mkdecompose_forallT = mkconstr name_decompose_forallT *)
 let isdecompose_forallT sigma = isconstant sigma name_decompose_forallT
 
-let name_decompose_forallP = "decompose_forallP"
-let mkdecompose_forallP = mkconstr name_decompose_forallP
+let name_decompose_forallP = constant_of_string "decompose_forallP"
+(* let mkdecompose_forallP = mkconstr name_decompose_forallP *)
 let isdecompose_forallP sigma = isconstant sigma name_decompose_forallP
 
-let name_decompose_app'' = "decompose_app''"
-let mkdecompose_app'' = mkconstr name_decompose_app''
+let name_decompose_app'' = constant_of_string "decompose_app''"
+(* let mkdecompose_app'' = mkconstr name_decompose_app'' *)
 let isdecompose_app'' sigma = isconstant sigma name_decompose_app''
 
-let name_new_timer = "new_timer"
-let mknew_timer = mkconstr name_new_timer
+let name_new_timer = constant_of_string "new_timer"
+(* let mknew_timer = mkconstr name_new_timer *)
 let isnew_timer sigma = isconstant sigma name_new_timer
 
-let name_start_timer = "start_timer"
-let mkstart_timer = mkconstr name_start_timer
+let name_start_timer = constant_of_string "start_timer"
+(* let mkstart_timer = mkconstr name_start_timer *)
 let isstart_timer sigma = isconstant sigma name_start_timer
 
-let name_stop_timer = "stop_timer"
-let mkstop_timer = mkconstr name_stop_timer
+let name_stop_timer = constant_of_string "stop_timer"
+(* let mkstop_timer = mkconstr name_stop_timer *)
 let isstop_timer sigma = isconstant sigma name_stop_timer
 
-let name_reset_timer = "reset_timer"
-let mkreset_timer = mkconstr name_reset_timer
+let name_reset_timer = constant_of_string "reset_timer"
+(* let mkreset_timer = mkconstr name_reset_timer *)
 let isreset_timer sigma = isconstant sigma name_reset_timer
 
-let name_print_timer = "print_timer"
-let mkprint_timer = mkconstr name_print_timer
+let name_print_timer = constant_of_string "print_timer"
+(* let mkprint_timer = mkconstr name_print_timer *)
 let isprint_timer sigma = isconstant sigma name_print_timer
 
-let name_kind_of_term = "kind_of_term"
-let mkkind_of_term = mkconstr name_kind_of_term
+let name_kind_of_term = constant_of_string "kind_of_term"
+(* let mkkind_of_term = mkconstr name_kind_of_term *)
 let iskind_of_term sigma = isconstant sigma name_kind_of_term
 
 let mconstr_head_of sigma h =

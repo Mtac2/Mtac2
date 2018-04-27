@@ -224,9 +224,10 @@ module ReductionStrategy = struct
   open CClosure.RedFlags
   open Context
 
-  let isReduce sigma env c = isConstant sigma "Reduction.reduce" c
+  let reduce_constant = constant_of_string "Reduction.reduce"
+  let isReduce sigma env c = isConstant sigma reduce_constant c
   let isTReduce sigma env c = isReduce sigma env (EConstr.of_constr c)
-  let isFReduce sigma env c = isFConstant "Reduction.reduce" c
+  let isFReduce sigma env c = isFConstant reduce_constant c
 
   let has_definition ts env sigma t =
     if isVar sigma t then

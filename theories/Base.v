@@ -1,12 +1,12 @@
-(* Need to load Unicoq to get the module dependency right *)
-Declare ML Module "unicoq".
-(** Load library "MetaCoqPlugin.cma". *)
-Declare ML Module "MetaCoqPlugin".
-
 From Mtac2 Require Import Logic Datatypes Logic List Utils Sorts MTele.
 Import Sorts.
 From Mtac2 Require Export Pattern.
 From Mtac2.intf Require Export Dyn Reduction Unification DeclarationDefs M Lift .
+
+(* Need to load Unicoq to get the module dependency right *)
+Declare ML Module "unicoq".
+(** Load library "MetaCoqPlugin.cma". *)
+Declare ML Module "MetaCoqPlugin".
 
 Require Import Strings.String.
 Require Import NArith.BinNat.
