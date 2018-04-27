@@ -21,7 +21,7 @@ Definition with_mmatch: forall {P:Prop}, M P := mfix1 f (P: Prop) : M P :=
 Definition with_decapp: forall {P:Prop}, M P := mfix1 f (P: Prop) : M P :=
   mtry
     <[decapp P return (fun P':Prop=>P') with True]>%MC UniMatchNoRed (M.ret I)
-  with _ =>
+  with WrongTerm =>
     <[decapp P return (fun P':Prop=>P') with and]>%MC UniMatchNoRed (fun Q R =>
       r1 <- f Q;
       r2 <- f R;
