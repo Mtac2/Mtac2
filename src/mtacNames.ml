@@ -22,8 +22,10 @@ let isUConstr sigma env e =
 let constant_of_string e =
   let full_name = metaCoq_module_name ^ "." ^ e in
   let p = Libnames.path_of_string full_name in
-  let q = Libnames.qualid_of_path p in
-  Nametab.locate_constant q
+  (* let q = Libnames.qualid_of_path p in *)
+  match Nametab.global_of_path p with
+  | Globnames.ConstRef (c) -> c
+  | _ -> raise Not_found
 
 let isConstant sigma const c =
   match EConstr.kind sigma c with
