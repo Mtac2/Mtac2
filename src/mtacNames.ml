@@ -27,17 +27,29 @@ let constant_of_string e =
 let isConstant sigma e c =
   match EConstr.destConst sigma c with
   | (n, _) ->
+      let n = Names.Constant.canonical n in
+      let n = Names.KerName.to_string n in
+      let n' = metaCoq_module_name ^ "." ^ e in
       (* let open Pp in
-       * Feedback.msg_info (Names.Constant.debug_print n ++ Pp.str e); *)
-      Names.Constant.equal n (constant_of_string e)
+       * Feedback.msg_info (str n ++ str " =?= " ++ str n'); *)
+      0 == String.compare n n'
+  (* let open Pp in
+   * Feedback.msg_info (Names.Constant.debug_print n ++ Pp.str e); *)
+  (* Names.Constant.equal n (constant_of_string e) *)
   | exception Term.DestKO -> false
 
 let isFConstant e fc =
   match CClosure.fterm_of fc with
   | CClosure.FFlex (Names.ConstKey (n, _)) ->
+      let n = Names.Constant.canonical n in
+      let n = Names.KerName.to_string n in
+      let n' = metaCoq_module_name ^ "." ^ e in
       (* let open Pp in
-       * Feedback.msg_info (Names.Constant.debug_print n ++ Pp.str e); *)
-      Names.Constant.equal n (constant_of_string e)
+       * Feedback.msg_info (str n ++ str " =?= " ++ str n'); *)
+      0 == String.compare n n'
+  (* let open Pp in
+   * Feedback.msg_info (Names.Constant.debug_print n ++ Pp.str e); *)
+  (* Names.Constant.equal n (constant_of_string e) *)
   | _ -> false
 
 let mkCase ind v ret branch sigma env =
