@@ -224,7 +224,9 @@ module ReductionStrategy = struct
   open CClosure.RedFlags
   open Context
 
-  let isReduce sigma env c = isUConstr sigma env "Reduction.reduce" c
+  let isReduce sigma env c = isConstant sigma "Reduction.reduce" c
+  let isTReduce sigma env c = isReduce sigma env (EConstr.of_constr c)
+  let isFReduce sigma env c = isFConstant "Reduction.reduce" c
 
   let has_definition ts env sigma t =
     if isVar sigma t then
@@ -1009,13 +1011,27 @@ let rec run' ctxt (vms : vm list) =
         | FLetIn (_,v,_,bd,e) ->
             let open ReductionStrategy in
             (* let (_, b, _, t) = destLetIn sigma h in *)
-            let vc = to_econstr v in
-            let (h, args') = decompose_appvect sigma vc in
-            if isReduce sigma env h && Array.length args' = 3 then
+            (* let vc = to_econstr v in
+             * let (h, args') = decompose_appvect sigma vc in *)
+            (* let h_ec = to_econstr v in
+             * print_constr sigma env h_ec; *)
+            let (is_reduce, num_args, args_clos) = (
+              match fterm_of v with
+              | FApp (h, args) -> (isFReduce sigma env h, Array.length args, fun () -> args)
+              | FCLOS (t, env) when Term.isApp t ->
+                  let (h, args) = Term.destApp t in
+                  (isTReduce sigma env h,
+                   Array.length args,
+                   fun () -> Array.map (fun x -> mk_red (FCLOS (x, env))) args
+                  )
+              | _ -> (false, -1, fun () -> [||])
+            ) in
+            if is_reduce && num_args == 3 then
+              let args' = args_clos () in
               let red = Array.get args' 0 in
               let term = Array.get args' 2 in
               (* print_constr sigma env term; *)
-              let ob = reduce sigma env red term in
+              let ob = reduce sigma env (to_econstr red) (to_econstr term) in
               match ob with
               | Some b ->
                   (* print_constr sigma env b; *)
@@ -1026,7 +1042,8 @@ let rec run' ctxt (vms : vm list) =
                   (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
 
               | None ->
-                  efail (E.mkNotAList sigma env (Array.get args' 0))
+                  let l = to_econstr (Array.get args' 0) in
+                  efail (E.mkNotAList sigma env l)
             else
               (* (run'[@tailcall]) ctxt (upd (mkApp (Vars.subst1 b t, args))) *)
               (* (run'[@tailcall]) ctxt (upd (of_econstr (Vars.subst1 (to_econstr b) (to_econstr t)))) *)

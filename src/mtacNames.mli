@@ -7,6 +7,8 @@ val mkUBuilder: string -> Constrs.UConstrBuilder.t
 val mkT_lazy : Evd.evar_map -> Environ.env -> Evd.evar_map * EConstr.constr
 val isConstr : Evd.evar_map -> string -> EConstr.constr -> bool
 val isUConstr: Evd.evar_map -> Environ.env -> string -> EConstr.t -> bool
+val isConstant : Evd.evar_map -> string -> EConstr.t -> bool
+val isFConstant : string -> CClosure.fconstr -> bool
 val mkCase: EConstr.t -> EConstr.t -> EConstr.t -> EConstr.t ->
   Evd.evar_map -> Environ.env -> Evd.evar_map * EConstr.t
 val mkelem: EConstr.t -> Evd.evar_map -> Environ.env -> Evd.evar_map * EConstr.t
