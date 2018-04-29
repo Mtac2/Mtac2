@@ -401,10 +401,10 @@ Fixpoint open_pattern {A P y} (E : Exception) (p : pattern t A P y) : t (P y) :=
 
 Definition open_branch {A P y} (E : Exception) (b : branch t A P y) : t (P y) :=
   match b in branch _ A' P y' return forall z: A', z =m= y' -> t (P y') with
-  | branch_pattern p =>
+  | @branch_pattern _ A P _ p =>
     fun z eq =>
-      let op := open_pattern (y:=z) E ltac:(rewrite <- eq in p; exact p) in
-      ltac:(rewrite eq in op; exact op)
+      let op := @open_pattern _ P z E in
+      ltac:(rewrite eq in op; exact op) p
   | @branch_app_static _ A B y m U _ cont =>
     fun z eq =>
       let op := is_head (B:=B) U z _ cont (raise E) in
