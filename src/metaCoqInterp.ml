@@ -1,6 +1,25 @@
 open Constrs
 open Pp
 
+type mrun_arg_type =
+  | Program of (EConstr.types)
+  | GTactic
+
+type mrun_arg =
+  | StaticallyChecked of (mrun_arg_type * Globnames.global_reference)
+  | DynamicallyChecked of (Glob_term.closed_glob_constr)
+
+let ifTactic env sigma ty c =
+  let (sigma, gtactic) = MCTactics.mkGTactic env sigma in
+  let unitType = Constrs.CoqUnit.mkType in
+  let gtactic = EConstr.mkApp(EConstr.of_constr gtactic, [|unitType|]) in
+  let open Evarsolve in
+  let res = Munify.unify_evar_conv Names.full_transparent_state env sigma Reduction.CONV gtactic ty in
+  match res with
+  | Success sigma -> (true, sigma)
+  | _ -> (false, sigma)
+
+
 module MetaCoqRun = struct
   (** This module run the interpretation of a constr
   *)
@@ -15,16 +34,6 @@ module MetaCoqRun = struct
       with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (str "Different types")
     else
       (false, sigma)
-
-  let ifTactic env sigma ty c =
-    let (sigma, gtactic) = MCTactics.mkGTactic env sigma in
-    let unitType = Constrs.CoqUnit.mkType in
-    let gtactic = EConstr.mkApp(EConstr.of_constr gtactic, [|unitType|]) in
-    let open Evarsolve in
-    let res = Munify.unify_evar_conv Names.full_transparent_state env sigma Reduction.CONV gtactic ty in
-    match res with
-    | Success sigma -> (true, sigma)
-    | _ -> (false, sigma)
 
   (** Given a type concl and a term c, it checks that c has type:
       - [M concl]: then it returns [c]
@@ -42,8 +51,12 @@ module MetaCoqRun = struct
       else
         CErrors.user_err (str "Not a Mtactic")
 
-  let run env sigma concl evar c =
-    let (istactic, sigma, t) = pretypeT env sigma concl evar c in
+  let run env sigma concl evar istactic t =
+    let sigma, t = if istactic then
+        let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
+        (sigma, EConstr.mkApp(t, [|goal|]))
+      else sigma, t
+    in
     match Run.run (env, sigma) t with
     | Run.Val (sigma, v) ->
         let open Proofview in let open Proofview.Notations in
@@ -76,9 +89,10 @@ module MetaCoqRun = struct
       let env = env gl in
       let concl = concl gl in
       let sigma = sigma gl in
-      let evar = evar_of_goal gl in
-      let (sigma, c) = Constrintern.interp_open_constr env sigma t in
-      run env sigma concl (EConstr.of_constr evar) c
+      let evar = EConstr.of_constr (evar_of_goal gl) in
+      let (sigma, t) = Constrintern.interp_open_constr env sigma t in
+      let (istactic, sigma, t) = pretypeT env sigma concl evar t in
+      run env sigma concl evar istactic t
     end
 
 
@@ -100,9 +114,24 @@ module MetaCoqRun = struct
       let env = env gl in
       let concl = concl gl in
       let sigma = sigma gl in
-      let evar = evar_of_goal gl in
-      let sigma, t = understand env sigma t in
-      run env sigma concl (EConstr.of_constr evar) t
+      let evar = EConstr.of_constr (evar_of_goal gl) in
+      let (istactic, sigma, t) = match t with
+        | StaticallyChecked (Program ty, c) ->
+            begin
+              try
+                let sigma = Evarconv.the_conv_x_leq env concl ty sigma in
+                let sigma, t = EConstr.fresh_global env sigma c in
+                (false, sigma, t)
+              with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (str "Different types")
+            end
+        | StaticallyChecked (GTactic, c) ->
+            let sigma, t = EConstr.fresh_global env sigma c in
+            (true, sigma, t)
+        | DynamicallyChecked t ->
+            let sigma, t = understand env sigma t in
+            pretypeT env sigma concl evar t
+      in
+      run env sigma concl evar istactic t
     end
 
   let run_cmd t =
