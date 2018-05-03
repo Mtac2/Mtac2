@@ -90,9 +90,22 @@ Fixpoint pattern_map {A} {B : A -> Type} (g : goal) (y : A)
   | psort f => psort (fun s => pattern_map g y (f s))
   end.
 
+Definition branch_map {A} {B} (y : A) (g : goal) (b : branch gtactic A B y) :
+  branch M A (fun y => mlist (B y *m goal)) y :=
+  match b in branch _ A' _ y' return branch _ A' _ y' with
+  | branch_pattern p =>
+    branch_pattern (pattern_map g _ p)
+  | branch_app_static U ct cont =>
+    let cont := MTele.MTele_constmap_app (si:=Sorts.SType) Sorts.SProp (fun _ _ => _) ct cont g in
+    @branch_app_static _ _ _ _ _ U _ cont
+  | branch_forallP cont => branch_forallP (fun X Y => cont X Y g)
+  | branch_forallT cont => branch_forallT (fun X Y => cont X Y g)
+  end.
+
+
 Definition mmatch' {A P} (E : Exception) (y : A)
-    (ps : mlist (pattern gtactic A P y)) : gtactic (P y) := fun g =>
-  M.mmatch' E y (mmap (pattern_map g y) ps).
+    (ps : mlist (branch gtactic A P y)) : gtactic (P y) := fun g =>
+  M.mmatch' E y (mmap (branch_map y g) ps).
 
 Definition ret {A} (x : A) : gtactic A := fun g => M.ret [m:(m: x,g)].
 Definition idtac : tactic := ret tt.
@@ -411,7 +424,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g=>
 Definition destructn (n : nat) : tactic :=
   bind (introsn n) (fun _ g =>
     A <- M.evar Type;
-    @intro_base A _ (FreshFrom "tmp"%string) destruct g).
+    @intro_base A _ (FreshFromStr "tmp") destruct g).
 
 (** [apply t] applies theorem t to the current goal.
     It generates a subgoal for each hypothesis in the theorem.
@@ -963,7 +976,7 @@ Module notations.
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
       (@mmatch' _ (fun _ => _) M.NotCaught e
-                   (mapp ls%with_pattern [m:([? x] x => raise x)%pattern]))))
+                   (mapp ls%with_pattern [m:branch_pattern (pany (raise e))%pattern]))))
       (at level 200, a at level 100, ls at level 91, only parsing) : tactic_scope.
 
   Notation "t || u" := (or t u) : tactic_scope.
@@ -1073,9 +1086,9 @@ Module notations.
     (t1 &> S.last t2)
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
 
-
-  Notation "'dcase' v 'as' x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200) : tactic_scope.
-  Notation "'dcase' v 'as' A, x 'in' t" := (mmatch v with [? A x] @Dyn A x => t end) (at level 91, t at level 200) : tactic_scope.
+  Import MTele.TeleNotation.
+  Notation "'dcase' v 'as' A ',' x 'in' t" := (fun g => @M.decompose_app' _ (fun _ => _) [tele A (_:A)] UniMatchNoRed v (@Dyn) (fun A x => t g)) (at level 91, t at level 200) : tactic_scope.
+  Notation "'dcase' v 'as' x 'in' t" := (dcase v as _, x in t) (at level 91, t at level 200) : tactic_scope.
 
 End notations.
 

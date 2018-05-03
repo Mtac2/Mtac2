@@ -72,9 +72,9 @@ type 'a mconstr_head =
   | Mset_debug_exceptions : (arg_bool) mconstr_head
   | Mget_trace
   | Mset_trace : (arg_bool) mconstr_head
-  | Mdecompose_app' : (arg_type * arg_fun * arg_any * arg_any * arg_any * arg_any * arg_any) mconstr_head
-  | Mdecompose_forallT : (arg_type * arg_fun * arg_type * arg_any) mconstr_head
-  | Mdecompose_forallP : (arg_type * arg_fun * arg_type * arg_any) mconstr_head
+  | Mdecompose_app' : (arg_type * arg_fun * arg_any * arg_any * arg_any * arg_any * arg_any * arg_any) mconstr_head
+  | Mdecompose_forallT : (arg_fun * arg_type * arg_any * arg_any) mconstr_head
+  | Mdecompose_forallP : (arg_fun * arg_type * arg_any * arg_any) mconstr_head
   | Mdecompose_app'' : (arg_fun * arg_fun * arg_any * arg_any) mconstr_head
   | Mnew_timer : (arg_type * arg_any) mconstr_head
   | Mstart_timer : (arg_type * arg_any * arg_bool) mconstr_head
@@ -131,7 +131,7 @@ let num_args_of_mconstr (type a) (mh : a mconstr_head) =
   | Mset_debug_exceptions -> 1
   | Mget_trace -> 0
   | Mset_trace -> 1
-  | Mdecompose_app' -> 7
+  | Mdecompose_app' -> 8
   | Mdecompose_forallT -> 4
   | Mdecompose_forallP -> 4
   | Mdecompose_app'' -> 4
@@ -281,7 +281,7 @@ let isget_trace  = isconstr mkget_trace
 let mkset_trace = mkconstr "set_trace"
 let isset_trace  = isconstr mkset_trace
 
-let mkdecompose_app = mkconstr "decompose_app'"
+let mkdecompose_app = mkconstr "is_head"
 let isdecompose_app = isconstr mkdecompose_app
 
 let mkdecompose_forallT = mkconstr "decompose_forallT"
@@ -541,7 +541,7 @@ let mconstr_of (type a) args (h : a mconstr_head) =
   | Mset_trace ->
       MConstr (Mset_trace, (args 0))
   | Mdecompose_app' ->
-      MConstr (Mdecompose_app', (args 0, args 1, args 2, args 3, args 4, args 5, args 6))
+      MConstr (Mdecompose_app', (args 0, args 1, args 2, args 3, args 4, args 5, args 6, args 7))
   | Mdecompose_forallT ->
       MConstr (Mdecompose_forallT, (args 0, args 1, args 2, args 3))
   | Mdecompose_forallP ->

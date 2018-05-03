@@ -241,22 +241,26 @@ Definition get_trace: t bool.
 Definition set_trace: bool -> t unit.
   make. Qed.
 
-(** [decompose_app' uni a (h u .. w) (fun x .. z => t)] executes
-    [t[i..k/x..z]] iff [a] is [H u' .. w' i .. k]
-    where [u' .. w'] unify with [u .. w] according to the
-    unification stragety [uni].
+(** [is_head uni a (h u .. w) (fun x .. z => t)] executes
+    1. [t[i..k/x..z]] if [a] is [H u' .. w' i .. k]
+       where [u' .. w'] unify with [u .. w] according to the
+       unification stragety [uni]
+    2. [f] if [a] is any other term or any of [u' .. w'] do not
+       unify with the respective given candidate in [u .. w].
  *)
-Definition decompose_app' :
-  forall {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m),
-    MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C) ->
+Definition is_head :
+  forall {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m)
+         (success : MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C))
+         (failure: t (B a)),
     t (B a).
   make. Qed.
 
 (** [decompose_forallT T (fun A B => t)] executes [t[A'/A, B'/B]] iff T is
     [forall a : A, B']. *)
 Definition decompose_forallT :
-  forall {A : Type} {B : Type -> Type} (T : Type),
-    (forall (A : Type) (b : A -> Type), t (B (forall a : A, b a))) ->
+  forall {B : Type -> Type} (T : Type)
+         (success : forall (A : Type) (b : A -> Type), t (B (forall a : A, b a)))
+         (failure : t (B T)),
     t (B T).
   make. Qed.
 
@@ -266,8 +270,9 @@ Definition decompose_forallT :
     This is a specialized version of [decompose_forallT] that makes sure to not
     insert any casts from [Prop] to [Type]. *)
 Definition decompose_forallP :
-  forall {A : Type} {B : Prop -> Type} (P : Prop),
-    (forall (A : Type) (b : A -> Prop), t (B (forall a : A, b a))) ->
+  forall {B : Prop -> Type} (P : Prop)
+         (success : forall (A : Type) (b : A -> Prop), t (B (forall a : A, b a)))
+         (failure : t (B P)),
     t (B P).
   make. Qed.
 
@@ -327,6 +332,15 @@ Definition print_term {A} (x : A) : t unit :=
 Definition dbg_term {A} (s: string) (x : A) : t unit :=
   bind (pretty_print x) (fun t=> print (s++t)).
 
+
+
+Definition decompose_app'
+           {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m)
+           (success : MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C)) :
+  t (B a) :=
+  is_head uni a C success (raise WrongTerm).
+
+
 Module monad_notations.
   Bind Scope M_scope with t.
   Delimit Scope M_scope with MC.
@@ -385,11 +399,32 @@ Fixpoint open_pattern {A P y} (E : Exception) (p : pattern t A P y) : t (P y) :=
       )
   end.
 
-Fixpoint mmatch' {A:Type} {P:A->Type} (E : Exception) (y : A) (ps : mlist (pattern t A P y)) : t (P y) :=
+Definition open_branch {A P y} (E : Exception) (b : branch t A P y) : t (P y) :=
+  match b in branch _ A' P y' return forall z: A', z =m= y' -> t (P y') with
+  | @branch_pattern _ A P _ p =>
+    fun z eq =>
+      let op := @open_pattern _ P z E in
+      ltac:(rewrite eq in op; exact op) p
+  | @branch_app_static _ A B y m U _ cont =>
+    fun z eq =>
+      let op := is_head (B:=B) U z _ cont (raise E) in
+      ltac:(rewrite eq in op; exact op)
+  | branch_forallT cont =>
+    fun z eq =>
+      let op := decompose_forallT z cont (raise E) in
+      ltac:(rewrite eq in op; exact op)
+  | branch_forallP cont =>
+    fun z eq =>
+      let op := decompose_forallP z cont (raise E) in
+      ltac:(rewrite eq in op; exact op)
+  (* | _ => fun _ _ => M.failwith "not implemented" *)
+  end y meq_refl.
+
+Fixpoint mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist (branch t A P y)) : t (P y) :=
   match ps with
   | [m:] => raise NoPatternMatches
   | p :m: ps' =>
-    mtry' (open_pattern E p) (fun e =>
+    mtry' (open_branch (y:=y) E p) (fun e =>
       bind (unify e E UniMatchNoRed) (fun b=>
       if b then mmatch' E y ps' else raise e))
   end.
@@ -447,18 +482,21 @@ Module notations_pre.
   Notation "'mmatch' x 'as' y 'return' 'M' p ls" :=
     (@mmatch' _ (fun y => p%type) DoesNotMatch x ls%with_pattern)
     (at level 200, ls at level 91) : M_scope.
+  Notation "'mmatch' x 'in' T 'as' y 'return' 'M' p ls" :=
+    (@mmatch' _ (fun y : T => p%type) DoesNotMatch x ls%with_pattern)
+    (at level 200, ls at level 91) : M_scope.
 
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
       (@mmatch' _ (fun _ => _) NotCaught e
-                   (mapp ls%with_pattern [m:([? x] x => raise x)%pattern]))))
+                   (mapp ls%with_pattern [m:branch_pattern (pany (raise e))%pattern]))))
       (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 
   Import TeleNotation.
   Notation "'dcase' v 'as' A ',' x 'in' t" :=
-    (@M.decompose_app' _ (fun _ => _) [tele A (_:A)] UniMatchNoRed v (@Dyn) (fun A x => t)) (at level 91, t at level 200).
+    (@M.decompose_app' _ (fun _ => _) [tele A (_:A)] UniMatchNoRed v (@Dyn) (fun A x => t)) (at level 91, t at level 200) : M_scope.
   Notation "'dcase' v 'as' x 'in' t" :=
-    (dcase v as _ , x in t) (at level 91, t at level 200).
+    (dcase v as _ , x in t) (at level 91, t at level 200) : M_scope.
 End notations_pre.
 
 Import notations_pre.

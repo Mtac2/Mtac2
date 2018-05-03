@@ -140,7 +140,7 @@ Qed.
     compute in mc.
     pose (c := M.eval mc).
     unfold M.eval in c.
-    mrun (dcase c as e in exact e).
+    mrun (let c := reduce (RedOneStep [rl: RedDelta]) c in dcase c as e in exact e).
   Qed.
 
 Notation "'mpose' ( x := t )" := (r <- t; cpose r (fun x=>idtac))
@@ -185,7 +185,7 @@ MProof.
   clear return_type.
   (* TODO: figure out why `unfold` above doesn't work anymore. *)
   (* clear rG. *)
-  dcase c as c in exact c.
+  let c := reduce (RedOneStep [rl: RedDelta]) c in dcase c as c in exact c.
 Abort.
 
 
@@ -225,7 +225,7 @@ Proof.
   (* unfold eval in c'. *)
   pose (c := M.eval mc).
   unfold M.eval in c.
-  mrun (dcase c as c in exact c).
+  mrun (let c := reduce (RedOneStep [rl: RedDelta]) c in dcase c as c in exact c).
 Qed.
 End VectorExample.
 
