@@ -16,20 +16,20 @@ Arguments tt_lt_trans {_ _ _}.
 Import TT.
 Import TT.notations.
 
-Goal 1 < 3 -> 3 < 4 -> 1 < 4.
-MProof.
-  intros.
-  compl tt_lt_trans [t: assumption | assumption ].
-Qed.
+(* Goal 1 < 3 -> 3 < 4 -> 1 < 4. *)
+(* MProof. *)
+(*   intros. *)
+(*   compl tt_lt_trans [t: tassumption | tassumption ]. *)
+(* Qed. *)
 
-Goal 1 < 3 -> 3 < 4 -> 1 < 4.
-MProof.
-  intros.
-  compl tt_lt_trans [t: Muse T.assumption |  assumption].
-Qed.
+(* Goal 1 < 3 -> 3 < 4 -> 1 < 4. *)
+(* MProof. *)
+(*   intros. *)
+(*   compl tt_lt_trans [t: Muse T.assumption |  assumption]. *)
+(* Qed. *)
 
-Goal 1 < 3 -> 3 < 4 -> 1 < 4.
-MProof.
-  intros.
-  to_tactic tt_lt_trans &> T.try T.assumption.
-Qed.
+(* Goal 1 < 3 -> 3 < 4 -> 1 < 4. *)
+(* MProof. *)
+(*   intros. *)
+(*   to_tactic tt_lt_trans &> T.try T.assumption. *)
+(* Qed. *)

@@ -132,56 +132,17 @@ Module Mtac_V4.
   Import TT.notations.
   Definition TautoFail : Exception. constructor. Qed.
 
-  Import Tactics.T.notations.
+  Import M.notations.
   Import ProdNotations.
-  Definition tintro {A P} (f: forall (x:A), TT.ttac (P x))
-  : TT.ttac (forall (x:A), P x) :=
-  (M.nu (FreshFrom f) mNone (fun x=>
-    ''(m: v, gs) <- f x;
-    a <- M.abs_fun x v;
-    b <- T.close_goals x (mmap (fun g=>(m: tt, g)) gs);
-    let b := mmap msnd b in
-    M.ret (m: a, b)))%MC.
-  Definition pass {A} := TT.lift (M.evar A).
-
-Definition texists {A} {Q:A->Prop} : ttac (exists (x:A), Q x) :=
-  (e <- M.evar A;
-  pf <- M.evar (Q e);
-  M.ret (m: ex_intro _ e pf, [m: Goal SProp pf]))%MC.
-
-  Mtac Do New Exception NotFound.
-
-  Definition find {A:Type} :=
-    (mfix1 f (l : mlist Hyp) : M A :=
-      mmatch l with
-      | [? x d (l': mlist Hyp)] (@ahyp A x d) :m: l' =u> M.ret x
-      | [? ah l'] ah :m: l' =n> f l'
-      | _ => M.raise NotFound
-      end)%MC.
-
-Definition tassumption {A:Type} : ttac A :=
-  lift (hyps >>= find).
-
-Definition tor {A:Type} (t u : ttac A) : ttac A := (mtry r <- t; M.ret r with _ => r <- u; M.ret r end)%MC.
-Require Import Strings.String.
-Definition ucomp1 {A B} (t: ttac A) (u: ttac B) : ttac A :=
-  (''(m: v1, gls1) <- t;
-  match gls1 with
-  | [m: gl] =>
-    ''(m: v2, gls) <- u;
-    T.exact v2 gl;;
-    M.ret (m: v1, gls)
-  | _ => mfail "more than a goal"%string
-  end)%MC.
 
   Program Definition solve_tauto : forall {P:Prop}, ttac P :=
-    (mfix1 solve_tauto (P : Prop) : M _ :=
+    mfix1 solve_tauto (P : Prop) : M _ :=
       mmatch P in Prop as P' return M (P' *m _) with
       | True => apply I
       | [? Q1 Q2] Q1 /\ Q2 =>
         apply (@conj _ _)
-        <**> solve_tauto Q1
-        <**> solve_tauto Q2
+          <**> solve_tauto Q1
+          <**> solve_tauto Q2
       | [? Q1 Q2] Q1 \/ Q2 =>
         mtry
           ''(m: r, gs) <- apply (@or_introl _ _) <**> solve_tauto Q1;
@@ -201,23 +162,18 @@ Definition ucomp1 {A B} (t: ttac A) (u: ttac B) : ttac A :=
           ret (m: r, Goal SType x :m: gs)
         else
           ret (m: r, gs)
-        (* P <- M.evar Prop; *)
-        (* ucomp1 texists (solve_tauto P) *)
-      | _ => tor tassumption (x <- evar P; ret (m: x, [m: Goal SProp x]))
-      end
-    )%MC.
+      | _ => tassumption ||t (x <- evar P; ret (m: x, [m: Goal SProp x]))
+      end.
 
  Ltac solve_tauto := mrun solve_tauto.
-Mtac Do Unset_Trace.
   Goal 5 = 7 -> exists x, x = 7.
   MProof.
-    (r <- solve_tauto; M.ret (mfst r))%MC.
+    r <- solve_tauto; M.ret (mfst r).
   Qed.
 
   Goal exists x, x = 7 -> x = 7.
   MProof.
-    (r <- ucomp1 solve_tauto (apply 7); M.ret (mfst r))%MC.
+    lower (solve_tauto &** apply 1).
   Qed.
-
 
 End Mtac_V4.
