@@ -126,6 +126,8 @@ End Mtac_V3.
 
 
 Module Mtac_V4.
+  From Mtac2 Require Import Sorts.
+  Import Sorts.
   Import TT.
   Import TT.notations.
   Definition TautoFail : Exception. constructor. Qed.
@@ -145,7 +147,7 @@ Module Mtac_V4.
 Definition texists {A} {Q:A->Prop} : ttac (exists (x:A), Q x) :=
   (e <- M.evar A;
   pf <- M.evar (Q e);
-  M.ret (m: ex_intro _ e pf, [m: Goal Sorts.Sorts.SProp pf]))%MC.
+  M.ret (m: ex_intro _ e pf, [m: Goal SProp pf]))%MC.
 
   Mtac Do New Exception NotFound.
 
@@ -162,7 +164,7 @@ Definition tassumption {A:Type} : ttac A :=
 
 Definition tor {A:Type} (t u : ttac A) : ttac A := (mtry r <- t; M.ret r with _ => r <- u; M.ret r end)%MC.
 Require Import Strings.String.
-Definition ucomp1 {A B:Prop} (t: ttac A) (u: ttac B) : ttac A :=
+Definition ucomp1 {A B} (t: ttac A) (u: ttac B) : ttac A :=
   (''(m: v1, gls1) <- t;
   match gls1 with
   | [m: gl] =>
@@ -182,19 +184,26 @@ Definition ucomp1 {A B:Prop} (t: ttac A) (u: ttac B) : ttac A :=
         <**> solve_tauto Q2
       | [? Q1 Q2] Q1 \/ Q2 =>
         mtry
-          apply (@or_introl _ _) <**> solve_tauto Q1
-        with
-        | TautoFail =>
+          ''(m: r, gs) <- apply (@or_introl _ _) <**> solve_tauto Q1;
+          match gs with
+          | [m:] => ret (m: r, [m:])
+          | _ => raise TautoFail
+          end
+        with TautoFail =>
           apply (@or_intror _ _) <**> solve_tauto Q2
         end
       | [? (Q1 Q2 : Prop)] Q1 -> Q2 =>
         tintro (fun x:Q1=> solve_tauto Q2)
       | [? X (Q : X -> Prop)] (exists x : X, Q x) =>
         x <- M.evar X;
-        apply (@ex_intro _ _ _) <**> solve_tauto (Q x)
+        ''(m: r, gs) <- apply (@ex_intro _ _ _) <**> solve_tauto (Q x);
+        mif is_evar x then
+          ret (m: r, Goal SType x :m: gs)
+        else
+          ret (m: r, gs)
         (* P <- M.evar Prop; *)
         (* ucomp1 texists (solve_tauto P) *)
-      | _ => tor tassumption (raise TautoFail)
+      | _ => tor tassumption (x <- evar P; ret (m: x, [m: Goal SProp x]))
       end
     )%MC.
 
@@ -204,4 +213,11 @@ Mtac Do Unset_Trace.
   MProof.
     (r <- solve_tauto; M.ret (mfst r))%MC.
   Qed.
+
+  Goal exists x, x = 7 -> x = 7.
+  MProof.
+    (r <- ucomp1 solve_tauto (apply 7); M.ret (mfst r))%MC.
+  Qed.
+
+
 End Mtac_V4.
