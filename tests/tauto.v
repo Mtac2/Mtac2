@@ -135,6 +135,13 @@ Module Mtac_V4.
   Import M.notations.
   Import ProdNotations.
 
+  Definition promote_uninst_evar {X} {A} (x : X) (a : A *m mlist goal) : ttac (A) :=
+    let '(m: a, gs) := a in
+    mif is_evar x then ret (m: a, Goal SType x :m: gs) else ret (m: a, gs).
+
+  Definition has_open_subgoals {A} (a : A *m mlist goal) : M bool :=
+    ret (match msnd a with [m:] => true | _ => false end).
+
   Program Definition solve_tauto : forall {P:Prop}, ttac P :=
     mfix1 solve_tauto (P : Prop) : M _ :=
       mmatch P in Prop as P' return M (P' *m _) with
@@ -145,11 +152,8 @@ Module Mtac_V4.
           <**> solve_tauto Q2
       | [? Q1 Q2] Q1 \/ Q2 =>
         mtry
-          ''(m: r, gs) <- apply (@or_introl _ _) <**> solve_tauto Q1;
-          match gs with
-          | [m:] => ret (m: r, [m:])
-          | _ => raise TautoFail
-          end
+          q1 <- apply (@or_introl _ _) <**> solve_tauto Q1;
+          mif has_open_subgoals q1 then raise TautoFail else ret q1
         with TautoFail =>
           apply (@or_intror _ _) <**> solve_tauto Q2
         end
@@ -157,12 +161,9 @@ Module Mtac_V4.
         tintro (fun x:Q1=> solve_tauto Q2)
       | [? X (Q : X -> Prop)] (exists x : X, Q x) =>
         x <- M.evar X;
-        ''(m: r, gs) <- apply (@ex_intro _ _ _) <**> solve_tauto (Q x);
-        mif is_evar x then
-          ret (m: r, Goal SType x :m: gs)
-        else
-          ret (m: r, gs)
-      | _ => tassumption ||t (x <- evar P; ret (m: x, [m: Goal SProp x]))
+        q <- apply (@ex_intro _ _ _) <**> solve_tauto (Q x);
+        promote_uninst_evar x q
+      | _ => TT.use (T.try T.assumption)
       end.
 
  Ltac solve_tauto := mrun solve_tauto.
@@ -175,5 +176,10 @@ Module Mtac_V4.
   MProof.
     lower (solve_tauto &** apply 1).
   Qed.
+
+  Goal exists x : nat, x = x /\ True.
+  MProof.
+    lower (solve_tauto).
+  Abort.
 
 End Mtac_V4.
