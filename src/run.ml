@@ -882,12 +882,20 @@ let koft sigma t =
   | CoFix _ -> lf "tmCoFix"
   | _ -> failwith "unsupported"
 
+type delta_stack_name =
+  | Constant of Names.Constant.t
+  | String of string
+
+type delta_stack_entry = { name: delta_stack_name; entry_time: float; }
+type delta_stack = delta_stack_entry list list
+
 type ctxt = {env: Environ.env; renv: fconstr; sigma: Evd.evar_map; nus: int;
              stack: CClosure.stack;
+             delta_stack: delta_stack;
             }
 
 type vm = Code of fconstr | Ret of fconstr | Fail of fconstr
-        | Bind of fconstr | Try of (Evd.evar_map * stack * fconstr)
+        | Bind of fconstr | Try of (Evd.evar_map * stack * delta_stack * fconstr)
         | Nu of (Names.Id.t * Environ.env * fconstr)
         (* env and renv prior to remove, and if a nu was removed *)
         | Rem of (Environ.env * fconstr * bool)
@@ -943,6 +951,39 @@ let pop_args num stack =
   else if List.length argss == 1 then (List.hd argss, stack)
   else (Array.concat argss, stack)
 
+let delta_stack_name_to_string name =
+  match name with
+  | Constant c -> Names.Constant.to_string c
+  | String str -> str
+
+let report_deltas =
+  match Sys.getenv "MTAC_TRACE_FILE" with
+  | fname ->
+      let report_file = open_out_gen [Open_append; Open_creat] 0o640 fname in
+      let report_deltas deltas delta_stack =
+        let time = Unix.gettimeofday () in
+        let fixed_deltas = List.flatten delta_stack in
+        let rec report deltas =
+          match deltas with
+          | {name; entry_time} :: deltas ->
+              let open Pp in
+              let str = Pp.string_of_ppcmds(
+                fold_left (fun (pp) {name; _} -> str (delta_stack_name_to_string name) ++ str ";" ++ pp) (Pp.mt ()) (List.append deltas fixed_deltas)
+                ++ str (delta_stack_name_to_string name)
+                ++ str " "
+                ++ str (Printf.sprintf "%f" (((time -. entry_time) *. 10000.0 )))
+                ++ str "\n"
+              )
+              in
+              Printf.fprintf report_file "%s" str;
+              (* report deltas *)
+          | [] -> ()
+        in
+        report deltas; ()
+      in
+      report_deltas
+  | exception Not_found ->
+      fun _ _ -> ()
 
 let rec run' ctxt (vms : vm list) =
   let open MConstr in
@@ -955,10 +996,21 @@ let rec run' ctxt (vms : vm list) =
   let vm = hd vms in
   let vms = tl vms in
   let ctxt_nu1 (_, env, renv) = {ctxt with env; renv; nus = ctxt.nus-1} in
+  let run_and_deltas ?is_return:(is_return=true) ctxt vms delta_stack =
+    (match delta_stack with
+     | deltas::delta_stack ->
+         report_deltas deltas delta_stack;
+         let ctxt = if is_return then {ctxt with delta_stack} else ctxt in
+         (run'[@tailcall]) ctxt vms
+     | [] -> raise (Failure "Invariant broken: delta stack is empty. Please report.")
+    )
+  in
   match vm, vms with
   | Ret c, [] -> return sigma c ctxt.stack
-  | Ret c, (Bind b :: vms) -> (run'[@tailcall]) {ctxt with stack=Zapp [|c|]::stack} (Code b :: vms)
-  | Ret c, (Try (_, _, b) :: vms) -> (run'[@tailcall]) ctxt (Ret c :: vms)
+  | Ret c, (Bind b :: vms) ->
+      run_and_deltas {ctxt with stack=Zapp [|c|]::stack} (Code b :: vms) ctxt.delta_stack
+  | Ret c, (Try (_, _, _, b) :: vms) ->
+      (run'[@tailcall]) ctxt (Ret c :: vms)
   | Ret c, Nu (name, _, _ as p) :: vms -> (* why the sigma'? *)
       if occur_var env sigma name (to_econstr c) then
         let (sigma, e) = E.mkVarAppearsInValue sigma env (mkVar name) in
@@ -969,11 +1021,11 @@ let rec run' ctxt (vms : vm list) =
   | Ret c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Ret c :: vms)
 
   | Fail c, [] -> fail sigma c ctxt.stack
-  | Fail c, (Bind _ :: vms) -> (run'[@tailcall]) ctxt (Fail c :: vms)
-  | Fail c, (Try (sigma, stack, b) :: vms) ->
+  | Fail c, (Bind _ :: vms) -> run_and_deltas ctxt (Fail c :: vms) ctxt.delta_stack
+  | Fail c, (Try (sigma, stack, delta_stack, b) :: vms) ->
       let sigma = Evd.set_universe_context sigma (Evd.evar_universe_context ctxt.sigma) in
       let (sigma, c) = check_evars_exception ctxt.sigma sigma env (to_econstr c) in
-      (run'[@tailcall]) {ctxt with sigma; stack=Zapp [|of_econstr c|] :: stack} (Code b::vms)
+      run_and_deltas ?is_return:(Some false) {ctxt with sigma; stack=Zapp [|of_econstr c|] :: stack; delta_stack} (Code b::vms) ctxt.delta_stack
   | Fail c, (Nu p :: vms) -> (run'[@tailcall]) (ctxt_nu1 p) (Fail c :: vms)
   | Fail c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Ret c :: vms)
 
@@ -987,11 +1039,15 @@ let rec run' ctxt (vms : vm list) =
         (* let cont ctxt h args = (run'[@tailcall]) {ctxt with stack=Zapp args::stack} (Code h :: vms) in *)
 
         let evars ev = safe_evar_value sigma ev in
-        let infos = CClosure.create_clos_infos ~evars CClosure.allnolet env in
+        let infos = CClosure.create_clos_infos ~evars CClosure.betaiota env in
 
+
+        let entry_time = Unix.gettimeofday () in
         let reduced_term, stack = reduce_noshare infos t stack
         (* RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t *)
         in
+
+        report_deltas ({name = String "prim:interp"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
 
         (* filter out Zupdate nodes in stack because PMP said so :) *)
         let stack = List.filter (function | Zupdate _ -> false | _ -> true) stack in
@@ -1036,7 +1092,9 @@ let rec run' ctxt (vms : vm list) =
               let red = Array.get args' 0 in
               let term = Array.get args' 2 in
               (* print_constr sigma env term; *)
+              let entry_time = Unix.gettimeofday () in
               let ob = reduce sigma env (to_econstr red) (to_econstr term) in
+              report_deltas ({name = String "prim:let-reduce"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
               match ob with
               | Some b ->
                   (* print_constr sigma env b; *)
@@ -1055,7 +1113,7 @@ let rec run' ctxt (vms : vm list) =
               let e = (Esubst.subs_cons([|v|],e)) in
               (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
 
-        | FFlex (ConstKey (hc, _)) ->
+        | FFlex (ConstKey ((hc, _) as c)) ->
             begin
               (* print_constr sigma env h; *)
               match MConstr.mconstr_head_of hc with
@@ -1073,7 +1131,17 @@ let rec run' ctxt (vms : vm list) =
 
                   let hf = reduced_term in
 
-                  if !trace then print_constr sigma env (EConstr.of_constr (CClosure.term_of_fconstr (mk_red (FApp (reduced_term,args)))));
+                  if !trace then
+                    begin
+                      let open Pp in
+                      Feedback.msg_debug (
+                        Pp.str "\n" ++
+                        Pp.prlist (fun deltas ->
+                          Pp.prlist (fun delta -> Pp.str (delta_stack_name_to_string delta.name) ++ Pp.str ", " ) deltas
+                          ++ Pp.str ";\n"
+                        ) ctxt.delta_stack);
+                      print_constr sigma env (EConstr.of_constr (CClosure.term_of_fconstr (mk_red (FApp (reduced_term,args)))))
+                    end;
 
                   let ctxt = {ctxt with stack} in
 
@@ -1094,14 +1162,37 @@ let rec run' ctxt (vms : vm list) =
                   (* let ereturn s fc = return s (of_econstr fc) in *)
                   (* let efail (sigma, fc) = fail (sigma, of_econstr fc) in *)
 
+                  let entry_time = Unix.gettimeofday () in
+                  let delta_stack_before = ctxt.delta_stack in
+                  let run' ?record_prim:(record_prim=true) ctxt vms =
+                    let MHead mh = mh in
+                    if record_prim then
+                      (match delta_stack_before with
+                       | deltas :: delta_stack ->
+                           report_deltas ({name = String ("prim:"^mconstr_to_string mh); entry_time} :: deltas) delta_stack;
+                           (run'[@tailcall]) ctxt vms
+                      )
+                    else
+                      (run'[@tailcall]) ctxt vms
+                  in
+
+                  let return ?new_env:(new_env=env) ?record_prim sigma c = (run'[@tailcall]) ?record_prim {ctxt with sigma; env=new_env} (Ret c :: vms) in
+                  let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
+
+                  (* wrappers for return and fail to conveniently return/fail with EConstrs *)
+                  let ereturn ?new_env s fc = return ?new_env:new_env s (of_econstr fc) in
+                  let efail (sigma, fc) = fail (sigma, of_econstr fc) in
+
+
                   (* Array.iter (fun x -> print_constr sigma ctxt.env (to_econstr x)) args; *)
                   begin
                     match mc with
-                    | MConstr (Mret, (_, t)) -> return sigma t
+                    | MConstr (Mret, (_, t)) ->
+                        return ?record_prim:(Some false) sigma t
                     | MConstr (Mbind, (_, _, t, f)) ->
-                        (run'[@tailcall]) ctxt (Code t :: Bind f :: vms)
+                        (run'[@tailcall]) ?record_prim:(Some false) {ctxt with delta_stack=[]::ctxt.delta_stack} (Code t :: Bind f :: vms)
                     | MConstr (Mmtry', (_, t, f)) ->
-                        (run'[@tailcall]) ctxt (Code t :: Try (sigma, stack, f) :: vms)
+                        (run'[@tailcall]) ctxt (Code t :: Try (sigma, stack, ctxt.delta_stack, f) :: vms)
                     | MConstr (Mraise', (_, t)) -> fail (sigma, t)
                     | MConstr (Mfix1, ((a), b, f, (x))) ->
                         run_fix ctxt vms hf [|a|] b f [|x|]
@@ -1134,7 +1225,7 @@ let rec run' ctxt (vms : vm list) =
                                   let ot = CoqOption.from_coq sigma env (to_econstr ot) in
                                   let env' = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
                                   let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
-                                  (run'[@tailcall]) {env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
+                                  (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
                                     (Code f :: Nu (name, env, ctxt.renv) :: vms)
                                 end
                           | None -> efail (Exceptions.mkWrongTerm sigma env s)
@@ -1535,10 +1626,38 @@ let rec run' ctxt (vms : vm list) =
                         ereturn sigma (koft sigma (to_econstr t))
                   end
               | exception Not_found ->
-                  let h = EConstr.mkConst hc in
-                  efail (E.mkStuckTerm sigma env h)
+                  (
+                    let entry_time = Unix.gettimeofday () in
+                    let o = ref_value_cache infos (ConstKey c) in
+                    report_deltas ({name = String "prim:const-delta"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
+                    match o with
+                      Some v ->
+                        let time = Unix.gettimeofday () in
+                        let deltas = List.hd ctxt.delta_stack in
+                        let delta_stack = List.tl ctxt.delta_stack in
+                        (run'[@taillcall]) {ctxt with delta_stack=({name = Constant hc; entry_time = time} :: deltas)::delta_stack} (Code v :: vms)
+                    | None ->
+                        (* (let open Pp in
+                         * Feedback.msg_info (Pp.str "ConstKey " ++ print_constr_env ctxt.env ctxt.sigma (to_econstr t))); *)
+                        let h = EConstr.mkConst hc in
+                        efail (E.mkStuckTerm sigma env h)
+                  )
             end
+        | FFlex(k) ->
+            (
+              let entry_time = Unix.gettimeofday () in
+              let o = ref_value_cache infos (k) in
+              report_deltas ({name = String "prim:const-delta"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
+              match o with
+                Some v ->
+                  (run'[@taillcall]) ctxt (Code v :: vms)
+              | None ->
+                  (* let open Pp in
+                   * Feedback.msg_info (Pp.str "FFlex " ++ print_constr_env ctxt.env ctxt.sigma (to_econstr t)); *)
+                  efail (E.mkStuckTerm sigma env (to_econstr t)))
         | _ ->
+            (* let open Pp in
+             * Feedback.msg_info (Pp.str "outer " ++ print_constr_env ctxt.env ctxt.sigma (to_econstr t)); *)
             efail (E.mkStuckTerm sigma env (to_econstr reduced_term))
       end
 (* h is the mfix operator, a is an array of types of the arguments, b is the
@@ -1666,7 +1785,7 @@ let run (env0, sigma) t : data =
   let t = multi_subst sigma subs t in
   let t = CClosure.inject (EConstr.Unsafe.to_constr t) in
   let (sigma, renv) = build_hypotheses sigma env in
-  match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure.empty_stack} [Code t] with
+  match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure.empty_stack; delta_stack = [[]]} [Code t] with
   | Err (sigma', v, _) ->
       (* let v = Vars.replace_vars vsubs v in *)
       let v = multi_subst_inv sigma' subs (to_econstr v) in

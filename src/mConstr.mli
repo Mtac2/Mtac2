@@ -83,5 +83,6 @@ and mhead = | MHead : 'a mconstr_head -> mhead
 and mconstr = | MConstr : 'a mconstr_head * 'a -> mconstr
 
 val num_args_of_mconstr : 'a mconstr_head -> int
+val mconstr_to_string : 'a mconstr_head -> string
 val mconstr_head_of : Names.constant -> mhead
 val mconstr_of : (int -> CClosure.fconstr) -> 'a mconstr_head -> mconstr

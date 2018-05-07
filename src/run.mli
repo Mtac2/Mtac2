@@ -26,10 +26,17 @@ end
 
 (** DEBUG **)
 
-type ctxt = {env: Environ.env; renv: CClosure.fconstr; sigma: Evd.evar_map; nus: int; stack: CClosure.stack}
+type delta_stack_name =
+  | Constant of Names.Constant.t
+  | String of string
+
+type delta_stack_entry = { name: delta_stack_name; entry_time: float; }
+type delta_stack = delta_stack_entry list list
+
+type ctxt = {env: Environ.env; renv: CClosure.fconstr; sigma: Evd.evar_map; nus: int; stack: CClosure.stack; delta_stack: delta_stack}
 
 type vm = Code of CClosure.fconstr | Ret of CClosure.fconstr | Fail of CClosure.fconstr
-        | Bind of CClosure.fconstr | Try of (Evd.evar_map * CClosure.stack * CClosure.fconstr)
+        | Bind of CClosure.fconstr | Try of (Evd.evar_map * CClosure.stack * delta_stack * CClosure.fconstr)
         | Nu of (Names.Id.t * Environ.env * CClosure.fconstr)
         | Rem of (Environ.env * CClosure.fconstr * bool)
 
