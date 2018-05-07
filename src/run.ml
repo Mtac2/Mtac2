@@ -1053,9 +1053,8 @@ let rec run' ctxt (vms : vm list) =
 
         | FFlex (ConstKey (hc, _)) ->
             begin
-              let h = EConstr.mkConst hc in
               (* print_constr sigma env h; *)
-              match MConstr.mconstr_head_of sigma h with
+              match MConstr.mconstr_head_of hc with
               | mh ->
                   let num_args =
                     (match mh with MHead mh ->
@@ -1524,6 +1523,7 @@ let rec run' ctxt (vms : vm list) =
                         ereturn sigma (koft sigma (to_econstr t))
                   end
               | exception Not_found ->
+                  let h = EConstr.mkConst hc in
                   efail (E.mkStuckTerm sigma env h)
             end
         | _ ->
