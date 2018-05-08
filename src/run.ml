@@ -956,12 +956,15 @@ let delta_stack_name_to_string name =
   | Constant c -> Names.Constant.to_string c
   | String str -> str
 
-let report_deltas =
+
+
+let delta_traces = ref ([])
+
+let report_deltas, record_deltas =
   match Sys.getenv "MTAC_TRACE_FILE" with
   | fname ->
       let report_file = open_out_gen [Open_append; Open_creat] 0o640 fname in
-      let report_deltas deltas delta_stack =
-        let time = Unix.gettimeofday () in
+      let report_deltas deltas delta_stack time =
         let fixed_deltas = List.flatten delta_stack in
         let rec report deltas =
           match deltas with
@@ -981,11 +984,19 @@ let report_deltas =
         in
         report deltas; ()
       in
-      report_deltas
+      let record_trace deltas delta_stack =
+        let time = Unix.gettimeofday () in
+        delta_traces := (deltas, delta_stack, time) :: !delta_traces
+      in
+      (fun () -> List.iter (fun (deltas, delta_stack, time) -> report_deltas deltas delta_stack time) !delta_traces; delta_traces := []),
+      record_trace
   | exception Not_found ->
+      (fun () -> ()),
       fun _ _ -> ()
 
+
 let rec run' ctxt (vms : vm list) =
+  let entry_time = Unix.gettimeofday () in
   let open MConstr in
   let sigma, env, stack = ctxt.sigma, ctxt.env, ctxt.stack in
   (* if !trace then begin
@@ -999,14 +1010,14 @@ let rec run' ctxt (vms : vm list) =
   let run_and_deltas ?is_return:(is_return=true) ctxt vms delta_stack =
     (match delta_stack with
      | deltas::delta_stack ->
-         report_deltas deltas delta_stack;
+         record_deltas deltas delta_stack;
          let ctxt = if is_return then {ctxt with delta_stack} else ctxt in
          (run'[@tailcall]) ctxt vms
      | [] -> raise (Failure "Invariant broken: delta stack is empty. Please report.")
     )
   in
   match vm, vms with
-  | Ret c, [] -> return sigma c ctxt.stack
+  | Ret c, [] -> report_deltas (); return sigma c ctxt.stack
   | Ret c, (Bind b :: vms) ->
       run_and_deltas {ctxt with stack=Zapp [|c|]::stack} (Code b :: vms) ctxt.delta_stack
   | Ret c, (Try (_, _, _, b) :: vms) ->
@@ -1042,15 +1053,26 @@ let rec run' ctxt (vms : vm list) =
         let infos = CClosure.create_clos_infos ~evars CClosure.betaiota env in
 
 
-        let entry_time = Unix.gettimeofday () in
-        let reduced_term, stack = reduce_noshare infos t stack
-        (* RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t *)
+        let reduced_term, stack =
+          let entry_time = Unix.gettimeofday () in
+          let res = reduce_noshare infos t stack in
+          record_deltas ({name = String "prim:interp"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
+          res
+          (* RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t *)
         in
 
-        report_deltas ({name = String "prim:interp"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
 
-        (* filter out Zupdate nodes in stack because PMP said so :) *)
-        let stack = List.filter (function | Zupdate _ -> false | _ -> true) stack in
+        (* filter out Zupdate nodes in stack because PMP said so :)
+           also record if we have any ZcaseT/Zproj nodes. This is used later to avoid recording
+           unfolding deltas that are not of type [M ..].
+        *)
+        let (head_is_M, stack) = fold_right (function
+          | (Zupdate _) -> fun (b, stack) -> (b, stack)
+          | (ZcaseT _ as z)
+          | (Zproj _ as z) -> fun (b, stack) -> (false, z :: stack)
+          | (_ as z) -> fun (b, stack) -> (b, z :: stack)
+        )
+          stack (true, []) in
 
         (* Feedback.msg_debug (Pp.int (List.length stack)); *)
 
@@ -1094,7 +1116,7 @@ let rec run' ctxt (vms : vm list) =
               (* print_constr sigma env term; *)
               let entry_time = Unix.gettimeofday () in
               let ob = reduce sigma env (to_econstr red) (to_econstr term) in
-              report_deltas ({name = String "prim:let-reduce"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
+              record_deltas ({name = String "prim:let-reduce"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
               match ob with
               | Some b ->
                   (* print_constr sigma env b; *)
@@ -1162,14 +1184,13 @@ let rec run' ctxt (vms : vm list) =
                   (* let ereturn s fc = return s (of_econstr fc) in *)
                   (* let efail (sigma, fc) = fail (sigma, of_econstr fc) in *)
 
-                  let entry_time = Unix.gettimeofday () in
                   let delta_stack_before = ctxt.delta_stack in
                   let run' ?record_prim:(record_prim=true) ctxt vms =
                     let MHead mh = mh in
                     if record_prim then
                       (match delta_stack_before with
                        | deltas :: delta_stack ->
-                           report_deltas ({name = String ("prim:"^mconstr_to_string mh); entry_time} :: deltas) delta_stack;
+                           record_deltas ({name = String ("prim:"^mconstr_to_string mh); entry_time} :: deltas) delta_stack;
                            (run'[@tailcall]) ctxt vms
                       )
                     else
@@ -1627,15 +1648,18 @@ let rec run' ctxt (vms : vm list) =
                   end
               | exception Not_found ->
                   (
-                    let entry_time = Unix.gettimeofday () in
+                    (* let entry_time = Unix.gettimeofday () in *)
                     let o = ref_value_cache infos (ConstKey c) in
-                    report_deltas ({name = String "prim:const-delta"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
+                    record_deltas ({name = String "prim:const-delta"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
                     match o with
                       Some v ->
-                        let time = Unix.gettimeofday () in
-                        let deltas = List.hd ctxt.delta_stack in
-                        let delta_stack = List.tl ctxt.delta_stack in
-                        (run'[@taillcall]) {ctxt with delta_stack=({name = Constant hc; entry_time = time} :: deltas)::delta_stack} (Code v :: vms)
+                        let ctxt = if head_is_M then
+                            let time = Unix.gettimeofday () in
+                            let deltas = List.hd ctxt.delta_stack in
+                            let delta_stack = List.tl ctxt.delta_stack in
+                            {ctxt with delta_stack=({name = Constant hc; entry_time = time} :: deltas)::delta_stack}
+                          else ctxt in
+                        (run'[@taillcall]) ctxt (Code v :: vms)
                     | None ->
                         (* (let open Pp in
                          * Feedback.msg_info (Pp.str "ConstKey " ++ print_constr_env ctxt.env ctxt.sigma (to_econstr t))); *)
@@ -1647,7 +1671,7 @@ let rec run' ctxt (vms : vm list) =
             (
               let entry_time = Unix.gettimeofday () in
               let o = ref_value_cache infos (k) in
-              report_deltas ({name = String "prim:const-delta"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
+              record_deltas ({name = String "prim:const-delta"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
               match o with
                 Some v ->
                   (run'[@taillcall]) ctxt (Code v :: vms)
