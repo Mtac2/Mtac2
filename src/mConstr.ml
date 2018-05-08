@@ -143,11 +143,19 @@ let num_args_of_mconstr (type a) (mh : a mconstr_head) =
   | Mkind_of_term -> 2
 
 
-let mkconstr s = lazy (let (_, c) = mkUConstr ("M.M." ^ s) Evd.empty (Global.env ()) in c)
-let isconstr c h = eq_constr_nounivs Evd.empty (Lazy.force c) h
+(* let mkconstr s = lazy (let (_, c) = mkUConstr ("M.M." ^ s) Evd.empty (Global.env ()) in c) *)
+(* let isconstr c h = eq_constr_nounivs Evd.empty (Lazy.force c) h *)
 let isconstant n h = Names.Constant.equal n h
 
-let constant_of_string s = constant_of_string ("M.M." ^ s)
+let mtac_constant_of_string e =
+  let full_name = metaCoq_module_name ^ "." ^ e in
+  let p = Libnames.path_of_string full_name in
+  (* let q = Libnames.qualid_of_path p in *)
+  match Nametab.global_of_path p with
+  | Globnames.ConstRef (c) -> c
+  | _ -> raise Not_found
+
+let constant_of_string s = mtac_constant_of_string ("M.M." ^ s)
 
 let name_ret = constant_of_string "ret"
 (* let mkret = mkconstr name_ret *)

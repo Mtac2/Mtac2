@@ -9,24 +9,68 @@ let decompose_appvect sigma c =
   | App (f,cl) -> (f, cl)
   | _ -> (c,[||])
 
+let global_of_string name =
+  let p = Libnames.path_of_string name in
+  (* let q = Libnames.qualid_of_path p in *)
+  match Nametab.global_of_path p with
+  | c -> c
+  | exception Not_found ->
+      Feedback.msg_debug (Pp.str (Libnames.string_of_path p)); raise Not_found
+
+let isConstant sigma globref c =
+  let open Globnames in
+  match globref, EConstr.kind sigma c with
+  | ConstRef const, Term.Const (n, _) -> Names.Constant.equal n const
+  | IndRef ind1, Term.Ind (ind2, _) ->
+      Names.eq_ind ind1 ind2
+  | ConstructRef constr1, Term.Construct (constr2, _) ->
+      Names.eq_constructor constr1 constr2
+  | VarRef var1, Term.Var var2 ->
+      Names.Id.equal var1 var2
+  | _ -> false
+
+let isFConstant globref fc =
+  let open Globnames in
+  match globref, CClosure.fterm_of fc with
+  | ConstRef const, CClosure.FFlex (Names.ConstKey (n, _)) ->
+      Names.Constant.equal n const
+  | IndRef ind, CClosure.FInd pind ->
+      Names.eq_ind ind (Univ.out_punivs pind)
+  | ConstructRef constr, CClosure.FConstruct pconstr ->
+      Names.eq_constructor constr (Univ.out_punivs pconstr)
+  | VarRef var1, CClosure.FFlex (Names.VarKey var2) ->
+      Names.Id.equal var1 var2
+  | _ -> false
+
+let globref_to_string globref =
+  let open Globnames in
+  match globref with
+  | ConstRef const -> Names.Constant.to_string const
+  | IndRef ind -> Pp.string_of_ppcmds (Printer.pr_inductive (Global.env ()) ind)
+  | ConstructRef constr ->
+      Pp.string_of_ppcmds (Printer.pr_constructor (Global.env ()) constr)
+  | VarRef var -> Names.Id.to_string var
+
+
 module Constr = struct
   exception Constr_not_found of string
   exception Constr_poly of string
 
-  let mkConstr name = lazy (
-    try of_constr @@
-      Universes.constr_of_global
-        (Nametab.global_of_path (Libnames.path_of_string name))
-    with Not_found -> raise (Constr_not_found name)
-       | Invalid_argument _ -> raise (Constr_poly name)
+  let mkConstr globref = lazy (
+    try
+      of_constr @@
+      Universes.constr_of_global globref
+    with Not_found -> raise (Constr_not_found (globref_to_string globref))
+       | Invalid_argument _ -> raise (Constr_poly (globref_to_string globref))
   )
 
-  let mkUConstr name sigma env =
-    try fresh_global env sigma
-          (Nametab.global_of_path (Libnames.path_of_string name))
-    with Not_found -> raise (Constr_not_found name)
+  let mkUConstr globref sigma env =
+    try fresh_global env sigma globref
+    with Not_found -> raise (Constr_not_found (globref_to_string globref))
 
   let isConstr sigma = fun r c -> eq_constr sigma (Lazy.force r) c
+  let isConstant = isConstant
+  let isFConstant = isFConstant
 
   let isUConstr r sigma env = fun c ->
     eq_constr_nounivs sigma (snd (mkUConstr r sigma env)) c
@@ -34,14 +78,24 @@ module Constr = struct
 end
 
 module ConstrBuilder = struct
-  type t = string
+  type t = Globnames.global_reference Lazy.t
 
-  let from_string (s:string) : t = s
+  let from_string (s:string) : t = lazy (global_of_string s)
 
-  let build s = Lazy.force (Constr.mkConstr s)
-  let build_app s args = mkApp (Lazy.force (Constr.mkConstr s), args)
+  let build s = Lazy.force (Constr.mkConstr (Lazy.force s))
+  let build_app s args = mkApp (Lazy.force (Constr.mkConstr (Lazy.force s)), args)
 
-  let equal sigma s = Constr.isConstr sigma (Constr.mkConstr s)
+  let equal sigma s = Constr.isConstant sigma (Lazy.force s)
+  let fequal s = Constr.isFConstant (Lazy.force s)
+
+  let to_coq s =
+    let open Globnames in
+    match (Lazy.force s) with
+    | ConstRef c -> EConstr.mkConst c
+    | VarRef var -> EConstr.mkVar var
+    | IndRef ind -> EConstr.mkInd ind
+    | ConstructRef constr -> EConstr.mkConstruct constr
+
 
   let from_coq s (_, sigma) cterm =
     let (head, args) = decompose_appvect sigma cterm in
@@ -49,19 +103,22 @@ module ConstrBuilder = struct
 end
 
 module UConstrBuilder = struct
-  type t = string
+  type t = Globnames.global_reference Lazy.t
 
-  let from_string (s:string) : t = s
+  let from_string (s:string) : t = lazy (global_of_string s)
 
   let build_app s sigma env args =
-    let (sigma, c) = Constr.mkUConstr s sigma env in
+    let (sigma, c) = Constr.mkUConstr (Lazy.force s) sigma env in
     (sigma, mkApp (c, args))
 
-  let equal = Constr.isUConstr
+  let to_coq s = Constr.mkUConstr (Lazy.force s)
+
+  let equal sigma s = Constr.isConstant sigma (Lazy.force s)
+  let fequal s = Constr.isFConstant (Lazy.force s)
 
   let from_coq s (env, sigma) cterm =
     let (head, args) = decompose_appvect sigma cterm in
-    if equal s sigma env head then Some args else None
+    if equal sigma s head then Some args else None
 end
 
 module CoqOption = struct
@@ -190,13 +247,14 @@ module CoqSig = struct
 end
 
 module CoqPositive = struct
-  let xI = Constr.mkConstr "Coq.Numbers.BinNums.xI"
-  let xO = Constr.mkConstr "Coq.Numbers.BinNums.xO"
-  let xH = Constr.mkConstr "Coq.Numbers.BinNums.xH"
+  open ConstrBuilder
+  let xI = from_string "Coq.Numbers.BinNums.xI"
+  let xO = from_string "Coq.Numbers.BinNums.xO"
+  let xH = from_string "Coq.Numbers.BinNums.xH"
 
-  let isH sigma = Constr.isConstr sigma xH
-  let isI sigma = Constr.isConstr sigma xI
-  let isO sigma = Constr.isConstr sigma xO
+  let isH sigma = equal sigma xH
+  let isI sigma = equal sigma xI
+  let isO sigma = equal sigma xO
 
   let from_coq (env, evd) c =
     let rec fc i c =
@@ -218,20 +276,20 @@ module CoqPositive = struct
 
   let rec to_coq n =
     if n = 1 then
-      Lazy.force xH
+      ConstrBuilder.to_coq xH
     else if n mod 2 = 0 then
-      mkApp(Lazy.force xO, [|to_coq (n / 2)|])
+      build_app xO [|to_coq (n / 2)|]
     else
-      mkApp(Lazy.force xI, [|to_coq ((n-1)/2)|])
+      build_app xI [|to_coq ((n-1)/2)|]
 end
 
 module CoqN = struct
-  (* let tN = Constr.mkConstr "Coq.Numbers.BinNums.N" *)
-  let h0 = Constr.mkConstr "Coq.Numbers.BinNums.N0"
-  let hP = Constr.mkConstr "Coq.Numbers.BinNums.Npos"
+  open ConstrBuilder
+  let h0 = from_string "Coq.Numbers.BinNums.N0"
+  let hP = from_string "Coq.Numbers.BinNums.Npos"
 
-  let is0 sigma = Constr.isConstr sigma h0
-  let isP sigma = Constr.isConstr sigma hP
+  let is0 sigma = equal sigma h0
+  let isP sigma = equal sigma hP
 
   exception NotAnN
 
@@ -253,23 +311,24 @@ module CoqN = struct
 
   let to_coq n =
     if n = 0 then
-      Lazy.force h0
+      ConstrBuilder.to_coq h0
     else
-      mkApp(Lazy.force hP, [|CoqPositive.to_coq n|])
+      build_app hP [|CoqPositive.to_coq n|]
 end
 
 module CoqZ = struct
-  let z0 = Constr.mkConstr "Coq.Numbers.BinNums.Z0"
-  let zpos = Constr.mkConstr "Coq.Numbers.BinNums.Zpos"
-  let zneg = Constr.mkConstr "Coq.Numbers.BinNums.Zneg"
+  open ConstrBuilder
+  let z0 = from_string "Coq.Numbers.BinNums.Z0"
+  let zpos = from_string "Coq.Numbers.BinNums.Zpos"
+  let zneg = from_string "Coq.Numbers.BinNums.Zneg"
 
   let to_coq n =
     if n = 0 then
-      Lazy.force z0
+      ConstrBuilder.to_coq z0
     else if n > 0 then
-      mkApp(Lazy.force zpos, [|CoqPositive.to_coq n|])
+      build_app zpos [|CoqPositive.to_coq n|]
     else
-      mkApp(Lazy.force zneg, [|CoqPositive.to_coq n|])
+      build_app zneg [|CoqPositive.to_coq n|]
 end
 
 module CoqBool = struct
@@ -279,13 +338,13 @@ module CoqBool = struct
   let trueBuilder = from_string "Coq.Init.Datatypes.true"
   let falseBuilder = from_string "Coq.Init.Datatypes.false"
 
-  let mkType = build boolBuilder
-  let mkTrue = build trueBuilder
-  let mkFalse = build falseBuilder
+  let mkType () = build boolBuilder
+  let mkTrue () = build trueBuilder
+  let mkFalse () = build falseBuilder
 
   exception NotABool
 
-  let to_coq b = if b then mkTrue else mkFalse
+  let to_coq b = if b then mkTrue () else mkFalse ()
   let from_coq sigma c =
     if equal sigma trueBuilder c then true
     else if equal sigma falseBuilder c then false
@@ -347,24 +406,14 @@ module CoqUnit = struct
   let unitBuilder = from_string "Coq.Init.Datatypes.unit"
   let ttBuilder = from_string "Coq.Init.Datatypes.tt"
 
-  let mkType = build unitBuilder
-  let mkTT = build ttBuilder
+  let mkType () = build unitBuilder
+  let mkTT () = build ttBuilder
 end
 
 module MCTactics = struct
-  let gTactic = "Mtac2.Tactics.gtactic"
+  let gTactic = UConstrBuilder.from_string "Mtac2.Tactics.gtactic"
 
-  (* let mkConstr s = *)
-  (*   let open Nametab in let open Libnames in *)
-  (*   try Universes.constr_of_global (locate (qualid_of_string s)) *)
-  (*   with _ -> raise (Constr.Constr_not_found s) *)
-
-  let mkUConstr s env sigma =
-    let open Nametab in let open Libnames in
-    try Evd.fresh_global env sigma (locate (qualid_of_string s))
-    with _ -> raise (Constr.Constr_not_found s)
-
-  let mkGTactic = mkUConstr gTactic
+  let mkGTactic env sigma = UConstrBuilder.to_coq gTactic sigma env
 end
 
 module CoqPair = struct

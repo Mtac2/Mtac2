@@ -4,53 +4,29 @@ open Termops
 open Constrs
 
 let metaCoq_module_name = "Mtac2.intf"
-let mkConstr e = Constr.mkConstr (metaCoq_module_name ^ "." ^ e)
-let mkUConstr e = Constr.mkUConstr (metaCoq_module_name ^ "." ^ e)
+
+(* let mtac_constant_of_string name = constant_of_string (metaCoq_module_name ^ "." ^ name) *)
+
 let mkBuilder e = ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
 let mkUBuilder e = UConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
-let mkT_lazy = mkUConstr "M.M.t"
-let mkUConstr e = Constr.mkUConstr (metaCoq_module_name ^ "." ^ e)
+let mkT_lazy = mkUBuilder "M.M.t"
 
-let isConstr sigma e =
-  let c = Lazy.force (mkConstr e) in
-  eq_constr sigma c
-
-let isUConstr sigma env e =
-  let sigma, c = mkUConstr e sigma env in
-  eq_constr_nounivs sigma c
-
-let constant_of_string e =
-  let full_name = metaCoq_module_name ^ "." ^ e in
-  let p = Libnames.path_of_string full_name in
-  (* let q = Libnames.qualid_of_path p in *)
-  match Nametab.global_of_path p with
-  | Globnames.ConstRef (c) -> c
-  | _ -> raise Not_found
-
-let isConstant sigma const c =
-  match EConstr.kind sigma c with
-  | Const (n, _) -> Names.Constant.equal n const
-  | _ -> false
-
-let isFConstant const fc =
-  match CClosure.fterm_of fc with
-  | CClosure.FFlex (Names.ConstKey (n, _)) ->
-      Names.Constant.equal n const
-  | _ -> false
+let mkConstr e = ConstrBuilder.to_coq (ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e))
+let mkUConstr e sigma env = UConstrBuilder.to_coq (UConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)) sigma env
 
 let mkCase ind v ret branch sigma env =
-  let sigma, c = mkUConstr "Case.mkCase" sigma env in
-  sigma, mkApp(c, [|ind;v;ret;branch|])
+  let c = UConstrBuilder.from_string "Case.mkCase" in
+  UConstrBuilder.build_app c sigma env [|ind;v;ret;branch|]
 
 let mkelem d sigma env =
-  let sigma, c = mkUConstr "Dyn.elem" sigma env in
-  sigma, mkApp(c, [|d|])
+  let c = UConstrBuilder.from_string "Dyn.elem" in
+  UConstrBuilder.build_app c sigma env [|d|]
 
-let mkdyn = mkUConstr "Dyn.dyn"
+let mkdyn sigma env = UConstrBuilder.to_coq (UConstrBuilder.from_string "Dyn.dyn") sigma env
 
 let mkDyn ty el sigma env =
-  let sigma, c = mkUConstr "Dyn.Dyn" sigma env in
-  sigma, mkApp(c, [|ty;el|])
+  let c = UConstrBuilder.from_string "Dyn.Dyn" in
+  UConstrBuilder.build_app c sigma env [|ty;el|]
 
 (* dyn is expected to be Dyn ty el *)
 let get_elem sigma dyn = (snd (destApp sigma dyn)).(1)

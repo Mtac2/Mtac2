@@ -11,8 +11,8 @@ type mrun_arg =
 
 let ifTactic env sigma ty c =
   let (sigma, gtactic) = MCTactics.mkGTactic env sigma in
-  let unitType = Constrs.CoqUnit.mkType in
-  let gtactic = EConstr.mkApp(EConstr.of_constr gtactic, [|unitType|]) in
+  let unitType = Constrs.CoqUnit.mkType () in
+  let gtactic = EConstr.mkApp(gtactic, [|unitType|]) in
   let open Evarsolve in
   let res = Munify.unify_evar_conv Names.full_transparent_state env sigma Reduction.CONV gtactic ty in
   match res with
@@ -25,9 +25,9 @@ module MetaCoqRun = struct
   *)
 
   let ifM env sigma concl ty c =
-    let sigma, metaCoqType = MtacNames.mkT_lazy sigma env in
+    let metaCoqType = MtacNames.mkT_lazy in
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
-    if EConstr.eq_constr_nounivs sigma metaCoqType h && List.length args = 1 then
+    if UConstrBuilder.equal sigma metaCoqType h && List.length args = 1 then
       try
         let sigma = Evarconv.the_conv_x_leq env concl (List.hd args) sigma in
         (true, sigma)

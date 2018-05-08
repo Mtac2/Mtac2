@@ -3,13 +3,17 @@ open EConstr
 
 val decompose_appvect : evar_map -> constr -> constr * constr array
 
+val global_of_string: string -> Globnames.global_reference
+val isConstant : Evd.evar_map -> Globnames.global_reference -> EConstr.t -> bool
+val isFConstant : Globnames.global_reference -> CClosure.fconstr -> bool
+
 module Constr : sig
   exception Constr_not_found of string
   exception Constr_poly of string
 
-  val mkConstr : string -> constr Lazy.t
+  val mkConstr : Globnames.global_reference -> constr Lazy.t
 
-  val mkUConstr : string -> evar_map -> Environ.env -> (Evd.evar_map * constr)
+  val mkUConstr : Globnames.global_reference -> evar_map -> Environ.env -> (Evd.evar_map * constr)
 
   val isConstr : evar_map -> constr Lazy.t -> constr -> bool
 end
@@ -21,9 +25,12 @@ module ConstrBuilder : sig
 
   val from_coq : t -> (Environ.env * Evd.evar_map) -> constr -> (constr array) option
 
+  val to_coq : t -> constr
+
   val build_app : t -> constr array -> constr
 
   val equal : evar_map -> t -> constr -> bool
+  val fequal : t -> CClosure.fconstr -> bool
 end
 
 module UConstrBuilder : sig
@@ -33,8 +40,13 @@ module UConstrBuilder : sig
 
   val from_coq : t -> (Environ.env * Evd.evar_map) -> constr -> (constr array) option
 
+  val to_coq : t -> Evd.evar_map -> Environ.env -> (Evd.evar_map * constr)
+
   val build_app : t -> Evd.evar_map -> Environ.env
     -> constr array -> (Evd.evar_map * constr)
+
+  val equal : evar_map -> t -> constr -> bool
+  val fequal : t -> CClosure.fconstr -> bool
 end
 
 module CoqN : sig
@@ -95,15 +107,15 @@ module CoqOption : sig
 end
 
 module CoqUnit : sig
-  val mkType : constr
-  val mkTT : constr
+  val mkType : unit -> constr
+  val mkTT : unit -> constr
 end
 
 module CoqBool : sig
 
-  val mkType : constr
-  val mkTrue : constr
-  val mkFalse : constr
+  val mkType : unit -> constr
+  val mkTrue : unit -> constr
+  val mkFalse : unit -> constr
 
   exception NotABool
 
@@ -121,7 +133,7 @@ module CoqSig : sig
 end
 
 module MCTactics : sig
-  val mkGTactic : Environ.env -> Evd.evar_map -> Evd.evar_map * Term.constr
+  val mkGTactic : Environ.env -> Evd.evar_map -> Evd.evar_map * EConstr.t
 end
 
 module CoqPair : sig

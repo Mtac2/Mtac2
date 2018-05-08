@@ -25,8 +25,8 @@ let glob_mtac_type ist r =
     let sigma, t = EConstr.fresh_global env sigma gr in
     let ty = Retyping.get_type_of env sigma t in
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
-    let sigma, metaCoqType = MtacNames.mkT_lazy sigma env in
-    if EConstr.eq_constr_nounivs sigma metaCoqType h && List.length args = 1 then
+    let metaCoqType = MtacNames.mkT_lazy in
+    if Constrs.UConstrBuilder.equal sigma metaCoqType h && List.length args = 1 then
        (Program (List.hd args), gr)
     else
       let b, sigma = ifTactic env sigma ty t in

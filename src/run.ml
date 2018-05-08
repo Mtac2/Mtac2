@@ -62,19 +62,19 @@ module RedList = GenericList (struct
 
 module Goal = struct
 
-  let mkgoal = mkUConstr "Goals.goal"
-  let mkGoal = mkUConstr "Goals.Goal"
-  let mkAHyp = mkUConstr "Goals.AHyp"
+  let mkgoal sigma env = mkUConstr "Goals.goal" sigma env
+  let mkGoal sigma env = mkUConstr "Goals.Goal" sigma env
+  let mkAHyp sigma env = mkUConstr "Goals.AHyp" sigma env
 
-  let mkSType = Constr.mkConstr "Mtac2.Sorts.Sorts.SType"
-  let mkSProp = Constr.mkConstr "Mtac2.Sorts.Sorts.SProp"
+  let mkSType () = ConstrBuilder.to_coq (ConstrBuilder.from_string "Mtac2.Sorts.Sorts.SType")
+  let mkSProp () = ConstrBuilder.to_coq (ConstrBuilder.from_string "Mtac2.Sorts.Sorts.SProp")
 
   let mkTheGoal ty ev sigma env =
     let tt = Retyping.get_type_of env sigma ty in
     let tt = Reductionops.nf_all env sigma tt in
     if isSort sigma tt then
       let sort = ESorts.kind sigma (destSort sigma tt) in
-      let ssort = Lazy.force (if Sorts.is_prop sort then mkSProp else mkSType) in
+      let ssort = if Sorts.is_prop sort then mkSProp () else mkSType () in
       let sigma, tg = mkGoal sigma env in
       sigma, mkApp (tg, [|ssort; ty;ev|])
     else
@@ -224,10 +224,10 @@ module ReductionStrategy = struct
   open CClosure.RedFlags
   open Context
 
-  let reduce_constant = constant_of_string "Reduction.reduce"
-  let isReduce sigma env c = isConstant sigma reduce_constant c
+  let reduce_constant = mkBuilder "Reduction.reduce"
+  let isReduce sigma env c = ConstrBuilder.equal sigma reduce_constant c
   let isTReduce sigma env c = isReduce sigma env (EConstr.of_constr c)
-  let isFReduce sigma env c = isFConstant reduce_constant c
+  let isFReduce sigma env c = ConstrBuilder.fequal reduce_constant c
 
   let has_definition ts env sigma t =
     if isVar sigma t then
@@ -859,11 +859,11 @@ let run_declare_implicits env sigma gr impls =
   (* since there is no way to declare something explicit, we clear implicits first *)
   let () = Impargs.declare_manual_implicits false gr [[]] in
   let () = Impargs.maybe_declare_manual_implicits false gr impls in
-  (sigma, CoqUnit.mkTT)
+  (sigma, CoqUnit.mkTT ())
 
 
 let koft sigma t =
-  let lf n = Lazy.force (MtacNames.mkConstr ("Tm_kind." ^ n)) in
+  let lf n = MtacNames.mkConstr ("Tm_kind." ^ n) in
   let open Term in
   match kind sigma t with
   | Var _ -> lf "tmVar"
@@ -1103,9 +1103,9 @@ let rec run' ctxt (vms : vm list) =
                         run_fix ctxt vms hf [|a1; a2; a3; a4; a5|] b f [|x1; x2; x3; x4; x5|]
                     | MConstr (Mis_var, (_, e)) ->
                         if isVar sigma (to_econstr e) then
-                          ereturn sigma CoqBool.mkTrue
+                          ereturn sigma (CoqBool.mkTrue ())
                         else
-                          ereturn sigma CoqBool.mkFalse
+                          ereturn sigma (CoqBool.mkFalse ())
 
                     | MConstr (Mnu, (a, _, s, ot, f)) ->
                         let a = to_econstr a in
@@ -1181,20 +1181,20 @@ let rec run' ctxt (vms : vm list) =
                     | MConstr (Mis_evar, (_, e)) ->
                         let e = whd_evar sigma (to_econstr e) in
                         if isEvar sigma e || (isApp sigma e && isEvar sigma (fst (destApp sigma e))) then
-                          ereturn sigma CoqBool.mkTrue
+                          ereturn sigma (CoqBool.mkTrue ())
                         else
-                          ereturn sigma CoqBool.mkFalse
+                          ereturn sigma (CoqBool.mkFalse ())
 
                     | MConstr (Mhash, (_, x1, x2)) ->
                         ereturn sigma (hash env sigma (to_econstr x1) (to_econstr x2))
 
                     | MConstr (Msolve_typeclasses, _) ->
                         let evd' = Typeclasses.resolve_typeclasses ~fail:false env sigma in
-                        ereturn evd' CoqUnit.mkTT
+                        ereturn evd' (CoqUnit.mkTT ())
 
                     | MConstr (Mprint, (s)) ->
                         print sigma env (to_econstr s);
-                        ereturn sigma CoqUnit.mkTT
+                        ereturn sigma (CoqUnit.mkTT ())
 
                     | MConstr (Mpretty_print, (_, t)) ->
                         let t = nf_evar sigma (to_econstr t) in
@@ -1320,7 +1320,7 @@ let rec run' ctxt (vms : vm list) =
                     | MConstr (Mlist_ltac, _) ->
                         let aux k _ = Feedback.msg_info (Pp.str (Names.KerName.to_string k)) in
                         KNmap.iter aux (Tacenv.ltac_entries ());
-                        ereturn sigma CoqUnit.mkTT
+                        ereturn sigma (CoqUnit.mkTT ())
 
                     | MConstr (Mread_line, _) ->
                         ereturn sigma (CoqString.to_coq (read_line ()))
@@ -1376,13 +1376,13 @@ let rec run' ctxt (vms : vm list) =
                         ereturn sigma (CoqBool.to_coq !debug_ex)
                     | MConstr (Mset_debug_exceptions, b) ->
                         debug_ex := CoqBool.from_coq sigma (to_econstr b);
-                        ereturn sigma CoqUnit.mkTT
+                        ereturn sigma (CoqUnit.mkTT ())
 
                     | MConstr (Mget_trace, _) ->
                         ereturn sigma (CoqBool.to_coq !trace)
                     | MConstr (Mset_trace, b) ->
                         trace := CoqBool.from_coq sigma (to_econstr b);
-                        ereturn sigma CoqUnit.mkTT
+                        ereturn sigma (CoqUnit.mkTT ())
 
                     | MConstr (Mdecompose_app', (_, _, _, uni, t, c, cont_success, cont_failure)) ->
                         (* : A B m uni a C cont  *)
@@ -1466,7 +1466,7 @@ let rec run' ctxt (vms : vm list) =
                         let fname = Names.canonical_con name in
                         let last = None in
                         let () = Hashtbl.add timers fname ((ref last, ref 0.0)) in
-                        ereturn sigma CoqUnit.mkTT
+                        ereturn sigma (CoqUnit.mkTT ())
 
                     | MConstr (Mstart_timer, (_, t_arg, reset)) ->
                         let reset = CoqBool.from_coq sigma (to_econstr reset) in
@@ -1478,8 +1478,8 @@ let rec run' ctxt (vms : vm list) =
                           | t ->
                               let () = fst t := Some (System.get_time ()) in
                               if reset then snd t := 0.0;
-                              ereturn sigma CoqUnit.mkTT
-                          | exception Not_found -> ereturn sigma CoqUnit.mkTT
+                              ereturn sigma (CoqUnit.mkTT ())
+                          | exception Not_found -> ereturn sigma (CoqUnit.mkTT ())
                         end
 
                     | MConstr (Mstop_timer, (_, t_arg)) ->
@@ -1497,8 +1497,8 @@ let rec run' ctxt (vms : vm list) =
                                     snd t := total +. (System.time_difference last time)
                                 | None -> snd t := -.infinity
                               end;
-                              ereturn sigma CoqUnit.mkTT
-                          | exception Not_found -> ereturn sigma CoqUnit.mkTT
+                              ereturn sigma (CoqUnit.mkTT ())
+                          | exception Not_found -> ereturn sigma (CoqUnit.mkTT ())
                         end
 
                     | MConstr (Mreset_timer, (_, t_arg)) ->
@@ -1508,7 +1508,7 @@ let rec run' ctxt (vms : vm list) =
                         let t = Hashtbl.find timers fname in
                         let () = fst t := None in
                         let () = snd t := 0.0 in
-                        ereturn sigma CoqUnit.mkTT
+                        ereturn sigma (CoqUnit.mkTT ())
 
                     | MConstr (Mprint_timer, (_, t_arg)) ->
                         let t_arg = to_econstr t_arg in
@@ -1517,7 +1517,7 @@ let rec run' ctxt (vms : vm list) =
                         let t = Hashtbl.find timers fname in
                         let total = !(snd t) in
                         let () = Feedback.msg_info (Pp.str (Printf.sprintf "%f" total)) in
-                        ereturn sigma CoqUnit.mkTT
+                        ereturn sigma (CoqUnit.mkTT ())
 
                     | MConstr (Mkind_of_term, (_, t)) ->
                         ereturn sigma (koft sigma (to_econstr t))
