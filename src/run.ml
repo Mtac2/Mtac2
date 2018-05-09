@@ -931,14 +931,17 @@ let pop_args num stack =
           else if n = num then
             [args], stack
           else
-            let args, remainder = Array.chop num args in
-            [args], Zapp remainder :: stack
+            (* this can not happen. something of type [M T] can not be applied
+               to more arguments *)
+            assert false
       | _ -> failwith "no more arguments on stack"
     else
-      ([Array.init 0 (fun x -> failwith "Impossible case")], stack)
+      ([], stack)
   in
   let argss, stack = pop_args num stack in
-  (Array.concat argss, stack)
+  if List.length argss == 0 then ([||], stack)
+  else if List.length argss == 1 then (List.hd argss, stack)
+  else (Array.concat argss, stack)
 
 
 let rec run' ctxt (vms : vm list) =
