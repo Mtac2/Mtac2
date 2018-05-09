@@ -470,13 +470,13 @@ let mconstr_head_of h =
   | _ when isnew_timer h ->
       MHead Mnew_timer
   | _ when isstart_timer h ->
-      MHead Mnew_timer
+      MHead Mstart_timer
   | _ when isstop_timer h ->
-      MHead Mnew_timer
+      MHead Mstop_timer
   | _ when isreset_timer h ->
-      MHead Mnew_timer
+      MHead Mreset_timer
   | _ when isprint_timer h ->
-      MHead Mnew_timer
+      MHead Mprint_timer
   | _ when iskind_of_term h ->
       MHead Mkind_of_term
   | _ -> raise Not_found
@@ -614,6 +614,7 @@ let mconstr_of (type a) args (h : a mconstr_head) =
       MConstr (Mstop_timer, (args 0, args 1))
   | Mreset_timer ->
       MConstr (Mreset_timer, (args 0, args 1))
+  | Mprint_timer ->
+      MConstr (Mprint_timer, (args 0, args 1))
   | Mkind_of_term ->
       MConstr (Mkind_of_term, (args 0, args 1))
-  | _ -> raise Not_found
