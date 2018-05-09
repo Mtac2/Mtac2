@@ -983,12 +983,6 @@ let rec run' ctxt (vms : vm list) =
   | Code t, _ ->
       begin
         let upd c = (Code c :: vms) in
-        let return ?new_env:(new_env=env) sigma c = (run'[@tailcall]) {ctxt with sigma; env=new_env} (Ret c :: vms) in
-        let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
-
-        (* wrappers for return and fail to conveniently return/fail with EConstrs *)
-        let ereturn ?new_env s fc = return ?new_env:new_env s (of_econstr fc) in
-        let efail (sigma, fc) = fail (sigma, of_econstr fc) in
 
         (* let cont ctxt h args = (run'[@tailcall]) {ctxt with stack=Zapp args::stack} (Code h :: vms) in *)
 
@@ -1009,6 +1003,13 @@ let rec run' ctxt (vms : vm list) =
         (* let (h, args) = decompose_appvect sigma reduced_term in *)
 
         (* print_constr sigma env (to_econstr reduced_term); *)
+
+        let return ?new_env:(new_env=env) sigma c = (run'[@tailcall]) {ctxt with sigma; env=new_env; stack} (Ret c :: vms) in
+        let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
+
+        (* wrappers for return and fail to conveniently return/fail with EConstrs *)
+        let ereturn ?new_env s fc = return ?new_env:new_env s (of_econstr fc) in
+        let efail (sigma, fc) = fail (sigma, of_econstr fc) in
 
         match fterm_of reduced_term with
         | FConstruct _ -> failwith ("Invariant invalidated: reduction reached the constructor of M.t.")
@@ -1075,6 +1076,14 @@ let rec run' ctxt (vms : vm list) =
                   if !trace then print_constr sigma env (EConstr.of_constr (CClosure.term_of_fconstr (mk_red (FApp (reduced_term,args)))));
 
                   let ctxt = {ctxt with stack} in
+
+                  (* Re-do the wrappers so they use the new stack *)
+                  let return ?new_env:(new_env=env) sigma c = (run'[@tailcall]) {ctxt with sigma; env=new_env; stack} (Ret c :: vms) in
+                  let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
+
+                  (* wrappers for return and fail to conveniently return/fail with EConstrs *)
+                  let ereturn ?new_env s fc = return ?new_env:new_env s (of_econstr fc) in
+                  let efail (sigma, fc) = fail (sigma, of_econstr fc) in
 
 
                   (* (\* repetition :( *\) *)
