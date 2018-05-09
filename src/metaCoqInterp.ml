@@ -52,11 +52,6 @@ module MetaCoqRun = struct
         CErrors.user_err (str "Not a Mtactic")
 
   let run env sigma concl evar istactic t =
-    let sigma, t = if istactic then
-        let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
-        (sigma, EConstr.mkApp(t, [|goal|]))
-      else sigma, t
-    in
     match Run.run (env, sigma) t with
     | Run.Val (sigma, v) ->
         let open Proofview in let open Proofview.Notations in
