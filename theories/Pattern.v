@@ -143,6 +143,9 @@ Notation "'[!APP' ] f '$n' x .. z '=n>' b" :=
      (fun x => .. (fun z => b) ..)
   ) (at level 91, x binder, z binder) : branch_scope.
 
+Notation "'[!APP' ] f '$n' '=n>' b" :=
+  (branch_app_static (m := mBase) UniMatchNoRed f b) (at level 91) : branch_scope.
+
 Notation "'[!APP' ] f '$m' x .. z '=n>' b" :=
   (branch_app_static
      (m := mTele (fun x => .. (mTele (fun z => mBase)) ..))
@@ -150,6 +153,9 @@ Notation "'[!APP' ] f '$m' x .. z '=n>' b" :=
      f
      (fun x => .. (fun z => b) ..)
   ) (at level 91, x binder, z binder) : branch_scope.
+
+Notation "'[!APP' ] f '$m' '=n>' b" :=
+  (branch_app_static (m := mBase) UniMatch f b) (at level 91) : branch_scope.
 
 Notation "'[!APP' ] f '$u' x .. z '=n>' b" :=
   (branch_app_static
@@ -159,6 +165,9 @@ Notation "'[!APP' ] f '$u' x .. z '=n>' b" :=
      (fun x => .. (fun z => b) ..)
   ) (at level 91, x binder, z binder) : branch_scope.
 
+Notation "'[!APP' ] f '$u' '=n>' b" :=
+  (branch_app_static (m := mBase) UniCoq f b) (at level 91) : branch_scope.
+
 Notation "'[!APP' ] f '$c' x .. z '=n>' b" :=
   (branch_app_static
      (m := mTele (fun x => .. (mTele (fun z => mBase)) ..))
@@ -166,6 +175,9 @@ Notation "'[!APP' ] f '$c' x .. z '=n>' b" :=
      f
      (fun x => .. (fun z => b) ..)
   ) (at level 91, x binder, z binder) : branch_scope.
+
+Notation "'[!APP' ] f '$c' '=n>' b" :=
+  (branch_app_static (m := mBase) UniEvarconv f b) (at level 91) : branch_scope.
 
 
 (* Syntax for decomposition of [forall x : X, P x].
