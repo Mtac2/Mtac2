@@ -11,22 +11,27 @@ let mkBuilder e = ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
 let mkUBuilder e = UConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
 let mkT_lazy = mkUBuilder "M.M.t"
 
-let mkConstr e = ConstrBuilder.to_coq (ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e))
-let mkUConstr e sigma env = UConstrBuilder.to_coq (UConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)) sigma env
+let mkConstr e =
+  let builder = ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e) in
+  ConstrBuilder.to_coq builder
+let mkUConstr e =
+  let builder = (UConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)) in
+  UConstrBuilder.to_coq builder
 
+let mkCase_builder = mkUBuilder "Case.mkCase"
 let mkCase ind v ret branch sigma env =
-  let c = mkUBuilder "Case.mkCase" in
-  UConstrBuilder.build_app c sigma env [|ind;v;ret;branch|]
+  UConstrBuilder.build_app mkCase_builder sigma env [|ind;v;ret;branch|]
 
+let mkelem_builder = mkUBuilder "Dyn.elem"
 let mkelem d sigma env =
-  let c = mkUBuilder "Dyn.elem" in
-  UConstrBuilder.build_app c sigma env [|d|]
+  UConstrBuilder.build_app mkelem_builder sigma env [|d|]
 
-let mkdyn sigma env = UConstrBuilder.to_coq (mkUBuilder "Dyn.dyn") sigma env
+let mkdyn_builder = mkUBuilder "Dyn.dyn"
+let mkdyn sigma env = UConstrBuilder.to_coq mkdyn_builder sigma env
 
+let mkDyn_builder = mkUBuilder "Dyn.Dyn"
 let mkDyn ty el sigma env =
-  let c = mkUBuilder "Dyn.Dyn" in
-  UConstrBuilder.build_app c sigma env [|ty;el|]
+  UConstrBuilder.build_app mkDyn_builder sigma env [|ty;el|]
 
 (* dyn is expected to be Dyn ty el *)
 let get_elem sigma dyn = (snd (destApp sigma dyn)).(1)

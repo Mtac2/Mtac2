@@ -62,12 +62,12 @@ module RedList = GenericList (struct
 
 module Goal = struct
 
-  let mkgoal sigma env = mkUConstr "Goals.goal" sigma env
-  let mkGoal sigma env = mkUConstr "Goals.Goal" sigma env
-  let mkAHyp sigma env = mkUConstr "Goals.AHyp" sigma env
+  let mkgoal = mkUConstr "Goals.goal"
+  let mkGoal = mkUConstr "Goals.Goal"
+  let mkAHyp = mkUConstr "Goals.AHyp"
 
-  let mkSType () = ConstrBuilder.to_coq (ConstrBuilder.from_string "Mtac2.Sorts.Sorts.SType")
-  let mkSProp () = ConstrBuilder.to_coq (ConstrBuilder.from_string "Mtac2.Sorts.Sorts.SProp")
+  let mkSType = let builder = ConstrBuilder.from_string "Mtac2.Sorts.Sorts.SType" in fun () -> ConstrBuilder.to_coq builder
+  let mkSProp = let builder = ConstrBuilder.from_string "Mtac2.Sorts.Sorts.SProp" in fun () -> ConstrBuilder.to_coq builder
 
   let mkTheGoal ty ev sigma env =
     let tt = Retyping.get_type_of env sigma ty in
@@ -1666,7 +1666,9 @@ let run (env0, sigma) t : data =
       Val (sigma', v)
 
 (** set the run function in unicoq *)
-let _ = Munify.set_lift_constr (fun env sigma -> (mkUConstr "Lift.lift" sigma env))
+let _ =
+  let lift_callback = mkUConstr "Lift.lift" in
+  Munify.set_lift_constr (fun env sigma -> (lift_callback sigma env))
 let _ = Munify.set_run (fun env sigma t ->
   match run (env, sigma) t with
   | Err _ -> None
