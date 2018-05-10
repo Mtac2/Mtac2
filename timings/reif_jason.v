@@ -1,4 +1,4 @@
-From Mtac2Tests Require Import reif_jasson.
+From Mtac2Tests Require Import reif_jason.
 Import PHOAS.
 
 Local Notation n_small := 50%nat.
