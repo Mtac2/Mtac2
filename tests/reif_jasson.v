@@ -579,9 +579,14 @@ Module Mtac2Mmatch.
 
 End Mtac2Mmatch.
 
+Require Mtac2.DecomposeApp.
 Module MTac2.
-  Import Mtac2.Mtac2.
+  Import Mtac2.Mtac2 Mtac2.DecomposeApp.
   Import M.notations.
+
+  Definition mor {A} (t1 t2 : M A) : M A :=
+    M.mtry' t1 (fun _ => t2).
+  Notation "a '_or_' b" := (mor a b)  (at level 50).
 
   Module var_context.
     Inductive var_context {var : Type} := nil | cons (n : nat) (v : var) (xs : var_context).
@@ -589,35 +594,29 @@ Module MTac2.
 
   Fixpoint find_in_ctx {var : Type} (term : nat) (ctx : @var_context.var_context var) {struct ctx} : M (option var)
     := match ctx with
-        | var_context.cons term' v xs =>
-          mif M.unify term term' UniMatchNoRed then
-            M.ret (Some v)
-          else
-            find_in_ctx term xs
-        | _ => M.ret None
+       | var_context.cons term' v xs =>
+         mmatch term' with
+         | [!APP] term $n =n> M.ret (Some v)
+         | _ => M.ret None
+         end
+       | _ => M.ret None
        end.
-
-  Definition mor {A} (t1 t2 : M A) : M A :=
-    M.mtry' t1 (fun _ => t2).
-  Notation "a '_or_' b" := (mor a b)  (at level 50).
-Require Import Mtac2.DecomposeApp.
-Import M.notations.
   Definition reify_helper {var : Type} (term : nat) (ctx : @var_context.var_context var) : M (@expr var)
     := ((mfix2 reify_helper (term : nat) (ctx : @var_context.var_context var) : M (@expr var) :=
            lvar <- find_in_ctx term ctx;
              match lvar with
              | Some v => M.ret (@Var var v)
-             | None
-               =>
-               <[decapp term with O]> UniMatchNoRed (M.ret (@NatO var)) _or_
-               <[decapp term with S]> UniMatchNoRed (fun x:nat=>
+             | None =>
+               mmatch term with
+               | [!APP] O $n =n> M.ret (@NatO var)
+               | [!APP] S $n x =n>
                   rx <- reify_helper x ctx;
-                  M.ret (@NatS var rx)) _or_
-               <[decapp term with Nat.mul]> UniMatchNoRed (fun x y:nat=>
+                  M.ret (@NatS var rx)
+               | [!APP] Nat.mul $n x y =n>
                   rx <- reify_helper x ctx;
                   ry <- reify_helper y ctx;
-                  M.ret (@NatMul var rx ry)) _or_
-               <[decapp term with @Let_In nat (fun _=>nat)]> UniMatchNoRed (fun v f=>
+                  M.ret (@NatMul var rx ry)
+               | [!APP] @Let_In nat (fun _=>nat) $n v f =n>
                   rv <- reify_helper v ctx;
                   rf <- (M.nu (FreshFrom f) mNone
                               (fun x : nat
@@ -626,7 +625,8 @@ Import M.notations.
                                         => let fx := reduce (RedWhd [rl:RedBeta]) (f x) in
                                            rf <- reify_helper fx (var_context.cons x vx ctx);
                                              M.abs_fun vx rf)));
-                  M.ret (@LetIn var rv rf))
+                  M.ret (@LetIn var rv rf)
+               end
              end) term ctx).
 
   Definition reify (var : Type) (term : nat) : M (@expr var)
