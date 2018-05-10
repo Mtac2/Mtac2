@@ -425,8 +425,8 @@ Fixpoint mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist (br
   | [m:] => raise NoPatternMatches
   | p :m: ps' =>
     mtry' (open_branch (y:=y) E p) (fun e =>
-      bind (unify e E UniMatchNoRed) (fun b=>
-      if b then mmatch' E y ps' else raise e))
+      is_head (B:=fun e => P y) (m := mBase) UniMatchNoRed E e (mmatch' E y ps') (raise e))
+          (* TODO: don't abuse is_head for this. *)
   end.
 
 Definition NotCaught : Exception. constructor. Qed.
