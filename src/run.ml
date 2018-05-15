@@ -978,7 +978,12 @@ let report_deltas, record_deltas =
               )
               in
               Printf.fprintf report_file "%s" str;
-              (* report deltas *)
+              (                 (* only recurse for actual deltas *)
+                match name with
+                | Constant _ ->
+                    report deltas
+                | _ -> ()
+              )
           | [] -> ()
         in
         report deltas; ()
