@@ -958,9 +958,8 @@ let delta_stack_name_to_string name =
 
 
 
-let delta_traces = ref ([])
-
 let report_deltas, record_deltas =
+  let delta_traces = ref ([]) in
   match Sys.getenv "MTAC_TRACE_FILE" with
   | fname ->
       let report_file = open_out_gen [Open_append; Open_creat] 0o640 fname in
@@ -1017,7 +1016,11 @@ let rec run' ctxt (vms : vm list) =
     )
   in
   match vm, vms with
-  | Ret c, [] -> report_deltas (); return sigma c ctxt.stack
+  | Ret c, [] ->
+      assert (List.length ctxt.delta_stack == 1);
+      record_deltas (List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack);
+      report_deltas ();
+      return sigma c ctxt.stack
   | Ret c, (Bind b :: vms) ->
       run_and_deltas {ctxt with stack=Zapp [|c|]::stack} (Code b :: vms) ctxt.delta_stack
   | Ret c, (Try (_, _, _, b) :: vms) ->
@@ -1050,7 +1053,12 @@ let rec run' ctxt (vms : vm list) =
         (* let cont ctxt h args = (run'[@tailcall]) {ctxt with stack=Zapp args::stack} (Code h :: vms) in *)
 
         let evars ev = safe_evar_value sigma ev in
-        let infos = CClosure.create_clos_infos ~evars CClosure.betaiota env in
+        let infos =
+          (* let entry_time = Unix.gettimeofday () in *)
+          let infos = CClosure.create_clos_infos ~evars CClosure.betaiota env in
+          (* record_deltas ({name = String "prim:create_clos_infos"; entry_time} :: List.hd ctxt.delta_stack) (List.tl ctxt.delta_stack); *)
+          infos
+        in
 
 
         let reduced_term, stack =
@@ -1654,10 +1662,10 @@ let rec run' ctxt (vms : vm list) =
                     match o with
                       Some v ->
                         let ctxt = if head_is_M then
-                            let time = Unix.gettimeofday () in
+                            let entry_time = Unix.gettimeofday () in
                             let deltas = List.hd ctxt.delta_stack in
                             let delta_stack = List.tl ctxt.delta_stack in
-                            {ctxt with delta_stack=({name = Constant hc; entry_time = time} :: deltas)::delta_stack}
+                            {ctxt with delta_stack=({name = Constant hc; entry_time} :: deltas)::delta_stack}
                           else ctxt in
                         (run'[@taillcall]) ctxt (Code v :: vms)
                     | None ->
