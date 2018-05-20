@@ -126,11 +126,11 @@ let () =
     name  = proof_mode_identifier ;
     set   =
       begin fun () ->
-        Pcoq.set_command_entry mproof_mode
+        Pvernac.set_command_entry mproof_mode
       end ;
     reset =
       begin fun () ->
-       Pcoq.set_command_entry Pcoq.Vernac_.noedit_mode
+       Pvernac.(set_command_entry Vernac_.noedit_mode)
       end
   }
 
