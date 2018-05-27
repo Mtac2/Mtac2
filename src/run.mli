@@ -33,10 +33,13 @@ type delta_stack_name =
 type delta_stack_entry = { name: delta_stack_name; entry_time: float; }
 type delta_stack = delta_stack_entry list list
 
-type ctxt = {env: Environ.env; renv: CClosure.fconstr; sigma: Evd.evar_map; nus: int; stack: CClosure.stack; delta_stack: delta_stack}
+type ctxt = {env: Environ.env; renv: CClosure.fconstr; sigma: Evd.evar_map; nus: int; stack: CClosure.stack; }
 
 type vm = Code of CClosure.fconstr | Ret of CClosure.fconstr | Fail of CClosure.fconstr
-        | Bind of CClosure.fconstr | Try of (Evd.evar_map * CClosure.stack * delta_stack * CClosure.fconstr)
+        | Prof of (delta_stack_entry list * CClosure.stack)
+        | End of delta_stack_entry list
+        | Bind of (CClosure.fconstr * delta_stack_entry list)
+        | Try of (Evd.evar_map * CClosure.stack * CClosure.fconstr)
         | Nu of (Names.Id.t * Environ.env * CClosure.fconstr)
         | Rem of (Environ.env * CClosure.fconstr * bool)
 
