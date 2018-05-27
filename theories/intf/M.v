@@ -420,14 +420,17 @@ Definition open_branch {A P y} (E : Exception) (b : branch t A P y) : t (P y) :=
   (* | _ => fun _ _ => M.failwith "not implemented" *)
   end y meq_refl.
 
-Fixpoint mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist (branch t A P y)) : t (P y) :=
+Fixpoint mmatch'' {A:Type} {P: A -> Type} (E : Exception) (y : A) (failure : t (P y)) (ps : mlist (branch t A P y)) : t (P y) :=
   match ps with
-  | [m:] => raise NoPatternMatches
+  | [m:] => failure
   | p :m: ps' =>
     mtry' (open_branch (y:=y) E p) (fun e =>
-      is_head (B:=fun e => P y) (m := mBase) UniMatchNoRed E e (mmatch' E y ps') (raise e))
+      is_head (B:=fun e => P y) (m := mBase) UniMatchNoRed E e (mmatch'' E y failure ps') (raise e))
           (* TODO: don't abuse is_head for this. *)
   end.
+
+Definition mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist (branch t A P y)) : t (P y) :=
+  mmatch'' E y (raise NoPatternMatches) ps.
 
 Definition NotCaught : Exception. constructor. Qed.
 
@@ -488,8 +491,7 @@ Module notations_pre.
 
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
-      (@mmatch' _ (fun _ => _) NotCaught e
-                   (mapp ls%with_pattern [m:branch_pattern (pany (raise e))%pattern]))))
+      (@mmatch'' _ (fun _ => _) NotCaught e (raise e) ls%with_pattern)))
       (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 
   Import TeleNotation.
