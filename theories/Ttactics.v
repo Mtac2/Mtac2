@@ -263,6 +263,10 @@ Definition use {A} (t : tactic) : ttac A :=
     M.ret (m: a, gs).
 Arguments use [_] _%tactic.
 
+Definition idtac {A} : ttac A :=
+    ''(m: a, g) <- to_goal A;
+    M.ret (m: a, [m: g]).
+
 Definition by' {A} (t : tactic) : ttac A :=
   ''(m: a, g) <- to_goal A;
   gs <- t g;

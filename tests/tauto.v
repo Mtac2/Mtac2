@@ -183,3 +183,43 @@ Module Mtac_V4.
   Abort.
 
 End Mtac_V4.
+
+Module Mtac_V5.
+  From Mtac2 Require Import Sorts.
+  Import Sorts.
+  Import TT.
+  Import TT.notations.
+  Import M.notations.
+  Import ProdNotations.
+
+  Mtac Do New Exception TautoFail.
+  Mtac Do New Exception OpenGoals.
+
+  Definition has_open_subgoals {A} (a : A *m mlist goal) : M bool :=
+    ret (match msnd a with [m:] => true | _ => false end).
+
+  Program Definition solve_tauto : forall {P:Prop}, ttac P :=
+    mfix1 solve_tauto (P : Prop) : M _ :=
+    mmatch P in Prop as P' return M (P' *m _) with
+    | True => apply I
+    | [? Q1 Q2] Q1 /\ Q2 =>
+      apply (@conj _ _) <**> solve_tauto Q1 <**> solve_tauto Q2
+    | [? Q1 Q2] Q1 \/ Q2 =>
+      mtry
+        q1 <- apply (@or_introl _ _) <**> solve_tauto Q1;
+        mif has_open_subgoals q1 then raise TautoFail else ret q1
+      with TautoFail =>
+        mtry
+          q2 <- apply (@or_intror _ _) <**> solve_tauto Q2;
+          mif has_open_subgoals q2 then raise OpenGoals else ret q2
+        with OpenGoals => idtac : M _ end
+      end
+    | [? (Q1 Q2 : Prop)] Q1 -> Q2 =>
+      tintro (fun x:Q1 => solve_tauto Q2)
+    | [? X (Q : X -> Prop)] (exists x : X, Q x) =>
+      x <- M.evar X;
+      apply (@ex_intro _ _ _) <**> solve_tauto (Q x)
+    | _ => TT.use (T.try T.assumption)
+  end.
+
+End Mtac_V5.
