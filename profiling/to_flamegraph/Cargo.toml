@@ -2,13 +2,17 @@
 name = "to_flamegraph"
 version = "0.1.0"
 authors = ["Jan-Oliver Kaiser <janno@mpi-sws.org>"]
-build = "build.rs"
+# build = "build.rs"
 
-[build-dependencies]
-lalrpop = "0.15.2"
+# [build-dependencies]
+# lalrpop = "0.15.2"
+
+[profile.release]
+debug = true
 
 [dependencies]
 sequence_trie = "0.3.5"
-lalrpop-util = "0.15.2"
+# lalrpop-util = "0.15.2"
 regex = "0.2.1"
 lazy_static = "1.0.0"
+fnv = "1.0.3"

@@ -6,18 +6,34 @@ use std::io::{BufRead, Write};
 
 use sequence_trie::*;
 
-mod stacks;
+use std::string::String;
+
+extern crate fnv;
+
+use fnv::FnvHashMap;
 
 fn main() -> () {
     let s = std::io::stdin();
     let locked = s.lock();
 
-    let mut trie : SequenceTrie<String, f64> = SequenceTrie::new();
+    let mut trie : SequenceTrie<String, f64, fnv::FnvBuildHasher> = SequenceTrie::default();
 
-    let p = stacks::LineParser::new();
+    let mut stack_vec = vec![];
+
     for line in locked.lines() {
         let l = line.expect("???");
-        let (stacks, time) = p.parse(&l).expect("misformed");
+
+        let pos = l.rfind(" ").expect("no space in input line.");
+        let (stack_str, float_str) = l.split_at(pos);
+        let stacks : &Vec<String> = {
+            stack_vec.clear();
+            for stack in stack_str.split(";") {
+                stack_vec.push(String::from(stack))
+            };
+            &stack_vec
+        };
+        let (_, time) = float_str.split_at(1);
+        let time = time.parse::<f64>().expect("not a valid floating point.");
 
         if stacks.len() > 1 {
             let parent = &stacks[0..stacks.len()-1];
