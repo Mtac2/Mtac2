@@ -1077,7 +1077,9 @@ let rec run' ctxt (vms : vm list) =
         (run'[@tailcall]) (ctxt_nu1 p) (Ret c :: vms)
   | Ret c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Ret c :: vms)
 
-  | Fail c, [End deltas] -> fail sigma c ctxt.stack
+  | Fail c, [End deltas] ->
+      record_deltas (deltas) ([]);
+      fail sigma c ctxt.stack
   | Fail c, (Bind (_, deltas) :: vms) ->
       record_deltas (deltas) (deltas_of_vms vms);
       (run'[@tailcall]) ctxt (Fail c :: vms)
