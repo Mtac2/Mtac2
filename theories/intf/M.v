@@ -655,9 +655,13 @@ Definition find_hyp_index {A} (x : A) : t (moption nat) :=
 
 Definition find_hyp {A:Type} : mlist Hyp -> t A :=
   mfix1 f (l : mlist Hyp) : M A :=
-    mmatch l with
-    | [? x d (l': mlist Hyp)] (@ahyp A x d) :m: l' =u> M.ret x
-    | [? ah l'] ah :m: l' =n> f l'
+    match l with
+    | (@ahyp A' x d) :m: l' =>
+      ou <- unify A' A UniEvarconv;
+      match ou return t A with
+      | mSome e => match e in _ =m= x return t x with meq_refl => M.ret x end
+      | mNone => f l'
+      end
     | _ => M.raise NotFound
     end.
 
