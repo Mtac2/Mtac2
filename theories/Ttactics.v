@@ -376,6 +376,9 @@ Definition tassumption {A:Type} : ttac A :=
 Definition tor {A:Type} (t u : ttac A) : ttac A :=
   mtry r <- t; M.ret r with _ => r <- u; M.ret r end.
 
+Definition reflexivity {P} {A B : P} : TT.ttac (A = B) :=
+  r <- M.coerce (eq_refl A); M.ret (m: r, [m:]).
+
 Require Import Strings.String.
 
 Definition ucomp1 {A B} (t: ttac A) (u: ttac B) : ttac A :=
