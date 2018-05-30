@@ -68,3 +68,5 @@ Definition NotAMatchExp : Exception. exact exception. Qed.
 Definition NotAnInductive : Exception. exact exception. Qed.
 
 Definition NoClassInstance (A : Type) : Exception. exact exception. Qed.
+
+Definition NotFound : Exception. exact exception. Qed.

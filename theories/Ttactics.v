@@ -360,18 +360,8 @@ Definition texists {A} {Q:A->Prop} : ttac (exists (x:A), Q x) :=
   pf <- M.evar (Q e);
   M.ret (m: ex_intro _ e pf, [m: Goal SProp pf]).
 
-Mtac Do New Exception NotFound.
-
-Definition find {A:Type} :=
-  mfix1 f (l : mlist Hyp) : M A :=
-    mmatch l with
-    | [? x d (l': mlist Hyp)] (@ahyp A x d) :m: l' =u> M.ret x
-    | [? ah l'] ah :m: l' =n> f l'
-    | _ => M.raise NotFound
-    end.
-
 Definition tassumption {A:Type} : ttac A :=
-  lift (hyps >>= find).
+  lift (M.select _).
 
 Definition tor {A:Type} (t u : ttac A) : ttac A :=
   mtry r <- t; M.ret r with _ => r <- u; M.ret r end.

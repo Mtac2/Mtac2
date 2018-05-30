@@ -653,6 +653,17 @@ Definition find_hyp_index {A} (x : A) : t (moption nat) :=
     | _ => ret false
     end) =<< M.hyps.
 
+Definition find_hyp {A:Type} : mlist Hyp -> t A :=
+  mfix1 f (l : mlist Hyp) : M A :=
+    mmatch l with
+    | [? x d (l': mlist Hyp)] (@ahyp A x d) :m: l' =u> M.ret x
+    | [? ah l'] ah :m: l' =n> f l'
+    | _ => M.raise NotFound
+    end.
+
+Definition select (T: Type) : t T :=
+  hyps >>= find_hyp.
+
 (** given a string s it appends a marker to avoid collition with user
     provided names *)
 Definition anonymize (s : string) : t string :=
