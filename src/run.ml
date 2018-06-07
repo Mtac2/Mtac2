@@ -18,7 +18,7 @@ open Evarconv
 
 open Constrs
 
-open CClosure
+open CClosure_copy
 
 (* warning 40 is about picking a constructor name from a module that is not in scope *)
 [@@@ocaml.warning "-40"]
@@ -46,8 +46,8 @@ let constr_to_string (sigma: Evd.evar_map) env t =
 
 
 (** Functions to convert between fconstr and econstr *)
-let of_econstr e = CClosure.inject (EConstr.Unsafe.to_constr e)
-let to_econstr f = EConstr.of_constr (CClosure.term_of_fconstr f)
+let of_econstr e = CClosure_copy.inject (EConstr.Unsafe.to_constr e)
+let to_econstr f = EConstr.of_constr (CClosure_copy.term_of_fconstr f)
 
 
 open MtacNames
@@ -220,8 +220,8 @@ module E = Exceptions
 
 module ReductionStrategy = struct
   open Reductionops
-  open CClosure
-  open CClosure.RedFlags
+  open CClosure_copy
+  open CClosure_copy.RedFlags
   open Context
 
   let reduce_constant = constant_of_string "Reduction.reduce"
@@ -346,8 +346,8 @@ module ReductionStrategy = struct
      * let (s, _) = whd_state_gen flags env sigma state in
      * Stack.zip sigma s *)
     let evars ev = safe_evar_value sigma ev in
-    let infos = CClosure.create_clos_infos ~evars flags env in
-    (CClosure.whd_val infos c)
+    let infos = CClosure_copy.create_clos_infos ~evars flags env in
+    (CClosure_copy.whd_val infos c)
 
   let redfuns = [|
     (fun _ _ _ c -> c);
@@ -368,13 +368,13 @@ module ReductionStrategy = struct
     with RedList.NotAList _ ->
       None
 
-  (* let whd_betadeltaiota_nolet = whdfun CClosure.allnolet *)
+  (* let whd_betadeltaiota_nolet = whdfun CClosure_copy.allnolet *)
 
   let whd_all_novars =
     let flags = red_add_transparent betaiota Names.cst_full_transparent_state in
     whdfun flags
 
-  let whd_betadeltaiota = whdfun CClosure.all
+  let whd_betadeltaiota = whdfun CClosure_copy.all
 end
 
 module RE = ReductionStrategy
@@ -882,8 +882,12 @@ let koft sigma t =
   | CoFix _ -> lf "tmCoFix"
   | _ -> failwith "unsupported"
 
-type ctxt = {env: Environ.env; renv: fconstr; sigma: Evd.evar_map; nus: int;
-             stack: CClosure.stack;
+type ctxt = {env: Environ.env;
+             renv: fconstr;
+             sigma: Evd.evar_map;
+             nus: int;
+             stack: CClosure_copy.stack;
+             infos: CClosure_copy.fconstr CClosure_copy.infos
             }
 
 type vm = Code of fconstr | Ret of fconstr | Fail of fconstr
@@ -913,10 +917,10 @@ let timers = Hashtbl.create 128
 
 
 let reduce_noshare infos t stack =
-  let b = !CClosure.share in
-  CClosure.share := false;
-  let r = CClosure.whd_stack infos t stack in
-  CClosure.share := b;
+  let b = !CClosure_copy.share in
+  CClosure_copy.share := false;
+  let r = CClosure_copy.whd_stack infos t stack in
+  CClosure_copy.share := b;
   r
 
 let pop_args num stack =
@@ -987,7 +991,9 @@ let rec run' ctxt (vms : vm list) =
         (* let cont ctxt h args = (run'[@tailcall]) {ctxt with stack=Zapp args::stack} (Code h :: vms) in *)
 
         let evars ev = safe_evar_value sigma ev in
-        let infos = CClosure.create_clos_infos ~evars CClosure.allnolet env in
+        let infos = {ctxt.infos with i_cache={ctxt.infos.i_cache with i_sigma=evars} } in
+        let ctxt = {ctxt with infos} in
+        (* let infos = CClosure_copy.create_clos_infos ~evars CClosure_copy.allnolet env in *)
 
         let reduced_term, stack = reduce_noshare infos t stack
         (* RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t *)
@@ -1073,7 +1079,7 @@ let rec run' ctxt (vms : vm list) =
 
                   let hf = reduced_term in
 
-                  if !trace then print_constr sigma env (EConstr.of_constr (CClosure.term_of_fconstr (mk_red (FApp (reduced_term,args)))));
+                  if !trace then print_constr sigma env (EConstr.of_constr (CClosure_copy.term_of_fconstr (mk_red (FApp (reduced_term,args)))));
 
                   let ctxt = {ctxt with stack} in
 
@@ -1134,7 +1140,7 @@ let rec run' ctxt (vms : vm list) =
                                   let ot = CoqOption.from_coq sigma env (to_econstr ot) in
                                   let env' = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
                                   let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
-                                  (run'[@tailcall]) {env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
+                                  (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
                                     (Code f :: Nu (name, env, ctxt.renv) :: vms)
                                 end
                           | None -> efail (Exceptions.mkWrongTerm sigma env s)
@@ -1463,7 +1469,7 @@ let rec run' ctxt (vms : vm list) =
                               let h = EConstr.mkApp (h, args) in
                               let arg = arg.(0) in
                               let h_type = Retyping.get_type_of env sigma h in
-                              let h_type = ReductionStrategy.whdfun (CClosure.all) env sigma (of_econstr (h_type)) in
+                              let h_type = ReductionStrategy.whdfun (CClosure_copy.all) env sigma (of_econstr (h_type)) in
                               let h_typefun = to_lambda sigma 1 (EConstr.of_constr h_type) in
                               let arg_type = (match EConstr.destLambda sigma h_typefun with | (_, ty, _) -> ty) in
                               let (h_type, arg_type, h, arg) = (of_econstr h_typefun, of_econstr arg_type, of_econstr h, of_econstr arg) in
@@ -1664,9 +1670,11 @@ let multi_subst_inv sigma l c =
 let run (env0, sigma) t : data =
   let subs, env = db_to_named sigma env0 in
   let t = multi_subst sigma subs t in
-  let t = CClosure.inject (EConstr.Unsafe.to_constr t) in
+  let t = CClosure_copy.inject (EConstr.Unsafe.to_constr t) in
   let (sigma, renv) = build_hypotheses sigma env in
-  match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure.empty_stack} [Code t] with
+  let evars ev = safe_evar_value sigma ev in
+  let infos = CClosure_copy.create_clos_infos ~evars CClosure_copy.allnolet env in
+  match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure_copy.empty_stack; infos} [Code t] with
   | Err (sigma', v, _) ->
       (* let v = Vars.replace_vars vsubs v in *)
       let v = multi_subst_inv sigma' subs (to_econstr v) in

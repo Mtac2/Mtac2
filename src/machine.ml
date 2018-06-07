@@ -588,11 +588,11 @@ let rec whd_state_gen flags env fixs sigma =
       ((EConstr.of_kind c0, stack),cst_l)
     in
     match c0 with
-    | Rel n when CClosure.RedFlags.red_set flags CClosure.RedFlags.fDELTA ->
+    | Rel n when CClosure_copy.RedFlags.red_set flags CClosure_copy.RedFlags.fDELTA ->
         (match lookup_rel n env with
          | LocalDef (_,body,_) -> whrec (lift n body, stack)
          | _ -> fold ())
-    | Var id when CClosure.RedFlags.red_set flags (CClosure.RedFlags.fVAR id) ->
+    | Var id when CClosure_copy.RedFlags.red_set flags (CClosure_copy.RedFlags.fVAR id) ->
         let body = safe_lookup_named_body id in
         begin
           match body with
@@ -600,7 +600,7 @@ let rec whd_state_gen flags env fixs sigma =
               whrec (body, stack)
           | _ -> fold ()
         end
-    | Var id when CClosure.RedFlags.red_set flags CClosure.RedFlags.fFIX ->
+    | Var id when CClosure_copy.RedFlags.red_set flags CClosure_copy.RedFlags.fFIX ->
         let body =
           try
             let open Context.Named in
@@ -621,7 +621,7 @@ let rec whd_state_gen flags env fixs sigma =
     | Const (c,u) ->
         reduction_effect_hook env sigma (EConstr.to_constr sigma x)
           (lazy (EConstr.to_constr sigma (Stack.zip sigma (x,stack))));
-        if CClosure.RedFlags.red_set flags (CClosure.RedFlags.fCONST c) then
+        if CClosure_copy.RedFlags.red_set flags (CClosure_copy.RedFlags.fCONST c) then
           let u' = EInstance.kind sigma u in
           (match constant_opt_value_in env (c, u') with
            | None -> fold ()
@@ -631,23 +631,23 @@ let rec whd_state_gen flags env fixs sigma =
           )
         else fold ()
 
-    | Proj (p, c) when CClosure.RedFlags.red_projection flags p ->
+    | Proj (p, c) when CClosure_copy.RedFlags.red_projection flags p ->
         let pb = lookup_projection p env in
         let npars = pb.Declarations.proj_npars
         and arg = pb.Declarations.proj_arg in
         let stack' = (c, Stack.Proj (npars, arg, p, Cst_stack.empty (*cst_l*)) :: stack) in
         whrec stack'
 
-    | LetIn (_,b,_,c) when CClosure.RedFlags.red_set flags CClosure.RedFlags.fZETA ->
+    | LetIn (_,b,_,c) when CClosure_copy.RedFlags.red_set flags CClosure_copy.RedFlags.fZETA ->
         apply_subst (fun _ -> whrec) [b] sigma c stack
     | Cast (c,_,_) -> whrec (c, stack)
     | App (f,cl)  ->
         whrec (f, Stack.append_app cl stack)
     | Lambda (na,t,c) ->
         (match Stack.decomp stack with
-         | Some _ when CClosure.RedFlags.red_set flags CClosure.RedFlags.fBETA ->
+         | Some _ when CClosure_copy.RedFlags.red_set flags CClosure_copy.RedFlags.fBETA ->
              apply_subst (fun _ -> whrec) [] sigma x stack
-         | None when CClosure.RedFlags.red_set flags CClosure.RedFlags.fETA ->
+         | None when CClosure_copy.RedFlags.red_set flags CClosure_copy.RedFlags.fETA ->
              let env' = push_rel (LocalAssum (na, t)) env in
              let whrec' = whd_state_gen flags env' fixs sigma in
              (match EConstr.kind sigma (Stack.zip sigma (fst (whrec' (c, Stack.empty)))) with
@@ -675,8 +675,8 @@ let rec whd_state_gen flags env fixs sigma =
              whrec (arg, Stack.Fix(f,bef,cst_l)::s'))
 
     | Construct ((ind,c),u) ->
-        let use_match = CClosure.RedFlags.red_set flags CClosure.RedFlags.fMATCH in
-        let use_fix = CClosure.RedFlags.red_set flags CClosure.RedFlags.fFIX in
+        let use_match = CClosure_copy.RedFlags.red_set flags CClosure_copy.RedFlags.fMATCH in
+        let use_fix = CClosure_copy.RedFlags.red_set flags CClosure_copy.RedFlags.fFIX in
         if use_match || use_fix then
           match Stack.strip_app stack with
           |args, (Stack.Case(ci, _, lf,_)::s') when use_match ->
@@ -720,7 +720,7 @@ let rec whd_state_gen flags env fixs sigma =
         else fold ()
 
     | CoFix cofix ->
-        if CClosure.RedFlags.red_set flags CClosure.RedFlags.fCOFIX then
+        if CClosure_copy.RedFlags.red_set flags CClosure_copy.RedFlags.fCOFIX then
           match Stack.strip_app stack with
           |args, ((Stack.Case _ |Stack.Proj _)::s') ->
               reduce_and_refold_cofix whrec env sigma cofix stack

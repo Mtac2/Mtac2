@@ -14,6 +14,7 @@ src/mConstr.ml
 src/mConstr.mli
 src/machine.ml
 src/machine.mli
+src/cClosure_copy.ml
 src/run.ml
 src/run.mli
 src/metaCoqInterp.ml
