@@ -44,8 +44,6 @@ Definition VarAppearsInValue : Exception. exact exception. Qed.
 
 Definition NotALetIn : Exception. exact exception. Qed.
 
-Definition NotAGoal : Exception. exact exception. Qed.
-
 Definition DoesNotMatch : Exception. exact exception. Qed.
 Definition NoPatternMatches : Exception. exact exception. Qed.
 Definition Anomaly : Exception. exact exception. Qed.
@@ -73,3 +71,7 @@ Definition NotAnInductive : Exception. exact exception. Qed.
 Definition NoClassInstance (A : Type) : Exception. exact exception. Qed.
 
 Definition NotFound : Exception. exact exception. Qed.
+
+(* We don't want the user to catch this error: it's someone messing up the
+invariant that goals are opened. *)
+Notation NotAGoal := (Failure "Not a Goal").
