@@ -11,5 +11,6 @@ Inductive Hyp : Type :=
 (** goal type *)
 Inductive goal :=
   | Goal : forall (s:Sort){A:stype_of s}, selem_of A -> goal
-  | AHyp : forall {A:Type}, moption A -> (A -> goal) -> goal
+  | AHyp : forall {A:Type}, (A -> goal) -> goal
+  | HypLet : Type -> goal -> goal
   | HypRem : forall {A:Type}, A -> goal -> goal.

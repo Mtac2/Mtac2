@@ -41,6 +41,8 @@ Definition AbsDependencyError : Exception. exact exception. Qed.
 
 Definition VarAppearsInValue : Exception. exact exception. Qed.
 
+Definition NotALetIn : Exception. exact exception. Qed.
+
 Definition NotAGoal : Exception. exact exception. Qed.
 
 Definition DoesNotMatch : Exception. exact exception. Qed.

@@ -409,7 +409,8 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
           | Goal s ge =>
             M.unify_or_fail UniCoq caseterm (Dyn ge);;
             M.ret tt
-          | AHyp _ _ => M.raise NotAGoal
+          | AHyp _ => M.raise NotAGoal
+          | HypLet _ _ => M.raise NotAGoal
           | HypRem _ _ => M.raise NotAGoal
           end);;
           let goals' := dreduce (@mmap) (mmap (mpair tt) goals) in

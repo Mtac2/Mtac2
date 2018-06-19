@@ -26,12 +26,12 @@ Definition simple_rewrite A {x y : A} (p : x = y) : tactic := fun g=>
 
 Import T.notations.
 Definition CVariablizeNoOccurrence : Exception. constructor. Qed.
-Definition cvariabilize_base {A} (t: A) name (cont: A -> tactic) : tactic :=
+Definition cvariabilize_base {A} (t: A) (name:name) (cont: A -> tactic) : tactic :=
   gT <- T.goal_type;
   r <- abstract t gT;
   match r with
   | mSome r =>
-    T.cpose_base name t (fun x=>
+    T.cpose_base (B:=fun _=>_) name t (let x := t in
       let reduced := dreduce (fu) (fu r x) in
       T.change reduced;;
       cont x

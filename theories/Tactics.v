@@ -163,26 +163,30 @@ Definition get_binder_name {A} (x : A) : gtactic string := fun g =>
 (** [close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] to each of them. *)
 Definition close_goals {A B} (y : B) : mlist (A *m goal) -> M (mlist (A *m goal)) :=
-  M.map (fun '(m: x,g') => r <- M.abs_fun y g'; M.ret (m: x, @AHyp B mNone r)).
+  M.map (fun '(m: x,g') => r <- M.abs_fun y g'; M.ret (m: x, @AHyp B r)).
 
 (** [let_close_goals x l] takes the list of goals [l] and appends
     hypothesis [x] with its definition to each of them (it assumes it is defined). *)
 Definition let_close_goals {A: Type} {B:Type} (y : B) : mlist (A *m goal) -> M (mlist (mprod A goal)) :=
   let t := reduce (RedOneStep [rl:RedDelta]) y in (* to obtain x's definition *)
-  M.map (fun '(m: x,g') => r <- M.abs_fun y g'; M.ret (m: x, @AHyp B (mSome t) r)).
+  M.map (fun '(m: x,g') => r <- M.abs_let y t g'; M.ret (m: x, HypLet B r)).
 
 (** [rem_hyp x l] "removes" hypothesis [x] from the list of goals [l]. *)
 Definition rem_hyp {A B} (x : B) (l: mlist (A *m goal)) : M (mlist (A *m goal)) :=
   let v := dreduce (@mmap) (mmap (fun '(m: y,g) => (m: y, HypRem x g)) l) in M.ret v.
 
 (** Returns if a goal is open, i.e., a meta-variable. *)
-Fixpoint is_open (g : goal) : M bool :=
+Definition is_open : goal -> M bool := mfix1 is_open (g : goal) : M _ :=
   match g with
   | Goal _ e => M.is_evar e
-  | @AHyp C _ f =>
+  | @AHyp C f =>
     (* we get the name in order to avoid inserting existing names
       (nu will raise an exception otherwise) *)
     M.nu Generate mNone (fun x : C => is_open (f x))
+  | HypLet A f =>
+    (* we get the name in order to avoid inserting existing names
+      (nu will raise an exception otherwise) *)
+    M.nu_let Generate f (fun _ : A =>is_open)
   | HypRem _ g => is_open g (* we don't care about the variable *)
   end.
 
@@ -194,15 +198,15 @@ Definition filter_goals {A} : mlist (A *m goal) -> M (mlist (A *m goal)) :=
     (pushes all the hypotheses in the context) and applies tactic [t]
     to the so-opened goal. The result is "closed" back. *)
 Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
-  fix open g :=
+  mfix1 open (g: goal) : M _ :=
     match g return M _ with
     | Goal _ _ => t g
-    | @AHyp C mNone f =>
+    | @AHyp C f =>
       M.nu (FreshFrom f) mNone (fun x : C =>
         open (f x) >>= close_goals x)
-    | @AHyp C (mSome t) f =>
-      M.nu (FreshFrom f) (mSome t) (fun x : C =>
-        open (f x) >>= let_close_goals x)
+    | HypLet B f =>
+      M.nu_let (FreshFrom f) f (fun (x : B) (g : goal) =>
+        open g >>= let_close_goals x)
     | HypRem x f =>
       M.remove x (open f) >>= rem_hyp x
     end.
@@ -565,12 +569,12 @@ Definition treduce (r : Reduction) : tactic := fun g=>
   | @Goal SType T e=>
     let T' := reduce r T in
     e <- M.evar T';
-    mif M.cumul UniMatch g (@Goal SType T e) then M.ret [m:(m: tt, Goal SType e)]
+    mif M.cumul UniEvarconv g (@Goal SType T e) then M.ret [m:(m: tt, Goal SType e)]
     else M.failwith "treduce"
   | @Goal SProp T e=>
     let T' := reduce r T in
     e <- M.evar T';
-    mif M.cumul UniMatch g (@Goal SProp T e) then M.ret [m:(m: tt, Goal SProp e)]
+    mif M.cumul UniEvarconv g (@Goal SProp T e) then M.ret [m:(m: tt, Goal SProp e)]
     else M.failwith "treduce"
   | _ => M.raise NotAGoal
   end.
@@ -597,7 +601,7 @@ Definition change_hyp {P Q} (H : P) (newH: Q) : tactic := fun g=>
        r <- M.evar gT;
        abs <- M.abs_fun nH r;
        gabs <- M.abs_fun nH (Goal sort r);
-       M.ret (m: AHyp mNone gabs, abs)));
+       M.ret (m: AHyp gabs, abs)));
      exact (abs newH) g;;
      M.ret [m:(m: tt, gabs)]
   | _ => M.raise NotAGoal
@@ -616,19 +620,19 @@ Definition cassert_with_base {A B} (name : name) (t : A)
     end).
 
 Definition cpose_base {A B} (name : name) (t : A)
-    (cont : A -> gtactic B) : gtactic B := fun g =>
+    (cont : let x := t in gtactic (B x)) : gtactic (let x := t in B x) := fun g =>
   M.nu name (mSome t) (fun x=>
     match g with
     | @Goal sort gT _ =>
       r <- M.evar gT;
       value <- M.abs_let x t r;
       exact value g;;
-      let_close_goals x =<< cont x (Goal sort r)
+      let_close_goals x =<< cont (Goal sort r)
     | _ => M.raise NotAGoal
     end).
 
-Definition cpose {A} (t: A) (cont : A -> tactic) : tactic := fun g =>
-  cpose_base (FreshFrom cont) t cont g.
+Definition cpose {A} (t: A) (cont : let x := t in tactic) : tactic := fun g =>
+  cpose_base(FreshFrom cont) t cont g.
 
 (* FIX: seriously need to abstract these set of functions!
    Too much duplication! *)
@@ -773,7 +777,7 @@ Definition fix_tac (f : name) (n : N) : tactic := fun g =>
     (* fixp is now the fixpoint with the evar as body *)
     (* The new goal is enclosed with the definition of f *)
     new_goal <- M.abs_fun f (Goal SType new_goal);
-    M.ret (fixp, AHyp mNone new_goal)
+    M.ret (fixp, AHyp new_goal)
   );
   exact f g;;
   M.ret [m:(m: tt,new_goal)].
@@ -1001,7 +1005,7 @@ Module notations.
   Notation "'cbv'" := (treduce RedNF) : tactic_scope.
 
   Notation "'pose' ( x := t )" :=
-    (cpose t (fun x=>idtac)) (at level 40, x at next level) : tactic_scope.
+    (cpose t (let x:= t in idtac)) (at level 40, x at next level) : tactic_scope.
   Notation "'assert' ( x : T )" :=
     (cassert (fun x:T=>idtac)) (at level 40, x at next level) : tactic_scope.
 

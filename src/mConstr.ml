@@ -39,6 +39,7 @@ type 'a mconstr_head =
   | Mfix5 : (arg_fix5_ty * arg_type * arg_fun * arg_fix5_val) mconstr_head
   | Mis_var : (arg_type * arg_any) mconstr_head
   | Mnu : (arg_type * arg_type * arg_string * arg_any * arg_fun) mconstr_head
+  | Mnu_let : (arg_type * arg_type * arg_type * arg_string * arg_any * arg_fun) mconstr_head
   | Mabs_fun : (arg_type * arg_fun * arg_any * arg_any) mconstr_head
   | Mabs_let : (arg_type * arg_fun * arg_any * arg_any * arg_any) mconstr_head
   | Mabs_prod_prop : (arg_type * arg_any * arg_type) mconstr_head
@@ -98,6 +99,7 @@ let num_args_of_mconstr (type a) (mh : a mconstr_head) =
   | Mfix5 -> 2 + 2*5
   | Mis_var -> 2
   | Mnu -> 5
+  | Mnu_let -> 6
   | Mabs_fun -> 4
   | Mabs_let -> 5
   | Mabs_prod_prop -> 3
@@ -192,6 +194,9 @@ let isis_var = isconstant name_is_var
 let name_nu = constant_of_string "nu"
 (* let mknu = mkconstr name_nu *)
 let isnu = isconstant name_nu
+
+let name_nu_let = constant_of_string "nu_let"
+let isnu_let = isconstant name_nu_let
 
 let name_abs_fun = constant_of_string "abs_fun"
 (* let mkabs_fun = mkconstr name_abs_fun *)
@@ -393,6 +398,8 @@ let mconstr_head_of h =
       MHead Mis_var
   | _ when isnu h ->
       MHead Mnu
+  | _ when isnu_let h ->
+      MHead Mnu_let
   | _ when isabs_fun h ->
       MHead Mabs_fun
   | _ when isabs_let h ->
@@ -532,6 +539,8 @@ let mconstr_of (type a) args (h : a mconstr_head) =
       MConstr (Mis_var, (args 0, args 1))
   | Mnu ->
       MConstr (Mnu, (args 0, args 1, args 2, args 3, args 4))
+  | Mnu_let ->
+      MConstr (Mnu_let, (args 0, args 1, args 2, args 3, args 4, args 5))
   | Mabs_fun ->
       MConstr (Mabs_fun, (args 0, args 1, args 2, args 3))
   | Mabs_let ->

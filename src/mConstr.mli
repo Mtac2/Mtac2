@@ -36,6 +36,7 @@ type 'a mconstr_head =
   | Mfix5 : (arg_fix5_ty * arg_type * arg_fun * arg_fix5_val) mconstr_head
   | Mis_var : (arg_type * arg_any) mconstr_head
   | Mnu : (arg_type * arg_type * arg_string * arg_any * arg_fun) mconstr_head
+  | Mnu_let : (arg_type * arg_type * arg_type * arg_string * arg_any * arg_fun) mconstr_head
   | Mabs_fun : (arg_type * arg_fun * arg_any * arg_any) mconstr_head
   | Mabs_let : (arg_type * arg_fun * arg_any * arg_any * arg_any) mconstr_head
   | Mabs_prod_prop : (arg_type * arg_any * arg_type) mconstr_head

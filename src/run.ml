@@ -65,6 +65,7 @@ module Goal = struct
   let mkgoal = mkUConstr "Goals.goal"
   let mkGoal = mkUConstr "Goals.Goal"
   let mkAHyp = mkUConstr "Goals.AHyp"
+  let mkHypLet = mkUConstr "Goals.HypLet"
 
   let mkSType = Constr.mkConstr "Mtac2.Sorts.Sorts.SType"
   let mkSProp = Constr.mkConstr "Mtac2.Sorts.Sorts.SProp"
@@ -84,13 +85,18 @@ module Goal = struct
     (* we are going to wrap the body in a function, so we need to lift
        the indices. we also replace the name with index 1 *)
     let body = replace_term sigma (mkVar name) (mkRel 1) (Vars.lift 1 body) in
-    let sigma, odef_coq = CoqOption.to_coq sigma env ty odef in
-    let sigma, ahyp = mkAHyp sigma env in
-    sigma, mkApp (ahyp, [|ty; odef_coq; mkLambda(Name name,ty,body)|])
+    match odef with
+    | None ->
+        let sigma, ahyp = mkAHyp sigma env in
+        sigma, mkApp (ahyp, [|ty; mkLambda(Name name,ty,body)|])
+    | Some def ->
+        let sigma, hyplet = mkHypLet sigma env in
+        sigma, mkApp (hyplet, [|ty; mkLetIn(Name name,def,ty,body)|])
 
   (* it assumes goal is of type goal *)
   let evar_of_goal sigma env =
     let rec eog goal =
+      let goal = Reductionops.whd_allnolet env sigma goal in
       let (c, args) = decompose_appvect sigma goal in
       if isConstruct sigma c then
         match get_constructor_pos sigma c with
@@ -101,17 +107,24 @@ module Goal = struct
             else (* it is defined *)
               None
         | 1 -> (* AHyp *)
-            let func = args.(2) in
+            let func = args.(1) in
             if isLambda sigma func then
               let (_, _, body) = destLambda sigma func in
               eog body
             else
               None
-        | 2 -> (* RemHyp *)
+        | 2 -> (* HypLet *)
+            let goal = args.(1) in
+            if isLetIn sigma goal then
+              let (_, _, _, body) = destLetIn sigma goal in
+              eog body
+            else
+              None
+        | 3 -> (* RemHyp *)
             eog args.(2)
         | _ -> failwith "Should not happen"
       else
-        CErrors.user_err Pp.(str "Not a goal")
+        CErrors.user_err Pp.(app (str "Not a goal: ") (Termops.print_constr_env env sigma goal))
     in eog
 
   let goal_of_evar (env:env) sigma ev =
@@ -173,6 +186,9 @@ module Exceptions = struct
   let mkNotAnApplication = mkDebugEx "NotAnApplication"
 
   let mkAbsDependencyError = mkDebugEx "AbsDependencyError"
+  let mkAbsVariableIsADefinition = mkDebugEx "AbsVariableIsADefinition"
+
+  let mkNotALetIn = mkDebugEx "NotALetIn"
 
   let mkExceptionNotGround = mkDebugEx "ExceptionNotGround"
 
@@ -1146,6 +1162,34 @@ let rec run' ctxt (vms : vm list) =
                           | None -> efail (Exceptions.mkWrongTerm sigma env s)
                         end
 
+                    | MConstr (Mnu_let, (ta, tb, tc, s, c, f)) ->
+                        let s = to_econstr s in
+                        begin
+                          match MNames.get_from_name (env, sigma) s with
+                          | Some (fresh, namestr) ->
+                              let c = to_econstr c in
+                              let name = Names.Id.of_string namestr in
+                              if (not fresh) && (Id.Set.mem name (vars_of_env env)) then
+                                efail (Exceptions.mkNameExists sigma env s)
+                              else if not (isLetIn sigma c) then
+                                efail (Exceptions.mkNotALetIn sigma env c)
+                              else
+                                begin
+                                  let ta = to_econstr ta in
+                                  let (_, d, dty, body) = destLetIn sigma c in
+                                  let eqaty = Munify.unify_evar_conv Names.full_transparent_state env sigma CONV ta dty in
+                                  let eqtypes = match eqaty with Success _ -> true | _ -> false in
+                                  if not eqtypes then
+                                    efail (Exceptions.mkNotALetIn sigma env ta) (* FIX change to a meaningful error *)
+                                  else
+                                    let env' = push_named (Context.Named.Declaration.of_tuple (name, Some d, dty)) env in
+                                    let (sigma, renv') = Hypotheses.cons_hyp dty (mkVar name) (Some d) (to_econstr ctxt.renv) sigma env in
+                                    (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name); of_econstr body|] :: stack}
+                                      (Code f :: Nu (name, env, ctxt.renv) :: vms)
+                                end
+                          | None -> efail (Exceptions.mkWrongTerm sigma env s)
+                        end
+
                     | MConstr (Mabs_fun, (a, p, x, y)) ->
                         abs vms AbsFun ctxt a p x y 0 mkProp
 
@@ -1564,12 +1608,18 @@ and abs vms case ctxt a p x y n t : data_stack =
   let p = nf_evar sigma p in
   let x = nf_evar sigma x in
   let y = nf_evar sigma y in
+  let has_definition var =
+    let n = Environ.lookup_named var env in
+    Option.has_some (Context.Named.Declaration.get_value n) in
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
   if isVar sigma x then
-    if check_abs_deps env sigma x y p then
-      let name = destVar sigma x in
+    let name = destVar sigma x in
+    if case = AbsFun && has_definition name then
+      let (sigma, e) = E.mkAbsVariableIsADefinition sigma env x in
+      (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
+    else if check_abs_deps env sigma x y p then
       let y' = Vars.subst_vars [name] y in
       let t =
         match case with

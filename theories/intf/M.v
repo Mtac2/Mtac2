@@ -72,6 +72,14 @@ Definition is_var: forall{A : Type}, A->t bool.
 Definition nu: forall{A: Type}{B: Type}, name -> moption A -> (A -> t B) -> t B.
   make. Qed.
 
+(* [nu_let x f] expects [f] to be [let y := t in t'], otherwise raises
+   [NotALetIn], and then executes [t'{x/y}] with variable [x := t] added to the
+   local context.  It raises [NameExistsInContext] if the name "x" is in the
+   context, or [VarAppearsInValue] if executing [t'] results in a term
+   containing variable [x]. *)
+Definition nu_let: forall{A: Type}{B: Type}{C: Type}, name -> C -> (A -> C -> t B) -> t B.
+  make. Qed.
+
 (** [abs_fun x e] abstracts variable [x] from [e]. It raises [NotAVar] if [x]
     is not a variable, or [AbsDependencyError] if [e] or its type [P] depends on
     a variable also depending on [x]. *)

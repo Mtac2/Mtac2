@@ -89,22 +89,22 @@ Definition napply {T} {e: runner (count_nondep_binders T)} (c : T) : ntactic uni
 Import T.
 Import T.notations.
 
-Goal forall P Q, (P -> Q -> P) -> P -> Q -> P.
-MProof.
-  intros P Q H x y.
-Fail napply H &n> [m: assumption].
-Fail napply H &n> [m: ].
-  pose (T := napply H &n> [m: assumption | assumption]).
-  T.
-Qed.
+(* Goal forall P Q, (P -> Q -> P) -> P -> Q -> P. *)
+(* MProof. *)
+(*   intros P Q H x y. *)
+(* Fail napply H &n> [m: assumption]. *)
+(* Fail napply H &n> [m: ]. *)
+(*   pose (T := napply H &n> [m: assumption | assumption]). *)
+(*   T. *)
+(* Qed. *)
 
-Goal forall P Q, (P -> Q -> P) -> P -> Q -> P.
-MProof.
-  intros P Q H x.
-Fail napply H &n> [m: assumption].
-Fail napply H &n> [m: ].
-  pose (tac := napply H &n> [m: assumption | assumption]).
-  Fail tac. (* ok, we can define the tactic, but it now fails to apply *)
-  intro y.
-  tac.
-Qed.
+(* Goal forall P Q, (P -> Q -> P) -> P -> Q -> P. *)
+(* MProof. *)
+(*   intros P Q H x. *)
+(* Fail napply H &n> [m: assumption]. *)
+(* Fail napply H &n> [m: ]. *)
+(*   pose (tac := napply H &n> [m: assumption | assumption]). *)
+(*   Fail tac. (* ok, we can define the tactic, but it now fails to apply *) *)
+(*   intro y. *)
+(*   tac. *)
+(* Qed. *)
