@@ -189,6 +189,7 @@ module Exceptions = struct
   let mkAbsVariableIsADefinition = mkDebugEx "AbsVariableIsADefinition"
 
   let mkNotALetIn = mkDebugEx "NotALetIn"
+  let mkNotTheSameType = mkDebugEx "NotTheSameType"
 
   let mkExceptionNotGround = mkDebugEx "ExceptionNotGround"
 
@@ -1180,7 +1181,7 @@ let rec run' ctxt (vms : vm list) =
                                   let eqaty = Munify.unify_evar_conv Names.full_transparent_state env sigma CONV ta dty in
                                   let eqtypes = match eqaty with Success _ -> true | _ -> false in
                                   if not eqtypes then
-                                    efail (Exceptions.mkNotALetIn sigma env ta) (* FIX change to a meaningful error *)
+                                    efail (Exceptions.mkNotTheSameType sigma env ta)
                                   else
                                     let env' = push_named (Context.Named.Declaration.of_tuple (name, Some d, dty)) env in
                                     let (sigma, renv') = Hypotheses.cons_hyp dty (mkVar name) (Some d) (to_econstr ctxt.renv) sigma env in

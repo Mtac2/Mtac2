@@ -43,6 +43,7 @@ Definition AbsVariableIsADefinition : Exception. exact exception. Qed.
 Definition VarAppearsInValue : Exception. exact exception. Qed.
 
 Definition NotALetIn : Exception. exact exception. Qed.
+Definition NotTheSameType : Exception. exact exception. Qed.
 
 Definition DoesNotMatch : Exception. exact exception. Qed.
 Definition NoPatternMatches : Exception. exact exception. Qed.
