@@ -620,18 +620,18 @@ Definition cassert_with_base {A B} (name : name) (t : A)
     end).
 
 Definition cpose_base {A B} (name : name) (t : A)
-    (cont : let x := t in gtactic (B x)) : gtactic (let x := t in B x) := fun g =>
+    (cont : A -> gtactic B) : gtactic B := fun g =>
   M.nu name (mSome t) (fun x=>
     match g with
     | @Goal sort gT _ =>
       r <- M.evar gT;
       value <- M.abs_let x t r;
       exact value g;;
-      let_close_goals x =<< cont (Goal sort r)
+      let_close_goals x =<< cont x (Goal sort r)
     | _ => M.raise NotAGoal
     end).
 
-Definition cpose {A} (t: A) (cont : let x := t in tactic) : tactic := fun g =>
+Definition cpose {A} (t: A) (cont : A -> tactic) : tactic := fun g =>
   cpose_base(FreshFrom cont) t cont g.
 
 (* FIX: seriously need to abstract these set of functions!
@@ -1005,7 +1005,7 @@ Module notations.
   Notation "'cbv'" := (treduce RedNF) : tactic_scope.
 
   Notation "'pose' ( x := t )" :=
-    (cpose t (let x:= t in idtac)) (at level 40, x at next level) : tactic_scope.
+    (cpose t (fun x=>idtac)) (at level 40, x at next level) : tactic_scope.
   Notation "'assert' ( x : T )" :=
     (cassert (fun x:T=>idtac)) (at level 40, x at next level) : tactic_scope.
 

@@ -49,7 +49,7 @@ MProof.
   cmove_back H (rewrite <- eq).
   intro H. (* now H has only indices *)
   move_back eq.
-  new_destruct H.
+  Fail new_destruct H. (* FIX: failing because it's trying to abstract the definition j *)
 Abort.
 
 

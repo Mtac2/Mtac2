@@ -31,7 +31,7 @@ Definition cvariabilize_base {A} (t: A) (name:name) (cont: A -> tactic) : tactic
   r <- abstract t gT;
   match r with
   | mSome r =>
-    T.cpose_base (B:=fun _=>_) name t (let x := t in
+    T.cpose_base name t (fun x =>
       let reduced := dreduce (fu) (fu r x) in
       T.change reduced;;
       cont x
