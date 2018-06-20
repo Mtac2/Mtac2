@@ -223,7 +223,7 @@ Mtac Do (
 (* With nice syntax *)
 Mtac Do (
        mmatch (3 + 5) with
-       | [!APP] plus $n x y =n> M.unify_or_fail UniMatchNoRed (x,y) (3,5)
+       | [#] plus | x y =n> M.unify_or_fail UniMatchNoRed (x,y) (3,5)
       end
      ).
 
@@ -231,13 +231,13 @@ Mtac Do (
    arguments *)
 Fail Mtac Do (
        mmatch (3 + 3) with
-       | [!APP] plus (2+1) $n y =n> M.unify_or_fail UniMatchNoRed (y) (5)
+       | [#] plus (2+1) | y =n> M.unify_or_fail UniMatchNoRed (y) (5)
       end
      ).
 (* But this one succeeds, as it uses conversion by calling Unicoq's unification. *)
 Mtac Do (
        mmatch (3 + 5) with
-       | [!APP] plus (2+1) $u y =n> M.unify_or_fail UniMatchNoRed (y) (5)
+       | [#] plus (2+1) | y =u> M.unify_or_fail UniMatchNoRed (y) (5)
       end
      ).
 

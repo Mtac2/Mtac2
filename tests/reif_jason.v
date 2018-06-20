@@ -596,7 +596,7 @@ Module MTac2.
     := match ctx with
        | var_context.cons term' v xs =>
          mmatch term' with
-         | [!APP] term $n =n> M.ret (Some v)
+         | [#] term | =n> M.ret (Some v)
          | _ => M.ret None
          end
        | _ => M.ret None
@@ -608,15 +608,15 @@ Module MTac2.
              | Some v => M.ret (@Var var v)
              | None =>
                mmatch term with
-               | [!APP] O $n =n> M.ret (@NatO var)
-               | [!APP] S $n x =n>
+               | [#] O | =n> M.ret (@NatO var)
+               | [#] S | x =n>
                   rx <- reify_helper x ctx;
                   M.ret (@NatS var rx)
-               | [!APP] Nat.mul $n x y =n>
+               | [#] Nat.mul | x y =n>
                   rx <- reify_helper x ctx;
                   ry <- reify_helper y ctx;
                   M.ret (@NatMul var rx ry)
-               | [!APP] @Let_In nat (fun _=>nat) $n v f =n>
+               | [#] @Let_In nat (fun _=>nat) | v f =n>
                   rv <- reify_helper v ctx;
                   rf <- (M.nu (FreshFrom f) mNone
                               (fun x : nat

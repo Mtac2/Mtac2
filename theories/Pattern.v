@@ -135,7 +135,7 @@ Delimit Scope with_pattern_scope with with_pattern.
    term will happen. The delimiter symbol "$" is annotated with the reduction
    strategy used for the initial arguments *)
 
-Notation "'[!APP' ] f '$n' x .. z '=n>' b" :=
+Notation "'[#' ] f '|' x .. z '=n>' b" :=
   (branch_app_static
      (m := mTele (fun x => .. (mTele (fun z => mBase)) ..))
      UniMatchNoRed
@@ -143,10 +143,10 @@ Notation "'[!APP' ] f '$n' x .. z '=n>' b" :=
      (fun x => .. (fun z => b) ..)
   ) (at level 91, x binder, z binder) : branch_scope.
 
-Notation "'[!APP' ] f '$n' '=n>' b" :=
+Notation "'[#' ] f '|' '=n>' b" :=
   (branch_app_static (m := mBase) UniMatchNoRed f b) (at level 91) : branch_scope.
 
-Notation "'[!APP' ] f '$m' x .. z '=n>' b" :=
+Notation "'[#' ] f '|' x .. z '=m>' b" :=
   (branch_app_static
      (m := mTele (fun x => .. (mTele (fun z => mBase)) ..))
      UniMatch
@@ -154,10 +154,10 @@ Notation "'[!APP' ] f '$m' x .. z '=n>' b" :=
      (fun x => .. (fun z => b) ..)
   ) (at level 91, x binder, z binder) : branch_scope.
 
-Notation "'[!APP' ] f '$m' '=n>' b" :=
+Notation "'[#' ] f '|' '=m>' b" :=
   (branch_app_static (m := mBase) UniMatch f b) (at level 91) : branch_scope.
 
-Notation "'[!APP' ] f '$u' x .. z '=n>' b" :=
+Notation "'[#' ] f '|' x .. z '=u>' b" :=
   (branch_app_static
      (m := mTele (fun x => .. (mTele (fun z => mBase)) ..))
      UniCoq
@@ -165,10 +165,10 @@ Notation "'[!APP' ] f '$u' x .. z '=n>' b" :=
      (fun x => .. (fun z => b) ..)
   ) (at level 91, x binder, z binder) : branch_scope.
 
-Notation "'[!APP' ] f '$u' '=n>' b" :=
+Notation "'[#' ] f '|' '=u>' b" :=
   (branch_app_static (m := mBase) UniCoq f b) (at level 91) : branch_scope.
 
-Notation "'[!APP' ] f '$c' x .. z '=n>' b" :=
+Notation "'[#' ] f '|' x .. z '=c>' b" :=
   (branch_app_static
      (m := mTele (fun x => .. (mTele (fun z => mBase)) ..))
      UniEvarconv
@@ -176,7 +176,7 @@ Notation "'[!APP' ] f '$c' x .. z '=n>' b" :=
      (fun x => .. (fun z => b) ..)
   ) (at level 91, x binder, z binder) : branch_scope.
 
-Notation "'[!APP' ] f '$c' '=n>' b" :=
+Notation "'[#' ] f '|' '=c>' b" :=
   (branch_app_static (m := mBase) UniEvarconv f b) (at level 91) : branch_scope.
 
 
