@@ -256,6 +256,9 @@ Definition to_goal (A : Type) :=
     M.ret (m: a, Goal SType a)
   end.
 
+Definition demote {A: Type} : ttac A :=
+  ''(m: a, g) <- to_goal A; M.ret (m: a, [m: g]).
+
 Definition use {A} (t : tactic) : ttac A :=
     ''(m: a, g) <- to_goal A;
     gs <- t g;
@@ -311,7 +314,7 @@ Definition apply_ {A} : ttac A :=
   by' T.apply_.
 
 Definition try {A} (t : ttac A) : ttac A :=
-  mtry t with _ => (use T.idtac) : M _ end.
+  mtry t with _ => demote : M _ end.
 
 Mtac Do (new_exception "TTchange_Exception").
 Definition change A {B} (f : ttac A) : ttac B :=
