@@ -239,7 +239,7 @@ Instance seq_list {A B} : Seq A B (mlist (gtactic B)) := fun t f g =>
   gs <- filter_goals =<< t g;
   ls <- gmap f (mmap msnd gs);
   let res := dreduce (@mconcat, mapp) (mconcat ls) in
-  filter_goals res.
+  M.ret res.
 
 Definition exact {A} (x:A) : tactic := fun g =>
   match g with
