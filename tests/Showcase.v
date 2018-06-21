@@ -150,7 +150,9 @@ Goal True /\ 1=1.
 MProof.
 (* Work around previous bad behavior to force the left-hand side of the outermost bind operator to produce unsolved goals. *)
 (fun g =>
-   r<- M.map (fun '(m: x,g') => open_and_apply ((faulty_exact) x) g') =<< apply conj g;
+   r<- M.map (fun '(m: x,g') => open_and_apply ((faulty_exact) I) g') =<< apply conj g;
    M.ret (mconcat r)
-)%MC &> (fun g => M.print_term g;; reflexivity g)%MC.
+)%MC &> (fun g =>
+           (is_open g >>= M.print_term);;
+           M.print_term g;; reflexivity g)%MC.
 Qed.
