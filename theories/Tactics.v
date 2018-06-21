@@ -212,9 +212,10 @@ Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
     end.
 
 Definition bind {A B} (t : gtactic A) (f : A -> gtactic B) : gtactic B := fun g =>
-  r <- M.map (fun '(m: x,g') => open_and_apply (f x) g') =<< t g;
+  gs <- t g >>= filter_goals;
+  r <- M.map (fun '(m: x,g') => open_and_apply (f x) g') gs;
   let res := dreduce (@mconcat, mapp) (mconcat r) in
-  filter_goals res.
+  M.ret res.
 
 Definition fmap {A B} (f : A -> B) (x : gtactic A) : gtactic B :=
   bind x (fun a => ret (f a)).

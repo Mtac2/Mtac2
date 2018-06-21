@@ -136,3 +136,21 @@ Qed.
 Notation "x ?" := (ltac:(mrun (apply x))) (at level 0).
 
 Definition test (x y z: nat) : In x [x] := in_eq?.
+
+
+(* Regression test for a bug in `T.bind` where goals were filtered after both tactics were executed instead of filtering after the first tactic. *)
+(* Force a solved goal to be returned. *)
+Definition faulty_exact {A} (x : A) : tactic := fun g =>
+  (match g with
+   | Goal _ g' =>
+     M.cumul UniCoq x g';; M.ret [m: (m: tt, g)]
+  | _ => M.raise NotAGoal
+  end)%MC.
+Goal True /\ 1=1.
+MProof.
+(* Work around previous bad behavior to force the left-hand side of the outermost bind operator to produce unsolved goals. *)
+(fun g =>
+   r<- M.map (fun '(m: x,g') => open_and_apply ((faulty_exact) x) g') =<< apply conj g;
+   M.ret (mconcat r)
+)%MC &> (fun g => M.print_term g;; reflexivity g)%MC.
+Qed.
