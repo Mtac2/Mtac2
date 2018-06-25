@@ -905,14 +905,6 @@ let check_evars_exception old_sigma new_sigma env c =
 
 let timers = Hashtbl.create 128
 
-
-let reduce_noshare infos t stack =
-  let b = !CClosure.share in
-  CClosure.share := false;
-  let r = CClosure.whd_stack infos t stack in
-  CClosure.share := b;
-  r
-
 let pop_args num stack =
   let rec pop_args num stack =
     if num > 0 then
@@ -984,9 +976,9 @@ let rec run' ctxt (vms : vm list) =
         (* let cont ctxt h args = (run'[@tailcall]) {ctxt with stack=Zapp args::stack} (Code h :: vms) in *)
 
         let evars ev = safe_evar_value sigma ev in
-        let infos = CClosure.create_clos_infos ~evars CClosure.allnolet env in
+        let infos = CClosure.create ~share:false ~repr:(fun _ _ c -> inject c) CClosure.allnolet env evars in
 
-        let reduced_term, stack = reduce_noshare infos (CClosure.create_tab ()) t stack
+        let reduced_term, stack = CClosure.whd_stack infos (CClosure.create_tab ()) t stack
         (* RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t *)
         in
 
