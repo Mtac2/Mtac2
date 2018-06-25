@@ -1210,7 +1210,6 @@ let check_exception exception_sigma mtry_sigma env c =
 
 let timers = Hashtbl.create 128
 
-
 let reduce_noshare infos t stack =
   let b = !CClosure_copy.share in
   CClosure_copy.share := false;
