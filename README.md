@@ -9,11 +9,11 @@ Distributed under the terms of the MIT License,
 see LICENSE for details.
 
 This archive is a plugin for Coq containing the new tactic language
-described in the outdated paper
-[The Next 700 Safe Tactic Languages](http://www.mpi-sws.org/~beta/#publications).
+described in the paper
+[Mtac2: Typed Tactics for Backward Reasoning in Coq](http://www.mpi-sws.org/~beta/papers/Kaiseretal18.pdf).
 
 
-The archive has 3 subdirectories:
+The project has 3 subdirectories:
 * `src` contains the code of the plugin.
   - `run.ml` is the interpreter.
 
@@ -48,8 +48,8 @@ You can then either `make install` the plugin or leave it in its
 current directory. To be able to import it from anywhere in Coq,
 simply add the following to `~/.coqrc`:
 ```
-Add LoadPath "path_to_unicoq/theories" as Mtac2.
-Add ML Path "path_to_unicoq/src".
+Add LoadPath "path_to_mtac2/theories" as Mtac2.
+Add ML Path "path_to_mtac2/src".
 ```
 # Usage
 
