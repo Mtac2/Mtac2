@@ -230,6 +230,12 @@ module Exceptions = struct
     debug_exception sigma env exc s;
     sigma, e
 
+  let mkInvalidName sigma env s =
+    let sigma, exc = (mkUConstr "Exceptions.InvalidName" sigma env) in
+    let e = mkApp (exc, [|s|]) in
+    debug_exception sigma env exc s;
+    sigma, e
+
   let block msg = CErrors.user_err Pp.(str msg)
 end
 
@@ -465,14 +471,15 @@ module MNames = struct
 
   let next_name_away s env = Namegen.next_name_away (Name s) (ids_of_context env)
 
+  type name = AName of (bool * Id.t) | StuckName | InvalidName of string
   (* returns if the name generated is fresh or not *)
-  let get_from_name (env, sigma as ctx) (t: constr) : (bool * string) option =
+  let get_from_name (env, sigma as ctx) (t: constr) : name =
     let t = EConstr.of_constr (RE.whd_betadeltaiota env sigma (of_econstr t)) in
     let (h, args) = decompose_appvect sigma t in
     try
       match get_constructor_pos sigma h with
       | 0 -> (* TheName *)
-          Some (false, CoqString.from_coq ctx args.(0))
+          AName (false, Names.Id.of_string (CoqString.from_coq ctx args.(0)))
 
       | 1 -> (* FreshFrom *)
           let name = get_name_base ctx args.(1) in
@@ -483,21 +490,21 @@ module MNames = struct
             | None -> "x"
           in
           let name = next_name_away (Names.Id.of_string name) env in
-          Some (true, Names.Id.to_string name)
+          AName (true, name)
 
       | 2 -> (* FreshFromStr *)
           let name = CoqString.from_coq ctx args.(0) in
           let name = next_name_away (Names.Id.of_string name) env in
-          Some (true, Names.Id.to_string name)
+          AName (true, name)
 
       | 3 -> (* Generate *)
           let name = next_name_away (Names.Id.of_string "ann") env in
-          Some (true, Names.Id.to_string name)
+          AName (true, name)
 
       | _ ->
-          None
-    with Term.DestKO ->
-      None
+          StuckName
+    with Term.DestKO -> StuckName
+       | CErrors.UserError (_, pp) -> InvalidName (Pp.string_of_ppcmds pp)
 end
 
 module ExistentialSet = Evar.Set
@@ -1148,8 +1155,7 @@ let rec run' ctxt (vms : vm list) =
                         (* print_constr sigma env s; *)
                         begin
                           match MNames.get_from_name (env, sigma) s with
-                          | Some (fresh, namestr) ->
-                              let name = Names.Id.of_string namestr in
+                          | AName (fresh, name) ->
                               if (not fresh) && (Id.Set.mem name (vars_of_env env)) then
                                 efail (Exceptions.mkNameExists sigma env s)
                               else
@@ -1160,16 +1166,16 @@ let rec run' ctxt (vms : vm list) =
                                   (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
                                     (Code f :: Nu (name, env, ctxt.renv) :: vms)
                                 end
-                          | None -> efail (Exceptions.mkWrongTerm sigma env s)
+                          | StuckName -> efail (Exceptions.mkWrongTerm sigma env s)
+                          | InvalidName _ -> efail (Exceptions.mkInvalidName sigma env s)
                         end
 
                     | MConstr (Mnu_let, (ta, tb, tc, s, c, f)) ->
                         let s = to_econstr s in
                         begin
                           match MNames.get_from_name (env, sigma) s with
-                          | Some (fresh, namestr) ->
+                          | AName (fresh, name) ->
                               let c = to_econstr c in
-                              let name = Names.Id.of_string namestr in
                               if (not fresh) && (Id.Set.mem name (vars_of_env env)) then
                                 efail (Exceptions.mkNameExists sigma env s)
                               else if not (isLetIn sigma c) then
@@ -1188,7 +1194,8 @@ let rec run' ctxt (vms : vm list) =
                                     (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name); of_econstr body|] :: stack}
                                       (Code f :: Nu (name, env, ctxt.renv) :: vms)
                                 end
-                          | None -> efail (Exceptions.mkWrongTerm sigma env s)
+                          | StuckName -> efail (Exceptions.mkWrongTerm sigma env s)
+                          | InvalidName _ -> efail (Exceptions.mkInvalidName sigma env s)
                         end
 
                     | MConstr (Mabs_fun, (a, p, x, y)) ->

@@ -30,6 +30,7 @@ Definition NotUnifiable {A} (x y : A) : Exception. exact exception. Qed.
 Definition Failure (s : string) : Exception. exact exception. Qed.
 
 Definition NameExistsInContext (n : Name.name) : Exception. exact exception. Qed.
+Definition InvalidName (n : Name.name) : Exception. exact exception. Qed.
 
 Definition ExceptionNotGround : Exception. exact exception. Qed.
 
