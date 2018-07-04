@@ -197,6 +197,8 @@ module Exceptions = struct
 
   let mkNotAList = mkDebugEx "NotAList"
 
+  let mkReductionFailure = mkDebugEx "ReductionFailure"
+
   let mkNotAMatchExp = mkDebugEx "NotAMatchExp"
 
   let mkNotAnInductive = mkDebugEx "NotAnInductive"
@@ -383,13 +385,15 @@ module ReductionStrategy = struct
     (fun _ -> Redexpr.cbv_vm) (* vm_compute *)
   |]
 
+  type reduction_result = ReductionValue of constr | ReductionStuck | ReductionFailure
   let reduce sigma env strategy c =
     try
       (* note that [args] can be an empty array, or an array with one element: the flags *)
       let strategy, args = decompose_appvect sigma strategy in
-      Some (redfuns.(get_constructor_pos sigma strategy) args env sigma c)
+      ReductionValue (redfuns.(get_constructor_pos sigma strategy) args env sigma c)
     with RedList.NotAList _ ->
-      None
+      ReductionStuck
+       | Failure _ -> ReductionFailure
 
   (* let whd_betadeltaiota_nolet = whdfun CClosure_copy.allnolet *)
 
@@ -1068,7 +1072,7 @@ let rec run' ctxt (vms : vm list) =
               (* print_constr sigma env term; *)
               let ob = reduce sigma env (to_econstr red) (to_econstr term) in
               match ob with
-              | Some b ->
+              | ReductionValue b ->
                   (* print_constr sigma env b; *)
                   (* (run'[@tailcall]) ctxt (upd (mkApp (Vars.subst1 b t, args))) *)
                   (* (run'[@tailcall]) ctxt (upd (of_econstr (Vars.subst1 b (to_econstr t)))) *)
@@ -1076,9 +1080,12 @@ let rec run' ctxt (vms : vm list) =
                   (* print_constr sigma env (to_econstr (mk_red (FCLOS (bd, e)))); *)
                   (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
 
-              | None ->
+              | ReductionStuck ->
                   let l = to_econstr (Array.get args' 0) in
                   efail (E.mkNotAList sigma env l)
+              | ReductionFailure ->
+                  let l = to_econstr (Array.get args' 0) in
+                  efail (E.mkReductionFailure sigma env l)
             else
               (* (run'[@tailcall]) ctxt (upd (mkApp (Vars.subst1 b t, args))) *)
               (* (run'[@tailcall]) ctxt (upd (of_econstr (Vars.subst1 (to_econstr b) (to_econstr t)))) *)
