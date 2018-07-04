@@ -241,7 +241,7 @@ Bind Scope typed_tactic_scope with ttac.
 Delimit Scope typed_tactic_scope with TT.
 
 Mtac Do New Exception NotAProp.
-Definition to_goal (A : Type) :=
+Definition to_goal (A : Type) : M (A *m goal) :=
   mtry
     P <- evar Prop;
     of <- unify_univ P A UniMatchNoRed;
