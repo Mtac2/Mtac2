@@ -29,7 +29,6 @@ theories/Utils.v
 theories/Sorts.v
 theories/Base.v
 theories/DecomposeApp.v
-theories/Abstract.v
 theories/Tactics.v
 theories/ImportedTactics.v
 theories/IntroPatt.v
@@ -59,3 +58,4 @@ theories/intf/Lift.v
 theories/intf/Tm_kind.v
 theories/intf/M.v
 theories/Exhaustive.v
+theories/ideas/Abstract.v
