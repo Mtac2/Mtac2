@@ -406,13 +406,10 @@ Arguments gtele_evar {C} _.
 Set Printing Implicit.
 Definition match_goal_context
     {A} (x: A) (y: Type) (cont: forall (C : A -> Type), ttac (C x)) : tactic :=
-  r <- abstract x y;
-  M.print_term (x,y);;
-  M.print_term r;;
+  r <- T.abstract_from_term x y;
   match r with
   | mSome r =>
-    let reduced := dreduce (@fu) (fu r) in
-    cont reduced >>=
+    cont r >>=
     to_T
   | mNone => M.raise DoesNotMatchGoal
   end.

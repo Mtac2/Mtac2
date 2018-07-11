@@ -14,12 +14,11 @@ Module CT.
 Definition SimpleRewriteNoOccurrence : Exception. constructor. Qed.
 Definition simple_rewrite A {x y : A} (p : x = y) : tactic := fun g=>
   gT <- goal_type g;
-  r <- abstract x gT;
+  r <- T.abstract_from_term x gT;
   match r with
   | mSome r =>
-    let reduced := dreduce (fu) (fu r y) in
-    newG <- evar reduced;
-    T.exact (eq_fu (r:=r) p newG) g;;
+    newG <- evar (r y);
+    T.exact (eq_rect y _ newG x (eq_sym p)) g;;
     ret [m: (m: tt, Goal SType newG)]
   | mNone => M.raise SimpleRewriteNoOccurrence
   end.
@@ -28,12 +27,11 @@ Import T.notations.
 Definition CVariablizeNoOccurrence : Exception. constructor. Qed.
 Definition cvariabilize_base {A} (t: A) (name:name) (cont: A -> tactic) : tactic :=
   gT <- T.goal_type;
-  r <- abstract t gT;
+  r <- T.abstract_from_term t gT;
   match r with
   | mSome r =>
     T.cpose_base name t (fun x =>
-      let reduced := dreduce (fu) (fu r x) in
-      T.change reduced;;
+      T.change (r x);;
       cont x
     )
   | mNone => M.raise CVariablizeNoOccurrence
