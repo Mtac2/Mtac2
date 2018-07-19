@@ -1,5 +1,6 @@
 type mrun_arg_type =
-  | Program of (EConstr.types)
+  | PolyProgram of (Univ.abstract_universe_context * EConstr.types)
+  | MonoProgram of (EConstr.types)
   | GTactic
 
 type mrun_arg =
@@ -13,6 +14,8 @@ module MetaCoqRun : sig
 end
 
 val ifTactic : Environ.env -> Evd.evar_map -> EConstr.types -> 'a -> bool * Evd.evar_map
+
+val glob_mtac_type : 'a -> Libnames.reference -> mrun_arg_type * Globnames.global_reference
 
 val interp_proof_constr : MetaCoqInstr.mproof_instr -> unit
 val interp_mproof_command : unit -> unit

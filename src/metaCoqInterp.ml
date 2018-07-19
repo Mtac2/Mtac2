@@ -2,7 +2,8 @@ open Constrs
 open Pp
 
 type mrun_arg_type =
-  | Program of (EConstr.types)
+  | PolyProgram of (Univ.abstract_universe_context * EConstr.types)
+  | MonoProgram of (EConstr.types)
   | GTactic
 
 type mrun_arg =
@@ -18,6 +19,54 @@ let ifTactic env sigma ty c =
   match res with
   | Success sigma -> (true, sigma)
   | _ -> (false, sigma)
+
+
+let glob_mtac_type ist r =
+  let open Declarations in
+  let loc,_ as lqid = Libnames.qualid_of_reference r in
+  try
+    let c =
+      match
+        (Smartlocate.locate_global_with_alias lqid) (* Maybe put loc back in for error reporting *)
+      with
+      | Globnames.ConstRef c -> c
+      | _ -> CErrors.user_err (Pp.str "mrun_static only accepts constants. It does *not* accept variables, inductives, or constructors. ")
+    in
+    (* Typecheck here. Unification? probably *)
+    let env = Global.env () in
+    let sigma = Evd.from_env env in
+    let body = Global.lookup_constant c in
+    let sigma, ret = match body.const_universes with
+      | Declarations.Monomorphic_const _ ->
+          sigma, (fun ty -> MonoProgram ty) (* constraints already registered *)
+      | Declarations.Polymorphic_const au ->
+          (* need to instantiate and register the abstract universes a *)
+          let inst, ctx = Universes.fresh_instance_from au None in
+          (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
+          let sigma = Evd.merge_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
+          sigma, (fun ty -> PolyProgram (au, ty))
+    in
+    let ty = match body.const_type with
+      | RegularArity ty -> ty
+      | TemplateArity _ ->
+          (* Template polymorphism only applies to inductives, records, their
+             constructors, and definitions that wrap either of these. We know
+             statically that their type cannot end in [M ..]. *)
+          CErrors.user_err (Pp.str "Not a Mtactic")
+    in
+    let ty = EConstr.of_constr ty in
+    let (h, args) = Reductionops.whd_all_stack env sigma ty in
+    let sigma, metaCoqType = MtacNames.mkT_lazy sigma env in
+    if EConstr.eq_constr_nounivs sigma metaCoqType h && List.length args = 1 then
+      (ret (List.hd args), (Globnames.ConstRef c))
+    else
+      let b, sigma = ifTactic env sigma ty (body.const_body) in
+      if b then
+        (GTactic, Globnames.ConstRef c)
+      else
+        CErrors.user_err (Pp.str "Not a Mtactic")
+  with Not_found -> Nametab.error_global_not_found (snd lqid)
+
 
 
 module MetaCoqRun = struct
@@ -119,20 +168,32 @@ module MetaCoqRun = struct
       let sigma = sigma gl in
       let evar = EConstr.of_constr (evar_of_goal gl) in
       let (istactic, sigma, t) = match t with
-        | StaticallyChecked (Program ty, c) ->
+        | StaticallyChecked (MonoProgram ty, Globnames.ConstRef c) ->
             begin
               try
+                Feedback.msg_notice (Printer.pr_econstr_env env sigma ty);
+                Feedback.msg_notice (Printer.pr_econstr_env env sigma concl);
                 let sigma = Evarconv.the_conv_x_leq env concl ty sigma in
-                let sigma, t = EConstr.fresh_global env sigma c in
-                (false, sigma, t)
+                (false, sigma, EConstr.mkConst c)
               with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (str "Different types")
             end
-        | StaticallyChecked (GTactic, c) ->
-            let sigma, t = EConstr.fresh_global env sigma c in
+        | StaticallyChecked (PolyProgram (au, ty), Globnames.ConstRef  c) ->
+            begin
+              try
+                let inst, ctx = Universes.fresh_instance_from au None in
+                (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
+                let sigma = Evd.merge_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
+                let sigma = Evarconv.the_conv_x_leq env concl ty sigma in
+                (false, sigma, EConstr.mkConst c)
+              with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (str "Different types")
+            end
+        | StaticallyChecked (GTactic, gr) ->
+            let sigma, t = EConstr.fresh_global env sigma gr in
             (true, sigma, t)
         | DynamicallyChecked t ->
             let sigma, t = understand env sigma t in
             pretypeT env sigma concl evar t
+        | _ -> assert false
       in
       run env sigma concl evar istactic t
     end
