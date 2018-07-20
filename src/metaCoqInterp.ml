@@ -171,8 +171,6 @@ module MetaCoqRun = struct
         | StaticallyChecked (MonoProgram ty, Globnames.ConstRef c) ->
             begin
               try
-                Feedback.msg_notice (Printer.pr_econstr_env env sigma ty);
-                Feedback.msg_notice (Printer.pr_econstr_env env sigma concl);
                 let sigma = Evarconv.the_conv_x_leq env concl ty sigma in
                 (false, sigma, EConstr.mkConst c)
               with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (str "Different types")
