@@ -598,7 +598,8 @@ Definition typed_intros (T : Type) : tactic := fun g =>
 Definition change_hyp {P Q} (H : P) (newH: Q) : tactic := fun g=>
   match g with
   | @Goal sort gT _ =>
-     ''(m: gabs, abs) <- M.remove H (M.nu (FreshFrom H) mNone (fun nH: Q=>
+     name <- M.get_binder_name H;
+     ''(m: gabs, abs) <- M.remove H (M.nu (FreshFromStr name) mNone (fun nH: Q=>
        r <- M.evar gT;
        abs <- M.abs_fun nH r;
        gabs <- M.abs_fun nH (Goal sort r);
