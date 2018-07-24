@@ -1197,7 +1197,9 @@ let rec run' ctxt (vms : vm list) =
                                     efail (Exceptions.mkNotTheSameType sigma env ta)
                                   else
                                     let env' = push_named (Context.Named.Declaration.of_tuple (name, Some d, dty)) env in
-                                    let (sigma, renv') = Hypotheses.cons_hyp dty (mkVar name) (Some d) (to_econstr ctxt.renv) sigma env in
+                                    let var = mkVar name in
+                                    let body = Vars.subst1 var body in
+                                    let (sigma, renv') = Hypotheses.cons_hyp dty var (Some d) (to_econstr ctxt.renv) sigma env in
                                     (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name); of_econstr body|] :: stack}
                                       (Code f :: Nu (name, env, ctxt.renv) :: vms)
                                 end
