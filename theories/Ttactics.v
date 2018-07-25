@@ -1,10 +1,11 @@
-From Mtac2 Require Import Base Datatypes List MTele MTeleMatch MTeleMatchDef MFixDef Sorts Tactics.
+From Mtac2 Require Import Base Datatypes List MTele MTeleMatch MTeleMatchDef MFixDef Sorts tactics.Tactics.
 Require Import Strings.String.
 Import Sorts.
-Import M.
-Import M.notations.
 Import Mtac2.List.ListNotations.
 Import ProdNotations.
+Import Tactics.T.
+Import M.
+Import M.notations.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
@@ -300,7 +301,7 @@ Definition Mappend {A} (xs ys : mlist A) :=
 
 Definition to_T {A} : (A *m mlist goal) -> tactic :=
   (fun '(m: a, gs) g =>
-    T.exact a g;;
+    exact a g;;
     let gs := dreduce (@mmap) (mmap (mpair tt) gs) in
     M.ret gs
   )%MC.
@@ -311,7 +312,7 @@ Definition apply {A} (a : A) : ttac A :=
 
 
 Definition apply_ {A} : ttac A :=
-  by' T.apply_.
+  by' apply_.
 
 Definition try {A} (t : ttac A) : ttac A :=
   mtry t with _ => demote : M _ end.
@@ -379,7 +380,7 @@ Definition ucomp1 {A B} (t: ttac A) (u: ttac B) : ttac A :=
   match gls1 with
   | [m: gl] =>
     ''(m: v2, gls) <- u;
-    T.exact v2 gl;;
+    exact v2 gl;;
     M.ret (m: v1, gls)
   | _ => mfail "more than a goal"%string
   end.
@@ -391,7 +392,7 @@ Definition lower {A} (t: ttac A) : M A :=
 
 Module MatchGoalTT.
 Import Abstract.
-Import T.notations.
+Import TacticsBase.T.notations.
 Import Mtac2.Logic.
 Inductive goal_pattern : Prop :=
   | gbase : forall (A : _), ttac A -> goal_pattern

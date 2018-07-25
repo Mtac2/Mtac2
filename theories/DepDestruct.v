@@ -1,4 +1,5 @@
-From Mtac2 Require Import Logic Datatypes List Sorts Base Tactics ImportedTactics MTeleMatch MFix.
+From Mtac2 Require Import Logic Datatypes List Sorts Base MTeleMatch MFix.
+From Mtac2.tactics Require Import Tactics ImportedTactics.
 Import Sorts.
 Import M.notations.
 Import ProdNotations.
@@ -304,8 +305,6 @@ Program Definition sort_goal {T : Type} : T -> M (sigT stype_of) :=
   | Type =u> fun A_Type => M.ret (existT stype_of SType A_Type)
   end.
 
-From Mtac2 Require Import MFix MTeleMatch.
-
 (* Definition sget_ITele (sort : Sort) : forall {T : sort} (ind : T), M (nat * ITele sort) := *)
 (*   mfix f (T : stype_of sort) : forall (ind : T), M (nat * ITele sort)%type := *)
 (*     mtmmatch T as T return selem_of T -> M (nat * ITele sort) with *)
@@ -363,7 +362,7 @@ Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) : M
   atele <- get_ATele it indlist : M (ATele it);
   M.ret atele.
 
-Import T.notations.
+Import TacticsBase.T.notations.
 Program
 Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
     ind <- get_ind A;

@@ -352,7 +352,7 @@ module CoqUnit = struct
 end
 
 module MCTactics = struct
-  let gTactic = "Mtac2.Tactics.gtactic"
+  let gTactic = "Mtac2.tactics.TacticsBase.gtactic"
 
   (* let mkConstr s = *)
   (*   let open Nametab in let open Libnames in *)

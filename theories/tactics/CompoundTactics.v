@@ -23,7 +23,7 @@ Definition simple_rewrite A {x y : A} (p : x = y) : tactic := fun g=>
   | mNone => M.raise SimpleRewriteNoOccurrence
   end.
 
-Import T.notations.
+Import TacticsBase.T.notations.
 Definition CVariablizeNoOccurrence : Exception. constructor. Qed.
 Definition cvariabilize_base {A} (fail: bool) (t: A) (name:name) (cont: A -> tactic) : tactic :=
   gT <- T.goal_type;

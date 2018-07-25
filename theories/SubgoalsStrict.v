@@ -64,7 +64,7 @@ Definition max_apply {T} (c : T) : tactic := fun g=>
         | Dyn eg =u> M.ret [m:]
         | _ =>
           dcase d as ty, el in
-          M.raise (CantApply ty gT)
+          M.raise (T.CantApply ty gT)
         end) (Dyn c)
   | Goal SProp _ => M.failwith "It's a prop!"
   | _ => M.raise NotAGoal
@@ -86,8 +86,8 @@ Definition napply {T} {e: runner (count_nondep_binders T)} (c : T) : ntactic uni
   M.ret (mkPackedVec (@eval _ _ e) ls).
 
 
-Import T.
-Import T.notations.
+Import TacticsBase.T.
+Import TacticsBase.T.notations.
 
 (* Goal forall P Q, (P -> Q -> P) -> P -> Q -> P. *)
 (* MProof. *)

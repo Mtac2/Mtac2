@@ -1,7 +1,9 @@
-From Mtac2 Require Import List Base Tactics ImportedTactics.
+From Mtac2 Require Import List Base.
+From Mtac2.tactics Require Import TacticsBase Tactics ImportedTactics.
 Import Mtac2.List.ListNotations.
 Import M.notations.
-Import T.notations.
+Import TacticsBase.T.notations.
+Import Tactics.T.notations.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.

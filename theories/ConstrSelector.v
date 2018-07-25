@@ -1,5 +1,5 @@
 From Mtac2 Require Import Datatypes List Mtac2.
-Import T.
+Import TacticsBase.T.
 Import Mtac2.List.ListNotations.
 Import ProdNotations.
 

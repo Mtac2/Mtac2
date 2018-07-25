@@ -12,7 +12,7 @@ Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
-Definition qualify s := String.append "Mtac2.ImportedTactics." s.
+Definition qualify s := String.append "Mtac2.tactics.ImportedTactics." s.
 
 Ltac Mtrivial := trivial.
 Definition trivial : tactic := T.ltac (qualify "Mtrivial") [m:].

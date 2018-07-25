@@ -29,10 +29,11 @@ theories/Utils.v
 theories/Sorts.v
 theories/Base.v
 theories/DecomposeApp.v
-theories/Tactics.v
-theories/ImportedTactics.v
-theories/IntroPatt.v
-theories/CompoundTactics.v
+theories/tactics/TacticsBase.v
+theories/tactics/Tactics.v
+theories/tactics/ImportedTactics.v
+theories/tactics/IntroPatt.v
+theories/tactics/CompoundTactics.v
 theories/DepDestruct.v
 theories/SubgoalsStrict.v
 theories/Mtac2.v
