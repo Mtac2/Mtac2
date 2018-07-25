@@ -15,7 +15,7 @@ Unset Printing Notations.
 
 Module M.
 
-Inductive t : Type -> Prop := mkt : forall{a}, t a.
+Variant t : Type -> Prop := mkt : forall{a}, t a.
 
 Local Ltac make := refine (mkt) || (intro; make).
 
