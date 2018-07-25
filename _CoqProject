@@ -34,18 +34,15 @@ theories/tactics/Tactics.v
 theories/tactics/ImportedTactics.v
 theories/tactics/IntroPatt.v
 theories/tactics/CompoundTactics.v
-theories/DepDestruct.v
-theories/SubgoalsStrict.v
+theories/tactics/ConstrSelector.v
+theories/tactics/Ttactics.v
 theories/Mtac2.v
 theories/MTele.v
 theories/MTeleMatchDef.v
 theories/MTeleMatch.v
 theories/MFixDef.v
 theories/MFix.v
-theories/ConstrSelector.v
-theories/StaticApply.v
 theories/SumRun.v
-theories/Ttactics.v
 theories/Pattern.v
 theories/intf/Dyn.v
 theories/intf/Name.v
@@ -60,3 +57,6 @@ theories/intf/Tm_kind.v
 theories/intf/M.v
 theories/Exhaustive.v
 theories/ideas/Abstract.v
+theories/ideas/DepDestruct.v
+theories/ideas/SubgoalsStrict.v
+theories/ideas/StaticApply.v
