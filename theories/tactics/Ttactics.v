@@ -13,10 +13,17 @@ Unset Universe Minimization ToSet.
 
 Module TT.
 
+(** A typed tactic is a program that promises in its type the goal it solves,
+    pehaps creating (dynamically-typed) goals. *)
 Definition ttac A := M (A *m mlist goal).
+
 Bind Scope typed_tactic_scope with ttac.
 Delimit Scope typed_tactic_scope with TT.
 
+(** [to_goal A] returns an evar with type A, and a the [goal] based on it.  It
+    tries to coerce [A] into a [Prop] first, in order to provide the most
+    precise goal possible.  For that, we need to backtrack in case it is not a
+    [Prop] (and treat it as a [Type]). *)
 Mtac Do New Exception NotAProp.
 Definition to_goal (A : Type) : M (A *m goal) :=
   mtry
@@ -33,9 +40,12 @@ Definition to_goal (A : Type) : M (A *m goal) :=
     M.ret (m: a, Goal SType a)
   end.
 
+(** [demote] is a [ttac] that proves anything by simply postponing it as a
+    goal. *)
 Definition demote {A: Type} : ttac A :=
   ''(m: a, g) <- to_goal A; M.ret (m: a, [m: g]).
 
+(** [use t] tries to solve the goal with tactic [t] *)
 Definition use {A} (t : tactic) : ttac A :=
     ''(m: a, g) <- to_goal A;
     gs <- t g;
@@ -47,6 +57,7 @@ Definition idtac {A} : ttac A :=
     ''(m: a, g) <- to_goal A;
     M.ret (m: a, [m: g]).
 
+(** [by'] is like [use] but it ensures there are no goals left. *)
 Definition by' {A} (t : tactic) : ttac A :=
   ''(m: a, g) <- to_goal A;
   gs <- t g;
@@ -57,10 +68,13 @@ Definition by' {A} (t : tactic) : ttac A :=
   end.
 Arguments by' [_] _%tactic.
 
+(** Coercion between an [M] program and a [ttac] *)
 Definition lift {A} (t : M A) : ttac A :=
   t >>= (fun a => M.ret (m: a,  [m:])).
 
 Coercion lift : M.t >-> ttac.
+
+(** The composition operator. It combines the subgoals according to function [comb]. *)
 Definition fappgl {A B C} (comb : C -> C -> M C) (f : M ((A -> B) *m C)) (x : M (A *m C)) : M (B *m C) :=
   (f >>=
      (fun '(m: b, cb) =>
@@ -74,7 +88,7 @@ Definition Mappend {A} (xs ys : mlist A) :=
   let zs := dreduce (@mapp) (mapp xs ys) in
   M.ret zs.
 
-
+(** [to_T t] uses the result of a [ttac] as a [tactic]. *)
 Definition to_T {A} : (A *m mlist goal) -> tactic :=
   (fun '(m: a, gs) g =>
     exact a g;;
@@ -93,7 +107,7 @@ Definition apply_ {A} : ttac A :=
 Definition try {A} (t : ttac A) : ttac A :=
   mtry t with _ => demote : M _ end.
 
-Mtac Do (new_exception "TTchange_Exception").
+Mtac Do New Exception TTchange_Exception.
 Definition change A {B} (f : ttac A) : ttac B :=
   (oeq <- M.unify A B UniCoq;
    match oeq with
