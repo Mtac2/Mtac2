@@ -1,27 +1,42 @@
-From Mtac2 Require Import Base.
-From Mtac2 Require Tactics. (* necessary for `mrun` to work *)
+From Mtac2 Require Import Mtac2.
 From Coq Require Import List.
 Import M.notations.
 Import M.
 Import ListNotations.
 
-Set Universe Polymorphism.
+(** This file shows different ways to code a simple tautology prover.
+    It uses various features of Mtac2 in an example that is easy enough to understand.
+*)
 
 Module Mtac_V1.
-  Definition NotFound : Exception. constructor. Qed.
+  (** The first version of the prover will be similar to the one presented in
+   the original paper of Mtac.  The prover is an [M] program that encodes in its
+   type the fact that it proves the proposition provided as argument. *)
+
+
+  (** The prover uses a list of [dyn]s as the context of the proof.  We define a
+  [lookup] function which traverses the list, trying to unify the type of the
+  term with the one provided.  We create a new exception for when it can't find
+  the hypothesis. *)
+  Mtac Do New Exception NotFound.
+
+  (** Note how we code [lookup] with a standard Coq fixpoint and match. This is for
+  performance reasons. *)
   Fixpoint lookup (P : Prop) (l : list dyn) : M P :=
     match l with
     | D :: l => mmatch D with | [? (p : P)] Dyn p =u> ret p | _ => lookup P l end
     |     [] => raise NotFound
     end.
 
-  Definition TautoFail : Exception. constructor. Qed.
-  Program Definition solve_tauto : forall (l : list dyn) {P : Prop}, M P :=
+  (** The tautology prover. It first tries to look for the proposition in the
+  list of hypothesis, and if it fails in tries to break it down into pieces and
+  recurse over each part. *)
+  Mtac Do New Exception TautoFail.
+  Definition solve_tauto : forall (l : list dyn) {P : Prop}, M P :=
     mfix2 f (l : list dyn) (P : Prop) : M P :=
       mtry
         lookup P l
-      with
-      | NotFound =>
+      with NotFound =>
         mmatch P in Prop as P' return M P' with
         | True => ret I
         | [? Q1 Q2] Q1 /\ Q2 =>
@@ -31,8 +46,7 @@ Module Mtac_V1.
         | [? Q1 Q2] Q1 \/ Q2 =>
           mtry
             q1 <- f l Q1; ret (or_introl q1)
-          with
-          | TautoFail =>
+          with TautoFail =>
             q2 <- f l Q2; ret (or_intror q2)
           end
         | [? (Q1 Q2 : Prop)] Q1 -> Q2 =>
@@ -51,10 +65,12 @@ Module Mtac_V1.
         end
       end.
 
+  (** For a detailed explanation, it is best to read the paper and/or look at
+  the different primitives that are being used. *)
+
   Goal 5 = 7 -> exists x, x = 7.
-  Proof.
-    Mtac Do Unset_Trace.
-    apply (eval (solve_tauto nil)).
+  MProof.
+    solve_tauto nil.
   Qed.
 End Mtac_V1.
 
