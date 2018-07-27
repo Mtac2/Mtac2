@@ -1,4 +1,4 @@
-From Mtac2 Require Import Mtac2.
+From Mtac2 Require Import Mtac2 Ttactics Sorts.
 From Coq Require Import List.
 Import M.notations.
 Import M.
@@ -75,11 +75,10 @@ Module Mtac_V1.
 End Mtac_V1.
 
 
-From Mtac2 Require Import Ttactics List.
-From Mtac2 Require Import Tactics.
-Open Scope M_scope.
-Import Mtac2.List.ListNotations.
 Module Mtac_V2.
+
+  (** The prover in this module uses typed-tactics, mixing static and dynamic
+  knowledge of goals to solve the problem. *)
   Import TT.
   Import TT.notations.
   Definition TautoFail : Exception. constructor. Qed.
@@ -112,7 +111,6 @@ Module Mtac_V2.
 
   Ltac solve_tauto := mrun solve_tauto.
 
-  Definition x : tactic := (fun g : goal => t <- goal_prop g; T.select (t) g >>= (fun x => M.print_term x);; M.ret [m:])%MC.
   Goal 5 = 7 -> exists x, x = 7.
   Proof.
     solve_tauto.
@@ -121,6 +119,9 @@ End Mtac_V2.
 
 
 Module Mtac_V3.
+  (** The prover in this module uses tactics similar to Ltac's (with similar
+  guarantees). *)
+
   Import T.
   Import T.notations.
   Mtac Do New Exception TautoFail.
@@ -142,7 +143,9 @@ End Mtac_V3.
 
 
 Module Mtac_V4.
-  From Mtac2 Require Import Sorts.
+  (** The prover in this module uses a combination of the traditional [M]
+  solution from [Mtac_V1] with the typed-tactic approach of [Mtac_V2]. *)
+
   Import Sorts.
   Import TT.
   Import TT.notations.
@@ -199,43 +202,3 @@ Module Mtac_V4.
   Abort.
 
 End Mtac_V4.
-
-Module Mtac_V5.
-  From Mtac2 Require Import Sorts.
-  Import Sorts.
-  Import TT.
-  Import TT.notations.
-  Import M.notations.
-  Import ProdNotations.
-
-  Mtac Do New Exception TautoFail.
-  Mtac Do New Exception OpenGoals.
-
-  Definition has_open_subgoals {A} (a : A *m mlist goal) : M bool :=
-    ret (match msnd a with [m:] => true | _ => false end).
-
-  Program Definition solve_tauto : forall {P:Prop}, ttac P :=
-    mfix1 solve_tauto (P : Prop) : M _ :=
-    mmatch P in Prop as P' return M (P' *m _) with
-    | True => apply I
-    | [? Q1 Q2] Q1 /\ Q2 =>
-      apply (@conj _ _) <**> solve_tauto Q1 <**> solve_tauto Q2
-    | [? Q1 Q2] Q1 \/ Q2 =>
-      mtry
-        q1 <- apply (@or_introl _ _) <**> solve_tauto Q1;
-        mif has_open_subgoals q1 then raise TautoFail else ret q1
-      with TautoFail =>
-        mtry
-          q2 <- apply (@or_intror _ _) <**> solve_tauto Q2;
-          mif has_open_subgoals q2 then raise OpenGoals else ret q2
-        with OpenGoals => idtac : M _ end
-      end
-    | [? (Q1 Q2 : Prop)] Q1 -> Q2 =>
-      tintro (fun x:Q1 => solve_tauto Q2)
-    | [? X (Q : X -> Prop)] (exists x : X, Q x) =>
-      x <- M.evar X;
-      apply (@ex_intro _ _ _) <**> solve_tauto (Q x)
-    | _ => TT.use (T.try T.assumption)
-  end.
-
-End Mtac_V5.
