@@ -20,13 +20,14 @@ The project has 3 subdirectories:
 * `theories` contains support Coq files for the plugin.
   - `Mtac2.v` declares the plugin on the Coq side and imports all the
      required theories.
-  - `intf` contains the basics: the `M` monad, exceptions, etc.
-  - `Tactics.v` defines the tactic type and several tactics and combinators.
-  - `Ttactics.v` defines the type for typed tactics and combinators.
-  - `IntroPatt.v` defines intro patterns.
-  - `ConstrSelector.v` defines a selector based on the indices of an
-    inductive type's constructors.
+  - The `intf` folder contains the basics: the `M` monad with its operations documented, exceptions, etc.
+  - The folder `tactics` contains everything relating to tactics:
+     + `Tactics.v` defines the tactic type and several tactics and combinators.
+     + `Ttactics.v` defines the type for typed tactics and combinators.
+     + `IntroPatt.v` defines intro patterns.
+     + `ConstrSelector.v` defines a selector based on the indices of an inductive type's constructors.
 
+* `examples` contains simple examples to show the different features of Mtac2.
 * `test-suite` contains several tests, including some uses of the plugin.
 
 Installation
