@@ -134,6 +134,16 @@ MProof.
   list. *)
 Qed.
 
+(** We can also apply a tactic to a certain goal using a [selector].*)
+Example cut_ex_selector P Q R: (P \/ Q -> R) -> P -> R.
+MProof.
+  intros.
+  (cut (P \/ Q) |2> left) &> assumption.
+  (** We apply the [left] tactic only to the 2nd subgoal, and then we solve
+  every subgoal with [assumption]. We can also use the notation [|n>] for the
+  last subgoal. *)
+Qed.
+
 (** Using the [fix_tac] tactic (similar to Coq's fix) *)
 Theorem plus_n_O : forall n:nat, n = n + 0.
 MProof.
