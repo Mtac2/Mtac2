@@ -1,73 +1,106 @@
-Require Import Mtac2.Mtac2.
-Import T.
-Require Import Bool.Bool.
-Require Import Lists.List.
-Import Mtac2.List.ListNotations.
-Import Lists.List.ListNotations.
+(** This file contains several examples showing the different tactics and tactic
+    operators in Mtac2. Many of the examples are inspired from SF. *)
 
-(** This file contains several examples showing the different
-    tactics in MetaCoq. Many are taken from SF. *)
-
-(* Basic tactics:
- - intros, cintros (with and without definitions).
- - destruct.
+(** Here is a list of basic tactics included in Mtac2, that we present here:
+ - intros, cintros, typed_intros (with and without definitions).
+ - destruct (and its variants).
  - left, right.
  - reflexivity.
  - apply.
- - fix. TODO
+ - fix.
  - generalize.
  - assert.
  - pose.
  - exists
 *)
 
+(** We start by importing Mtac2. The module [Mtac2] imports most of Mtac2's
+stuff. *)
+Require Import Mtac2.Mtac2.
+(** Since we are going to work with the [Tactics] module, we import the inner [T] module. *)
+Import T.
+
+(** We're going to prove stuff about lists. *)
+Require Import Lists.List.
+Import Lists.List.ListNotations.
+
+(** A simple example to warm up. *)
+Theorem surjective_pairing_1 : forall A B (p : A * B),
+  p = (fst p, snd p).
+MProof.
+  (** [typed_intros] introduces everything of a certain type *)
+  typed_intros Type.
+  (** [destructn] is [destruct] for a certain (0-based) number of binders. *)
+  destructn 0.
+  intros.
+  (** (We must FIX how the goal is presented, now it contains extra stuff about sorts) *)
+  simpl.
+  reflexivity.
+Qed.
+
+(** We can use the [&>] composition operator (left associative) of [Mtac2] to inline the proof. *)
 Theorem surjective_pairing : forall A B (p : A * B),
   p = (fst p, snd p).
 MProof.
-  typed_intros Type. destructn 0. intros. reflexivity.
+  typed_intros Type &> destructn 0 &> reflexivity. (* [reflexivity] does [intros] *)
 Qed.
 
+(** Mtac2 has intro patterns, with a tactic call [pintros] and a combinator
+(similar to SSReflect's [=>]) called [asp]. *)
 Theorem tl_length_pred : forall l: list nat,
   pred (length l) = length (tl l).
 MProof.
   destructn 0 asp [ [] ; ["n" ; "l'"] ].
   - (* l = nil *)
+    simpl.
     reflexivity.
   - (* l = cons n l' *)
+    simpl.
     reflexivity.
 Qed.
 
+(** Another example using [assert] and the [rewrite] tactic imported from Coq's
+own. *)
 Theorem plus_rearrange : forall n m p q : nat,
   (n + m) + (p + q) = (m + n) + (p + q).
 MProof.
   intros n m p q.
   assert (H : n + m = m + n).
-  - rewrite -> PeanoNat.Nat.add_comm;; reflexivity.
-  - rewrite -> H;; reflexivity.
+  - rewrite -> PeanoNat.Nat.add_comm &> reflexivity.
+  - rewrite -> H &> reflexivity.
 Qed.
 
+(** An example featuring scoped introduction of variables [cintros] and
+[mexists]. *)
 Theorem exists_example_2 : forall n,
   (exists m, n = 4 + m) ->
   (exists o, n = 2 + o).
 MProof.
-  cintros n {-
-    r <- M.hyps; M.print_term r;; destructn 0;; intros m Hm
-  -}.
-Set Printing All.
+  cintros n {- destructn 0 &> intros m Hm -}.
   simpl.
   mexists (2 + m).
+  (** We need to FIX the beta-expanded goal *)
   apply Hm.
 Qed.
 
+(** An example featuring the handy [select] tactic to pick an element from the
+list of hypotheses based on its type. *)
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
-  intros. select (_ -> _) >>= apply;; assumption.
+  intros. select (_ -> _) >>= apply. assumption.
 Qed.
 
+(** Note that we can't use [&>] to compose [intros] with [select] (try it!).
+The reason is that the holes in the type (the underscores) are turn into
+meta-variables, which can't refer to the introduced variables. *)
+
+(** We can, however, inline the proof with cintros. In order to avoid parens we
+need the right-associative composition operator [;;]. *)
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
   cintros _ _ _ _ {- select (_ -> _) >>= apply;; assumption -}.
 Qed.
+
 
 Definition apply_fun : tactic :=
   A <- M.evar Type;
