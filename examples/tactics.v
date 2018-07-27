@@ -101,31 +101,40 @@ MProof.
   cintros _ _ _ _ {- select (_ -> _) >>= apply;; assumption -}.
 Qed.
 
-
+(** If we want to be able to compose [intros] with [select], we must create the
+meta-variables for each hole (using the [M.evar] construct). *)
 Definition apply_fun : tactic :=
-  A <- M.evar Type;
-  B <- M.evar Type;
+  `A B <- M.evar _;
   select (A -> B) >>= apply.
 
 Goal forall P Q, (P -> Q) -> P -> Q.
 MProof.
-  intros;; apply_fun;; assumption.
+  intros &> apply_fun &> assumption.
 Qed.
 
-Theorem tl_length_pred' : forall A (l: list A),
-  pred (length l) = length (tl l).
-MProof.
-  destructn 1;; intros;; reflexivity.
-Qed.
+(** Of course, we can inline it too as [(`A B <- M.evar _; select (A->B) >>= apply)] *)
 
+(** One simple example using the [cut] tactic. *)
 Example cut_ex P Q R: (P \/ Q -> R) -> P -> R.
 MProof.
   intros.
   cut (P \/ Q).
   - assumption.
-  - left;; assumption.
+  - left &> assumption.
 Qed.
 
+(** We can inline the previous proof thanks to the overloading of the [&>] operator. *)
+Example cut_ex_inline P Q R: (P \/ Q -> R) -> P -> R.
+MProof.
+  intros.
+  cut (P \/ Q) &> [m: idtac | left] &> assumption.
+  (** Note the notation for a list of tactics. Instead of Coq's lists, we use
+  Mtac2's (with type [mlist]), which are universe polymorphic.  We use Ltac's
+  notation, using the pipe instead of the semi-colon for each element of the
+  list. *)
+Qed.
+
+(** Using the [fix_tac] tactic (similar to Coq's fix) *)
 Theorem plus_n_O : forall n:nat, n = n + 0.
 MProof.
   fix_tac (TheName "IH") 1.
@@ -135,37 +144,27 @@ MProof.
     reflexivity.
 Qed.
 
+(** An example combining standard FP programming with tactic programming: *)
+(** [apply_one_of] take a list of lemmas and tries to apply each until one
+succeed. Again, we use Mtac2's own definition for lists. *)
+Mtac Do New Exception NoneApply.
+Definition apply_one_of (l: mlist dyn) : tactic :=
+  mfold_left (fun a b=>a || (dcase b as e in apply e)) l (raise NoneApply).
 
-(** Ltac allows certain FP patterns. *)
-Require Import Lists.ListTactics.
-
-Ltac apply_one_of l :=
-  list_fold_left ltac:(fun a b => (b || apply (elemr a))) fail l.
-
-Goal forall x y z : nat, In x (z :: y :: x :: nil).
-Proof.
-  intros.
-  repeat (apply_one_of (Dynr in_eq :: Dynr in_cons :: nil)).
-Qed.
-
-Definition apply_one_of l : tactic :=
-  mfold_left (fun a b=>a || (apply (elemr b)))%tactic l (raise exception).
-
+(** The type [dyn] packs an element with its type. An element of this type is
+constructed with the [Dyn] constructor, providing an element (implicitly taking
+its type). [dcase] is notation for taking the element from the [Dyn]. *)
 Goal forall x y z : nat, In x (z :: y :: x :: nil).
 MProof.
-  Time intros;; T.repeat (apply_one_of [m:Dynr in_eq| Dynr in_cons]).
-Qed.
-Import Coq.Lists.List.ListNotations.
-
-Example trans_eq_example' : forall (a b c d e f : nat),
-     [a;b] = [c;d] ->
-     [c;d] = [e;f] ->
-     [a;b] = [e;f].
-MProof.
-  intros a b c d e f.
-  apply (trans_eq mwith ("y":=[c;d])).
+  intros &> T.repeat (apply_one_of [m:Dyn in_eq | Dyn in_cons]).
 Qed.
 
+(** To conclude, we present a way of hacking the type inference algorithm to
+execute an Mtactic. We use the [ltac:] escape to be able to write Ltac code
+inside a term, and then we use Mtac2's (Ocaml) tactic [mrun] to execute, in this
+case, the [apply] tactic. *)
 Notation "x ?" := (ltac:(mrun (apply x))) (at level 0).
 
-Definition test (x y z: nat) : In x [x] := in_eq?.
+(** With this notation, we can now let Coq infer the number of arguments that a
+term should have. *)
+Definition test_question_mark (x y z: nat) : In x [x] := in_eq?.
