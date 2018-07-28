@@ -62,7 +62,30 @@ Definition snth_indices (l : mlist dyn) (t : tactic) : selector unit := fun goal
       T.filter_goals res
     | mNone => M.failwith "snth_indices"
     end) l goals.
+
+Definition apply_except (l : mlist dyn) (t : tactic) : selector unit := fun goals=>
+  a_constr <- match mhd_error l with mSome d=> M.ret d | _ => M.failwith "apply_except: empty list" end;
+  dcase a_constr as T, c in
+  constrs <- get_constrs T;
+  M.fold_left (fun (accu : mlist (unit *m goal)) (d : dyn)=>
+      dcase d as c in
+      i <- index c;
+      let ogoal := mnth_error goals i in
+      match ogoal with
+      | mSome (m: _, g) =>
+         mif M.find (fun d'=>M.bunify d d' UniCoq) l then
+           M.ret ((m:tt, g) :m: accu)
+         else
+           newgoals <- open_and_apply t g;
+           let res := dreduce (@mapp, @mmap) (accu +m+ newgoals) in
+           T.filter_goals res
+      | mNone => M.failwith "snth_indices"
+      end) constrs goals.
+
 Open Scope tactic_scope.
 
 Notation "'case' c , .. , d 'do' t" :=
   (snth_indices (Dyn c :m: .. (Dyn d :m: [m:]) ..) t) (at level 40).
+
+Notation "'except' c , .. , d 'do' t" :=
+  (apply_except (Dyn c :m: .. (Dyn d :m: [m:]) ..) t) (at level 40).

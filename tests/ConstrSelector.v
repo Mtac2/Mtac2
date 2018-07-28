@@ -171,3 +171,23 @@ MProof.
     select (WHILE _ DO _ END = _ -> _) >>= apply.
     assumption.
 Qed.
+
+
+Lemma WHILE_true_nonterm' : forall b c st st',
+     bequiv b BTrue ->
+     ~( (WHILE b DO c END) / st \\ st' ).
+MProof.
+  intros b c.
+  remember (WHILE b DO c END) "cw" "Heqcw".
+  intros st st' eqT H.
+  induction H &> except E_WhileEnd, E_WhileLoop do discriminate.
+  - (* E_WhileEnd *) (* contradictory -- b is always true! *)
+    inversion Heqcw. subst.
+    select (bequiv _ _) >>= unfold_in bequiv.
+    move_back H. simpl.
+    select (forall x:_, _) >>= rrewrite. simpl.
+    discriminate.
+  - (* E_WhileLoop *) (* immediate from the IH *)
+    select (WHILE _ DO _ END = _ -> _) >>= apply.
+    assumption.
+Qed.
