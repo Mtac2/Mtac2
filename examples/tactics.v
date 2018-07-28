@@ -169,6 +169,38 @@ MProof.
   intros &> T.repeat (apply_one_of [m:Dyn in_eq | Dyn in_cons]).
 Qed.
 
+(** Examples showing how to selectively apply a tactic only in certain subgoals,
+according to the _index_ of the constructor. We import the necessary file: *)
+Require Import Mtac2.tactics.ConstrSelector.
+
+Inductive AVeryDumbOne := This | Is | Dumb.
+
+Definition is_this_is d := match d with This => true | Is => true | _ => false end.
+
+Definition is_dumb d := match d with Dumb => true | _ => false end.
+
+Example dumb_is_dumb_without_except : forall d, d = Dumb -> is_dumb d = true.
+MProof.
+  destructn 0 &> intros.
+  - (* This *) discriminate.
+  - (* Is *)   discriminate.
+  - (* Dumb *) reflexivity.
+Qed.
+
+Example dumb_is_dumb_with_except : forall d, d = Dumb -> is_dumb d = true.
+MProof.
+  destructn 0 &> intros &> except Dumb do discriminate.
+  reflexivity.
+Qed.
+
+Example dumb_is_not_this_is_with_case : forall d, d = Dumb -> is_this_is d = false.
+MProof.
+  destructn 0 &> intros &> case Dumb do reflexivity.
+  - discriminate.
+  - discriminate.
+Qed.
+
+
 (** To conclude, we present a way of hacking the type inference algorithm to
 execute an Mtactic. We use the [ltac:] escape to be able to write Ltac code
 inside a term, and then we use Mtac2's (Ocaml) tactic [mrun] to execute, in this
