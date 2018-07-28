@@ -969,6 +969,9 @@ Definition isCase {A} (x: A) :=
   | _ => ret false
   end.
 
+Definition bunify {A} (x y: A) (u: Unification) : t bool :=
+  mif unify x y u then ret true else ret false.
+
 End M.
 
 Notation M := M.t.
