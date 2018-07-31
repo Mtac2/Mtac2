@@ -17,13 +17,9 @@ Definition find_in_constrs {C} (c : C)  : mlist dyn -> M (mlist dyn) :=
     | mnil => M.ret mnil
     | mcons c' cs =>
       let C := reduce (RedVmCompute) C in
-      u <- M.unify c' (@Dyn C c) UniMatchNoRed;
-      match u with
-      | mSome _ =>
-        M.ret cs
-      | mNone =>
-        l <- f cs;
-        M.ret (c' :m: l)
+      mmatch c' with
+      | @Dyn C c =n> M.ret cs
+      | _ => l <- f cs; M.ret (c' :m: l)
       end
     end.
 
