@@ -1,5 +1,5 @@
 From Mtac2 Require Import Datatypes List.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.

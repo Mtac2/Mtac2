@@ -1,4 +1,4 @@
-From Mtac2 Require Import Mtac2 Datatypes.
+From Mtac2 Require Import Mtac2 lib.Datatypes.
 
 Module SumRunner.
   Inductive runner_sum A :=

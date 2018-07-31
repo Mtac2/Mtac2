@@ -1,6 +1,6 @@
 From Mtac2 Require Import Datatypes List Mtac2.
 Import TacticsBase.T.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 Import ProdNotations.
 
 Set Universe Polymorphism.

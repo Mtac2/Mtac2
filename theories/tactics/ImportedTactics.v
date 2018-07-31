@@ -5,8 +5,8 @@ Import M.notations.
 Import T.notations.
 
 Require Import Strings.String.
-Require Import Mtac2.List.
-Import Mtac2.List.ListNotations.
+Require Import Mtac2.lib.List.
+Import Mtac2.lib.List.ListNotations.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.

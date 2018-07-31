@@ -4,7 +4,7 @@ From Mtac2 Require Export Base.
 From Mtac2 Require Import Logic Datatypes List Utils Logic Abstract Sorts.
 Import Sorts.
 Import M.notations.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 
 Require Import Strings.String.
 Require Import NArith.BinNat.

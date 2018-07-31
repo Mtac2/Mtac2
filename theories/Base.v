@@ -11,7 +11,7 @@ Declare ML Module "MetaCoqPlugin".
 Require Import Strings.String.
 Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.

@@ -32,7 +32,7 @@ Class NSeq (A B : Type) n (nt: ntactic A n) (l: mlist (gtactic B)) (pf: mlength 
   nseq : gtactic B.
 Arguments nseq {A B _} _%tactic _%tactic _ {_}.
 
-Import Mtac2.List.
+Import Mtac2.lib.List.
 
 Instance nseq_list {A B} n (nt: ntactic A n) (l: mlist (gtactic B)) pf: NSeq nt l pf := fun g =>
   gs <- nt g;

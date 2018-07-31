@@ -1,5 +1,5 @@
 From Mtac2 Require Import Datatypes List Mtac2.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 Import T.
 
 Require Import Bool.Bool.

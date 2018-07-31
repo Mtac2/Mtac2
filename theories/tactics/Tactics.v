@@ -5,7 +5,7 @@ From Mtac2 Require Import Logic Datatypes List Utils Logic Abstract Sorts.
 From Mtac2.tactics Require Export TacticsBase.
 Import Sorts.
 Import M.notations.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 Import T.
 
 Require Import Strings.String.

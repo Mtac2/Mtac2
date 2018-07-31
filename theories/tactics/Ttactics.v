@@ -1,7 +1,7 @@
 From Mtac2 Require Import Base Datatypes List Sorts tactics.Tactics.
 Require Import Strings.String.
 Import Sorts.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 Import ProdNotations.
 Import Tactics.T.
 Import M.
@@ -183,7 +183,7 @@ Definition lower {A} (t: ttac A) : M A :=
 Module MatchGoalTT.
 Import Abstract.
 Import TacticsBase.T.notations.
-Import Mtac2.Logic.
+Import Mtac2.lib.Logic.
 Inductive goal_pattern : Prop :=
   | gbase : forall (A : _), ttac A -> goal_pattern
   | gbase_context : forall {A} (a : A), (forall (C : A -> Type), ttac (C a)) -> goal_pattern

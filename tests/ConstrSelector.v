@@ -1,6 +1,6 @@
 From Mtac2 Require Import Datatypes List Mtac2 ConstrSelector.
 Import T.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 
 Eval compute in M.eval (index 0).
 Eval compute in M.eval (index S).

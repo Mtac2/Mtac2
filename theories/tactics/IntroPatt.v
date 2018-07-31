@@ -1,6 +1,6 @@
 From Mtac2 Require Import List Base.
 From Mtac2.tactics Require Import TacticsBase Tactics ImportedTactics.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 Import M.notations.
 Import TacticsBase.T.notations.
 Import Tactics.T.notations.

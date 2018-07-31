@@ -1,7 +1,7 @@
 From Mtac2 Require Import Base Logic Datatypes List Sorts DepDestruct MTeleMatch.
 
-Import M. Import M.notations. Import Mtac2.List.ListNotations.
-Import Mtac2.Datatypes.ProdNotations.
+Import M. Import M.notations. Import Mtac2.lib.List.ListNotations.
+Import Mtac2.lib.Datatypes.ProdNotations.
 
 Set Polymorphic Inductive Cumulativity.
 Set Universe Polymorphism.

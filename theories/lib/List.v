@@ -6,7 +6,7 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
-Require Export Mtac2.Datatypes.
+Require Export Mtac2.lib.Datatypes.
 Set Implicit Arguments.
 
 Set Universe Polymorphism.

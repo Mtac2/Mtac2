@@ -1,7 +1,7 @@
 From Mtac2 Require Import Base MTele DecomposeApp Tactics List.
 Import M.notations.
 Import ProdNotations.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 
 Import TeleNotation.
 Definition test_tele : MTele := [tele (x y : nat)].

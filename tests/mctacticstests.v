@@ -1,7 +1,7 @@
 Require Import Bool.Bool.
 Require Import Mtac2.Mtac2.
 Import T.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 
 Goal True.
 MProof.
