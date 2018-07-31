@@ -1,6 +1,13 @@
 From Mtac2 Require Import Base List.
 Import M.notations.
 
+(** This file implements exhaustive [mmatch]es by introducing the [mmatch t
+    exhaustively_with ... end] syntax.
+
+    We currently consider only [[# ] c | x .. y ] nodes, and only those that
+    have an unapplied constructor [c] on the left-hand side of [|].
+ *)
+
 Definition ConstrNotFound : Exception. constructor. Qed.
 Definition ConstrsUnmentioned (m : mlist dyn) : Exception. constructor. Qed.
 
