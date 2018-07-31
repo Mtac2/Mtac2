@@ -55,7 +55,7 @@ theories/intf/Goals.v
 theories/intf/Lift.v
 theories/intf/Tm_kind.v
 theories/intf/M.v
-theories/Exhaustive.v
+theories/meta/Exhaustive.v
 theories/ideas/Abstract.v
 theories/ideas/DepDestruct.v
 theories/ideas/SubgoalsStrict.v
