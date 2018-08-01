@@ -1307,19 +1307,15 @@ let rec run' ctxt (vms : vm list) =
                               efail (E.mkNotAList sigma env l)
                         end
 
-                    | MConstr (Munify, (a, x, y, uni)) ->
-                        let a, x, y, uni = to_econstr a, to_econstr x, to_econstr y, to_econstr uni in
-                        let sigma, feqT = CoqEq.mkType sigma env a x y in
+                    | MConstr (Munify, (_,_, uni, x, y, ts, tf)) ->
+                        let x, y, uni = to_econstr x, to_econstr y, to_econstr uni in
                         begin
                           let r = UnificationStrategy.unify None sigma env uni Reduction.CONV x y in
                           match r with
                           | Evarsolve.Success sigma, _ ->
-                              let sigma, feq = CoqEq.mkEqRefl sigma env a x in
-                              let sigma, someFeq = CoqOption.mkSome sigma env feqT feq in
-                              ereturn sigma someFeq
+                              (run'[@tailcall]) {ctxt with sigma = sigma} (Code ts :: vms)
                           | _, _ ->
-                              let sigma, none = CoqOption.mkNone sigma env feqT in
-                              ereturn sigma none
+                              (run'[@tailcall]) ctxt (Code tf :: vms)
                         end
 
                     | MConstr (Munify_univ, (x, y, uni)) ->

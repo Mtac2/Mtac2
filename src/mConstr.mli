@@ -54,7 +54,7 @@ type 'a mconstr_head =
   | Mdestcase : (arg_type * arg_any) mconstr_head
   | Mconstrs : (arg_type * arg_any) mconstr_head
   | Mmakecase : (arg_case) mconstr_head
-  | Munify : (arg_type * arg_any * arg_any * arg_any) mconstr_head
+  | Munify : (arg_type * arg_type * arg_any * arg_any * arg_any * arg_fun * arg_fun) mconstr_head
   | Munify_univ : (arg_type * arg_type * arg_any) mconstr_head
   | Mget_reference : (arg_string) mconstr_head
   | Mget_var : (arg_string) mconstr_head
