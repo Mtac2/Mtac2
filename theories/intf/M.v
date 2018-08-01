@@ -1,10 +1,10 @@
 Require Import Strings.String.
 Require Import NArith.BinNat.
-From Mtac2 Require Import Logic Datatypes Logic List Utils Sorts MTele Pattern.
-Import Sorts.
+From Mtac2 Require Import Logic Datatypes Logic List Utils MTele Pattern.
 Import ListNotations.
 Import ProdNotations.
-From Mtac2.intf Require Export Exceptions Dyn Reduction Unification DeclarationDefs Goals Case Tm_kind Name.
+From Mtac2.intf Require Export Sorts Exceptions Dyn Reduction Unification DeclarationDefs Goals Case Tm_kind Name.
+Import Sorts.S.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.

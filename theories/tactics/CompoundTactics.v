@@ -1,5 +1,5 @@
 From Mtac2 Require Import Base Tactics ImportedTactics Datatypes List Logic Abstract Sorts.
-Import Sorts.
+Import Sorts.S.
 Import M. Import M.notations.
 Import ListNotations.
 Import ProdNotations.

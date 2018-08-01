@@ -1,6 +1,6 @@
 From Mtac2 Require Import Base Logic Datatypes MFixDef MTele MTeleMatch.
 Import M.notations.
-Import Sorts.Sorts.
+Import Sorts.S.
 
 Set Polymorphic Inductive Cumulativity.
 Set Universe Polymorphism.

@@ -146,7 +146,7 @@ Module Mtac_V4.
   (** The prover in this module uses a combination of the traditional [M]
   solution from [Mtac_V1] with the typed-tactic approach of [Mtac_V2]. *)
 
-  Import Sorts.
+  Import Sorts.S.
   Import TT.
   Import TT.notations.
   Definition TautoFail : Exception. constructor. Qed.

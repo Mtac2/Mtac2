@@ -1,6 +1,6 @@
 From Mtac2 Require Import Base Logic Datatypes List MTele.
 Import M.notations.
-Import Sorts.Sorts.
+Import Sorts.S.
 Import ListNotations.
 
 Set Polymorphic Inductive Cumulativity.
@@ -21,9 +21,6 @@ Arguments mtpsort {A m} _.
 
 Local Notation MFA T := (MTele_val (MTele_C SType SProp M T)).
 
-Coercion stype_of : Sort >-> Sortclass.
-(* Set Printing Coercions. *)
-(* Set Printing All. *)
 Polymorphic Definition mtmmatch' A m (T : forall x, MTele_Ty (m x)) (y : A)
            (ps : mlist (mtpattern A (fun x => MFA (T x)))) : selem_of (MFA (T y)) :=
   MTele_open

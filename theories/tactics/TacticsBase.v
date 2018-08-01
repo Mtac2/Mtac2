@@ -1,8 +1,8 @@
 Require Import Strings.String.
 Require Import ssrmatching.ssrmatching.
 From Mtac2 Require Export Base.
-From Mtac2 Require Import Logic Datatypes List Utils Logic Abstract Sorts.
-Import Sorts.
+From Mtac2 Require Import Logic Datatypes List Utils Logic Abstract intf.Sorts.
+Import Sorts.S.
 Import M.notations.
 Import Mtac2.lib.List.ListNotations.
 
@@ -85,7 +85,7 @@ Definition branch_map {A} {B} (y : A) (g : goal) (b : branch gtactic A B y) :
   | branch_pattern p =>
     branch_pattern (pattern_map g _ p)
   | branch_app_static U ct cont =>
-    let cont := MTele.MTele_constmap_app (si:=Sorts.SType) Sorts.SProp (fun _ _ => _) ct cont g in
+    let cont := MTele.MTele_constmap_app (si:=SType) SProp (fun _ _ => _) ct cont g in
     @branch_app_static _ _ _ _ _ U _ cont
   | branch_forallP cont => branch_forallP (fun X Y => cont X Y g)
   | branch_forallT cont => branch_forallT (fun X Y => cont X Y g)

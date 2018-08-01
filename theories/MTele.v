@@ -1,5 +1,5 @@
 From Mtac2 Require Import Sorts.
-Import Sorts.
+Import Sorts.S.
 
 Set Polymorphic Inductive Cumulativity.
 Set Universe Polymorphism.

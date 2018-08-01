@@ -1,5 +1,5 @@
-From Mtac2 Require Import Datatypes Sorts.
-Import Sorts.
+From Mtac2 Require Import Datatypes intf.Sorts.
+Import Sorts.S.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.

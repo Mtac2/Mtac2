@@ -6,7 +6,7 @@ Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
-Module Sorts.
+Module S.
 
 Inductive Sort : Type := SProp | SType.
 
@@ -28,8 +28,8 @@ Arguments selem_of {!_} _ : simpl nomatch.
 Fail Local Example CannotMakeAnElementOfaSort s (P : stype_of s) (x : P) := x.
 Local Example WeCanWithElemOf s (P : stype_of s) (x : selem_of P) := x.
 
-Definition selem_lift {s : Sort} : @selem_of Sorts.SType (Sorts.stype_of s) -> Type :=
-  match s as s' return @selem_of Sorts.SType (Sorts.stype_of s') -> Type with
+Definition selem_lift {s : Sort} : @selem_of SType (stype_of s) -> Type :=
+  match s as s' return @selem_of SType (stype_of s') -> Type with
   | SType => fun x => x
   | SProp => fun y => y
   end.
@@ -77,9 +77,9 @@ Definition lift_Impl {sort} {A : Type} : forall {B : stype_of sort}, selem_of (I
   end.
 
 
-End Sorts.
+End S.
 
-Import Sorts.
+Import S.
 
 Coercion stype_of : Sort >-> Sortclass.
 Coercion selem_of : stype_of >-> Sortclass.

@@ -26,7 +26,7 @@ theories/lib/Specif.v
 theories/lib/Datatypes.v
 theories/lib/List.v
 theories/lib/Utils.v
-theories/Sorts.v
+theories/intf/Sorts.v
 theories/Base.v
 theories/DecomposeApp.v
 theories/tactics/TacticsBase.v

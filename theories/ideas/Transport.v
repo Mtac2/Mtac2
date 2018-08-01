@@ -1,5 +1,5 @@
 From Mtac2 Require Import Base Logic Datatypes List Sorts DepDestruct MTeleMatch.
-
+Import Sorts.S.
 Import M. Import M.notations. Import Mtac2.lib.List.ListNotations.
 Import Mtac2.lib.Datatypes.ProdNotations.
 
@@ -16,7 +16,7 @@ Fixpoint combine {A B} (l : mlist A) (l' : mlist B) {struct l} : mlist (A *m B) 
                       end
   end.
 
-Definition get_ind_cts (A : Type) (offset : nat) : M (nat * {s : Sorts.Sort & { it : ITele s & mlist (NDCTele it)}}) :=
+Definition get_ind_cts (A : Type) (offset : nat) : M (nat * {s : Sort & { it : ITele s & mlist (NDCTele it)}}) :=
   ind <- get_ind A;
   let (nsortit, constrs) := ind in
   (* drop first `offset` constructors. *)
@@ -27,11 +27,11 @@ Definition get_ind_cts (A : Type) (offset : nat) : M (nat * {s : Sorts.Sort & { 
                (* Compute CTeles *)
   cts <- M.map (fun c_dyn : dyn =>
     dcase c_dyn as dtype, delem in
-    let ty_c := reduce (RedWhd RedAll) (Sorts.stype_of isort) in
+    let ty_c := reduce (RedWhd RedAll) (S.stype_of isort) in
     ty <- M.evar ty_c;
     b <- M.cumul UniMatchNoRed ty dtype;
     if b then
-      let el_c := reduce (RedWhd RedAll) (Sorts.selem_of ty) in
+      let el_c := reduce (RedWhd RedAll) (S.selem_of ty) in
       el <- M.evar el_c;
       M.cumul UniMatchNoRed el delem;;
       get_NDCTele it nindx ty el
@@ -67,13 +67,13 @@ Local Notation "\fnuf x .. z 'for' F , t" :=
 )
   (at level 101, x binder, z binder).
 
-Definition stype_type (sort : Sorts.Sort) (t : Sorts.stype_of sort) : Type := (Sorts.selem_of t) : Type.
+Definition stype_type (sort : Sort) (t : stype_of sort) : Type := (selem_of t) : Type.
 
 Definition gen_match_branch {T1 T2 X} (recursor : T1 -> M T2) (base : T2 -> M X) :=
   fix f (C1_types C2_types : mlist Type) :
-    forall ndc : (NDCfold (@iBase Sorts.SType T1) C1_types), (lprod C2_types -> M X) -> M (branch_of_NDCTele (rsort := Sorts.SProp) (it := @iBase Sorts.SType T1) (fun _ => M X) (existT _ C1_types ndc)) :=
+    forall ndc : (NDCfold (@iBase SType T1) C1_types), (lprod C2_types -> M X) -> M (branch_of_NDCTele (rsort := SProp) (it := @iBase SType T1) (fun _ => M X) (existT _ C1_types ndc)) :=
     match C1_types as C1_types, C2_types as C2_types return
-          forall ndc : (NDCfold (@iBase Sorts.SType T1) C1_types), (lprod C2_types -> M X) -> M (branch_of_NDCTele (rsort := Sorts.SProp) (it := @iBase Sorts.SType T1) (fun _ => M X) (existT _ C1_types ndc))
+          forall ndc : (NDCfold (@iBase SType T1) C1_types), (lprod C2_types -> M X) -> M (branch_of_NDCTele (rsort := SProp) (it := @iBase SType T1) (fun _ => M X) (existT _ C1_types ndc))
     with
     | mnil, mnil =>
       fun (F1 : unit -> _) (F2 : unit -> _) =>
@@ -81,9 +81,9 @@ Definition gen_match_branch {T1 T2 X} (recursor : T1 -> M T2) (base : T2 -> M X)
         M.ret c2
     | X1:m:C1_types, X2:m:C2_types =>
       mtmmatch (m: X1, X2) as Xs return
-          forall ndc : (NDCfold (@iBase Sorts.SType T1) (mfst Xs:m:C1_types)),
+          forall ndc : (NDCfold (@iBase SType T1) (mfst Xs:m:C1_types)),
             (lprod (msnd Xs:m:C2_types) -> M X) ->
-            M (branch_of_NDCTele (rsort := Sorts.SProp) (it := @iBase Sorts.SType T1) (fun _ => M X) (existT _ (mfst Xs:m:C1_types) ndc))
+            M (branch_of_NDCTele (rsort := SProp) (it := @iBase SType T1) (fun _ => M X) (existT _ (mfst Xs:m:C1_types) ndc))
         with
         | [? A : Type] (m: A, A) =u>
           fun (F1 : lprod (mfst (m: A,A):m:_) -> _) (F2 : lprod (msnd (m: A,A):m:_) -> M X)=>
@@ -106,14 +106,14 @@ Definition gen_match_from_to (T1 T2 : Type) X (offset : nat) : M (forall recurso
   i1 <- get_ind_cts T1 O;
   i2 <- get_ind_cts T2 offset;
   mmatch (m: i1, i2) with
-  | [?(n1 : nat) (Cs1 : mlist (NDCTele (@iBase Sorts.SType T1)))
-      (n2 : nat) (Cs2 : mlist (NDCTele (@iBase Sorts.SType T2)))]
+  | [?(n1 : nat) (Cs1 : mlist (NDCTele (@iBase SType T1)))
+      (n2 : nat) (Cs2 : mlist (NDCTele (@iBase SType T2)))]
       (m:
-        ((n1, existT _ Sorts.SType (existT _ (@iBase Sorts.SType T1) Cs1))),
-        ((n2, existT _ Sorts.SType (existT _ (@iBase Sorts.SType T2) Cs2)))
+        ((n1, existT _ SType (existT _ (@iBase SType T1) Cs1))),
+        ((n2, existT _ SType (existT _ (@iBase SType T2) Cs2)))
       ) =>
-    let it1 := @iBase Sorts.SType T1 in
-    let it2 := @iBase Sorts.SType T2 in
+    let it1 := @iBase SType T1 in
+    let it2 := @iBase SType T2 in
     (if Nat.eqb (mlength Cs1) (mlength Cs2) then M.ret unit else M.failwith "Number of remaining constructors of T2 does not match that of T1");;
     (* let Cs1 := reduce RedVmCompute Cs1 in *)
     (* let Cs2 := reduce RedVmCompute Cs2 in *)

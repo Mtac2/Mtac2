@@ -67,8 +67,8 @@ module Goal = struct
   let mkAHyp = mkUConstr "Goals.AHyp"
   let mkHypLet = mkUConstr "Goals.HypLet"
 
-  let mkSType = Constr.mkConstr "Mtac2.Sorts.Sorts.SType"
-  let mkSProp = Constr.mkConstr "Mtac2.Sorts.Sorts.SProp"
+  let mkSType = Constr.mkConstr "Mtac2.intf.Sorts.S.SType"
+  let mkSProp = Constr.mkConstr "Mtac2.intf.Sorts.S.SProp"
 
   let mkTheGoal ty ev sigma env =
     let tt = Retyping.get_type_of env sigma ty in

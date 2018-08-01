@@ -1,6 +1,6 @@
 From Mtac2 Require Import Logic Datatypes List Sorts Base MTeleMatch MFix.
 From Mtac2.tactics Require Import Tactics ImportedTactics.
-Import Sorts.
+Import Sorts.S.
 Import M.notations.
 Import ProdNotations.
 

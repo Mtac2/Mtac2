@@ -1,5 +1,5 @@
 From Mtac2 Require Import Base MTele.
-Import Sorts.Sorts.
+Import Sorts.S.
 Import M.notations.
 
 Set Polymorphic Inductive Cumulativity.

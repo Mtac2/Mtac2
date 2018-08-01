@@ -1,5 +1,5 @@
 From Mtac2 Require Import Logic List intf.Unification Sorts MTele.
-Import Sorts.
+Import Sorts.S.
 Import ListNotations.
 
 Set Universe Polymorphism.

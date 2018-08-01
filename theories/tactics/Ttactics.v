@@ -1,6 +1,6 @@
 From Mtac2 Require Import Base Datatypes List Sorts tactics.Tactics.
 Require Import Strings.String.
-Import Sorts.
+Import Sorts.S.
 Import Mtac2.lib.List.ListNotations.
 Import ProdNotations.
 Import Tactics.T.
