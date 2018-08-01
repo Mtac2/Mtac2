@@ -129,7 +129,7 @@ Definition gen_match_from_to (T1 T2 : Type) X (offset : nat) : M (forall recurso
             let c1 := reduce (RedVmCompute) (projT2 Cs1_i) in
             let c21 := reduce (RedVmCompute) (projT1 Cs2_i) in
             let c2 := reduce (RedVmCompute) (projT2 Cs2_i) in
-            M.print_term c21;;
+            (* M.print_term c21;; *)
             t <-
               gen_match_branch recursor base
                                c11
@@ -153,7 +153,7 @@ Definition gen_match_from_to (T1 T2 : Type) X (offset : nat) : M (forall recurso
                      (* let f := reduce (RedWhd ([rl:RedMatch;RedBeta;RedDeltaOnly [rl:Dyn (@elem)]])) f in *)
                      (* let ty := reduce (RedWhd ([rl:RedMatch;RedBeta;RedDeltaOnly [rl:Dyn (@type)]])) T in *)
                      let ty := T in
-                     M.print_term ty;;
+                     (* M.print_term ty;; *)
                      f <- M.abs_fun (P:=fun _ => ty) t1 f;
                      f <- M.abs_fun base f;
                      f <- M.abs_fun recursor f;
