@@ -57,7 +57,7 @@ type 'a mconstr_head =
   | Mdestcase : (arg_type * arg_any) mconstr_head
   | Mconstrs : (arg_type * arg_any) mconstr_head
   | Mmakecase : (arg_case) mconstr_head
-  | Munify : (arg_type * arg_any * arg_any * arg_any) mconstr_head
+  | Munify : (arg_type * arg_type * arg_any * arg_any * arg_any * arg_fun * arg_fun) mconstr_head
   | Munify_univ : (arg_type * arg_type * arg_any) mconstr_head
   | Mget_reference : (arg_string) mconstr_head
   | Mget_var : (arg_string) mconstr_head
@@ -117,7 +117,7 @@ let num_args_of_mconstr (type a) (mh : a mconstr_head) =
   | Mdestcase -> 2
   | Mconstrs -> 2
   | Mmakecase -> 1
-  | Munify -> 4
+  | Munify -> 7
   | Munify_univ -> 3
   | Mget_reference -> 1
   | Mget_var -> 1
@@ -266,7 +266,7 @@ let name_makecase = constant_of_string "makecase"
 (* let mkmakecase = mkconstr name_makecase *)
 let ismakecase = isconstant name_makecase
 
-let name_unify = constant_of_string "unify"
+let name_unify = constant_of_string "unify_cnt"
 (* let mkunify = mkconstr name_unify *)
 let isunify = isconstant name_unify
 
@@ -576,7 +576,7 @@ let mconstr_of (type a) args (h : a mconstr_head) =
   | Mmakecase ->
       MConstr (Mmakecase, (args 0))
   | Munify ->
-      MConstr (Munify, (args 0, args 1, args 2, args 3))
+      MConstr (Munify, (args 0, args 1, args 2, args 3, args 4, args 5, args 6))
   | Munify_univ ->
       MConstr (Munify_univ, (args 0, args 1, args 2))
   | Mget_reference ->
