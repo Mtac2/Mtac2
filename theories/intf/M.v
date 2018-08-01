@@ -181,11 +181,14 @@ Definition constrs: forall{A: Type} (a: A), t (mprod dyn (mlist dyn)).
 Definition makecase: forall(C: Case), t dyn.
   make. Qed.
 
-(** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
+(** [unify r x y ts tf] uses reduction strategy [r] to equate [x] and [y].
+    If unification succeeds, it will run [ts].
+    Otherwise, if unification fails, [tf] is executed instead.
     It uses convertibility of universes, meaning that it fails if [x]
     is [Prop] and [y] is [Type]. If they are both types, it will
     try to equate its leveles. *)
-Definition unify {A: Type} (x y: A) : Unification -> t (moption (meq x y)).
+
+Definition unify_cnt {A: Type} {B: A -> Type} (U:Unification) (x y : A) : t (B y) -> t (B x) -> t (B x).
   make. Qed.
 
 (** [munify_univ A B r] uses reduction strategy [r] to equate universes
@@ -321,6 +324,11 @@ Definition fapp {A:Type} {B:Type} (f : t (A -> B)) (x : t A) : t B :=
 
 Definition Cevar (A : Type) (ctx : mlist Hyp) : t A := gen_evar A (mSome ctx).
 Definition evar (A : Type) : t A := gen_evar A mNone.
+
+Definition unify {A : Type} (x y : A) (U : Unification) : t (moption (x =m= y)) :=
+  unify_cnt (B:=fun x => moption (meq x y)) U x y
+            (ret (mSome (@meq_refl _ y)))
+            (ret mNone).
 
 
 Definition raise {A:Type} (e: Exception): t A :=
