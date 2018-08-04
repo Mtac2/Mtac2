@@ -28,6 +28,10 @@ The project has 3 subdirectories:
      + `ConstrSelector.v` defines a selector based on the indices of an inductive type's constructors.
 
 * `examples` contains simple examples to show the different features of Mtac2.
+  - `tactics.v` shows how to standard, Ltac's like, proving. But with some
+    interesting features not present in Ltac.
+  - `tauto.v` shows many different ways to code a simple tautology prover, with
+    different degrees of certainty and verboseness.
 * `test-suite` contains several tests, including some uses of the plugin.
 
 Installation
