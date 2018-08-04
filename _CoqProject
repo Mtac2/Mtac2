@@ -42,7 +42,7 @@ theories/MTeleMatchDef.v
 theories/MTeleMatch.v
 theories/MFixDef.v
 theories/MFix.v
-theories/SumRun.v
+theories/ideas/SumRun.v
 theories/Pattern.v
 theories/intf/Dyn.v
 theories/intf/Name.v
