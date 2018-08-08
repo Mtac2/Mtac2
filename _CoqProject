@@ -37,11 +37,11 @@ theories/tactics/CompoundTactics.v
 theories/tactics/ConstrSelector.v
 theories/tactics/Ttactics.v
 theories/Mtac2.v
-theories/MTele.v
-theories/MTeleMatchDef.v
-theories/MTeleMatch.v
-theories/MFixDef.v
-theories/MFix.v
+theories/intf/MTele.v
+theories/meta/MTeleMatchDef.v
+theories/meta/MTeleMatch.v
+theories/meta/MFixDef.v
+theories/meta/MFix.v
 theories/ideas/SumRun.v
 theories/Pattern.v
 theories/intf/Dyn.v
