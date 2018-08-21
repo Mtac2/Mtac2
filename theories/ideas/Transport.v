@@ -3,7 +3,6 @@ Import Sorts.S.
 Import M. Import M.notations. Import Mtac2.lib.List.ListNotations.
 Import Mtac2.lib.Datatypes.ProdNotations.
 
-Set Polymorphic Inductive Cumulativity.
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 

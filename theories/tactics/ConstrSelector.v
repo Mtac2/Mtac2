@@ -4,7 +4,6 @@ Import Mtac2.lib.List.ListNotations.
 Import ProdNotations.
 
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 (** This files defines a useful tactic to kill subgoals on groups

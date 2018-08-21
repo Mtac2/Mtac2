@@ -1,7 +1,6 @@
 From Mtac2 Require Import Base Specif Logic Datatypes MTele MTeleMatchDef.
 Import M.notations.
 
-Set Polymorphic Inductive Cumulativity.
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 

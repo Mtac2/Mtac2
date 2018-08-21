@@ -7,7 +7,6 @@ From Mtac2.intf Require Export Sorts Exceptions Dyn Reduction Unification Declar
 Import Sorts.S.
 
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 (** THE definition of the monad *)

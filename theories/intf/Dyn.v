@@ -1,5 +1,4 @@
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 (** This module offers two types to encode an element with its type. *)

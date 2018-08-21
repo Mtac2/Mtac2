@@ -9,7 +9,6 @@
 Set Implicit Arguments.
 
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 Reserved Notation "x =m= y  :>  T"
