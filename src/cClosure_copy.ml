@@ -433,7 +433,7 @@ let update v1 no t =
 type stack_member =
   | Zapp of fconstr array
   | ZcaseT of case_info * constr * constr array * fconstr fusubs
-  | Zproj of int * int * Constant.t
+  | Zproj of Projection.Repr.t
   | Zfix of fconstr * stack
   | Zshift of int
   | Zupdate of fconstr
@@ -713,8 +713,8 @@ let rec zip m stk =
   | ZcaseT(ci,p,br,e)::s ->
       let t = FCaseT(ci, p, m, br, e) in
       zip {norm=neutr m.norm; term=t} s
-  | Zproj (i,j,cst) :: s ->
-      zip {norm=neutr m.norm; term=FProj(Projection.make cst true,m)} s
+  | Zproj p :: s ->
+      zip {norm=neutr m.norm; term=FProj(Projection.make p true,m)} s
   | Zfix(fx,par)::s ->
       zip fx (par @ append_stack [|m|] s)
   | Zshift(n)::s ->
@@ -842,10 +842,12 @@ let drop_parameters depth n argstk =
     constructor is partially applied.
 *)
 let eta_expand_ind_stack env ind m s (f, s') =
+  let open Declarations in
   let mib = lookup_mind (fst ind) env in
-  match mib.Declarations.mind_record with
-  | Some (Some (_,projs,pbs)) when
-      mib.Declarations.mind_finite == Declarations.BiFinite ->
+  (* disallow eta-exp for non-primitive records *)
+  if not (mib.mind_finite == BiFinite) then raise Not_found;
+  match Declareops.inductive_make_projections ind mib with
+  | Some projs ->
       (* (Construct, pars1 .. parsm :: arg1...argn :: []) ~= (f, s') ->
          arg1..argn ~= (proj1 t...projn t) where t = zip (f,s') *)
       let pars = mib.Declarations.mind_nparams in
@@ -853,10 +855,13 @@ let eta_expand_ind_stack env ind m s (f, s') =
       let (depth, args, s) = strip_update_shift_app m s in
       (** Try to drop the params, might fail on partially applied constructors. *)
       let argss = try_drop_parameters depth pars args in
-      let hstack = Array.map (fun p -> { norm = Red; (* right can't be a constructor though *)
-                                         term = FProj (Projection.make p true, right) }) projs in
+      let hstack = Array.map (fun p ->
+        { norm = Red; (* right can't be a constructor though *)
+          term = FProj (Projection.make p true, right) })
+        projs
+      in
       argss, [Zapp hstack]
-  | _ -> raise Not_found (* disallow eta-exp for non-primitive records *)
+  | None -> raise Not_found (* disallow eta-exp for non-primitive records *)
 
 let rec project_nth_arg n argstk =
   match argstk with
@@ -892,6 +897,12 @@ let contract_fix_vect fix =
   in
   (fstsndapp subs_cons (Array.init nfix make_body) env, thisbody)
 
+let unfold_projection info p =
+  if red_projection info.i_flags p
+  then
+    Some (Zproj (Projection.repr p))
+  else None
+
 (*********************************************************************)
 (* A machine that inspects the head of a term until it finds an
    atom or a subterm that may produce a redex (abstraction,
@@ -910,15 +921,9 @@ let rec knh info m stk =
        | (None, stk') -> (m,stk'))
   | FCast(t,_,_) -> knh info t stk
   | FProj (p,c) ->
-      let unf = Projection.unfolded p in
-      if unf || red_set info.i_flags (fCONST (Projection.constant p)) then
-        (match try Some (lookup_projection p (info_env info)) with Not_found -> None with
-          | None -> (m, stk)
-          | Some pb ->
-              knh info c (Zproj (pb.Declarations.proj_npars, pb.Declarations.proj_arg,
-                                 Projection.constant p)
-                          :: zupdate m stk))
-      else (m,stk)
+      (match unfold_projection info p with
+       | None -> (m, stk)
+       | Some s -> knh info c (s :: zupdate m stk))
 
   (* cases where knh stops *)
   | (FFlex _|FLetIn _|FConstruct _|FEvar _|
@@ -976,9 +981,9 @@ let rec knr info m stk =
              let stk' = par @ append_stack [|rarg|] s in
              let (fxe,fxbd) = contract_fix_vect fx.term in
              knit info fxe fxbd stk'
-         | (depth, args, Zproj (n, m, cst)::s) when use_match ->
-             let rargs = drop_parameters depth n args in
-             let rarg = project_nth_arg m rargs in
+         | (depth, args, Zproj p::s) when use_match ->
+             let rargs = drop_parameters depth (Projection.Repr.npars p) args in
+             let rarg = project_nth_arg (Projection.Repr.arg p) rargs in
              kni info rarg s
          | (_,args,s) -> (m,args@s))
       else (m,stk)
@@ -1020,7 +1025,8 @@ let rec zip_term zfun m stk =
       let t = mkCase(ci, zfun (mk_clos e p), m,
                      Array.map (fun b -> zfun (mk_clos e b)) br) in
       zip_term zfun t s
-  | Zproj(_,_,p)::s ->
+
+  | Zproj p::s ->
       let t = mkProj (Projection.make p true, m) in
       zip_term zfun t s
   | Zfix(fx,par)::s ->

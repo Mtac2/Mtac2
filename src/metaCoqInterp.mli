@@ -8,7 +8,7 @@ type mrun_arg_type =
   | GTactic
 
 type mrun_arg =
-  | StaticallyChecked of (mrun_arg_type * Globnames.global_reference)
+  | StaticallyChecked of (mrun_arg_type * Names.Globref.t)
   | DynamicallyChecked of (Ltac_pretype.closed_glob_constr)
 
 module MetaCoqRun : sig
