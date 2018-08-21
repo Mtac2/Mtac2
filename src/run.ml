@@ -941,20 +941,11 @@ let check_evars_exception old_sigma new_sigma env c =
 
 let timers = Hashtbl.create 128
 
-<<<<<<< HEAD
 let reduce_noshare infos t stack =
   let b = !CClosure_copy.share in
   CClosure_copy.share := false;
   let r = CClosure_copy.whd_stack infos t stack in
   CClosure_copy.share := b;
-=======
-
-let reduce_noshare infos t stack =
-  let b = !CClosure.share in
-  CClosure.share := false;
-  let r = CClosure.whd_stack infos t stack in
-  CClosure.share := b;
->>>>>>> Revert "Overlay for coq/coq#7085."
   r
 
 let pop_args num stack =
