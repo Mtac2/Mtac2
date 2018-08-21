@@ -2,7 +2,6 @@ From Mtac2 Require Import Datatypes List.
 Import Mtac2.lib.List.ListNotations.
 
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 Definition dec_bool {P} (x : {P}+{~P}) : bool :=

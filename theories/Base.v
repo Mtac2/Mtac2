@@ -14,7 +14,6 @@ Require Import NArith.BinNatDef.
 Import Mtac2.lib.List.ListNotations.
 
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 Module M.

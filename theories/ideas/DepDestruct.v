@@ -8,7 +8,6 @@ Require Import Strings.String.
 Import Mtac2.lib.List.ListNotations.
 
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 (** This is the [abs] from [MetaCoq] but first reducing the variable

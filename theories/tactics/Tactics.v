@@ -13,7 +13,6 @@ Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
 
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 Module T.
