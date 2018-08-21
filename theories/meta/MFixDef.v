@@ -2,7 +2,6 @@ From Mtac2 Require Import Base MTele.
 Import Sorts.S.
 Import M.notations.
 
-Set Polymorphic Inductive Cumulativity.
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 

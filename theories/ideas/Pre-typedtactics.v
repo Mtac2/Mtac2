@@ -8,7 +8,6 @@ Import M.
 Import M.notations.
 
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 Local Inductive msigT {A} (P : A -> Type) : Type := | mexistT x : P x -> msigT P.

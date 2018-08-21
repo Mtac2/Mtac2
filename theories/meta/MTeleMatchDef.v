@@ -3,7 +3,6 @@ Import M.notations.
 Import Sorts.S.
 Import ListNotations.
 
-Set Polymorphic Inductive Cumulativity.
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 

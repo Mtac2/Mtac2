@@ -9,7 +9,6 @@
 Set Implicit Arguments.
 
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 Require Import Notations.
@@ -27,7 +26,7 @@ Inductive munit : Set :=
 
 (** [option A] is the extension of [A] with an extra element [None] *)
 
-Inductive moption (A:Type) : Type :=
+Cumulative Inductive moption (A:Type) : Type :=
   | mSome : A -> moption A
   | mNone : moption A.
 
@@ -103,7 +102,7 @@ End projections.
 
 (** Polymorphic lists and some operations *)
 
-Inductive mlist (A : Type) : Type :=
+Cumulative Inductive mlist (A : Type) : Type :=
  | mnil : mlist A
  | mcons : A -> mlist A -> mlist A.
 

@@ -1,7 +1,6 @@
 From Mtac2.intf Require Import Dyn.
 
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 Monomorphic Inductive redlist A := rlnil | rlcons : A -> redlist A -> redlist A.

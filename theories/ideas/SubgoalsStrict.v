@@ -5,6 +5,7 @@ Set Implicit Arguments.
 Import ProdNotations.
 Require Import Strings.String.
 
+Set Universe Polymorphism.
 (** This is a simple example tighting up a bit the types of tactics in order to
     ensure a property.  In this case, we make sure that a variation of `apply`
     is composed with as many tactics as the number required by the number of
