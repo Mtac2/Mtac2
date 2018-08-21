@@ -177,11 +177,11 @@ Proof. Fail reflexivity. Abort.
 From Mtac2 Require Import Sorts.
 Mtac Do ((fun (T : Type) =>
             mmatch T with [¿ s] [? (T : s)] (T : Type) =u>
-              M.unify_or_fail UniMatchNoRed s Sorts.SProp;; M.ret I
+              M.unify_or_fail UniMatchNoRed s S.SProp;; M.ret I
           end) (True -> True)).
 Mtac Do ((fun (T : Type) =>
             mmatch T with [¿ s] [? (T : s)] (T : Type) =u>
-              M.unify_or_fail UniMatchNoRed s Sorts.SType;; M.ret I
+              M.unify_or_fail UniMatchNoRed s S.SType;; M.ret I
           end) (True -> nat)).
 
 
@@ -190,7 +190,6 @@ exception different from `DoesNotMatch` for our encoding of `mtry`. The test
 asserts that a `DoesNotMatch` exception can escape `mtry`. This is crucial for
 certain backtracking metaprograms and tactics. *)
 
-Mtac Do Set_Trace.
 Mtac Do (
        M.mtry'
          (
@@ -205,4 +204,63 @@ Mtac Do (
             end
           end)
          (fun e => M.unify_or_fail UniMatchNoRed e DoesNotMatch;; M.ret tt)
+     ).
+
+
+(** Test new branch types of `mmatch` *)
+
+(* [is_head] *)
+Mtac Do (
+       mmatch (3 + 5) with
+       | branch_app_static
+             (m :=MTele.mTele (fun x : nat => MTele.mTele (fun y : nat => MTele.mBase)))
+             UniMatchNoRed
+             plus
+             (fun x y => M.unify_or_fail UniMatchNoRed (x,y) (3,5))
+      end
+     ).
+
+(* With nice syntax *)
+Mtac Do (
+       mmatch (3 + 5) with
+       | [#] plus | x y =n> M.unify_or_fail UniMatchNoRed (x,y) (3,5)
+      end
+     ).
+
+(* This example will fail because it does perform any reduction on the initial
+   arguments *)
+Fail Mtac Do (
+       mmatch (3 + 3) with
+       | [#] plus (2+1) | y =n> M.unify_or_fail UniMatchNoRed (y) (5)
+      end
+     ).
+(* But this one succeeds, as it uses conversion by calling Unicoq's unification. *)
+Mtac Do (
+       mmatch (3 + 5) with
+       | [#] plus (2+1) | y =u> M.unify_or_fail UniMatchNoRed (y) (5)
+      end
+     ).
+
+(* [decompose_forall[P|T]] *)
+Mtac Do (
+       mmatch (forall x : nat, x = x) with
+       | branch_forallP (fun X P => M.unify_or_fail UniMatchNoRed P (fun x => x = x))
+      end
+     ).
+Mtac Do (
+       mmatch (nat -> Type) with
+       | branch_forallT (fun X P => M.unify_or_fail UniMatchNoRed P (fun x => Type))
+      end
+     ).
+
+(* With nice syntax *)
+Mtac Do (
+       mmatch (forall x : nat, x = x) with
+       | [!Prop] forall _ : X, P =n> M.unify_or_fail UniMatchNoRed P (fun x => x = x)
+      end
+     ).
+Mtac Do (
+       mmatch (nat -> Type) with
+       | [!Type] forall _ : X, P =n> M.unify_or_fail UniMatchNoRed P (fun x => Type)
+      end
      ).

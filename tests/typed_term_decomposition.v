@@ -1,7 +1,7 @@
 From Mtac2 Require Import Base MTele DecomposeApp Tactics List.
 Import M.notations.
 Import ProdNotations.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 
 Import TeleNotation.
 Definition test_tele : MTele := [tele (x y : nat)].
@@ -97,16 +97,18 @@ Definition decompose_app {A} (a : A) : M (dyn *m mlist dyn) :=
 
 Mtac Do (M.decompose app >>= M.print_term).
 Mtac Do (decompose_app app >>= M.print_term).
-Fail Mtac Do (decompose_app app). (* TODO: why does this fail? *)
+(* To see if the resulting term is actually well-typed, we return it. Printing
+   is not concerned by ill-typedness. *)
+Mtac Do (decompose_app app).
 
 Notation FA := (forall n : nat, n = n).
 
-Definition test3 := M.decompose_forallT (A:=unit) (B:=fun _ => _) FA (fun A B => M.ret tt).
+Definition test3 := M.decompose_forallT (B:=fun _ => _) FA (fun A B => M.ret tt) (M.raise NotAForall).
 
 Mtac Do (test3).
 
 Notation FA_Prop := (forall n : nat, n = n).
 
-Definition test3_Prop := M.decompose_forallP (A:=unit) (B:=fun _ => _) FA_Prop (fun A B => M.ret tt).
+Definition test3_Prop := M.decompose_forallP (B:=fun _ => _) FA_Prop (fun A B => M.ret tt) (M.raise NotAForall).
 
 Mtac Do (test3_Prop).

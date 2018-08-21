@@ -12,8 +12,8 @@ MProof. test. Qed.
 Typeclasses eauto := debug.
 Structure ST := mkS { s : nat }.
 
-Require Mtac2.List.
-Import Mtac2.List.ListNotations.
+Require Mtac2.lib.List.
+Import Mtac2.lib.List.ListNotations.
 Definition cs := c1 <- M.declare dok_CanonicalStructure "bla" false (fun (x : nat) => (fun x => mkS x) x);
                     c2 <- M.declare dok_Definition "bli" true c1;
                     M.declare_implicits c2 [m: ia_Implicit];;

@@ -1,7 +1,7 @@
 Require Import Bool.Bool.
 Require Import Mtac2.Mtac2.
 Import T.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 
 Goal True.
 MProof.
@@ -354,8 +354,6 @@ MProof.
   exact I.
 Qed.
 
-Require Import Mtac2.ImportedTactics.
-
 Goal forall x:nat, x = x.
 MProof.
   trivial.
@@ -367,8 +365,6 @@ MProof.
   (** trivial is just testing that if it does not solve the goal, the goal is still there *)
   trivial;; intros;; contradiction.
 Qed.
-
-Require Import Mtac2.ImportedTactics.
 
 Import T.
 Import T.notations.

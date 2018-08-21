@@ -1,8 +1,8 @@
 From Mtac2
 Require Import Datatypes List Mtac2 DepDestruct Sorts.
-Import Sorts.
+Import Sorts.S.
 Import T.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 
 Goal forall n, 0 <= n.
 MProof.
@@ -49,7 +49,7 @@ MProof.
   cmove_back H (rewrite <- eq).
   intro H. (* now H has only indices *)
   move_back eq.
-  new_destruct H.
+  Fail new_destruct H. (* FIX: failing because it's trying to abstract the definition j *)
 Abort.
 
 

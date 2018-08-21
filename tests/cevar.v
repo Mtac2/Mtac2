@@ -1,5 +1,5 @@
 From Mtac2 Require Import Mtac2.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 
 Example ex1 (x y: nat) (H: x>y) (z: nat) : True.
 MProof.

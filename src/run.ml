@@ -18,7 +18,7 @@ open Evarconv
 
 open Constrs
 
-open CClosure
+open CClosure_copy
 
 (* warning 40 is about picking a constructor name from a module that is not in scope *)
 [@@@ocaml.warning "-40"]
@@ -46,8 +46,8 @@ let constr_to_string (sigma: Evd.evar_map) env t =
 
 
 (** Functions to convert between fconstr and econstr *)
-let of_econstr e = CClosure.inject (EConstr.Unsafe.to_constr e)
-let to_econstr f = EConstr.of_constr (CClosure.term_of_fconstr f)
+let of_econstr e = CClosure_copy.inject (EConstr.Unsafe.to_constr e)
+let to_econstr f = EConstr.of_constr (CClosure_copy.term_of_fconstr f)
 
 
 open MtacNames
@@ -65,9 +65,10 @@ module Goal = struct
   let mkgoal = mkUConstr "Goals.goal"
   let mkGoal = mkUConstr "Goals.Goal"
   let mkAHyp = mkUConstr "Goals.AHyp"
+  let mkHypLet = mkUConstr "Goals.HypLet"
 
-  let mkSType = Constrs.mkConstr "Mtac2.Sorts.Sorts.SType"
-  let mkSProp = Constrs.mkConstr "Mtac2.Sorts.Sorts.SProp"
+  let mkSType = Constrs.mkConstr "Mtac2.intf.Sorts.S.SType"
+  let mkSProp = Constrs.mkConstr "Mtac2.intf.Sorts.S.SProp"
 
   let mkTheGoal ty ev sigma env =
     let tt = Retyping.get_type_of env sigma ty in
@@ -84,13 +85,18 @@ module Goal = struct
     (* we are going to wrap the body in a function, so we need to lift
        the indices. we also replace the name with index 1 *)
     let body = replace_term sigma (mkVar name) (mkRel 1) (Vars.lift 1 body) in
-    let sigma, odef_coq = CoqOption.to_coq sigma env ty odef in
-    let sigma, ahyp = mkAHyp sigma env in
-    sigma, mkApp (ahyp, [|ty; odef_coq; mkLambda(Name name,ty,body)|])
+    match odef with
+    | None ->
+        let sigma, ahyp = mkAHyp sigma env in
+        sigma, mkApp (ahyp, [|ty; mkLambda(Name name,ty,body)|])
+    | Some def ->
+        let sigma, hyplet = mkHypLet sigma env in
+        sigma, mkApp (hyplet, [|ty; mkLetIn(Name name,def,ty,body)|])
 
   (* it assumes goal is of type goal *)
   let evar_of_goal sigma env =
     let rec eog goal =
+      let goal = Reductionops.whd_allnolet env sigma goal in
       let (c, args) = decompose_appvect sigma goal in
       if isConstruct sigma c then
         match get_constructor_pos sigma c with
@@ -101,17 +107,24 @@ module Goal = struct
             else (* it is defined *)
               None
         | 1 -> (* AHyp *)
-            let func = args.(2) in
+            let func = args.(1) in
             if isLambda sigma func then
               let (_, _, body) = destLambda sigma func in
               eog body
             else
               None
-        | 2 -> (* RemHyp *)
+        | 2 -> (* HypLet *)
+            let goal = args.(1) in
+            if isLetIn sigma goal then
+              let (_, _, _, body) = destLetIn sigma goal in
+              eog body
+            else
+              None
+        | 3 -> (* RemHyp *)
             eog args.(2)
         | _ -> failwith "Should not happen"
       else
-        CErrors.user_err Pp.(str "Not a goal")
+        CErrors.user_err Pp.(app (str "Not a goal: ") (Termops.print_constr_env env sigma goal))
     in eog
 
   let goal_of_evar (env:env) sigma ev =
@@ -173,12 +186,18 @@ module Exceptions = struct
   let mkNotAnApplication = mkDebugEx "NotAnApplication"
 
   let mkAbsDependencyError = mkDebugEx "AbsDependencyError"
+  let mkAbsVariableIsADefinition = mkDebugEx "AbsVariableIsADefinition"
+
+  let mkNotALetIn = mkDebugEx "NotALetIn"
+  let mkNotTheSameType = mkDebugEx "NotTheSameType"
 
   let mkExceptionNotGround = mkDebugEx "ExceptionNotGround"
 
   let mkStuckTerm = mkDebugEx "StuckTerm"
 
   let mkNotAList = mkDebugEx "NotAList"
+
+  let mkReductionFailure = mkDebugEx "ReductionFailure"
 
   let mkNotAMatchExp = mkDebugEx "NotAMatchExp"
 
@@ -213,6 +232,12 @@ module Exceptions = struct
     debug_exception sigma env exc s;
     sigma, e
 
+  let mkInvalidName sigma env s =
+    let sigma, exc = (mkUConstr "Exceptions.InvalidName" sigma env) in
+    let e = mkApp (exc, [|s|]) in
+    debug_exception sigma env exc s;
+    sigma, e
+
   let block msg = CErrors.user_err Pp.(str msg)
 end
 
@@ -220,11 +245,14 @@ module E = Exceptions
 
 module ReductionStrategy = struct
   open Reductionops
-  open CClosure
-  open CClosure.RedFlags
+  open CClosure_copy
+  open CClosure_copy.RedFlags
   open Context
 
-  let isReduce sigma env c = isUConstr sigma env "Reduction.reduce" c
+  let reduce_constant = constant_of_string "Reduction.reduce"
+  let isReduce sigma env c = isConstant sigma reduce_constant c
+  let isTReduce sigma env c = isReduce sigma env (EConstr.of_constr c)
+  let isFReduce sigma env c = isFConstant reduce_constant c
 
   let has_definition ts env sigma t =
     if isVar sigma t then
@@ -338,13 +366,13 @@ module ReductionStrategy = struct
 
 
   let whdfun flags env sigma c =
-    (* let open Machine in
-     * let state = (c, Stack.empty) in
-     * let (s, _) = whd_state_gen flags env sigma state in
-     * Stack.zip sigma s *)
+    (* let open Machine in * let state = (c, Stack.empty) in * let (s, _) =
+       whd_state_gen flags env sigma state in * Stack.zip sigma s *)
     let evars ev = safe_evar_value sigma ev in
-    let infos = CClosure.create_clos_infos ~evars flags env in
-    (CClosure.whd_val infos (CClosure.create_tab ()) c)
+    (* let infos = CClosure.create_clos_infos ~evars flags env in (CClosure.whd_val
+       infos (CClosure.create_tab ()) c) *)
+    let infos = CClosure_copy.create_clos_infos ~evars flags env in
+    (CClosure_copy.whd_val infos c)
 
   let redfuns = [|
     (fun _ _ _ c -> c);
@@ -357,21 +385,23 @@ module ReductionStrategy = struct
     (fun _ -> Redexpr.cbv_vm) (* vm_compute *)
   |]
 
+  type reduction_result = ReductionValue of constr | ReductionStuck | ReductionFailure
   let reduce sigma env strategy c =
     try
       (* note that [args] can be an empty array, or an array with one element: the flags *)
       let strategy, args = decompose_appvect sigma strategy in
-      Some (redfuns.(get_constructor_pos sigma strategy) args env sigma c)
+      ReductionValue (redfuns.(get_constructor_pos sigma strategy) args env sigma c)
     with RedList.NotAList _ ->
-      None
+      ReductionStuck
+       | Failure _ -> ReductionFailure
 
-  (* let whd_betadeltaiota_nolet = whdfun CClosure.allnolet *)
+  (* let whd_betadeltaiota_nolet = whdfun CClosure_copy.allnolet *)
 
   let whd_all_novars =
     let flags = red_add_transparent betaiota Names.cst_full_transparent_state in
     whdfun flags
 
-  let whd_betadeltaiota = whdfun CClosure.all
+  let whd_betadeltaiota = whdfun CClosure_copy.all
 end
 
 module RE = ReductionStrategy
@@ -445,14 +475,15 @@ module MNames = struct
 
   let next_name_away s env = Namegen.next_name_away (Name s) (vars_of_env env)
 
+  type name = AName of (bool * Id.t) | StuckName | InvalidName of string
   (* returns if the name generated is fresh or not *)
-  let get_from_name (env, sigma as ctx) (t: constr) : (bool * string) option =
+  let get_from_name (env, sigma as ctx) (t: constr) : name =
     let t = EConstr.of_constr (RE.whd_betadeltaiota env sigma (of_econstr t)) in
     let (h, args) = decompose_appvect sigma t in
     try
       match get_constructor_pos sigma h with
       | 0 -> (* TheName *)
-          Some (false, CoqString.from_coq ctx args.(0))
+          AName (false, Names.Id.of_string (CoqString.from_coq ctx args.(0)))
 
       | 1 -> (* FreshFrom *)
           let name = get_name_base ctx args.(1) in
@@ -463,21 +494,21 @@ module MNames = struct
             | None -> "x"
           in
           let name = next_name_away (Names.Id.of_string name) env in
-          Some (true, Names.Id.to_string name)
+          AName (true, name)
 
       | 2 -> (* FreshFromStr *)
           let name = CoqString.from_coq ctx args.(0) in
           let name = next_name_away (Names.Id.of_string name) env in
-          Some (true, Names.Id.to_string name)
+          AName (true, name)
 
       | 3 -> (* Generate *)
           let name = next_name_away (Names.Id.of_string "ann") env in
-          Some (true, Names.Id.to_string name)
+          AName (true, name)
 
       | _ ->
-          None
-    with Constr.DestKO ->
-      None
+          StuckName
+    with Constr.DestKO -> StuckName
+       | CErrors.UserError (_, pp) -> InvalidName (Pp.string_of_ppcmds pp)
 end
 
 type elem_stack = (evar_map * fconstr * stack)
@@ -811,9 +842,10 @@ let run_declare_def env sigma kind name opaque ty bod =
   let gr = Globnames.ConstRef kn in
   let () = Lemmas.call_hook fix_exn (vernac_definition_hook false kind) Global gr  in
   let c = (Universes.constr_of_global gr) in
+  let env = Global.env () in
   (* Feedback.msg_notice *)
   (*   (Termops.print_constr_env env c); *)
-  (sigma, c)
+  (sigma, env, c)
 
 (** declare implicits *)
 let run_declare_implicits env sigma gr impls =
@@ -876,8 +908,12 @@ let koft sigma t =
   | CoFix _ -> lf "tmCoFix"
   | _ -> failwith "unsupported"
 
-type ctxt = {env: Environ.env; renv: fconstr; sigma: Evd.evar_map; nus: int;
-             stack: CClosure.stack;
+type ctxt = {env: Environ.env;
+             renv: fconstr;
+             sigma: Evd.evar_map;
+             nus: int;
+             stack: CClosure_copy.stack;
+             infos: CClosure_copy.fconstr CClosure_copy.infos
             }
 
 type vm = Code of fconstr | Ret of fconstr | Fail of fconstr
@@ -907,10 +943,10 @@ let timers = Hashtbl.create 128
 
 
 let reduce_noshare infos t stack =
-  let b = !CClosure.share in
-  CClosure.share := false;
-  let r = CClosure.whd_stack infos t stack in
-  CClosure.share := b;
+  let b = !CClosure_copy.share in
+  CClosure_copy.share := false;
+  let r = CClosure_copy.whd_stack infos t stack in
+  CClosure_copy.share := b;
   r
 
 let pop_args num stack =
@@ -925,14 +961,17 @@ let pop_args num stack =
           else if n = num then
             [args], stack
           else
-            let args, remainder = Array.chop num args in
-            [args], Zapp remainder :: stack
+            (* this can not happen. something of type [M T] can not be applied
+               to more arguments *)
+            assert false
       | _ -> failwith "no more arguments on stack"
     else
-      ([Array.init 0 (fun x -> failwith "Impossible case")], stack)
+      ([], stack)
   in
   let argss, stack = pop_args num stack in
-  (Array.concat argss, stack)
+  if List.length argss == 0 then ([||], stack)
+  else if List.length argss == 1 then (List.hd argss, stack)
+  else (Array.concat argss, stack)
 
 
 let rec run' ctxt (vms : vm list) =
@@ -974,19 +1013,15 @@ let rec run' ctxt (vms : vm list) =
   | Code t, _ ->
       begin
         let upd c = (Code c :: vms) in
-        let return sigma c = (run'[@tailcall]) {ctxt with sigma} (Ret c :: vms) in
-        let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
-
-        (* wrappers for return and fail to conveniently return/fail with EConstrs *)
-        let ereturn s fc = return s (of_econstr fc) in
-        let efail (sigma, fc) = fail (sigma, of_econstr fc) in
 
         (* let cont ctxt h args = (run'[@tailcall]) {ctxt with stack=Zapp args::stack} (Code h :: vms) in *)
 
         let evars ev = safe_evar_value sigma ev in
-        let infos = CClosure.create_clos_infos ~evars CClosure.allnolet env in
+        let infos = {ctxt.infos with i_cache={ctxt.infos.i_cache with i_sigma=evars} } in
+        let ctxt = {ctxt with infos} in
+        (* let infos = CClosure_copy.create_clos_infos ~evars CClosure_copy.allnolet env in *)
 
-        let reduced_term, stack = reduce_noshare infos (CClosure.create_tab ()) t stack
+        let reduced_term, stack = reduce_noshare infos (* (CClosure.create_tab ()) *) t stack
         (* RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t *)
         in
 
@@ -1001,20 +1036,41 @@ let rec run' ctxt (vms : vm list) =
 
         (* print_constr sigma env (to_econstr reduced_term); *)
 
+        let return ?new_env:(new_env=env) sigma c = (run'[@tailcall]) {ctxt with sigma; env=new_env; stack} (Ret c :: vms) in
+        let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
+
+        (* wrappers for return and fail to conveniently return/fail with EConstrs *)
+        let ereturn ?new_env s fc = return ?new_env:new_env s (of_econstr fc) in
+        let efail (sigma, fc) = fail (sigma, of_econstr fc) in
+
         match fterm_of reduced_term with
         | FConstruct _ -> failwith ("Invariant invalidated: reduction reached the constructor of M.t.")
         | FLetIn (_,v,_,bd,e) ->
             let open ReductionStrategy in
             (* let (_, b, _, t) = destLetIn sigma h in *)
-            let vc = to_econstr v in
-            let (h, args') = decompose_appvect sigma vc in
-            if isReduce sigma env h && Array.length args' = 3 then
+            (* let vc = to_econstr v in
+             * let (h, args') = decompose_appvect sigma vc in *)
+            (* let h_ec = to_econstr v in
+             * print_constr sigma env h_ec; *)
+            let (is_reduce, num_args, args_clos) = (
+              match fterm_of v with
+              | FApp (h, args) -> (isFReduce sigma env h, Array.length args, fun () -> args)
+              | FCLOS (t, env) when Constr.isApp t ->
+                  let (h, args) = Constr.destApp t in
+                  (isTReduce sigma env h,
+                   Array.length args,
+                   fun () -> Array.map (fun x -> mk_red (FCLOS (x, env))) args
+                  )
+              | _ -> (false, -1, fun () -> [||])
+            ) in
+            if is_reduce && num_args == 3 then
+              let args' = args_clos () in
               let red = Array.get args' 0 in
               let term = Array.get args' 2 in
               (* print_constr sigma env term; *)
-              let ob = reduce sigma env red term in
+              let ob = reduce sigma env (to_econstr red) (to_econstr term) in
               match ob with
-              | Some b ->
+              | ReductionValue b ->
                   (* print_constr sigma env b; *)
                   (* (run'[@tailcall]) ctxt (upd (mkApp (Vars.subst1 b t, args))) *)
                   (* (run'[@tailcall]) ctxt (upd (of_econstr (Vars.subst1 b (to_econstr t)))) *)
@@ -1022,8 +1078,12 @@ let rec run' ctxt (vms : vm list) =
                   (* print_constr sigma env (to_econstr (mk_red (FCLOS (bd, e)))); *)
                   (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
 
-              | None ->
-                  efail (E.mkNotAList sigma env (Array.get args' 0))
+              | ReductionStuck ->
+                  let l = to_econstr (Array.get args' 0) in
+                  efail (E.mkNotAList sigma env l)
+              | ReductionFailure ->
+                  let l = to_econstr (Array.get args' 0) in
+                  efail (E.mkReductionFailure sigma env l)
             else
               (* (run'[@tailcall]) ctxt (upd (mkApp (Vars.subst1 b t, args))) *)
               (* (run'[@tailcall]) ctxt (upd (of_econstr (Vars.subst1 (to_econstr b) (to_econstr t)))) *)
@@ -1032,9 +1092,8 @@ let rec run' ctxt (vms : vm list) =
 
         | FFlex (ConstKey (hc, _)) ->
             begin
-              let h = EConstr.mkConst hc in
               (* print_constr sigma env h; *)
-              match MConstr.mconstr_head_of h with
+              match MConstr.mconstr_head_of hc with
               | mh ->
                   let num_args =
                     (match mh with MHead mh ->
@@ -1049,9 +1108,17 @@ let rec run' ctxt (vms : vm list) =
 
                   let hf = reduced_term in
 
-                  if !trace then print_constr sigma env (EConstr.of_constr (CClosure.term_of_fconstr (mk_red (FApp (reduced_term,args)))));
+                  if !trace then print_constr sigma env (EConstr.of_constr (CClosure_copy.term_of_fconstr (mk_red (FApp (reduced_term,args)))));
 
                   let ctxt = {ctxt with stack} in
+
+                  (* Re-do the wrappers so they use the new stack *)
+                  let return ?new_env:(new_env=env) sigma c = (run'[@tailcall]) {ctxt with sigma; env=new_env; stack} (Ret c :: vms) in
+                  let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
+
+                  (* wrappers for return and fail to conveniently return/fail with EConstrs *)
+                  let ereturn ?new_env s fc = return ?new_env:new_env s (of_econstr fc) in
+                  let efail (sigma, fc) = fail (sigma, of_econstr fc) in
 
 
                   (* (\* repetition :( *\) *)
@@ -1093,8 +1160,7 @@ let rec run' ctxt (vms : vm list) =
                         (* print_constr sigma env s; *)
                         begin
                           match MNames.get_from_name (env, sigma) s with
-                          | Some (fresh, namestr) ->
-                              let name = Names.Id.of_string namestr in
+                          | AName (fresh, name) ->
                               if (not fresh) && (Id.Set.mem name (vars_of_env env)) then
                                 efail (Exceptions.mkNameExists sigma env s)
                               else
@@ -1102,10 +1168,41 @@ let rec run' ctxt (vms : vm list) =
                                   let ot = CoqOption.from_coq sigma env (to_econstr ot) in
                                   let env' = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
                                   let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
-                                  (run'[@tailcall]) {env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
+                                  (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
                                     (Code f :: Nu (name, env, ctxt.renv) :: vms)
                                 end
-                          | None -> efail (Exceptions.mkWrongTerm sigma env s)
+                          | StuckName -> efail (Exceptions.mkWrongTerm sigma env s)
+                          | InvalidName _ -> efail (Exceptions.mkInvalidName sigma env s)
+                        end
+
+                    | MConstr (Mnu_let, (ta, tb, tc, s, c, f)) ->
+                        let s = to_econstr s in
+                        begin
+                          match MNames.get_from_name (env, sigma) s with
+                          | AName (fresh, name) ->
+                              let c = to_econstr c in
+                              if (not fresh) && (Id.Set.mem name (vars_of_env env)) then
+                                efail (Exceptions.mkNameExists sigma env s)
+                              else if not (isLetIn sigma c) then
+                                efail (Exceptions.mkNotALetIn sigma env c)
+                              else
+                                begin
+                                  let ta = to_econstr ta in
+                                  let (_, d, dty, body) = destLetIn sigma c in
+                                  let eqaty = Munify.unify_evar_conv Names.full_transparent_state env sigma CONV ta dty in
+                                  let eqtypes = match eqaty with Success _ -> true | _ -> false in
+                                  if not eqtypes then
+                                    efail (Exceptions.mkNotTheSameType sigma env ta)
+                                  else
+                                    let env' = push_named (Context.Named.Declaration.of_tuple (name, Some d, dty)) env in
+                                    let var = mkVar name in
+                                    let body = Vars.subst1 var body in
+                                    let (sigma, renv') = Hypotheses.cons_hyp dty var (Some d) (to_econstr ctxt.renv) sigma env in
+                                    (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name); of_econstr body|] :: stack}
+                                      (Code f :: Nu (name, env, ctxt.renv) :: vms)
+                                end
+                          | StuckName -> efail (Exceptions.mkWrongTerm sigma env s)
+                          | InvalidName _ -> efail (Exceptions.mkInvalidName sigma env s)
                         end
 
                     | MConstr (Mabs_fun, (a, p, x, y)) ->
@@ -1208,19 +1305,15 @@ let rec run' ctxt (vms : vm list) =
                               efail (E.mkNotAList sigma env l)
                         end
 
-                    | MConstr (Munify, (a, x, y, uni)) ->
-                        let a, x, y, uni = to_econstr a, to_econstr x, to_econstr y, to_econstr uni in
-                        let sigma, feqT = CoqEq.mkType sigma env a x y in
+                    | MConstr (Munify, (_,_, uni, x, y, ts, tf)) ->
+                        let x, y, uni = to_econstr x, to_econstr y, to_econstr uni in
                         begin
                           let r = UnificationStrategy.unify None sigma env uni Reduction.CONV x y in
                           match r with
                           | Evarsolve.Success sigma, _ ->
-                              let sigma, feq = CoqEq.mkEqRefl sigma env a x in
-                              let sigma, someFeq = CoqOption.mkSome sigma env feqT feq in
-                              ereturn sigma someFeq
+                              (run'[@tailcall]) {ctxt with sigma = sigma} (Code ts :: vms)
                           | _, _ ->
-                              let sigma, none = CoqOption.mkNone sigma env feqT in
-                              ereturn sigma none
+                              (run'[@tailcall]) ctxt (Code tf :: vms)
                         end
 
                     | MConstr (Munify_univ, (x, y, uni)) ->
@@ -1330,7 +1423,7 @@ let rec run' ctxt (vms : vm list) =
                         let ty = EConstr.to_constr sigma ty in
                         let bod = EConstr.to_constr sigma bod in
                         (match run_declare_def env sigma kind name (CoqBool.from_coq sigma opaque) ty bod with
-                         | (sigma, ret) -> ereturn sigma (of_constr ret)
+                         | (sigma, env, ret) -> ereturn ~new_env:env sigma (of_constr ret)
                          | exception CErrors.AlreadyDeclared _ ->
                              efail (E.mkAlreadyDeclared sigma env name)
                          | exception Type_errors.TypeError(env, Type_errors.UnboundVar v) ->
@@ -1363,16 +1456,20 @@ let rec run' ctxt (vms : vm list) =
                         trace := CoqBool.from_coq sigma (to_econstr b);
                         ereturn sigma CoqUnit.mkTT
 
-                    | MConstr (Mdecompose_app', (_, _, _, uni, t, c, cont)) ->
+                    | MConstr (Mdecompose_app', (_, _, _, uni, t, c, cont_success, cont_failure)) ->
                         (* : A B m uni a C cont  *)
                         let (t_head, t_args) = decompose_app sigma (to_econstr t) in
                         let (c_head, c_args) = decompose_app sigma (to_econstr c) in
                         if eq_constr_nounivs sigma t_head c_head then
                           let uni = to_econstr uni in
+                          (* We need to capture the initial sigma here, as
+                             unification of initial arguments will yield new
+                             sigmas *)
+                          let fail () = (run'[@tailcall]) ctxt (upd cont_failure) in
                           let rec traverse sigma t_args c_args =
                             match c_args with
                             | [] ->
-                                (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp (Array.of_list t_args) :: stack} (upd cont)
+                                (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp (Array.of_list t_args) :: stack} (upd cont_success)
                             | c_h :: c_args ->
                                 match t_args with
                                 | t_h :: t_args ->
@@ -1380,34 +1477,45 @@ let rec run' ctxt (vms : vm list) =
                                     begin
                                       match unires with
                                       | Success (sigma) -> traverse sigma t_args c_args
-                                      | UnifFailure _ -> efail (E.mkWrongTerm sigma env c_head)
+                                      | UnifFailure _ ->
+                                          (* efail (E.mkWrongTerm sigma env c_head) *)
+                                          fail ()
                                     end
-                                | _ -> efail (E.mkWrongTerm sigma env c_head)
+                                | _ ->
+                                    (* efail (E.mkWrongTerm sigma env c_head) *)
+                                    fail ()
                           in
                           traverse sigma (List.map of_econstr t_args) c_args
                         else
-                          efail (E.mkWrongTerm sigma env c_head)
+                          (* efail (E.mkWrongTerm sigma env c_head) *)
+                          (run'[@tailcall]) ctxt (upd cont_failure)
 
-                    | MConstr (Mdecompose_forallT, (_, _, t, cont)) ->
+                    | MConstr (Mdecompose_forallT, (_, t, cont_success, cont_failure)) ->
                         let t = to_econstr t in
                         begin
                           match EConstr.destProd sigma t with
-                          | (_, a, b) ->
+                          | (n, a, b) ->
+                              let b = EConstr.mkLambda (n, a, b) in
                               let (a, b) = (of_econstr a, of_econstr b) in
-                              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|a; b|] :: stack} (upd cont)
+                              (run'[@tailcall]) {ctxt with stack=Zapp [|a; b|] :: stack} (upd cont_success)
                           | exception Constr.DestKO ->
-                              efail (E.mkNotAForall sigma env t)
+                              (run'[@tailcall]) ctxt (upd cont_failure)
                         end
 
-                    | MConstr (Mdecompose_forallP, (_, _, t, cont)) ->
+                    | MConstr (Mdecompose_forallP, (_, t, cont_success, cont_failure)) ->
                         let t = to_econstr t in
                         begin
                           match EConstr.destProd sigma t with
-                          | (_, a, b) ->
+                          | (n, a, b) ->
+                              let b = EConstr.mkLambda (n, a, b) in
                               let (a, b) = (of_econstr a, of_econstr b) in
-                              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|a; b|] :: stack} (upd cont)
+                              (* (run'[@tailcall]) {ctxt with sigma = sigma;
+                                 stack=Zapp [|a; b|] :: stack} (upd cont) |
+                                 exception Constr.DestKO -> efail
+                                 (E.mkNotAForall sigma env t) *)
+                              (run'[@tailcall]) {ctxt with stack=Zapp [|a; b|] :: stack} (upd cont_success)
                           | exception Constr.DestKO ->
-                              efail (E.mkNotAForall sigma env t)
+                              (run'[@tailcall]) ctxt (upd cont_failure)
                         end
 
                     | MConstr (Mdecompose_app'', (_, _, t, cont)) ->
@@ -1419,9 +1527,19 @@ let rec run' ctxt (vms : vm list) =
                               let h = EConstr.mkApp (h, args) in
                               let arg = arg.(0) in
                               let h_type = Retyping.get_type_of env sigma h in
-                              let arg_type = Retyping.get_type_of env sigma arg in
-                              let (h_type, arg_type, h, arg) = (of_econstr h_type, of_econstr arg_type, of_econstr h, of_econstr arg) in
-                              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|h_type; arg_type; h; arg|] :: stack} (upd cont)
+                              (* let arg_type = Retyping.get_type_of env sigma
+                                 arg in let (h_type, arg_type, h, arg) =
+                                 (of_econstr h_type, of_econstr arg_type,
+                                 of_econstr h, of_econstr arg) in
+                                 (run'[@tailcall]) {ctxt with sigma = sigma;
+                                 stack=Zapp [|h_type; arg_type; h; arg|] ::
+                                 stack} (upd cont) | exception Constr.DestKO ->
+                              *)
+                              let h_type = ReductionStrategy.whdfun (CClosure_copy.all) env sigma (of_econstr (h_type)) in
+                              let h_typefun = to_lambda sigma 1 (EConstr.of_constr h_type) in
+                              let arg_type = (match EConstr.destLambda sigma h_typefun with | (_, ty, _) -> ty) in
+                              let (h_type, arg_type, h, arg) = (of_econstr h_typefun, of_econstr arg_type, of_econstr h, of_econstr arg) in
+                              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp [|arg_type; h_type; h; arg|] :: stack} (upd cont)
                           | exception Constr.DestKO ->
                               efail (E.mkNotAnApplication sigma env t)
                         end
@@ -1486,9 +1604,10 @@ let rec run' ctxt (vms : vm list) =
                         ereturn sigma CoqUnit.mkTT
 
                     | MConstr (Mkind_of_term, (_, t)) ->
-                        ereturn sigma (koft sigma (CClosure.term_of_fconstr t))
+                        ereturn sigma (koft sigma (CClosure_copy.term_of_fconstr t))
                   end
               | exception Not_found ->
+                  let h = EConstr.mkConst hc in
                   efail (E.mkStuckTerm sigma env h)
             end
         | _ ->
@@ -1511,12 +1630,18 @@ and abs vms case ctxt a p x y n t : data_stack =
   let p = nf_evar sigma p in
   let x = nf_evar sigma x in
   let y = nf_evar sigma y in
+  let has_definition var =
+    let n = Environ.lookup_named var env in
+    Option.has_some (Context.Named.Declaration.get_value n) in
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
   if isVar sigma x then
-    if check_abs_deps env sigma x y p then
-      let name = destVar sigma x in
+    let name = destVar sigma x in
+    if case = AbsFun && has_definition name then
+      let (sigma, e) = E.mkAbsVariableIsADefinition sigma env x in
+      (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
+    else if check_abs_deps env sigma x y p then
       let y' = Vars.subst_vars [name] y in
       let t =
         match case with
@@ -1617,9 +1742,11 @@ let multi_subst_inv sigma l c =
 let run (env0, sigma) t : data =
   let subs, env = db_to_named sigma env0 in
   let t = multi_subst sigma subs t in
-  let t = CClosure.inject (EConstr.Unsafe.to_constr t) in
+  let t = CClosure_copy.inject (EConstr.Unsafe.to_constr t) in
   let (sigma, renv) = build_hypotheses sigma env in
-  match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure.empty_stack} [Code t] with
+  let evars ev = safe_evar_value sigma ev in
+  let infos = CClosure_copy.create_clos_infos ~evars CClosure_copy.allnolet env in
+  match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure_copy.empty_stack; infos} [Code t] with
   | Err (sigma', v, _) ->
       (* let v = Vars.replace_vars vsubs v in *)
       let v = multi_subst_inv sigma' subs (to_econstr v) in

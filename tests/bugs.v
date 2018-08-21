@@ -46,3 +46,26 @@ Definition destcase_fail := ltac:(mrun (r <- M.ret (match 3 with 0 => true | _ =
 
 (** with the bind construct it works. this proves that the <- ; notation is reducing *)
 Definition destcase_work := ltac:(mrun (M.bind (M.destcase (match 3 with 0 => true | _ => false end)) (fun _=> M.ret I))).
+
+
+
+
+
+(* Regression test for a bug in `T.bind` where goals were filtered after both tactics were executed instead of filtering after the first tactic. *)
+(* Force a solved goal to be returned. *)
+Definition faulty_exact {A} (x : A) : tactic := fun g =>
+  (match g with
+   | Goal _ g' =>
+     M.cumul UniCoq x g';; M.ret [m: (m: tt, g)]
+  | _ => M.raise NotAGoal
+  end)%MC.
+Goal True /\ 1=1.
+MProof.
+(* Work around previous bad behavior to force the left-hand side of the outermost bind operator to produce unsolved goals. *)
+(fun g =>
+   r<- M.map (fun '(m: x,g') => open_and_apply ((faulty_exact) I) g') =<< apply conj g;
+   M.ret (mconcat r)
+)%MC &> (fun g =>
+           (is_open g >>= M.print_term);;
+           M.print_term g;; reflexivity g)%MC.
+Qed.

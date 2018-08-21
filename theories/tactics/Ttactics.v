@@ -1,0 +1,308 @@
+From Mtac2 Require Import Base Datatypes List Sorts tactics.Tactics.
+Require Import Strings.String.
+Import Sorts.S.
+Import Mtac2.lib.List.ListNotations.
+Import ProdNotations.
+Import Tactics.T.
+Import M.
+Import M.notations.
+
+Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
+Unset Universe Minimization ToSet.
+
+Module TT.
+
+(** A typed tactic is a program that promises in its type the goal it solves,
+    pehaps creating (dynamically-typed) goals. *)
+Definition ttac A := M (A *m mlist goal).
+
+Bind Scope typed_tactic_scope with ttac.
+Delimit Scope typed_tactic_scope with TT.
+
+(** [to_goal A] returns an evar with type A, and a the [goal] based on it.  It
+    tries to coerce [A] into a [Prop] first, in order to provide the most
+    precise goal possible.  For that, we need to backtrack in case it is not a
+    [Prop] (and treat it as a [Type]). *)
+Mtac Do New Exception NotAProp.
+Definition to_goal (A : Type) : M (A *m goal) :=
+  mtry
+    P <- evar Prop;
+    of <- unify_univ P A UniMatchNoRed;
+    match of with
+    | mSome f => a <- M.evar P;
+                 let a' := reduce (RedOneStep [rl: RedBeta]) (f a) in
+                 ret (m: a', Goal SProp a)
+    | mNone => raise NotAProp (* we backtrack to erase P *)
+    end
+  with NotAProp =>
+    a <- evar A;
+    M.ret (m: a, Goal SType a)
+  end.
+
+(** [demote] is a [ttac] that proves anything by simply postponing it as a
+    goal. *)
+Definition demote {A: Type} : ttac A :=
+  ''(m: a, g) <- to_goal A; M.ret (m: a, [m: g]).
+
+(** [use t] tries to solve the goal with tactic [t] *)
+Definition use {A} (t : tactic) : ttac A :=
+    ''(m: a, g) <- to_goal A;
+    gs <- t g;
+    let gs := dreduce (@mmap) (mmap (fun '(m: _, g) => g) gs) in
+    M.ret (m: a, gs).
+Arguments use [_] _%tactic.
+
+Definition idtac {A} : ttac A :=
+    ''(m: a, g) <- to_goal A;
+    M.ret (m: a, [m: g]).
+
+(** [by'] is like [use] but it ensures there are no goals left. *)
+Definition by' {A} (t : tactic) : ttac A :=
+  ''(m: a, g) <- to_goal A;
+  gs <- t g;
+  gs' <- T.filter_goals gs;
+  match gs' with
+  | [m:] => ret (m: a, [m:])
+  | _ => failwith "couldn't solve"
+  end.
+Arguments by' [_] _%tactic.
+
+(** Coercion between an [M] program and a [ttac] *)
+Definition lift {A} (t : M A) : ttac A :=
+  t >>= (fun a => M.ret (m: a,  [m:])).
+
+Coercion lift : M.t >-> ttac.
+
+(** The composition operator. It combines the subgoals according to function [comb]. *)
+Definition fappgl {A B C} (comb : C -> C -> M C) (f : M ((A -> B) *m C)) (x : M (A *m C)) : M (B *m C) :=
+  (f >>=
+     (fun '(m: b, cb) =>
+        ''(m: a, ca) <- x;
+        c <- comb cb ca;
+        M.ret (m: b a, c)
+     )
+  )%MC.
+
+Definition Mappend {A} (xs ys : mlist A) :=
+  let zs := dreduce (@mapp) (mapp xs ys) in
+  M.ret zs.
+
+(** [to_T t] uses the result of a [ttac] as a [tactic]. *)
+Definition to_T {A} : (A *m mlist goal) -> tactic :=
+  (fun '(m: a, gs) g =>
+    exact a g;;
+    let gs := dreduce (@mmap) (mmap (mpair tt) gs) in
+    M.ret gs
+  )%MC.
+
+
+Definition apply {A} (a : A) : ttac A :=
+  M.ret (m: a, [m:]).
+
+
+Definition apply_ {A} : ttac A :=
+  by' apply_.
+
+Definition try {A} (t : ttac A) : ttac A :=
+  mtry t with _ => demote : M _ end.
+
+Mtac Do New Exception TTchange_Exception.
+Definition change A {B} (f : ttac A) : ttac B :=
+  (oeq <- M.unify A B UniCoq;
+   match oeq with
+   | mSome eq =>
+     match eq in Logic.meq _ X return ttac X with
+     | Logic.meq_refl => f
+     end
+   | mNone => M.raise TTchange_Exception
+   end
+  )%MC.
+
+Definition vm_compute {A} : ttac (A -> A) :=
+  (
+    M.ret (m: (fun a : A => a <: A), [m:])
+  )%MC.
+
+Definition vm_change_dep {X} (B : X -> Type) x {y} (f : ttac (B x)) : ttac (B y) :=
+  (
+    let x' := reduce RedVmCompute x in
+    let y' := reduce RedVmCompute y in
+  e <- M.unify x' y' UniMatchNoRed;
+  match e with
+  | mSome e =>
+      match e in Logic.meq _ z return ttac (B z) with
+      | Logic.meq_refl => f
+      end
+  | mNone => M.raise TTchange_Exception
+  end
+  )%MC.
+
+Definition tintro {A P} (f: forall (x:A), ttac (P x))
+  : ttac (forall (x:A), P x) :=
+  M.nu (FreshFrom f) mNone (fun x=>
+    ''(m: v, gs) <- f x;
+    a <- M.abs_fun x v;
+    b <- T.close_goals x (mmap (fun g=>(m: tt, g)) gs);
+    let b := mmap msnd b in
+    M.ret (m: a, b)).
+
+Definition tpass {A} := lift (M.evar A).
+
+Definition texists {A} {Q:A->Prop} : ttac (exists (x:A), Q x) :=
+  e <- M.evar A;
+  pf <- M.evar (Q e);
+  M.ret (m: ex_intro _ e pf, [m: Goal SProp pf]).
+
+Definition tassumption {A:Type} : ttac A :=
+  lift (M.select _).
+
+Definition tor {A:Type} (t u : ttac A) : ttac A :=
+  mtry r <- t; M.ret r with _ => r <- u; M.ret r end.
+
+Definition reflexivity {P} {A B : P} : TT.ttac (A = B) :=
+  r <- M.coerce (eq_refl A); M.ret (m: r, [m:]).
+
+Require Import Strings.String.
+
+Definition ucomp1 {A B} (t: ttac A) (u: ttac B) : ttac A :=
+  ''(m: v1, gls1) <- t;
+  match gls1 with
+  | [m: gl] =>
+    ''(m: v2, gls) <- u;
+    exact v2 gl;;
+    M.ret (m: v1, gls)
+  | _ => mfail "more than a goal"%string
+  end.
+
+Definition lower {A} (t: ttac A) : M A :=
+  ''(m: r, _) <- t;
+  ret r.
+
+
+Module MatchGoalTT.
+Import Abstract.
+Import TacticsBase.T.notations.
+Import Mtac2.lib.Logic.
+Inductive goal_pattern : Prop :=
+  | gbase : forall (A : _), ttac A -> goal_pattern
+  | gbase_context : forall {A} (a : A), (forall (C : A -> Type), ttac (C a)) -> goal_pattern
+  | gtele : forall {C}, (C -> goal_pattern) -> goal_pattern
+  | gtele_evar : forall {C}, (C -> goal_pattern) -> goal_pattern.
+Arguments gbase _ _.
+Arguments gbase_context {A} _ _.
+Arguments gtele {C} _.
+Arguments gtele_evar {C} _.
+
+Set Printing Implicit.
+Definition match_goal_context
+    {A} (x: A) (y: Type) (cont: forall (C : A -> Type), ttac (C x)) : tactic :=
+  r <- T.abstract_from_term x y;
+  match r with
+  | mSome r =>
+    cont r >>=
+    to_T
+  | mNone => M.raise DoesNotMatchGoal
+  end.
+
+Fixpoint match_goal_pattern'
+    (u : Unification) (p : goal_pattern) : mlist Hyp -> mlist Hyp -> tactic :=
+  fix go l1 l2 g :=
+  match p, l2 with
+  | gbase P t, _ =>
+    gT <- M.goal_type g;
+    mif M.cumul u P gT then (r <- t; to_T r g)
+    else M.raise DoesNotMatchGoal
+  | gbase_context x t, _ =>
+    gT <- M.goal_type g;
+    match_goal_context x gT t g
+  | @gtele C f, @ahyp A a d :m: l2' =>
+    oeqCA <- M.unify C A u;
+    match oeqCA with
+    | mSome eqCA =>
+      let a' := rcbv match Logic.meq_sym eqCA in _ =m= X return X with meq_refl => a end in
+      mtry match_goal_pattern' u (f a') [m:] (mrev_append l1 l2') g
+      with DoesNotMatchGoal =>
+        go (ahyp a d :m: l1) l2' g
+      end
+    | mNone => go (ahyp a d :m: l1) l2' g end
+  | @gtele_evar C f, _ =>
+    e <- M.evar C;
+    match_goal_pattern' u (f e) l1 l2 g
+  | _, _ => M.raise DoesNotMatchGoal
+  end%MC.
+
+Definition match_goal_pattern (u : Unification)
+    (p : goal_pattern) : tactic := fun g=>
+  (r <- M.hyps; match_goal_pattern' u p [m:] (mrev' r) g)%MC.
+
+Fixpoint match_goal_base (u : Unification)
+    (ps : mlist (goal_pattern)) : tactic := fun g =>
+  match ps with
+  | [m:] => M.raise NoPatternMatchesGoal
+  | p :m: ps' =>
+    mtry match_goal_pattern u p g
+    with DoesNotMatchGoal => match_goal_base u ps' g end
+  end%MC.
+End MatchGoalTT.
+Import MatchGoalTT.
+
+Arguments match_goal_base _ _%TT.
+
+Module notations.
+(* Notation "[t: x | .. | y ]" := (TT.compi x (.. (TT.compi y (M.ret I)) ..)). *)
+(* Set Warnings "(-[non-reversible-notation,parsing])". *)
+(* Notation "'doTT' t" := (ltac:(mrun (doTT t))) (at level 0). *)
+
+Infix "<**>" := (fappgl Mappend) (at level 61, left associativity) : M_scope.
+Infix "&**" := ucomp1 (at level 60) : M_scope.
+Infix "||t" := tor (at level 59) : M_scope.
+
+Notation "[[ |- ps ] ] => t" :=
+  (gbase ps t)
+  (at level 202, ps at next level) : typed_match_goal_pattern_scope.
+Notation "[[? a .. b | x .. y |- ps ] ] => t" :=
+  (gtele_evar (fun a => .. (gtele_evar (fun b =>
+     gtele (fun x => .. (gtele (fun y => gbase ps t)).. ))).. ))
+  (at level 202, a binder, b binder,
+   x binder, y binder, ps at next level) : typed_match_goal_pattern_scope.
+Notation "[[? a .. b |- ps ] ] => t" :=
+  (gtele_evar (fun a => .. (gtele_evar (fun b => gbase ps t)).. ))
+  (at level 202, a binder, b binder, ps at next level) : typed_match_goal_pattern_scope.
+Notation "[[ x .. y |- ps ] ] => t" :=
+  (gtele (fun x => .. (gtele (fun y => gbase ps t)).. ))
+  (at level 202, x binder, y binder, ps at next level) : typed_match_goal_pattern_scope.
+
+Notation "[[ |- 'context' C [ ps ] ] ] => t" :=
+  (gbase_context ps (fun C => t))
+  (at level 202, C at level 0, ps at next level) : typed_match_goal_pattern_scope.
+Notation "[[? a .. b | x .. y |- 'context' C [ ps ] ] ] => t" :=
+  (gtele_evar (fun a => .. (gtele_evar (fun b =>
+     gtele (fun x=> .. (gtele (fun y => gbase_context ps (fun C => t))).. ))).. ))
+  (at level 202, a binder, b binder,
+   x binder, y binder, C at level 0, ps at next level) : typed_match_goal_pattern_scope.
+Notation "[[? a .. b |- 'context' C [ ps ] ] ] => t" :=
+  (gtele_evar (fun a => .. (gtele_evar (fun b => gbase_context ps (fun C => t))).. ))
+  (at level 202, a binder, b binder, C at level 0, ps at next level) : typed_match_goal_pattern_scope.
+Notation "[[ x .. y |- 'context' C [ ps ] ] ] => t" :=
+  (gtele (fun x=> .. (gtele (fun y => gbase_context ps (fun C => t))).. ))
+  (at level 202, x binder, y binder, C at level 0, ps at next level) : typed_match_goal_pattern_scope.
+
+Delimit Scope typed_match_goal_pattern_scope with typed_match_goal_pattern.
+
+Notation "'with' | p1 | .. | pn 'end'" :=
+  ((@mcons (goal_pattern) p1%typed_match_goal_pattern (.. (@mcons (goal_pattern) pn%typed_match_goal_pattern [m:]) ..)))
+    (at level 91, p1 at level 210, pn at level 210) : typed_match_goal_with_scope.
+Notation "'with' p1 | .. | pn 'end'" :=
+  ((@mcons (goal_pattern) p1%typed_match_goal_pattern (.. (@mcons (goal_pattern) pn%typed_match_goal_pattern [m:]) ..)))
+    (at level 91, p1 at level 210, pn at level 210) : typed_match_goal_with_scope.
+
+Delimit Scope typed_match_goal_with_scope with typed_match_goal_with.
+
+Notation "'match_goal' ls" := (match_goal_base UniCoq ls%typed_match_goal_with)
+  (at level 200, ls at level 91) : typed_tactic_scope.
+Notation "'match_goal_nored' ls" := (match_goal_base UniMatchNoRed ls%typed_match_goal_with)
+  (at level 200, ls at level 91) : typed_tactic_scope.
+End notations.
+
+End TT.

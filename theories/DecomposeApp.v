@@ -1,5 +1,5 @@
 From Mtac2 Require Import Base Datatypes List Sorts Specif MTele MFixDef MTeleMatchDef Tactics.
-Import Sorts.
+Import Sorts.S.
 Import M.notations.
 Import ListNotations.
 

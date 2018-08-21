@@ -173,3 +173,10 @@ MProof.
   Time let res := reduce RedVmCompute (fib 20) in
   M.ret res.
 Qed.
+
+Example shouldn_t_fail_horribly_with_bad_ref : unit.
+MProof.
+  (mtry
+    let x := reduce (RedStrong [rl: RedDeltaOnly [rl: Dyn "x"]]) 0 in M.failwith "Shouldn't be here"
+  with ReductionFailure => M.ret tt end)%MC.
+Qed.
