@@ -8,7 +8,7 @@ type mrun_arg_type =
   | GTactic
 
 type mrun_arg =
-  | StaticallyChecked of (mrun_arg_type * Names.Globref.t)
+  | StaticallyChecked of (mrun_arg_type * Names.GlobRef.t)
   | DynamicallyChecked of (Ltac_pretype.closed_glob_constr)
 
 module MetaCoqRun : sig
@@ -19,7 +19,7 @@ end
 
 val ifTactic : Environ.env -> Evd.evar_map -> EConstr.types -> 'a -> bool * Evd.evar_map
 
-val glob_mtac_type : 'a -> Libnames.reference -> mrun_arg_type * Globnames.global_reference
+val glob_mtac_type : 'a -> Libnames.qualid -> mrun_arg_type * Names.GlobRef.t
 
 val interp_proof_constr : MetaCoqInstr.mproof_instr -> unit
 val interp_mproof_command : unit -> unit
