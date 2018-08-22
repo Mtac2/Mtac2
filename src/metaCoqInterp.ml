@@ -8,14 +8,12 @@ type mrun_arg_type =
   | GTactic
 
 type mrun_arg =
-  | StaticallyChecked of (mrun_arg_type * Globnames.global_reference)
+  | StaticallyChecked of (mrun_arg_type * Names.GlobRef.t)
   | DynamicallyChecked of (Ltac_pretype.closed_glob_constr)
 
 let ifTactic env sigma ty c =
   let (sigma, gtactic) = MCTactics.mkGTactic env sigma in
   let unitType = CoqUnit.mkType in
-  (* Feedback.msg_debug (Printer.pr_econstr_env env sigma gtactic);
-   * Feedback.msg_debug (Printer.pr_econstr_env env sigma ty); *)
   let gtactic = EConstr.mkApp(gtactic, [|unitType|]) in
   let open Evarsolve in
   let res = Munify.unify_evar_conv Names.full_transparent_state env sigma Reduction.CONV gtactic ty in
@@ -26,11 +24,10 @@ let ifTactic env sigma ty c =
 
 let glob_mtac_type ist r =
   let open Declarations in
-  let lqid = Libnames.qualid_of_reference r in
   try
     let c =
       match
-        (Smartlocate.locate_global_with_alias lqid) (* Maybe put loc back in for error reporting *)
+        (Smartlocate.locate_global_with_alias r) (* Maybe put loc back in for error reporting *)
       with
       | Globnames.ConstRef c -> c
       | _ -> CErrors.user_err (Pp.str "mrun_static only accepts constants. It does *not* accept variables, inductives, or constructors. ")
@@ -45,7 +42,7 @@ let glob_mtac_type ist r =
           sigma, ty, (fun ty -> MonoProgram ty) (* constraints already registered *)
       | Declarations.Polymorphic_const au ->
           (* need to instantiate and register the abstract universes a *)
-          let inst, ctx = Universes.fresh_instance_from au None in
+          let inst, ctx = UnivGen.fresh_instance_from au None in
           (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
           let sigma = Evd.merge_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
           sigma, Vars.subst_instance_constr inst ty, (fun ty -> PolyProgram (au, ty))
@@ -61,7 +58,7 @@ let glob_mtac_type ist r =
         (GTactic, Globnames.ConstRef c)
       else
         CErrors.user_err (Pp.str "Not a Mtactic")
-  with Not_found -> Nametab.error_global_not_found lqid
+  with Not_found -> Nametab.error_global_not_found r
 
 
 
@@ -177,7 +174,7 @@ module MetaCoqRun = struct
         | StaticallyChecked (PolyProgram (au, ty), Globnames.ConstRef  c) ->
             begin
               try
-                let inst, ctx = Universes.fresh_instance_from au None in
+                let inst, ctx = UnivGen.fresh_instance_from au None in
                 (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
                 let sigma = Evd.merge_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
                 let sigma = Evarconv.the_conv_x_leq env concl ty sigma in
