@@ -75,7 +75,7 @@ Theorem sillyfun1_odd : forall (n : nat),
 MProof.
   intros n. unfold sillyfun1.
   variabilize (beq_nat n 3) as t.
-  assert (Heqe3 : t = (n =? 3)) |1> reflexivity.
+  assert (Heqe3 : t = (n =? 3)%nat) |1> reflexivity.
   move_back Heqe3.
   destruct t &> intro Heqe3.
 Abort.
