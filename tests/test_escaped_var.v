@@ -9,6 +9,7 @@ MProof.
   Unshelve.
 MQed. (* Shouldn't it be better to not have to Unshelve? *)
 
+Set Nested Proofs Allowed.
 Definition escaped_evar : nat.
 MProof.
 x <- M.evar nat; M.ret x.

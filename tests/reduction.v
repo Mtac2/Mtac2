@@ -141,6 +141,8 @@ MProof.
   M.ret tt.
 MQed.
 
+Set Nested Proofs Allowed.
+
 Example reduction_but : unit.
 MProof.
   (e <- M.evar unit;
