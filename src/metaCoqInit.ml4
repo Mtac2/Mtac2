@@ -23,8 +23,8 @@ DECLARE PLUGIN "MetaCoq"
 
 (** Introduce a new parsing rule identifier "vernac:mproof_command".
     This rule is expected to produce a vernac expression. *)
-let mproof_mode : Vernacexpr.vernac_expr Pcoq.Gram.entry =
-  Pcoq.Gram.entry_create "vernac:mproof_command"
+let mproof_mode : Vernacexpr.vernac_expr Pcoq.Entry.t =
+  Pcoq.Entry.create "vernac:mproof_command"
 
 (**
 
@@ -62,7 +62,7 @@ let wit_mproof_instr : (MetaCoqInstr.mproof_instr, Util.Empty.t, Util.Empty.t) G
 
 (** We introduce a new grammar rule for MProof instructions. The type of
     the semantic values (with_mproof_instr) is specified. *)
-let mproof_instr : MetaCoqInstr.mproof_instr Pcoq.Gram.entry =
+let mproof_instr : MetaCoqInstr.mproof_instr Pcoq.Entry.t =
   Pcoq.create_generic_entry Pcoq.uconstr "mproof_instr" (Genarg.rawwit wit_mproof_instr)
 
 (** We now declare the grammar rule named [mproof_mode] as the entry point

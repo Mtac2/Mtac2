@@ -1,6 +1,6 @@
 From Mtac2 Require Import Datatypes List Mtac2 ConstrSelector.
 Import T.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 
 Eval compute in M.eval (index 0).
 Eval compute in M.eval (index S).
@@ -161,6 +161,26 @@ MProof.
   remember (WHILE b DO c END) "cw" "Heqcw".
   intros st st' eqT H.
   induction H &> case E_Skip, E_Ass, E_IfTrue, E_IfFalse, E_Seq do discriminate.
+  - (* E_WhileEnd *) (* contradictory -- b is always true! *)
+    inversion Heqcw. subst.
+    select (bequiv _ _) >>= unfold_in bequiv.
+    move_back H. simpl.
+    select (forall x:_, _) >>= rrewrite. simpl.
+    discriminate.
+  - (* E_WhileLoop *) (* immediate from the IH *)
+    select (WHILE _ DO _ END = _ -> _) >>= apply.
+    assumption.
+Qed.
+
+
+Lemma WHILE_true_nonterm' : forall b c st st',
+     bequiv b BTrue ->
+     ~( (WHILE b DO c END) / st \\ st' ).
+MProof.
+  intros b c.
+  remember (WHILE b DO c END) "cw" "Heqcw".
+  intros st st' eqT H.
+  induction H &> except E_WhileEnd, E_WhileLoop do discriminate.
   - (* E_WhileEnd *) (* contradictory -- b is always true! *)
     inversion Heqcw. subst.
     select (bequiv _ _) >>= unfold_in bequiv.

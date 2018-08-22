@@ -2,7 +2,6 @@ From Mtac2 Require Import List.
 From Mtac2.intf Require Import Dyn.
 
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 Record Case :=

@@ -21,7 +21,6 @@ MProof.
       * reflexivity. }
 Qed.
 
-Require Import Mtac2.ImportedTactics.
 Import Lists.List.ListNotations.
 
 Theorem plus_n_O : forall n:nat, n = n + 0.

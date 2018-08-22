@@ -1,13 +1,12 @@
 Require Import Strings.String.
 Require Import NArith.BinNat.
-From Mtac2 Require Import Logic Datatypes Logic List Utils Sorts MTele Pattern.
-Import Sorts.
+From Mtac2 Require Import Logic Datatypes Logic List Utils MTele Pattern.
 Import ListNotations.
 Import ProdNotations.
-From Mtac2.intf Require Export Exceptions Dyn Reduction Unification DeclarationDefs Goals Case Tm_kind Name.
+From Mtac2.intf Require Export Sorts Exceptions Dyn Reduction Unification DeclarationDefs Goals Case Tm_kind Name.
+Import Sorts.S.
 
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 (** THE definition of the monad *)
@@ -15,7 +14,7 @@ Unset Printing Notations.
 
 Module M.
 
-Inductive t : Type -> Prop := mkt : forall{a}, t a.
+Variant t : Type -> Prop := mkt : forall{a}, t a.
 
 Local Ltac make := refine (mkt) || (intro; make).
 
@@ -70,6 +69,15 @@ Definition is_var: forall{A : Type}, A->t bool.
    [VarAppearsInValue] if executing [f x] results in a term containing variable
    [x]. *)
 Definition nu: forall{A: Type}{B: Type}, name -> moption A -> (A -> t B) -> t B.
+  make. Qed.
+
+(* [@nu_let A B C n t f] expects [t] to be [let y : A' := t1 in t2] and executes
+   [f x t2{x/y}], with variable [x := t1] added to the local context.  It
+   raises [NotALetIn] if [t] is not a let-in, [NotTheSameType] if [A] is not
+   unifiable with [A'], [NameExistsInContext] if the name "x" is in the context,
+   or [VarAppearsInValue] if executing [f] with the given arguments results in a
+   term containing variable [x]. *)
+Definition nu_let: forall{A: Type}{B: Type}{C: Type}, name -> C -> (A -> C -> t B) -> t B.
   make. Qed.
 
 (** [abs_fun x e] abstracts variable [x] from [e]. It raises [NotAVar] if [x]
@@ -172,11 +180,14 @@ Definition constrs: forall{A: Type} (a: A), t (mprod dyn (mlist dyn)).
 Definition makecase: forall(C: Case), t dyn.
   make. Qed.
 
-(** [munify x y r] uses reduction strategy [r] to equate [x] and [y].
+(** [unify r x y ts tf] uses reduction strategy [r] to equate [x] and [y].
+    If unification succeeds, it will run [ts].
+    Otherwise, if unification fails, [tf] is executed instead.
     It uses convertibility of universes, meaning that it fails if [x]
     is [Prop] and [y] is [Type]. If they are both types, it will
     try to equate its leveles. *)
-Definition unify {A: Type} (x y: A) : Unification -> t (moption (meq x y)).
+
+Definition unify_cnt {A: Type} {B: A -> Type} (U:Unification) (x y : A) : t (B y) -> t (B x) -> t (B x).
   make. Qed.
 
 (** [munify_univ A B r] uses reduction strategy [r] to equate universes
@@ -241,22 +252,26 @@ Definition get_trace: t bool.
 Definition set_trace: bool -> t unit.
   make. Qed.
 
-(** [decompose_app' uni a (h u .. w) (fun x .. z => t)] executes
-    [t[i..k/x..z]] iff [a] is [H u' .. w' i .. k]
-    where [u' .. w'] unify with [u .. w] according to the
-    unification stragety [uni].
+(** [is_head uni a (h u .. w) (fun x .. z => t)] executes
+    1. [t[i..k/x..z]] if [a] is [H u' .. w' i .. k]
+       where [u' .. w'] unify with [u .. w] according to the
+       unification stragety [uni]
+    2. [f] if [a] is any other term or any of [u' .. w'] do not
+       unify with the respective given candidate in [u .. w].
  *)
-Definition decompose_app' :
-  forall {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m),
-    MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C) ->
+Definition is_head :
+  forall {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m)
+         (success : MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C))
+         (failure: t (B a)),
     t (B a).
   make. Qed.
 
 (** [decompose_forallT T (fun A B => t)] executes [t[A'/A, B'/B]] iff T is
     [forall a : A, B']. *)
 Definition decompose_forallT :
-  forall {A : Type} {B : Type -> Type} (T : Type),
-    (forall (A : Type) (b : A -> Type), t (B (forall a : A, b a))) ->
+  forall {B : Type -> Type} (T : Type)
+         (success : forall (A : Type) (b : A -> Type), t (B (forall a : A, b a)))
+         (failure : t (B T)),
     t (B T).
   make. Qed.
 
@@ -266,8 +281,9 @@ Definition decompose_forallT :
     This is a specialized version of [decompose_forallT] that makes sure to not
     insert any casts from [Prop] to [Type]. *)
 Definition decompose_forallP :
-  forall {A : Type} {B : Prop -> Type} (P : Prop),
-    (forall (A : Type) (b : A -> Prop), t (B (forall a : A, b a))) ->
+  forall {B : Prop -> Type} (P : Prop)
+         (success : forall (A : Type) (b : A -> Prop), t (B (forall a : A, b a)))
+         (failure : t (B P)),
     t (B P).
   make. Qed.
 
@@ -308,6 +324,11 @@ Definition fapp {A:Type} {B:Type} (f : t (A -> B)) (x : t A) : t B :=
 Definition Cevar (A : Type) (ctx : mlist Hyp) : t A := gen_evar A (mSome ctx).
 Definition evar (A : Type) : t A := gen_evar A mNone.
 
+Definition unify {A : Type} (x y : A) (U : Unification) : t (moption (x =m= y)) :=
+  unify_cnt (B:=fun x => moption (meq x y)) U x y
+            (ret (mSome (@meq_refl _ y)))
+            (ret mNone).
+
 
 Definition raise {A:Type} (e: Exception): t A :=
   bind get_debug_exceptions (fun b=>
@@ -326,6 +347,15 @@ Definition print_term {A} (x : A) : t unit :=
 
 Definition dbg_term {A} (s: string) (x : A) : t unit :=
   bind (pretty_print x) (fun t=> print (s++t)).
+
+
+
+Definition decompose_app'
+           {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m)
+           (success : MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C)) :
+  t (B a) :=
+  is_head uni a C success (raise WrongTerm).
+
 
 Module monad_notations.
   Bind Scope M_scope with t.
@@ -385,14 +415,38 @@ Fixpoint open_pattern {A P y} (E : Exception) (p : pattern t A P y) : t (P y) :=
       )
   end.
 
-Fixpoint mmatch' {A:Type} {P:A->Type} (E : Exception) (y : A) (ps : mlist (pattern t A P y)) : t (P y) :=
+Definition open_branch {A P y} (E : Exception) (b : branch t A P y) : t (P y) :=
+  match b in branch _ A' P y' return forall z: A', z =m= y' -> t (P y') with
+  | @branch_pattern _ A P _ p =>
+    fun z eq =>
+      let op := @open_pattern _ P z E in
+      ltac:(rewrite eq in op; exact op) p
+  | @branch_app_static _ A B y m U _ cont =>
+    fun z eq =>
+      let op := is_head (B:=B) U z _ cont (raise E) in
+      ltac:(rewrite eq in op; exact op)
+  | branch_forallT cont =>
+    fun z eq =>
+      let op := decompose_forallT z cont (raise E) in
+      ltac:(rewrite eq in op; exact op)
+  | branch_forallP cont =>
+    fun z eq =>
+      let op := decompose_forallP z cont (raise E) in
+      ltac:(rewrite eq in op; exact op)
+  (* | _ => fun _ _ => M.failwith "not implemented" *)
+  end y meq_refl.
+
+Fixpoint mmatch'' {A:Type} {P: A -> Type} (E : Exception) (y : A) (failure : t (P y)) (ps : mlist (branch t A P y)) : t (P y) :=
   match ps with
-  | [m:] => raise NoPatternMatches
+  | [m:] => failure
   | p :m: ps' =>
-    mtry' (open_pattern E p) (fun e =>
-      bind (unify e E UniMatchNoRed) (fun b=>
-      if b then mmatch' E y ps' else raise e))
+    mtry' (open_branch (y:=y) E p) (fun e =>
+      is_head (B:=fun e => P y) (m := mBase) UniMatchNoRed E e (mmatch'' E y failure ps') (raise e))
+          (* TODO: don't abuse is_head for this. *)
   end.
+
+Definition mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist (branch t A P y)) : t (P y) :=
+  mmatch'' E y (raise NoPatternMatches) ps.
 
 Definition NotCaught : Exception. constructor. Qed.
 
@@ -447,11 +501,13 @@ Module notations_pre.
   Notation "'mmatch' x 'as' y 'return' 'M' p ls" :=
     (@mmatch' _ (fun y => p%type) DoesNotMatch x ls%with_pattern)
     (at level 200, ls at level 91) : M_scope.
+  Notation "'mmatch' x 'in' T 'as' y 'return' 'M' p ls" :=
+    (@mmatch' _ (fun y : T => p%type) DoesNotMatch x ls%with_pattern)
+    (at level 200, ls at level 91) : M_scope.
 
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
-      (@mmatch' _ (fun _ => _) NotCaught e
-                   (mapp ls%with_pattern [m:(e => raise e)%pattern]))))
+      (@mmatch'' _ (fun _ => _) NotCaught e (raise e) ls%with_pattern)))
       (at level 200, a at level 100, ls at level 91, only parsing) : M_scope.
 
   Import TeleNotation.
@@ -614,6 +670,21 @@ Definition find_hyp_index {A} (x : A) : t (moption nat) :=
     | [? b] ahyp x b => M.ret true
     | _ => ret false
     end) =<< M.hyps.
+
+Definition find_hyp {A:Type} : mlist Hyp -> t A :=
+  mfix1 f (l : mlist Hyp) : M A :=
+    match l with
+    | (@ahyp A' x d) :m: l' =>
+      ou <- unify A' A UniEvarconv;
+      match ou return t A with
+      | mSome e => match e in _ =m= x return t x with meq_refl => M.ret x end
+      | mNone => f l'
+      end
+    | _ => M.raise NotFound
+    end.
+
+Definition select (T: Type) : t T :=
+  hyps >>= find_hyp.
 
 (** given a string s it appends a marker to avoid collition with user
     provided names *)
@@ -906,6 +977,9 @@ Definition isCase {A} (x: A) :=
   | tmCase => ret true
   | _ => ret false
   end.
+
+Definition bunify {A} (x y: A) (u: Unification) : t bool :=
+  mif unify x y u then ret true else ret false.
 
 End M.
 

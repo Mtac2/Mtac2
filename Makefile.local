@@ -7,19 +7,27 @@ COQ_SRC_SUBDIRS+=user-contrib/Unicoq
 TESTS=$(wildcard tests/*.v)
 TESTRESULTS=$(TESTS:.v=.vo)
 
-test: $(TESTRESULTS)
+EXAMPLES=$(wildcard examples/*.v)
+EXAMPLESRESULTS=$(EXAMPLES:.v=.vo)
+
+test: $(TESTRESULTS) $(EXAMPLESRESULTS)
 
 TIMINGS=$(wildcard timings/*.v)
 TIMINGRESULTS=$(TIMINGS:.v=.vo)
 
 timing: $(TIMINGRESULTS)
 
-tests/%.vo: tests/%.v
+tests/%.vo: tests/%.v real-all
 	$(SHOW)COQC $<
 	$(HIDE)(($(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $< $(TIMING_EXTRA) && echo "[OK] " $<) || ( EXITSTATE="$$?"; echo "\033[0;31m[KO]\033[0m" $<; exit "$$EXITSTATE" ))
-.PHONY=tes
+.PHONY=test
 
-timings/%.vo: timings/%.v
+examples/%.vo: examples/%.v real-all
+	$(SHOW)COQC $<
+	$(HIDE)(($(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $< $(TIMING_EXTRA) && echo "[OK] " $<) || ( EXITSTATE="$$?"; echo "\033[0;31m[KO]\033[0m" $<; exit "$$EXITSTATE" ))
+.PHONY=test
+
+timings/%.vo: timings/%.v real-all
 	$(SHOW)COQC $<
 	$(HIDE)(($(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $< $(TIMING_EXTRA) && echo "[OK] " $<) || ( EXITSTATE="$$?"; echo "\033[0;31m[KO]\033[0m" $<; exit "$$EXITSTATE" ))
 .PHONY=timing

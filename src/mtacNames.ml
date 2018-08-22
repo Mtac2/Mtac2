@@ -19,6 +19,25 @@ let isUConstr sigma env e =
   let sigma, c = mkUConstr e sigma env in
   eq_constr_nounivs sigma c
 
+let constant_of_string e =
+  let full_name = metaCoq_module_name ^ "." ^ e in
+  let p = Libnames.path_of_string full_name in
+  (* let q = Libnames.qualid_of_path p in *)
+  match Nametab.global_of_path p with
+  | Globnames.ConstRef (c) -> c
+  | _ -> raise Not_found
+
+let isConstant sigma const c =
+  match EConstr.kind sigma c with
+  | Const (n, _) -> Names.Constant.equal n const
+  | _ -> false
+
+let isFConstant const fc =
+  match CClosure_copy.fterm_of fc with
+  | CClosure_copy.FFlex (Names.ConstKey (n, _)) ->
+      Names.Constant.equal n const
+  | _ -> false
+
 let mkCase ind v ret branch sigma env =
   let sigma, c = mkUConstr "Case.mkCase" sigma env in
   sigma, mkApp(c, [|ind;v;ret;branch|])

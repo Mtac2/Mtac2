@@ -71,9 +71,9 @@ end
 module CoqOption = struct
   open UConstrBuilder
 
-  (* let optionBuilder = from_string "Mtac2.Datatypes.moption" *)
-  let noneBuilder = from_string "Mtac2.Datatypes.mNone"
-  let someBuilder = from_string "Mtac2.Datatypes.mSome"
+  (* let optionBuilder = from_string "Mtac2.lib.Datatypes.moption" *)
+  let noneBuilder = from_string "Mtac2.lib.Datatypes.mNone"
+  let someBuilder = from_string "Mtac2.lib.Datatypes.mSome"
 
   (* let mkType sigma env ty = build_app optionBuilder sigma env [|ty|] *)
   let mkNone sigma env ty = build_app noneBuilder sigma env [|ty|]
@@ -171,16 +171,16 @@ module GenericList (LP : ListParams) = struct
 end
 
 module CoqList = GenericList (struct
-    let nilname = "Mtac2.Datatypes.mnil"
-    let consname = "Mtac2.Datatypes.mcons"
-    let typename = "Mtac2.Datatypes.mlist"
+    let nilname = "Mtac2.lib.Datatypes.mnil"
+    let consname = "Mtac2.lib.Datatypes.mcons"
+    let typename = "Mtac2.lib.Datatypes.mlist"
   end)
 
 module CoqEq = struct
   open UConstrBuilder
 
-  let eqBuilder = from_string "Mtac2.Logic.meq"
-  let eqReflBuilder = from_string "Mtac2.Logic.meq_refl"
+  let eqBuilder = from_string "Mtac2.lib.Logic.meq"
+  let eqReflBuilder = from_string "Mtac2.lib.Logic.meq_refl"
 
   let mkType env sigma a x y = build_app eqBuilder env sigma [|a;x;y|]
   let mkEqRefl env sigma a x = build_app eqReflBuilder env sigma [|a;x|]
@@ -361,7 +361,7 @@ module CoqUnit = struct
 end
 
 module MCTactics = struct
-  let gTactic = "Mtac2.Tactics.gtactic"
+  let gTactic = "Mtac2.tactics.TacticsBase.gtactic"
 
   (* let mkConstr s = *)
   (*   let open Nametab in let open Libnames in *)
@@ -379,7 +379,7 @@ end
 module CoqPair = struct
   open UConstrBuilder
 
-  let pairBuilder = from_string "Mtac2.Datatypes.mpair"
+  let pairBuilder = from_string "Mtac2.lib.Datatypes.mpair"
 
   let mkPair sigma env tya tyb a b = build_app pairBuilder sigma env [|tya;tyb;a;b|]
 

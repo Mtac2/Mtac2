@@ -1,5 +1,4 @@
 Set Universe Polymorphism.
-Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 (** Lifted from coq 8.6.1 Decl_kinds

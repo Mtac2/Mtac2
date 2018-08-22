@@ -9,24 +9,29 @@ Distributed under the terms of the MIT License,
 see LICENSE for details.
 
 This archive is a plugin for Coq containing the new tactic language
-described in the outdated paper
-[The Next 700 Safe Tactic Languages](http://www.mpi-sws.org/~beta/#publications).
+described in the paper
+[Mtac2: Typed Tactics for Backward Reasoning in Coq](http://www.mpi-sws.org/~beta/papers/Kaiseretal18.pdf).
 
 
-The archive has 3 subdirectories:
+The project has 3 subdirectories:
 * `src` contains the code of the plugin.
   - `run.ml` is the interpreter.
 
 * `theories` contains support Coq files for the plugin.
   - `Mtac2.v` declares the plugin on the Coq side and imports all the
      required theories.
-  - `intf` contains the basics: the `M` monad, exceptions, etc.
-  - `Tactics.v` defines the tactic type and several tactics and combinators.
-  - `Ttactics.v` defines the type for typed tactics and combinators.
-  - `IntroPatt.v` defines intro patterns.
-  - `ConstrSelector.v` defines a selector based on the indices of an
-    inductive type's constructors.
+  - The `intf` folder contains the basics: the `M` monad with its operations documented, exceptions, etc.
+  - The folder `tactics` contains everything relating to tactics:
+     + `Tactics.v` defines the tactic type and several tactics and combinators.
+     + `Ttactics.v` defines the type for typed tactics and combinators.
+     + `IntroPatt.v` defines intro patterns.
+     + `ConstrSelector.v` defines a selector based on the indices of an inductive type's constructors.
 
+* `examples` contains simple examples to show the different features of Mtac2.
+  - `tactics.v` shows how to standard, Ltac's like, proving. But with some
+    interesting features not present in Ltac.
+  - `tauto.v` shows many different ways to code a simple tautology prover, with
+    different degrees of certainty and verboseness.
 * `test-suite` contains several tests, including some uses of the plugin.
 
 Installation
@@ -48,8 +53,8 @@ You can then either `make install` the plugin or leave it in its
 current directory. To be able to import it from anywhere in Coq,
 simply add the following to `~/.coqrc`:
 ```
-Add LoadPath "path_to_unicoq/theories" as Mtac2.
-Add ML Path "path_to_unicoq/src".
+Add LoadPath "path_to_mtac2/theories" as Mtac2.
+Add ML Path "path_to_mtac2/src".
 ```
 # Usage
 
