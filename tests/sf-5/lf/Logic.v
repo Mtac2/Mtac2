@@ -548,7 +548,7 @@ MProof.
   (* WORKED IN CLASS *)
   intros b. T.split.
   - (* -> *) Fail apply not_true_is_false. (* FIXME (previous failure) *)
-    admit. (* FIXME admit does nothing *)
+    (* admit. *) (* FIXME 8.8 admit fails with evars *)
 (*   - (* <- *) *)
 (*     intros H. rewrite H. intros H'. inversion H'. *)
 (* Qed. *)
