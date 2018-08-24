@@ -9,7 +9,10 @@ TESTRESULTS=$(TESTS:.v=.vo)
 EXAMPLES=$(wildcard examples/*.v)
 EXAMPLESRESULTS=$(EXAMPLES:.v=.vo)
 
-test: $(TESTRESULTS) $(EXAMPLESRESULTS)
+test: $(TESTRESULTS) $(EXAMPLESRESULTS) sf
+
+sf:
+	cd tests/sf-5; ./configure.sh; make
 
 TIMINGS=$(wildcard timings/*.v)
 TIMINGRESULTS=$(TIMINGS:.v=.vo)

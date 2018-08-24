@@ -1,7 +1,7 @@
 (** * Logic: Logic in Coq *)
 
 Set Warnings "-notation-overridden,-parsing".
-Require Export Tactics.
+From lf Require Export Tactics.
 
 (** In previous chapters, we have seen many examples of factual
     claims (_propositions_) and ways of presenting evidence of their
@@ -49,7 +49,7 @@ Check 3 = 4.
 
 Theorem plus_2_2_is_4 :
   2 + 2 = 4.
-Proof. reflexivity.  Qed.
+MProof. reflexivity.  Qed.
 
 (** But propositions can be used in many other ways.  For example, we
     can give a name to a proposition using a [Definition], just as we
@@ -64,7 +64,7 @@ Check plus_fact.
 
 Theorem plus_fact_is_true :
   plus_fact.
-Proof. reflexivity.  Qed.
+MProof. reflexivity.  Qed.
 
 (** We can also write _parameterized_ propositions -- that is,
     functions that take arguments of some type and return a
@@ -89,7 +89,7 @@ Definition injective {A B} (f : A -> B) :=
   forall x y : A, f x = f y -> x = y.
 
 Lemma succ_inj : injective S.
-Proof.
+MProof.
   intros n m H. inversion H. reflexivity.
 Qed.
 
@@ -122,9 +122,9 @@ Example and_example : 3 + 4 = 7 /\ 2 * 2 = 4.
 (** To prove a conjunction, use the [split] tactic.  It will generate
     two subgoals, one for each part of the statement: *)
 
-Proof.
+MProof.
   (* WORKED IN CLASS *)
-  split.
+  T.split.
   - (* 3 + 4 = 7 *) reflexivity.
   - (* 2 + 2 = 4 *) reflexivity.
 Qed.
@@ -134,8 +134,8 @@ Qed.
     also true. *)
 
 Lemma and_intro : forall A B : Prop, A -> B -> A /\ B.
-Proof.
-  intros A B HA HB. split.
+MProof.
+  intros A B HA HB. T.split.
   - apply HA.
   - apply HB.
 Qed.
@@ -146,7 +146,7 @@ Qed.
     as [split]. *)
 
 Example and_example' : 3 + 4 = 7 /\ 2 * 2 = 4.
-Proof.
+MProof.
   apply and_intro.
   - (* 3 + 4 = 7 *) reflexivity.
   - (* 2 + 2 = 4 *) reflexivity.
@@ -155,7 +155,7 @@ Qed.
 (** **** Exercise: 2 stars (and_exercise)  *)
 Example and_exercise :
   forall n m : nat, n + m = 0 -> n = 0 /\ m = 0.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -170,10 +170,10 @@ Proof.
 
 Lemma and_example2 :
   forall n m : nat, n = 0 /\ m = 0 -> n + m = 0.
-Proof.
+MProof.
   (* WORKED IN CLASS *)
   intros n m H.
-  destruct H as [Hn Hm].
+  destruct H &> [i: \Hn Hm].
   rewrite Hn. rewrite Hm.
   reflexivity.
 Qed.
@@ -183,8 +183,8 @@ Qed.
 
 Lemma and_example2' :
   forall n m : nat, n = 0 /\ m = 0 -> n + m = 0.
-Proof.
-  intros n m [Hn Hm].
+MProof.
+  pintros \n m [| \Hn Hm].
   rewrite Hn. rewrite Hm.
   reflexivity.
 Qed.
@@ -195,7 +195,7 @@ Qed.
 
 Lemma and_example2'' :
   forall n m : nat, n = 0 -> m = 0 -> n + m = 0.
-Proof.
+MProof.
   intros n m Hn Hm.
   rewrite Hn. rewrite Hm.
   reflexivity.
@@ -208,11 +208,11 @@ Qed.
 
 Lemma and_example3 :
   forall n m : nat, n + m = 0 -> n * m = 0.
-Proof.
+MProof.
   intros n m H.
   assert (H' : n = 0 /\ m = 0).
   { apply and_exercise. apply H. }
-  destruct H' as [Hn Hm].
+  destruct H' &> [i: \Hn Hm].
   rewrite Hn. reflexivity.
 Qed.
 
@@ -222,14 +222,14 @@ Qed.
 
 Lemma proj1 : forall P Q : Prop,
   P /\ Q -> P.
-Proof.
-  intros P Q [HP HQ].
+MProof.
+  pintros \P Q [| \HP HQ].
   apply HP.  Qed.
 
 (** **** Exercise: 1 star, optional (proj2)  *)
 Lemma proj2 : forall P Q : Prop,
   P /\ Q -> Q.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -240,10 +240,10 @@ Proof.
 
 Theorem and_commut : forall P Q : Prop,
   P /\ Q -> Q /\ P.
-Proof.
+MProof.
   (* WORKED IN CLASS *)
-  intros P Q [HP HQ].
-  split.
+  pintros \P Q [| \HP HQ].
+  T.split.
     - (* left *) apply HQ.
     - (* right *) apply HP.  Qed.
 
@@ -255,8 +255,8 @@ Proof.
 
 Theorem and_assoc : forall P Q R : Prop,
   P /\ (Q /\ R) -> (P /\ Q) /\ R.
-Proof.
-  intros P Q R [HP [HQ HR]].
+MProof.
+  pintros \P Q R [| \HP [| \HQ HR]].
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -281,10 +281,10 @@ Check and.
 
 Lemma or_example :
   forall n m : nat, n = 0 \/ m = 0 -> n * m = 0.
-Proof.
+MProof.
   (* This pattern implicitly does case analysis on
      [n = 0 \/ m = 0] *)
-  intros n m [Hn | Hm].
+  pintros \n m [| \Hn | \Hm].
   - (* Here, [n = 0] *)
     rewrite Hn. reflexivity.
   - (* Here, [m = 0] *)
@@ -299,7 +299,7 @@ Qed.
     requires proving its right side.  Here is a trivial use... *)
 
 Lemma or_intro : forall A B : Prop, A -> A \/ B.
-Proof.
+MProof.
   intros A B HA.
   left.
   apply HA.
@@ -310,8 +310,8 @@ Qed.
 
 Lemma zero_or_succ :
   forall n : nat, n = 0 \/ n = S (pred n).
-Proof.
-  intros [|n].
+MProof.
+  pintros [| ~~ | \n ].
   - left. reflexivity.
   - right. reflexivity.
 Qed.
@@ -319,14 +319,14 @@ Qed.
 (** **** Exercise: 1 star (mult_eq_0)  *)
 Lemma mult_eq_0 :
   forall n m, n * m = 0 -> n = 0 \/ m = 0.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
 (** **** Exercise: 1 star (or_commut)  *)
 Theorem or_commut : forall P Q : Prop,
   P \/ Q  -> Q \/ P.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -367,7 +367,7 @@ End MyNot.
 
 Theorem ex_falso_quodlibet : forall (P:Prop),
   False -> P.
-Proof.
+MProof.
   (* WORKED IN CLASS *)
   intros P contra.
   destruct contra.  Qed.
@@ -382,7 +382,7 @@ Proof.
 
 Fact not_implies_our_not : forall (P:Prop),
   ~ P -> (forall (Q:Prop), P -> Q).
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -390,7 +390,7 @@ Proof.
     elements of [nat]: *)
 
 Theorem zero_not_one : ~(0 = 1).
-Proof.
+MProof.
   intros contra. inversion contra.
 Qed.
 
@@ -401,7 +401,7 @@ Check (0 <> 1).
 (* ===> Prop *)
 
 Theorem zero_not_one' : 0 <> 1.
-Proof.
+MProof.
   intros H. inversion H.
 Qed.
 
@@ -414,19 +414,19 @@ Qed.
 
 Theorem not_False :
   ~ False.
-Proof.
+MProof.
   unfold not. intros H. destruct H. Qed.
 
 Theorem contradiction_implies_anything : forall P Q : Prop,
   (P /\ ~P) -> Q.
-Proof.
+MProof.
   (* WORKED IN CLASS *)
-  intros P Q [HP HNA]. unfold not in HNA.
-  apply HNA in HP. destruct HP.  Qed.
+  pintros \P Q [| \HP HNA]. unfold_in not HNA.
+  apply_in HNA HP. destruct HP.  Qed.
 
 Theorem double_neg : forall P : Prop,
-  P -> ~~P.
-Proof.
+  P -> ~ ~P.
+MProof.
   (* WORKED IN CLASS *)
   intros P H. unfold not. intros G. apply G. apply H.  Qed.
 
@@ -441,14 +441,14 @@ Proof.
 (** **** Exercise: 2 stars, recommended (contrapositive)  *)
 Theorem contrapositive : forall (P Q : Prop),
   (P -> Q) -> (~Q -> ~P).
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
 (** **** Exercise: 1 star (not_both_true_and_false)  *)
 Theorem not_both_true_and_false : forall P : Prop,
   ~ (P /\ ~P).
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -470,29 +470,31 @@ Proof.
 
 Theorem not_true_is_false : forall b : bool,
   b <> true -> b = false.
-Proof.
-  intros [] H.
+MProof.
+  pintros [| ] \H.
   - (* b = true *)
-    unfold not in H.
+    unfold_in not H.
     apply ex_falso_quodlibet.
     apply H. reflexivity.
   - (* b = false *)
     reflexivity.
-Qed.
+Fail Qed. (* FIXME *)
+Abort.
 
 (** Since reasoning with [ex_falso_quodlibet] is quite common, Coq
     provides a built-in tactic, [exfalso], for applying it. *)
 
 Theorem not_true_is_false' : forall b : bool,
   b <> true -> b = false.
-Proof.
-  intros [] H.
+MProof.
+  pintros [| ] \H.
   - (* b = false *)
-    unfold not in H.
+    unfold_in not H.
     exfalso.                (* <=== *)
     apply H. reflexivity.
   - (* b = true *) reflexivity.
-Qed.
+Fail Qed. (* FIXME *)
+Abort.
 
 (* ================================================================= *)
 (** ** Truth *)
@@ -502,7 +504,7 @@ Qed.
     predefined constant [I : True]: *)
 
 Lemma True_is_true : True.
-Proof. apply I. Qed.
+MProof. apply I. Qed.
 
 (** Unlike [False], which is used extensively, [True] is used quite
     rarely, since it is trivial (and therefore uninteresting) to prove
@@ -531,22 +533,26 @@ End MyIff.
 
 Theorem iff_sym : forall P Q : Prop,
   (P <-> Q) -> (Q <-> P).
-Proof.
+MProof.
   (* WORKED IN CLASS *)
-  intros P Q [HAB HBA].
-  split.
+  Fail pintros \P Q [| \HAB HBA]. (* FIXME: ExceptionNotGround coming from destruct *)
+  intros P Q H.
+  elim H &> [i: \HAB HBA].
+  T.split.
   - (* -> *) apply HBA.
   - (* <- *) apply HAB.  Qed.
 
 Lemma not_true_iff_false : forall b,
   b <> true <-> b = false.
-Proof.
+MProof.
   (* WORKED IN CLASS *)
-  intros b. split.
-  - (* -> *) apply not_true_is_false.
-  - (* <- *)
-    intros H. rewrite H. intros H'. inversion H'.
-Qed.
+  intros b. T.split.
+  - (* -> *) Fail apply not_true_is_false. (* FIXME (previous failure) *)
+    admit. (* FIXME admit does nothing *)
+(*   - (* <- *) *)
+(*     intros H. rewrite H. intros H'. inversion H'. *)
+(* Qed. *)
+Abort.
 
 (** **** Exercise: 1 star, optional (iff_properties)  *)
 (** Using the above proof that [<->] is symmetric ([iff_sym]) as
@@ -554,19 +560,19 @@ Qed.
 
 Theorem iff_refl : forall P : Prop,
   P <-> P.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 
 Theorem iff_trans : forall P Q R : Prop,
   (P <-> Q) -> (Q <-> R) -> (P <-> R).
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
 (** **** Exercise: 3 stars (or_distributes_over_and)  *)
 Theorem or_distributes_over_and : forall P Q R : Prop,
   P \/ (Q /\ R) <-> (P \/ Q) /\ (P \/ R).
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -583,25 +589,26 @@ Require Import Coq.Setoids.Setoid.
     [iff].  First, let's prove a couple of basic iff equivalences... *)
 
 Lemma mult_0 : forall n m, n * m = 0 <-> n = 0 \/ m = 0.
-Proof.
-  split.
+MProof.
+  intros. T.split. (* FIXME in Coq, split does intros *)
   - apply mult_eq_0.
   - apply or_example.
 Qed.
 
 Lemma or_assoc :
   forall P Q R : Prop, P \/ (Q \/ R) <-> (P \/ Q) \/ R.
-Proof.
-  intros P Q R. split.
-  - intros [H | [H | H]].
+MProof.
+  intros P Q R. T.split.
+  - pintros [| \H | [| \H | \H]].
     + left. left. apply H.
     + left. right. apply H.
     + right. apply H.
-  - intros [[H | H] | H].
+  - pintros [| [| \H | \H] | \H].
     + left. apply H.
     + right. left. apply H.
     + right. right. apply H.
-Qed.
+Fail Qed. (* FIXME destruct is breaking something again *)
+Abort.
 
 (** We can now use these facts with [rewrite] and [reflexivity] to
     give smooth proofs of statements involving equivalences.  Here is
@@ -609,10 +616,11 @@ Qed.
 
 Lemma mult_0_3 :
   forall n m p, n * m * p = 0 <-> n = 0 \/ m = 0 \/ p = 0.
-Proof.
+MProof.
   intros n m p.
   rewrite mult_0. rewrite mult_0. rewrite or_assoc.
-  reflexivity.
+  Fail T.reflexivity. (* FIXME doesn't understand <-> *)
+  tauto.
 Qed.
 
 (** The [apply] tactic can also be used with [<->]. When given an
@@ -621,8 +629,9 @@ Qed.
 
 Lemma apply_iff_example :
   forall n m : nat, n * m = 0 -> n = 0 \/ m = 0.
-Proof.
-  intros n m H. apply mult_0. apply H.
+MProof.
+  intros n m H. Fail apply mult_0. Fail apply H. (* FIXME apply doesn't understand <-> *)
+  ltac_apply mult_0. ltac_apply H.
 Qed.
 
 (* ================================================================= *)
@@ -643,8 +652,8 @@ Qed.
     all occurrences of [x] are replaced by [t]. *)
 
 Lemma four_is_even : exists n : nat, 4 = n + n.
-Proof.
-  exists 2. reflexivity.
+MProof.
+  mexists 2. T.reflexivity.
 Qed.
 
 (** Conversely, if we have an existential hypothesis [exists x, P] in
@@ -654,10 +663,11 @@ Qed.
 Theorem exists_example_2 : forall n,
   (exists m, n = 4 + m) ->
   (exists o, n = 2 + o).
-Proof.
+MProof.
   (* WORKED IN CLASS *)
-  intros n [m Hm]. (* note implicit [destruct] here *)
-  exists (2 + m).
+  pintros \n [| \m Hm]. (* note implicit [destruct] here *)
+  (* FIXME goal has selem_of stuff and requires this: *) simpl.
+  mexists (2 + m). (* FIXME goal is beta-expanded *)
   apply Hm.  Qed.
 
 (** **** Exercise: 1 star (dist_not_exists)  *)
@@ -666,7 +676,7 @@ Proof.
 
 Theorem dist_not_exists : forall (X:Type) (P : X -> Prop),
   (forall x, P x) -> ~ (exists x, ~ P x).
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -676,7 +686,7 @@ Proof.
 
 Theorem dist_exists_or : forall (X:Type) (P Q : X -> Prop),
   (exists x, P x \/ Q x) <-> (exists x, P x) \/ (exists x, Q x).
-Proof.
+MProof.
    (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -708,21 +718,22 @@ Fixpoint In {A : Type} (x : A) (l : list A) : Prop :=
     concrete sequence of nested disjunctions. *)
 
 Example In_example_1 : In 4 [1; 2; 3; 4; 5].
-Proof.
+MProof.
   (* WORKED IN CLASS *)
-  simpl. right. right. right. left. reflexivity.
+  simpl. right. right. right. left. T.reflexivity.
 Qed.
 
 Example In_example_2 :
   forall n, In n [2; 4] ->
   exists n', n = 2 * n'.
-Proof.
+MProof.
   (* WORKED IN CLASS *)
   simpl.
-  intros n [H | [H | []]].
-  - exists 1. rewrite <- H. reflexivity.
-  - exists 2. rewrite <- H. reflexivity.
-Qed.
+  pintros \n [| \H | [| \H | [| ]]] /=.
+  - mexists 1. rewrite <- H. T.reflexivity.
+  - mexists 2. rewrite <- H. T.reflexivity.
+Fail Qed. (* FIXME again destruct doing something wrong *)
+Abort.
 (** (Notice the use of the empty pattern to discharge the last case
     _en passant_.) *)
 
@@ -735,17 +746,16 @@ Lemma In_map :
   forall (A B : Type) (f : A -> B) (l : list A) (x : A),
     In x l ->
     In (f x) (map f l).
-Proof.
+MProof.
   intros A B f l x.
-  induction l as [|x' l' IHl'].
+  elim l &>  [i: ~~ | \x' l' IHl'].
   - (* l = nil, contradiction *)
-    simpl. intros [].
+    simpl. pintros [|].
   - (* l = x' :: l' *)
-    simpl. intros [H | H].
-    + rewrite H. left. reflexivity.
+    simpl. pintros [| \H | \H].
+    + rewrite H. left. T.reflexivity.
     + right. apply IHl'. apply H.
 Qed.
-
 (** This way of defining propositions recursively, though convenient
     in some cases, also has some drawbacks.  In particular, it is
     subject to Coq's usual restrictions regarding the definition of
@@ -759,14 +769,14 @@ Lemma In_map_iff :
   forall (A B : Type) (f : A -> B) (l : list A) (y : B),
     In y (map f l) <->
     exists x, f x = y /\ In x l.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
 (** **** Exercise: 2 stars (in_app_iff)  *)
 Lemma in_app_iff : forall A l l' (a:A),
   In a (l++l') <-> In a l \/ In a l'.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -788,7 +798,7 @@ Lemma All_In :
   forall T (P : T -> Prop) (l : list T),
     (forall x, In x l -> P x) <->
     All P l.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -809,7 +819,7 @@ Theorem combine_odd_even_intro :
     (oddb n = true -> Podd n) ->
     (oddb n = false -> Peven n) ->
     combine_odd_even Podd Peven n.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 
 Theorem combine_odd_even_elim_odd :
@@ -817,7 +827,7 @@ Theorem combine_odd_even_elim_odd :
     combine_odd_even Podd Peven n ->
     oddb n = true ->
     Podd n.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 
 Theorem combine_odd_even_elim_even :
@@ -825,7 +835,7 @@ Theorem combine_odd_even_elim_even :
     combine_odd_even Podd Peven n ->
     oddb n = false ->
     Peven n.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -880,7 +890,7 @@ Lemma plus_comm3 :
     The problem, however, is that the second [rewrite] will undo the
     effect of the first. *)
 
-Proof.
+MProof.
   intros n m p.
   rewrite plus_comm.
   rewrite plus_comm.
@@ -894,13 +904,13 @@ Abort.
 
 Lemma plus_comm3_take2 :
   forall n m p, n + (m + p) = (p + m) + n.
-Proof.
+MProof.
   intros n m p.
   rewrite plus_comm.
   assert (H : m + p = p + m).
-  { rewrite plus_comm. reflexivity. }
+  { rewrite plus_comm. T.reflexivity. }
   rewrite H.
-  reflexivity.
+  T.reflexivity.
 Qed.
 
 (** A more elegant alternative is to apply [plus_comm] directly to the
@@ -909,11 +919,11 @@ Qed.
 
 Lemma plus_comm3_take3 :
   forall n m p, n + (m + p) = (p + m) + n.
-Proof.
+MProof.
   intros n m p.
   rewrite plus_comm.
   rewrite (plus_comm m).
-  reflexivity.
+  T.reflexivity.
 Qed.
 
 (** You can "use theorems as functions" in this way with almost all
@@ -928,11 +938,11 @@ Example lemma_application_ex :
   forall {n : nat} {ns : list nat},
     In n (map (fun m => m * 0) ns) ->
     n = 0.
-Proof.
+MProof.
   intros n ns H.
-  destruct (proj1 _ _ (In_map_iff _ _ _ _ _) H)
-           as [m [Hm _]].
-  rewrite mult_0_r in Hm. rewrite <- Hm. reflexivity.
+  elim (proj1 _ _ (In_map_iff _ _ _ _ _) H).
+  intros m.
+  rewrite mult_0_r. pintros [| <l ]. T.reflexivity. (* FIXME can't do <l \_ *)
 Qed.
 
 (** We will see many more examples of the idioms from this section in
@@ -973,7 +983,7 @@ Qed.
     claiming that two _functions_ are equal to each other: *)
 
 Example function_equality_ex1 : plus 3 = plus (pred 4).
-Proof. reflexivity. Qed.
+MProof. T.reflexivity. Qed.
 
 (** In common mathematical practice, two functions [f] and [g] are
     considered equal if they produce the same outputs:
@@ -993,7 +1003,7 @@ Proof. reflexivity. Qed.
 
 Example function_equality_ex2 :
   (fun x => plus x 1) = (fun x => plus 1 x).
-Proof.
+MProof.
    (* Stuck *)
 Abort.
 
@@ -1013,7 +1023,7 @@ Axiom functional_extensionality : forall {X Y: Type}
 
 Example function_equality_ex2 :
   (fun x => plus x 1) = (fun x => plus 1 x).
-Proof.
+MProof.
   apply functional_extensionality. intros x.
   apply plus_comm.
 Qed.
@@ -1083,9 +1093,9 @@ Lemma tr_rev_correct : forall X, @tr_rev X = @rev X.
     [exists k, n = double k].  *)
 
 Theorem evenb_double : forall k, evenb (double k) = true.
-Proof.
-  intros k. induction k as [|k' IHk'].
-  - reflexivity.
+MProof.
+  intros k. elim k &> [i: ~~| \k' IHk'].
+  - T.reflexivity.
   - simpl. apply IHk'.
 Qed.
 
@@ -1093,18 +1103,18 @@ Qed.
 Theorem evenb_double_conv : forall n,
   exists k, n = if evenb n then double k
                 else S (double k).
-Proof.
+MProof.
   (* Hint: Use the [evenb_S] lemma from [Induction.v]. *)
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
 Theorem even_bool_prop : forall n,
   evenb n = true <-> exists k, n = double k.
-Proof.
-  intros n. split.
-  - intros H. destruct (evenb_double_conv n) as [k Hk].
-    rewrite Hk. rewrite H. exists k. reflexivity.
-  - intros [k Hk]. rewrite Hk. apply evenb_double.
+MProof.
+  intros n. T.split.
+  - intros H. elim (evenb_double_conv n) &> [i: \k Hk].
+    rewrite Hk. rewrite H. mexists k. T.reflexivity.
+  - pintros [| \k Hk]. rewrite Hk. apply evenb_double.
 Qed.
 
 (** Similarly, to state that two numbers [n] and [m] are equal, we can
@@ -1113,10 +1123,10 @@ Qed.
 
 Theorem beq_nat_true_iff : forall n1 n2 : nat,
   beq_nat n1 n2 = true <-> n1 = n2.
-Proof.
-  intros n1 n2. split.
+MProof.
+  intros n1 n2. T.split.
   - apply beq_nat_true.
-  - intros H. rewrite H. rewrite <- beq_nat_refl. reflexivity.
+  - intros H. rewrite H. rewrite <- beq_nat_refl. T.reflexivity.
 Qed.
 
 (** However, even when the boolean and propositional formulations of a
@@ -1177,20 +1187,20 @@ Example even_1000 : exists k, 1000 = double k.
 (** The most direct proof of this fact is to give the value of [k]
     explicitly. *)
 
-Proof. exists 500. reflexivity. Qed.
+MProof. mexists 500. T.reflexivity. Qed.
 
 (** On the other hand, the proof of the corresponding boolean
     statement is even simpler: *)
 
 Example even_1000' : evenb 1000 = true.
-Proof. reflexivity. Qed.
+MProof. T.reflexivity. Qed.
 
 (** What is interesting is that, since the two notions are equivalent,
     we can use the boolean formulation to prove the other one without
     mentioning the value 500 explicitly: *)
 
 Example even_1000'' : exists k, 1000 = double k.
-Proof. apply even_bool_prop. reflexivity. Qed.
+MProof. ltac_apply even_bool_prop. T.reflexivity. Qed. (* FIXME apply doesn't understand <-> *)
 
 (** Although we haven't gained much in terms of proof size in this
     case, larger proofs can often be made considerably simpler by the
@@ -1207,12 +1217,12 @@ Proof. apply even_bool_prop. reflexivity. Qed.
 
 Lemma andb_true_iff : forall b1 b2:bool,
   b1 && b2 = true <-> b1 = true /\ b2 = true.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 
 Lemma orb_true_iff : forall b1 b2,
   b1 || b2 = true <-> b1 = true \/ b2 = true.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -1223,7 +1233,7 @@ Proof.
 
 Theorem beq_nat_false_iff : forall x y : nat,
   beq_nat x y = false <-> x <> y.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -1242,7 +1252,7 @@ Lemma beq_list_true_iff :
   forall A (beq : A -> A -> bool),
     (forall a1 a2, beq a1 a2 = true <-> a1 = a2) ->
     forall l1 l2, beq_list beq l1 l2 = true <-> l1 = l2.
-Proof.
+MProof.
 (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -1261,7 +1271,7 @@ Fixpoint forallb {X : Type} (test : X -> bool) (l : list X) : bool :=
 
 Theorem forallb_true_iff : forall X test (l : list X),
    forallb test l = true <-> All (fun x => test x = true) l.
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 
 (** Are there any important properties of the function [forallb] which
@@ -1298,9 +1308,9 @@ Definition excluded_middle := forall P : Prop,
 
 Theorem restricted_excluded_middle : forall P b,
   (P <-> b = true) -> P \/ ~ P.
-Proof.
-  intros P [] H.
-  - left. rewrite H. reflexivity.
+MProof.
+  pintros \P [|] \H.
+  - left. rewrite H. T.reflexivity.
   - right. rewrite H. intros contra. inversion contra.
 Qed.
 
@@ -1309,12 +1319,13 @@ Qed.
 
 Theorem restricted_excluded_middle_eq : forall (n m : nat),
   n = m \/ n <> m.
-Proof.
+MProof.
   intros n m.
   apply (restricted_excluded_middle (n = m) (beq_nat n m)).
-  symmetry.
-  apply beq_nat_true_iff.
-Qed.
+  Fail T.symmetry. (* FIXME symmetry doesn't understand <-> *)
+  Fail apply beq_nat_true_iff.
+Fail Qed.
+Abort.
 
 (** It may seem strange that the general excluded middle is not
     available by default in Coq; after all, any given claim must be
@@ -1394,7 +1405,7 @@ Qed.
 
 Theorem excluded_middle_irrefutable:  forall (P:Prop),
   ~ ~ (P \/ ~ P).
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -1414,7 +1425,7 @@ Theorem not_exists_dist :
   excluded_middle ->
   forall (X:Type) (P : X -> Prop),
     ~ (exists x, ~ P x) -> (forall x, P x).
-Proof.
+MProof.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
@@ -1433,7 +1444,7 @@ Definition peirce := forall P Q: Prop,
   ((P->Q)->P)->P.
 
 Definition double_negation_elimination := forall P:Prop,
-  ~~P -> P.
+  ~ ~P -> P.
 
 Definition de_morgan_not_and_not := forall P Q:Prop,
   ~(~P /\ ~Q) -> P\/Q.
