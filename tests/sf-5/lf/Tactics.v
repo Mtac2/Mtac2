@@ -13,7 +13,7 @@
     - more details on how to reason by case analysis. *)
 
 Set Warnings "-notation-overridden,-parsing".
-Require Export Poly.
+From lf Require Export Poly.
 
 (* ################################################################# *)
 (** * The [apply] Tactic *)

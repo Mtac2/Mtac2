@@ -107,4 +107,7 @@ Ltac Mdestruct x := destruct x.
 Definition ltac_destruct {A} (x:A) := T.ltac (qualify "Mdestruct") [m:Dyn x].
 
 Ltac Mssrpattern p := ssrpattern p.
-Definition ssrpattern {A} (x:A) := T.ltac "Mssrpattern" [m: Dyn x].
+Definition ssrpattern {A} (x:A) := T.ltac (qualify "Mssrpattern") [m: Dyn x].
+
+Ltac Madmit := admit.
+Definition admit := T.ltac (qualify "Madmit") [m:].
