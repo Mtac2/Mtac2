@@ -1,0 +1,8 @@
+-R lf lf
+lf/Preface.v
+lf/Basics.v
+lf/Induction.v
+lf/Lists.v
+lf/Poly.v
+lf/Tactics.v
+lf/Logic.v
