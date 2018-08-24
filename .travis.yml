@@ -12,9 +12,10 @@ install:
 - opam init -y
 - eval $(opam config env)
 - opam config var root
-- travis_wait opam repo add coq-released https://coq.inria.fr/opam/released || echo
+- travis_wait opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev || echo
+- travis_wait opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev || echo
 - travis_wait opam update -y
-- travis_wait opam install -y coq.8.7.1 ocamlfind coq-unicoq
+- travis_wait opam install -y coq.dev ocamlfind coq-unicoq
 - opam list
 script:
 - ./configure.sh
