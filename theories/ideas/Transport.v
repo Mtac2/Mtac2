@@ -1,3 +1,4 @@
+Require Import Coq.Strings.String.
 From Mtac2 Require Import Base Logic Datatypes List Sorts DepDestruct MTeleMatch.
 Import Sorts.S.
 Import M. Import M.notations. Import Mtac2.lib.List.ListNotations.

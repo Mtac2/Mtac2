@@ -1,3 +1,4 @@
+Require Import Coq.Strings.String.
 From Mtac2 Require Import Base Specif Logic Datatypes MTele MTeleMatchDef.
 Import M.notations.
 
