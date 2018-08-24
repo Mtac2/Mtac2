@@ -3,7 +3,7 @@
 (** Before getting started, we need to import all of our
     definitions from the previous chapter: *)
 
-Require Export Basics.
+From lf Require Export Basics.
 
 (** For the [Require Export] to work, you first need to use
     [coqc] to compile [Basics.v] into [Basics.vo].  This is like

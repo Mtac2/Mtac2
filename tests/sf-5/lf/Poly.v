@@ -5,7 +5,7 @@
 
 (* Suppress some annoying warnings from Coq: *)
 Set Warnings "-notation-overridden,-parsing".
-Require Export Lists.
+From lf Require Export Lists.
 
 (*** Polymorphism *)
 
