@@ -471,6 +471,7 @@ MProof.
 Theorem not_true_is_false : forall b : bool,
   b <> true -> b = false.
 MProof.
+Set Printing All.
   pintros [| ] \H.
   - (* b = true *)
     unfold_in not H.
@@ -478,8 +479,7 @@ MProof.
     apply H. reflexivity.
   - (* b = false *)
     reflexivity.
-Fail Qed. (* FIXME *)
-Abort.
+Qed.
 
 (** Since reasoning with [ex_falso_quodlibet] is quite common, Coq
     provides a built-in tactic, [exfalso], for applying it. *)
@@ -493,8 +493,7 @@ MProof.
     exfalso.                (* <=== *)
     apply H. reflexivity.
   - (* b = true *) reflexivity.
-Fail Qed. (* FIXME *)
-Abort.
+Qed.
 
 (* ================================================================= *)
 (** ** Truth *)
@@ -547,12 +546,10 @@ Lemma not_true_iff_false : forall b,
 MProof.
   (* WORKED IN CLASS *)
   intros b. T.split.
-  - (* -> *) Fail apply not_true_is_false. (* FIXME (previous failure) *)
-    admit. (* FIXME admit does nothing *)
-(*   - (* <- *) *)
-(*     intros H. rewrite H. intros H'. inversion H'. *)
-(* Qed. *)
-Abort.
+  - (* -> *) apply not_true_is_false.
+  - (* <- *)
+    intros H. rewrite H. intros H'. inversion H'.
+Qed.
 
 (** **** Exercise: 1 star, optional (iff_properties)  *)
 (** Using the above proof that [<->] is symmetric ([iff_sym]) as

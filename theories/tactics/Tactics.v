@@ -228,10 +228,12 @@ Definition destructn (n : nat) : tactic :=
     then no subgoal is generated. If it isn't dependent (a ->), then
     it is included in the list of next subgoals. *)
 Definition apply {T} (c : T) : tactic := fun g=>
-  match g with Goal _ eg =>
+  match g with @Goal s t eg =>
     (mfix1 go (d : dyn) : M (mlist (unit *m goal)) :=
       dcase d as el in
-      mif M.cumul UniCoq el eg then M.ret [m:] else
+      (* we don't want to see the S.selem_of term in the user's term, so we reduce it *)
+      let ty := dreduce (@S.selem_of) (S.selem_of t) in
+      mif @M.cumul _ ty UniCoq el eg then M.ret [m:] else
         mmatch d return M (mlist (unit *m goal)) with
         | [? (T1 : Prop) T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
