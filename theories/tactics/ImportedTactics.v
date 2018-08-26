@@ -112,3 +112,6 @@ Definition ssrpattern {A} (x:A) := T.ltac (qualify "Mssrpattern") [m: Dyn x].
 
 Ltac Madmit := admit.
 Definition admit := T.ltac (qualify "Madmit") [m:].
+
+Ltac Mcase n := case n.
+Definition case {A} (x:A) := T.ltac (qualify "Mcase") [m: Dyn x].

@@ -66,15 +66,19 @@ Fixpoint mmap_plist (f: LIP -> tactic) (l: mlist LIP) : mlist tactic :=
   | a :m: l' => f a :m: mmap_plist f l'
   end.
 
+Definition case0 :=
+  A <- M.evar _;
+  T.intro_base Generate (fun x:A=>case x;; T.clear x).
+
 Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
   match ip return tactic with
   | IntroNoOp => T.idtac
   | IntroAnon => T.introsn 1
   | IntroB binder =>
     T.intro_simpl (FreshFrom binder)
-  | IntroC [m:] => T.destructn 0
+  | IntroC [m:] => case0
   | IntroC ips =>
-    T.destructn 0 &> mmap_plist do_intro ips
+    case0 &> mmap_plist do_intro ips
   | IntroR d =>
     T.introsn 1;;
     l <- M.hyps;
