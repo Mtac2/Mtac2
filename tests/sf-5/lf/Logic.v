@@ -534,9 +534,7 @@ Theorem iff_sym : forall P Q : Prop,
   (P <-> Q) -> (Q <-> P).
 MProof.
   (* WORKED IN CLASS *)
-  Fail pintros \P Q [| \HAB HBA]. (* FIXME: ExceptionNotGround coming from destruct *)
-  intros P Q H.
-  elim H &> [i: \HAB HBA].
+  pintros \P Q [| \HAB HBA].
   T.split.
   - (* -> *) apply HBA.
   - (* <- *) apply HAB.  Qed.
@@ -604,8 +602,7 @@ MProof.
     + left. apply H.
     + right. left. apply H.
     + right. right. apply H.
-Fail Qed. (* FIXME destruct is breaking something again *)
-Abort.
+Qed.
 
 (** We can now use these facts with [rewrite] and [reflexivity] to
     give smooth proofs of statements involving equivalences.  Here is
@@ -729,8 +726,7 @@ MProof.
   pintros \n [| \H | [| \H | [| ]]] /=.
   - mexists 1. rewrite <- H. T.reflexivity.
   - mexists 2. rewrite <- H. T.reflexivity.
-Fail Qed. (* FIXME again destruct doing something wrong *)
-Abort.
+Qed.
 (** (Notice the use of the empty pattern to discharge the last case
     _en passant_.) *)
 
