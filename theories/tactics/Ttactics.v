@@ -180,7 +180,6 @@ Definition lower {A} (t: ttac A) : M A :=
 
 
 Module MatchGoalTT.
-Import Abstract.
 Import TacticsBase.T.notations.
 Import Mtac2.lib.Logic.
 Inductive goal_pattern : Prop :=
