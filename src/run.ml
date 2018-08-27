@@ -740,7 +740,7 @@ let new_env (env, sigma) hyps =
 
 let make_evar sigma env ty =
   if isSort sigma ty && ty <> mkProp then
-    let sigma, (evar, _) = Evarutil.new_type_evar env sigma Evd.UnivRigid in
+    let sigma, (evar, _) = Evarutil.new_type_evar env sigma (Evd.UnivFlexible true) in
     sigma, evar
   else
     let sigma, evar = Evarutil.new_evar env sigma ty in

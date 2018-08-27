@@ -1,7 +1,7 @@
 Require Import Strings.String.
 Require Import ssrmatching.ssrmatching.
 From Mtac2 Require Export Base.
-From Mtac2 Require Import Logic Datatypes List Utils Logic Abstract intf.Sorts.
+From Mtac2 Require Import Logic Datatypes List Utils Logic intf.Sorts.
 Import Sorts.S.
 Import M.notations.
 Import Mtac2.lib.List.ListNotations.
