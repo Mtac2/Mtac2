@@ -115,3 +115,6 @@ Definition admit := T.ltac (qualify "Madmit") [m:].
 
 Ltac Mcase n := case n.
 Definition case {A} (x:A) := T.ltac (qualify "Mcase") [m: Dyn x].
+
+Ltac Mcase_eq n := case_eq n.
+Definition case_eq {A} (x:A) := T.ltac (qualify "Mcase_eq") [m: Dyn x].
