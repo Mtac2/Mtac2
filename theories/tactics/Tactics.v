@@ -360,11 +360,19 @@ Definition cassert {A} (cont : A -> tactic) : tactic := fun g=>
 (** [cut U] creates two goals with types [U -> T] and [U], where
     [T] is the type of the current goal. *)
 Definition cut (U : Type) : tactic := fun g =>
-  T <- M.goal_type g;
-  ut <- M.evar (U -> T);
-  u <- M.evar U;
-  exact (ut u) g;;
-  M.ret [m:(m: tt,Goal SType ut)| (m: tt,Goal SType u)].
+  match g with
+  | @Goal SProp T _ =>
+    ut <- M.evar (U -> T);
+    u <- M.evar U;
+    exact (ut u) g;;
+    M.ret [m:(m: tt,Goal SProp ut)| (m: tt,Goal SType u)]
+  | @Goal SType T _ =>
+    ut <- M.evar (U -> T);
+    u <- M.evar U;
+    exact (ut u) g;;
+    M.ret [m:(m: tt,Goal SType ut)| (m: tt,Goal SType u)]
+  | _ => M.raise NotAGoal
+  end.
 
 (* performs simpl in each hypothesis and in the goal *)
 Definition simpl_in_all : tactic := fun g =>
@@ -373,14 +381,22 @@ Definition simpl_in_all : tactic := fun g =>
     let A := rsimpl A in
     M.ret (@ahyp A x ot :m: hyps)
   ) [m:] =<< M.hyps;
-  T <- M.goal_type g;
-  let T := rsimpl T in
-  e <- M.Cevar T l; (* create the new goal in the new context *)
-  (* we need normal unification since g might be a compound value *)
-  oeq <- M.unify g (Goal SType e) UniCoq;
-  match oeq with
-  | mSome (meq_refl _) => M.ret [m:(m: tt,Goal SType e)]
-  | _ => M.raise exception (* should never happen *)
+  match g with
+  | @Goal SProp T e' =>
+    let T := rsimpl T in
+    e <- M.Cevar T l; (* create the new goal in the new context *)
+      (* we need normal unification since g might be a compound value *)
+    mif M.unify e' e UniMatchNoRed then
+      M.ret [m:(m: tt,Goal SProp e)]
+    else M.failwith "simpl_in_all: Prop"
+  | @Goal SType T e' =>
+    let T := rsimpl T in
+    e <- M.Cevar T l; (* create the new goal in the new context *)
+      (* we need normal unification since g might be a compound value *)
+    mif M.unify e' e UniMatchNoRed then
+      M.ret [m:(m: tt,Goal SType e)]
+    else M.failwith "simpl_in_all: Type"
+  | _ => M.raise NotAGoal
   end.
 
 Definition reduce_in (r : Reduction) {P} (H : P) : tactic := fun g =>
