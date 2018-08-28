@@ -48,7 +48,7 @@ Ltac rrewrite5 a b c d e := rewrite a, b, c, d, e.
 
 Definition compute_terminator {A} (l: mlist A) : M string :=
   match l with
-  | [m:] => M.failwith "At least one required"
+  | [m:] => M.ret "_all" (* for rewrite_in *)
   | [m: _] => M.ret "1"
   | _ :m: [m:_] => M.ret "2"
   | _ :m: _ :m: [m:_] => M.ret "3"
@@ -58,10 +58,10 @@ Definition compute_terminator {A} (l: mlist A) : M string :=
   end%string.
 
 Ltac lrewrite1 a := rewrite <- a.
-Ltac lrewrite2 a b := rewrite <- a, b.
-Ltac lrewrite3 a b c := rewrite <- a, b, c.
-Ltac lrewrite4 a b c d := rewrite <- a, b, c, d.
-Ltac lrewrite5 a b c d e := rewrite <- a, b, c, d, e.
+Ltac lrewrite2 a b := rewrite <- a, <- b.
+Ltac lrewrite3 a b c := rewrite <- a, <- b, <- c.
+Ltac lrewrite4 a b c d := rewrite <- a, <- b, <- c, <- d.
+Ltac lrewrite5 a b c d e := rewrite <- a, <- b, <- c, <- d, <- e.
 
 Inductive RewriteDirection := LeftRewrite | RightRewrite.
 
@@ -80,6 +80,40 @@ Notation "'rewrite' '<-' x , .. , z" :=
 Notation "'rewrite' x , .. , z" :=
   (trewrite RightRewrite (mcons (Dyn x) .. (mcons (Dyn z) [m:]) ..))
     (at level 0, x at next level, z at next level).
+
+Ltac in_rrewrite_all x := rewrite x in *.
+Ltac in_rrewrite1 x a := rewrite x in a.
+Ltac in_rrewrite2 x a b := rewrite x in a, b.
+Ltac in_rrewrite3 x a b c := rewrite x in a, b, c.
+Ltac in_rrewrite4 x a b c d := rewrite x in a, b, c, d.
+Ltac in_rrewrite5 x a b c d e := rewrite x in a, b, c, d, e.
+
+Ltac in_lrewrite_all x := rewrite <- x in *.
+Ltac in_lrewrite1 x a := rewrite <- x in a.
+Ltac in_lrewrite2 x a b := rewrite <- x in a, b.
+Ltac in_lrewrite3 x a b c := rewrite <- x in a, b, c.
+Ltac in_lrewrite4 x a b c d := rewrite <- x in a, b, c, d.
+Ltac in_lrewrite5 x a b c d e := rewrite <- x in a, b, c, d, e.
+
+Definition trewrite_in {T} (d: RewriteDirection) (x: T) (args: mlist dyn) : tactic := \tactic g =>
+  ter <- compute_terminator args;
+  let prefix := match d with LeftRewrite => "l"%string | RightRewrite => "r"%string end in
+  let name := reduce RedNF (qualify ("in_"++prefix++"rewrite"++ter)) in
+  T.ltac name (Dyn x :m: args) g.
+
+Notation "'rewrite_in' '->' a ; x , .. , z" :=
+  (trewrite_in RightRewrite a (mcons (Dyn x) .. (mcons (Dyn z) [m:]) ..))
+    (at level 0, x at next level, z at next level).
+Notation "'rewrite_in' '<-' a ; x , .. , z" :=
+  (trewrite_in LeftRewrite a (mcons (Dyn x) .. (mcons (Dyn z) [m:]) ..))
+    (at level 0, x at next level, z at next level).
+Notation "'rewrite_in' a ; x , .. , z" :=
+  (trewrite_in RightRewrite a (mcons (Dyn x) .. (mcons (Dyn z) [m:]) ..))
+    (at level 0, x at next level, z at next level).
+
+Notation "'rewrite_*' '->' a" := (trewrite_in RightRewrite a [m:]) (at level 0).
+Notation "'rewrite_*' '<-' a" := (trewrite_in LeftRewrite a [m:]) (at level 0).
+Notation "'rewrite_*' a" := (trewrite_in a [m:]) (at level 0).
 
 Ltac Melim h := elim h.
 Definition elim {A} (x:A) : tactic :=
