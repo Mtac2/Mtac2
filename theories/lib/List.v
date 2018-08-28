@@ -205,12 +205,12 @@ Fixpoint mfirstn {A} (n:nat)(l:mlist A) : mlist A :=
     end
   end.
 
-Fixpoint skipn {A} (n:nat)(l:mlist A) : mlist A :=
+Fixpoint mskipn {A} (n:nat)(l:mlist A) : mlist A :=
   match n with
   | 0 => l
   | S n => match l with
 	  | mnil => mnil
-	  | a:m:l => skipn n l
+	  | a:m:l => mskipn n l
     end
   end.
 
