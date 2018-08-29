@@ -1,4 +1,4 @@
-From Mtac2 Require Import Datatypes intf.Sorts.
+From Mtac2 Require Import Datatypes Logic intf.Sorts.
 Import Sorts.S.
 
 Set Universe Polymorphism.
@@ -13,4 +13,5 @@ Inductive goal :=
   | Goal : forall (s:Sort){A:stype_of s}, selem_of A -> goal
   | AHyp : forall {A:Type}, (A -> goal) -> goal
   | HypLet : Type -> goal -> goal
-  | HypRem : forall {A:Type}, A -> goal -> goal.
+  | HypRem : forall {A:Type}, A -> goal -> goal
+  | HypReplace : forall {A B:Type}, A -> A =m= B -> goal -> goal.

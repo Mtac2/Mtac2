@@ -400,27 +400,25 @@ Definition simpl_in_all : tactic := fun g =>
   end.
 
 Definition reduce_in (r : Reduction) {P} (H : P) : tactic := fun g =>
-  l' <- M.map (fun '(@ahyp T v def) =>
-    mif M.cumul UniMatchNoRed H v then
-      let T' := reduce r T in M.ret (@ahyp T' v def)
-    else M.ret (ahyp v def)) =<< M.hyps;
-  match g with
-  | @Goal SType gT _ =>
-    e <- M.Cevar gT l';
-    oeq <- M.unify (Goal SType e) g UniCoq;
-    match oeq with
-    | mSome _ => M.ret [m:(m: tt,Goal SType e)]
-    | _ => M.failwith "reduce_in: impossible"
-    end
-  | @Goal SProp gT _ =>
-    e <- M.Cevar gT l';
-    oeq <- M.unify (Goal SProp e) g UniCoq;
-    match oeq with
-    | mSome _ => M.ret [m:(m: tt,Goal SProp e)]
-    | _ => M.failwith "reduce_in: impossible"
-    end
-  | _ => M.raise NotAGoal
-  end.
+  let P' := reduce r P in
+  M.replace (A:=P) (B:=P') H meq_refl (
+    match g with
+    | @Goal SType gT _ =>
+      e <- M.evar gT;
+      oeq <- M.unify (Goal SType e) g UniCoq;
+      match oeq with
+      | mSome _ => M.ret [m:(m: tt, HypReplace (A:=P) (B:=P') H meq_refl (Goal SType e))]
+      | _ => M.failwith "reduce_in: impossible"
+      end
+    | @Goal SProp gT _ =>
+      e <- M.evar gT;
+      oeq <- M.unify (Goal SProp e) g UniCoq;
+      match oeq with
+      | mSome _ => M.ret [m:(m: tt, HypReplace (A:=P) (B:=P') H meq_refl (Goal SProp e))]
+      | _ => M.failwith "reduce_in: impossible"
+      end
+    | _ => M.raise NotAGoal
+    end).
 
 Definition simpl_in {P} (H : P) : tactic :=
   reduce_in RedSimpl H.

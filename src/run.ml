@@ -122,6 +122,8 @@ module Goal = struct
               None
         | 3 -> (* RemHyp *)
             eog args.(2)
+        | 4 -> (* HypReplace *)
+            eog args.(4)
         | _ -> failwith "Should not happen"
       else
         CErrors.user_err Pp.(app (str "Not a goal: ") (Termops.print_constr_env env sigma goal))
@@ -781,6 +783,16 @@ let env_without sigma env renv x =
   let env = push_named_context name_env env in
   env, build_hypotheses sigma env (* TODO: we should do something smarter here, rebuilding everything is costly *)
 
+(* builds the context without x (which should be a variable) *)
+let env_replacing sigma env renv x ty =
+  let open Context.Named.Declaration in
+  let name_env = named_context env in
+  let env = Environ.reset_context env in
+  let nx = destVar sigma x in
+  let name_env = List.map (fun decl -> if get_id decl <> nx then decl else map_type (fun _ -> ty) decl) name_env in
+  let env = push_named_context name_env env in
+  env, build_hypotheses sigma env (* TODO: we should do something smarter here, rebuilding everything is costly *)
+
 let is_nu env sigma x nus =
   let open Context.Named.Declaration in
   let env = named_context env in
@@ -1250,6 +1262,15 @@ let rec run' ctxt (vms : vm list) =
                             (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus} (Code (of_econstr t) :: Rem (env, ctxt.renv, isnu) :: vms)
                           else
                             efail (E.mkCannotRemoveVar sigma env x)
+                        else
+                          efail (E.mkNotAVar sigma env x)
+
+                    | MConstr (Mreplace, (_, tyB, _, x, _, t)) ->
+                        let tyB = to_econstr tyB in
+                        let x = to_econstr x in
+                        if isVar sigma x then
+                          let env', (sigma, renv') = env_replacing sigma env ctxt.renv x tyB in
+                          (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma} (Code t :: vms)
                         else
                           efail (E.mkNotAVar sigma env x)
 

@@ -80,6 +80,7 @@ type 'a mconstr_head =
   | Mreset_timer : (arg_type * arg_any) mconstr_head
   | Mprint_timer : (arg_type * arg_any) mconstr_head
   | Mkind_of_term : (arg_type * arg_any) mconstr_head
+  | Mreplace : (arg_type * arg_type * arg_type * arg_any * arg_any * arg_any) mconstr_head
 and mhead = | MHead : 'a mconstr_head -> mhead
 and mconstr = | MConstr : 'a mconstr_head * 'a -> mconstr
 

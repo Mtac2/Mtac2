@@ -192,6 +192,10 @@ Definition let_close_goals {A: Type} {B:Type} (y : B) : mlist (A *m goal) -> M (
 Definition rem_hyp {A B} (x : B) (l: mlist (A *m goal)) : M (mlist (A *m goal)) :=
   let v := dreduce (@mmap) (mmap (fun '(m: y,g) => (m: y, HypRem x g)) l) in M.ret v.
 
+(** [rep_hyp x l] "replaces" hypothesis [x] from the list of goals [l]. *)
+Definition rep_hyp {A B C} (x : A) (e : A =m= B) (l: mlist (C *m goal)) : M (mlist (C *m goal)) :=
+  let v := dreduce (@mmap) (mmap (fun '(m: y,g) => (m: y, HypReplace x e g)) l) in M.ret v.
+
 (** Returns if a goal is open, i.e., a meta-variable. *)
 Definition is_open : goal -> M bool := mfix1 is_open (g : goal) : M _ :=
   match g with
@@ -205,6 +209,7 @@ Definition is_open : goal -> M bool := mfix1 is_open (g : goal) : M _ :=
       (nu will raise an exception otherwise) *)
     M.nu_let Generate f (fun _ : A =>is_open)
   | HypRem _ g => is_open g (* we don't care about the variable *)
+  | HypReplace _ _ g => is_open g (* we don't care about the variable *)
   end.
 
 (** removes the goals that were solved *)
@@ -226,6 +231,8 @@ Definition open_and_apply {A} (t : gtactic A) : gtactic A :=
         open g >>= let_close_goals x)
     | HypRem x f =>
       M.remove x (open f) >>= rem_hyp x
+    | HypReplace x e f =>
+      M.replace x e (open f) >>= rep_hyp x e
     end.
 
 (** Sequencing *)
