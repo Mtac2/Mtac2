@@ -314,6 +314,12 @@ Definition print_timer : forall {A} (a : A), t unit.
 Definition kind_of_term: forall{A: Type}, A -> t tm_kind.
   make. Qed.
 
+(** [@replace A B _ x eq t] excecutes [t] in the context resulting from replacing
+    the type [A] of hypothesis [x] with [B], using the [eq] witness of their
+    equality. *)
+Definition replace {A B C} (x:A) : A =m= B -> t C -> t C.
+  make. Qed.
+
 Arguments t _%type.
 
 Definition fmap {A:Type} {B:Type} (f : A -> B) (x : t A) : t B :=
