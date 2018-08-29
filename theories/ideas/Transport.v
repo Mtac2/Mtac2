@@ -19,7 +19,7 @@ Definition get_ind_cts (A : Type) (offset : nat) : M (nat * {s : Sort & { it : I
   ind <- get_ind A;
   let (nsortit, constrs) := ind in
   (* drop first `offset` constructors. *)
-  let constrs := skipn offset constrs in
+  let constrs := mskipn offset constrs in
   let (nindx, sortit) := nsortit in
   let (isort, it) := sortit in
   atele <- get_ind_atele it nindx A;
