@@ -11,10 +11,10 @@ Qed.
 Goal 2+3 = 4 -> 2+2 = 3 -> 5 = 3.
 MProof.
   intros H1 H2.
-  T.simpl_in H1 &> T.simpl_in H2. (* FIXME concatenation of simpl_in doesn't work *)
-  Fail rewrite H1, H2.
-  Fail T.reflexivity.
-Abort.
+  T.simpl_in H1 &> T.simpl_in H2. (* #101 concatenation of simpl_in doesn't work *)
+  rewrite H1, H2.
+  T.reflexivity.
+Qed.
 
 Goal True.
 MProof.
