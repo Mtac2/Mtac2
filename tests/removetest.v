@@ -52,3 +52,23 @@ MProof.
   - T.reflexivity.
   - T.reflexivity.
 Qed.
+
+(* Bug #103 *)
+Goal True -> True.
+MProof.
+  intro x.
+  T.try (T.clear x &> T.raise NotAGoal).
+  T.assumption.
+Qed.
+
+Goal True -> True -> True.
+MProof.
+  cintros x y {- T.try (T.clear x &> T.raise NotAGoal) -}.
+  T.assumption.
+Qed.
+
+Goal True -> True -> True.
+MProof.
+  cintros x y {- T.try (T.clear y &> T.raise NotAGoal) -}.
+  T.assumption.
+Qed.
