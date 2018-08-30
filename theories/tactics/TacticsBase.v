@@ -373,7 +373,7 @@ Module notations.
   (* This notation makes sure that [t] is in [MC] scope ands casts the resulting
   lambda into a [tactic] to make sure that it can be ran. *)
   Notation "\tactic g => t" :=
-    ((fun g => t%MC) : tactic) (at level 200, g at level 0, right associativity).
+    ((fun g => t%MC) : gtactic _) (at level 200, g at level 0, right associativity).
 
   Notation "r '<-' t1 ';' t2" := (bind t1 (fun r => t2%tactic))
     (at level 20, t1 at level 100, t2 at level 200,

@@ -179,13 +179,23 @@ Definition generalize {A} (x : A) : tactic := fun g =>
 
 (** Clear hypothesis [x] and continues the execution on [cont] *)
 Definition cclear {A B} (x:A) (cont : gtactic B) : gtactic B := fun g=>
-  gT <- M.goal_type g;
-  ''(e,l) <- M.remove x (
-    e <- M.evar gT;
-    l <- cont (@Goal SType _ e);
-    M.ret (e, l));
-  exact e g;;
-  rem_hyp x l.
+  match g with
+  | @Goal SProp gT _ =>
+    ''(e,l) <- M.remove x (
+      e <- M.evar gT;
+      l <- cont (@Goal SProp _ e);
+      M.ret (e, l));
+    exact e g;;
+    rem_hyp x l
+  | @Goal SType gT _ =>
+    ''(e,l) <- M.remove x (
+      e <- M.evar gT;
+      l <- cont (@Goal SType _ e);
+      M.ret (e, l));
+    exact e g;;
+    rem_hyp x l
+  | _ => M.raise NotAGoal
+  end.
 
 Definition clear {A} (x : A) : tactic := cclear x idtac.
 
@@ -716,7 +726,7 @@ Definition select (T : Type) : gtactic T :=
   match_goal with [[ x : T |- A ]] => T.ret x end.
 
 (** generalize with clear *)
-Definition cmove_back {A} (x : A) (cont : tactic) : tactic :=
+Definition cmove_back {A B} (x : A) (cont : gtactic B) : gtactic B :=
   generalize x ;; cclear x cont.
 Notation "'move_back' x" := (cmove_back x idtac) (at level 50).
 
@@ -727,4 +737,28 @@ Definition first {B} : mlist (gtactic B) -> gtactic B :=
     | x :m: xs => x || go xs
     end.
 
+(** [act_on x f] pulls all hypotheses until [x] back to the goal, calls [f x],
+    and then pushes back every hypotheses again. *)
+Fixpoint act_on_aux {A} (x: A) (hyps: mlist Hyp) (accu: mlist (Type *m name)): gtactic (mlist (Type *m name)) := \tactic g=>
+  match hyps with
+  | [m: ] => M.raise NotAVar
+  | (@ahyp T y _ :m: hyps) =>
+    mif M.cumul UniMatchNoRed x y then
+      ret accu g
+    else
+      name <- M.pretty_print y;
+      cmove_back y (act_on_aux x hyps ((m: T, TheName name) :m: accu)) g
+    end.
+
+(* Definition act_on {A} (x: A) := \tactic g=> *)
+(*   hyps <- M.hyps; *)
+(*   ''(m: names, [m:  <- act_on_aux x hyps [m:] g; *)
+
+
+Example test (x y z : nat) : True.
+MProof.
+  hyps <- M.hyps;
+  act_on_aux x hyps [m:];; idtac.
+  exact (fun _ _=>I).
+Qed.
 End T.
