@@ -22,3 +22,14 @@ MProof.
   - T.apply id.
   - T.exact I.
 Qed.
+
+Inductive test_i :=
+| Zero : nat -> test_i
+| One : test_i -> test_i
+| Two : test_i -> test_i -> test_i.
+
+Goal forall g:test_i, g = g.
+MProof.
+  (* #97 intros wasn't creating evars for each type *)
+  T.destructn 0 &> intros n &> T.reflexivity.
+Qed.

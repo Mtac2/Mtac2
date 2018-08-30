@@ -602,8 +602,11 @@ Module notations.
   Notation "'intro' x" :=
     (T <- M.evar Type; @intro_cont T _ (fun x=>idtac))
     (at level 40) : tactic_scope.
+  Notation "'evar_intro_cont' t" :=
+    (T <- M.evar Type; @intro_cont T _ t)
+    (at level 40) : tactic_scope.
   Notation "'intros' x .. y" :=
-    (intro_cont (fun x=>.. (intro_cont (fun y=>idtac)) ..))
+    (evar_intro_cont (fun x=>.. (evar_intro_cont (fun y=>idtac)) ..))
     (at level 0, x binder, y binder, right associativity) : tactic_scope.
   Notation "'intros'" := intros_all : tactic_scope.
 
