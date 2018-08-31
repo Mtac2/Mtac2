@@ -728,7 +728,7 @@ Definition select (T : Type) : gtactic T :=
 (** generalize with clear *)
 Definition cmove_back {A B} (x : A) (cont : gtactic B) : gtactic B :=
   generalize x ;; cclear x cont.
-Notation "'move_back' x" := (cmove_back x idtac) (at level 50).
+Definition move_back {A} (x: A) := cmove_back x idtac.
 
 Definition first {B} : mlist (gtactic B) -> gtactic B :=
   fix go l : gtactic B :=
@@ -737,28 +737,30 @@ Definition first {B} : mlist (gtactic B) -> gtactic B :=
     | x :m: xs => x || go xs
     end.
 
-(** [act_on x f] pulls all hypotheses until [x] back to the goal, calls [f x],
-    and then pushes back every hypotheses again. *)
-Fixpoint act_on_aux {A} (x: A) (hyps: mlist Hyp) (accu: mlist (Type *m name)): gtactic (mlist (Type *m name)) := \tactic g=>
-  match hyps with
-  | [m: ] => M.raise NotAVar
-  | (@ahyp T y _ :m: hyps) =>
-    mif M.cumul UniMatchNoRed x y then
-      ret accu g
-    else
-      name <- M.pretty_print y;
-      cmove_back y (act_on_aux x hyps ((m: T, TheName name) :m: accu)) g
-    end.
 
-(* Definition act_on {A} (x: A) := \tactic g=> *)
-(*   hyps <- M.hyps; *)
-(*   ''(m: names, [m:  <- act_on_aux x hyps [m:] g; *)
+(** Auxiliar function of [act_on]. It pulls hypotheses until it reaches [x], and
+    returns the names of the once used. *)
+Definition move_until_aux {A} (x: A) : gtactic (mlist name) :=
+  (fix move_until_aux (accu: mlist name) (hyps: mlist Hyp) := \tactic g=>
+    match hyps with
+    | [m: ] => M.raise NotAVar
+    | (ahyp y _ :m: hyps) =>
+      mif M.cumul UniMatchNoRed x y then
+        ret accu g
+      else
+        name <- M.pretty_print y;
+        cmove_back y (move_until_aux (TheName name :m: accu) hyps) g
+      end) [m:] =<< M.hyps.
 
+(** [move_until x] moves back to the goal as many variables as there are below [x] *)
+Definition move_until {A} (x: A) : tactic :=
+  move_until_aux x;; idtac.
 
-Example test (x y z : nat) : True.
-MProof.
-  hyps <- M.hyps;
-  act_on_aux x hyps [m:];; idtac.
-  exact (fun _ _=>I).
-Qed.
+(** [intros_names names] introduces as many variables as names in [names] *)
+Fixpoint intros_names (names : mlist name) : tactic :=
+  match names with
+  | [m:] => idtac
+  | name :m: names => T <- M.evar Type; intro_base name (fun x:T=>intros_names names)
+  end.
+
 End T.

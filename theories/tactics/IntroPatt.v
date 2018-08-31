@@ -103,4 +103,14 @@ Notation "'pintros' l1 .. ln" := (do_intro (LIP_app l1%IP .. (LIP_app ln%IP lnil
 
 Notation "[i: l1 | .. | ln ]" := (mcons (pintros l1) ( .. (mcons (pintros ln) mnil) ..)) (at level 0).
 
+
+(** [act_on x f] pulls all hypotheses until [x] back to the goal, calls [f x],
+    and then pushes back every hypotheses again. *)
+Definition act_on {A} (x: A) (f: A->tactic) (i: mlist tactic) : tactic := \tactic g=>
+  names <- T.move_until_aux x g;
+  match names with
+  | [m: (m: names, g)] => T.open_and_apply (f x &> i &> T.intros_names names)%tactic g
+  | _ => M.failwith "act_on: impossible"
+  end.
+
 Close Scope IP.

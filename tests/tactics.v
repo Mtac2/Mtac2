@@ -33,3 +33,11 @@ MProof.
   (* #97 intros wasn't creating evars for each type *)
   T.destructn 0 &> intros n &> T.reflexivity.
 Qed.
+
+Require Import Mtac2.tactics.IntroPatt.
+Example test (x y z : nat) (H: x = y) : y = x.
+MProof.
+  act_on x T.destruct [i: ~~ | \x'] &>
+    (`A B <- M.evar nat; T.select (A = B) >>= fun x=>rewrite x) &>
+    T.reflexivity.
+Qed.
