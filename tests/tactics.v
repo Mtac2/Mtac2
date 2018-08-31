@@ -35,9 +35,23 @@ MProof.
 Qed.
 
 Require Import Mtac2.tactics.IntroPatt.
-Example test (x y z : nat) (H: x = y) : y = x.
+Example ex_act_on (x y z : nat) (H: x = y) : y = x.
 MProof.
   act_on x T.destruct [i: ~~ | \x'] &>
     (`A B <- M.evar nat; T.select (A = B) >>= fun x=>rewrite x) &>
     T.reflexivity.
+Qed.
+
+Example ex_act_on2 (x y z : test_i) (H: x = y) : y = x.
+MProof.
+  act_on x T.destruct [i: ?? | ?? | \a ??] &>
+    (`A B <- M.evar test_i; T.select (A = B) >>= fun x=>rewrite x) &>
+    T.reflexivity.
+Qed.
+
+Example ex_specialize: (forall x, x >= 0) -> forall y, y >= 0.
+MProof.
+  intros f x.
+  T.specialize f x.
+  T.assumption.
 Qed.
