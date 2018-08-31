@@ -869,8 +869,10 @@ Definition print_goal (g : goal) : t unit :=
     | 0 => s
     | S n => repeat (c++s)%string n
     end) ""%string in
-  G <- goal_type g;
-  sg <- pretty_print G;
+  sg <- match g with
+        | @Goal _ G _ => pretty_print G
+        | _ => raise NotAGoal
+        end;
   let sep := repeat "="%string 20 in
   print_hyps;;
   print sep;;

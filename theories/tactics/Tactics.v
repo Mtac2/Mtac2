@@ -19,6 +19,7 @@ Module T.
 Export TacticsBase.T.
 
 (** Exceptions *)
+Mtac Do New Exception IntroDifferentType.
 Mtac Do New Exception NotAProduct.
 Mtac Do New Exception CantFindConstructor.
 Mtac Do New Exception ConstructorsStartsFrom1.
@@ -89,6 +90,11 @@ Definition intro_base {A B} (var : name) (t : A -> gtactic B) : gtactic B := fun
       nG <- M.abs_fun (P:=P) x e';
       exact nG g;;
       t x (Goal SType e') >>= close_goals x)
+
+  | [? B P e] @Goal SProp (forall x:B, P x : Prop) e =u>
+    mtry M.unify_or_fail UniCoq A B;; M.failwith "intros: impossible"
+    with _ => M.raise IntroDifferentType end
+
   | _ => M.raise NotAProduct
   end.
 
@@ -178,13 +184,23 @@ Definition generalize {A} (x : A) : tactic := fun g =>
 
 (** Clear hypothesis [x] and continues the execution on [cont] *)
 Definition cclear {A B} (x:A) (cont : gtactic B) : gtactic B := fun g=>
-  gT <- M.goal_type g;
-  ''(e,l) <- M.remove x (
-    e <- M.evar gT;
-    l <- cont (@Goal SType _ e);
-    M.ret (e, l));
-  exact e g;;
-  rem_hyp x l.
+  match g with
+  | @Goal SProp gT _ =>
+    ''(e,l) <- M.remove x (
+      e <- M.evar gT;
+      l <- cont (@Goal SProp _ e);
+      M.ret (e, l));
+    exact e g;;
+    rem_hyp x l
+  | @Goal SType gT _ =>
+    ''(e,l) <- M.remove x (
+      e <- M.evar gT;
+      l <- cont (@Goal SType _ e);
+      M.ret (e, l));
+    exact e g;;
+    rem_hyp x l
+  | _ => M.raise NotAGoal
+  end.
 
 Definition clear {A} (x : A) : tactic := cclear x idtac.
 
@@ -715,9 +731,9 @@ Definition select (T : Type) : gtactic T :=
   match_goal with [[ x : T |- A ]] => T.ret x end.
 
 (** generalize with clear *)
-Definition cmove_back {A} (x : A) (cont : tactic) : tactic :=
+Definition cmove_back {A B} (x : A) (cont : gtactic B) : gtactic B :=
   generalize x ;; cclear x cont.
-Notation "'move_back' x" := (cmove_back x idtac) (at level 50).
+Definition move_back {A} (x: A) := cmove_back x idtac.
 
 Definition first {B} : mlist (gtactic B) -> gtactic B :=
   fix go l : gtactic B :=
@@ -725,5 +741,31 @@ Definition first {B} : mlist (gtactic B) -> gtactic B :=
     | [m:] => T.raise NoProgress
     | x :m: xs => x || go xs
     end.
+
+
+(** Auxiliar function of [act_on]. It pulls hypotheses until it reaches [x], and
+    returns the names of the once used. *)
+Definition move_until_aux {A} (x: A) : gtactic (mlist name) :=
+  (fix move_until_aux (accu: mlist name) (hyps: mlist Hyp) := \tactic g=>
+    match hyps with
+    | [m: ] => M.raise NotAVar
+    | (ahyp y _ :m: hyps) =>
+      mif M.cumul UniMatchNoRed x y then
+        ret accu g
+      else
+        name <- M.pretty_print y;
+        cmove_back y (move_until_aux (TheName name :m: accu) hyps) g
+      end) [m:] =<< M.hyps.
+
+(** [move_until x] moves back to the goal as many variables as there are below [x] *)
+Definition move_until {A} (x: A) : tactic :=
+  move_until_aux x;; idtac.
+
+(** [intros_names names] introduces as many variables as names in [names] *)
+Fixpoint intros_names (names : mlist name) : tactic :=
+  match names with
+  | [m:] => idtac
+  | name :m: names => T <- M.evar Type; intro_base name (fun x:T=>intros_names names)
+  end.
 
 End T.
