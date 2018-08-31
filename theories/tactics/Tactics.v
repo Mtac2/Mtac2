@@ -20,6 +20,7 @@ Module T.
 Export TacticsBase.T.
 
 (** Exceptions *)
+Mtac Do New Exception IntroDifferentType.
 Mtac Do New Exception NotAProduct.
 Mtac Do New Exception CantFindConstructor.
 Mtac Do New Exception ConstructorsStartsFrom1.
@@ -90,6 +91,11 @@ Definition intro_base {A B} (var : name) (t : A -> gtactic B) : gtactic B := fun
       nG <- M.abs_fun (P:=P) x e';
       exact nG g;;
       t x (Goal SType e') >>= close_goals x)
+
+  | [? B P e] @Goal SProp (forall x:B, P x : Prop) e =u>
+    mtry M.unify_or_fail UniCoq A B;; M.failwith "intros: impossible"
+    with _ => M.raise IntroDifferentType end
+
   | _ => M.raise NotAProduct
   end.
 
