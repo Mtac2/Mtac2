@@ -315,7 +315,7 @@ Definition change_hyp {P Q} (H : P) (newH: Q) : tactic := fun g=>
   match g with
   | @Goal sort gT _ =>
      name <- M.get_binder_name H;
-     ''(m: gabs, abs) <- M.remove H (M.nu (FreshFromStr name) mNone (fun nH: Q=>
+     ''(m: gabs, abs) <- M.remove H (M.nu (TheName name) mNone (fun nH: Q=>
        r <- M.evar gT;
        abs <- M.abs_fun nH r;
        gabs <- M.abs_fun nH (Goal sort r);
@@ -768,5 +768,12 @@ Fixpoint intros_names (names : mlist name) : tactic :=
   | [m:] => idtac
   | name :m: names => T <- M.evar Type; intro_base name (fun x:T=>intros_names names)
   end.
+
+Definition specialize {A B} (f: forall x: A, B x) (x: A) : tactic :=
+  mif M.is_var f then
+    let Bx := reduce (RedWhd [rl: RedBeta]) (B x) in
+    change_hyp (Q:=Bx) f (f x)
+  else
+    M.raise NotAVar.
 
 End T.
