@@ -177,7 +177,7 @@ module Goal = struct
     let ids = List.map (fun v -> Term.mkVar (Declaration.get_id v)) evenv in
     let evar = (ev, Array.of_list ids) in
     let sigma, tg = mkTheGoal (of_constr @@ Evd.existential_type sigma evar) (of_constr @@ Term.mkEvar evar) sigma env in
-    compute sigma tg (List.rev evenv)
+    compute sigma tg evenv (* we're missing the removal of the variables not ocurring in evenv *)
 
 end
 
