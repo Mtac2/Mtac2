@@ -1,5 +1,7 @@
 Require Export Strings.String.
 Require Export Numbers.BinNums.
+Export Coq.Strings.String.
+Export Coq.NArith.BinNatDef.
 From Mtac2 Require Export Base List Logic Datatypes.
 From Mtac2.tactics Require Export Tactics ImportedTactics.
 
