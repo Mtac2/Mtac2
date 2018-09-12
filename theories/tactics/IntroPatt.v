@@ -1,3 +1,4 @@
+Require Import Coq.Strings.String.
 From Mtac2 Require Import List Base.
 From Mtac2.tactics Require Import TacticsBase Tactics ImportedTactics.
 Import Mtac2.lib.List.ListNotations.
