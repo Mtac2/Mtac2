@@ -160,8 +160,8 @@ module Goal = struct
                 compute sigma accu evenv (* same name and type, continue with the next *)
               else
                 begin
-                  let (_, conv) = Reductionops.infer_conv env sigma ty ty' in
-                  if conv then (* not same, but convertible *)
+                  if Option.has_some (Reductionops.infer_conv env sigma ty ty') then
+                    (* not same, but convertible *)
                     let sigma, accu = make_replace env sigma ty' ty id accu in
                     compute sigma accu evenv
                   else (* not same *)
@@ -174,9 +174,9 @@ module Goal = struct
               compute sigma accu evenv
           end
       | [] -> (sigma, accu) in
-    let ids = List.map (fun v -> Constr.mkVar (Declaration.get_id v)) evenv in
+    let ids = List.map (fun v -> EConstr.mkVar (Declaration.get_id v)) evenv in
     let evar = (ev, Array.of_list ids) in
-    let sigma, tg = mkTheGoal (of_constr @@ Evd.existential_type sigma evar) (of_constr @@ Constr.mkEvar evar) sigma env in
+    let sigma, tg = mkTheGoal (Evd.existential_type sigma evar) (EConstr.mkEvar evar) sigma env in
     compute sigma tg evenv (* we're missing the removal of the variables not ocurring in evenv *)
 
 end
