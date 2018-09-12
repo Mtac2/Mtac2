@@ -162,11 +162,11 @@ module Goal = struct
                 begin
                   let (_, conv) = Reductionops.infer_conv env sigma ty ty' in
                   if conv then (* not same, but convertible *)
-                    let sigma, accu = make_replace env sigma ty ty' id accu in
+                    let sigma, accu = make_replace env sigma ty' ty id accu in
                     compute sigma accu evenv
                   else (* not same *)
-                    let sigma, accu = make_remove env sigma ty id accu in
                     let sigma, accu = mkAHypOrDef (to_tuple nd) accu sigma env in
+                    let sigma, accu = make_remove env sigma ty' id accu in
                     compute sigma accu evenv
                 end
             with Not_found ->
