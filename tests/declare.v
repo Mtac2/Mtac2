@@ -54,7 +54,7 @@ Fixpoint defineN (n : nat) : M unit :=
     M.declare dok_Definition ("NAT"++s)%string false n;;
     defineN n
   end.
-Fail Print N0.
+Fail Print NAT0.
 Compute ltac:(mrun (defineN 4)).
 
 Print NAT0.
