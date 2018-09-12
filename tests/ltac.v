@@ -6,7 +6,7 @@ Require Import Bool.Bool.
 
 Ltac induction n := induction n.
 
-Definition qualify s := String.append "ltac." s.
+Definition qualify s := String.append "" s.
 
 Definition induction {A} (n:A) : tactic := ltac (qualify "induction") [m:Dyn n].
 
@@ -66,3 +66,10 @@ MProof.
   ltac (qualify "injection") [m:Dyn H].
   trivial.
 Qed.
+
+(** Testing that we can chain ltac tactics that modify the context *)
+Goal forall n m,  S n = S m -> n = m.
+MProof.
+  intros n m H.
+  induction n &> induction m &> T.try trivial.
+Abort.

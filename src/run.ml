@@ -66,6 +66,8 @@ module Goal = struct
   let mkGoal = mkUConstr "Goals.Goal"
   let mkAHyp = mkUConstr "Goals.AHyp"
   let mkHypLet = mkUConstr "Goals.HypLet"
+  let mkHypRemove = mkUConstr "Goals.HypRem"
+  let mkHypReplace = mkUConstr "Goals.HypReplace"
 
   let mkSType = Constrs.mkConstr "Mtac2.intf.Sorts.S.SType"
   let mkSProp = Constrs.mkConstr "Mtac2.intf.Sorts.S.SProp"
@@ -92,6 +94,17 @@ module Goal = struct
     | Some def ->
         let sigma, hyplet = mkHypLet sigma env in
         sigma, mkApp (hyplet, [|ty; mkLetIn(Name name,def,ty,body)|])
+
+  let make_replace env (sigma: evar_map) oldtype newtype id goal =
+    let var = mkVar id in
+    let sigma, eq = CoqEq.mkEqRefl sigma env oldtype var in
+    let sigma, rep = mkHypReplace sigma env in
+    sigma, mkApp (rep, [|oldtype;newtype;var;eq;goal |])
+
+  let make_remove env sigma ty id goal =
+    let var = mkVar id in
+    let sigma, rem = mkHypRemove sigma env in
+    sigma, mkApp (rem, [|ty;var;goal |])
 
   (* it assumes goal is of type goal *)
   let evar_of_goal sigma env =
@@ -131,23 +144,40 @@ module Goal = struct
 
   let goal_of_evar (env:env) sigma ev =
     let open Context.Named in
+    let open Declaration in
     let evinfo = Evd.find_undefined sigma ev in
-    let evenv = EConstr.named_context_of_val (evar_hyps evinfo) in
-    (* we remove the elements in the hypotheses that are shared with
-       the current env (old to new). *)
-    let newenv =
-      let rec remove = function
-        | (nd1 :: evenv) as l1, (nd2 :: env) ->
-            if Declaration.equal (eq_constr sigma) nd1 nd2 then
-              remove (evenv, env)
-            else
-              l1
-        | l1, _ -> l1 in
-      List.rev (remove (List.rev evenv, List.rev (named_context env))) in
-    let ids = List.map (fun v -> EConstr.mkVar (Declaration.get_id v)) evenv in
+    let evenv = named_context_of_val (evar_hyps evinfo) in
+    let env_list = named_context env in
+    let rec compute sigma accu = function
+      | nd :: evenv ->
+          begin
+            try
+              let id = get_id nd in
+              let nd' = lookup id env_list in
+              let ty = get_type nd in
+              let ty' = get_type nd' in
+              if eq_constr sigma ty ty' then
+                compute sigma accu evenv (* same name and type, continue with the next *)
+              else
+                begin
+                  let (_, conv) = Reductionops.infer_conv env sigma ty ty' in
+                  if conv then (* not same, but convertible *)
+                    let sigma, accu = make_replace env sigma ty' ty id accu in
+                    compute sigma accu evenv
+                  else (* not same *)
+                    let sigma, accu = mkAHypOrDef (to_tuple nd) accu sigma env in
+                    let sigma, accu = make_remove env sigma ty' id accu in
+                    compute sigma accu evenv
+                end
+            with Not_found ->
+              let sigma, accu = mkAHypOrDef (to_tuple nd) accu sigma env in
+              compute sigma accu evenv
+          end
+      | [] -> (sigma, accu) in
+    let ids = List.map (fun v -> Constr.mkVar (Declaration.get_id v)) evenv in
     let evar = (ev, Array.of_list ids) in
-    let sigma, tg = mkTheGoal (Evd.existential_type sigma evar) (EConstr.mkEvar evar) sigma env in
-    fold_inside (fun (sigma,s) v -> mkAHypOrDef (Declaration.to_tuple v) s sigma env) newenv ~init:(sigma,tg)
+    let sigma, tg = mkTheGoal (of_constr @@ Evd.existential_type sigma evar) (of_constr @@ Constr.mkEvar evar) sigma env in
+    compute sigma tg evenv (* we're missing the removal of the variables not ocurring in evenv *)
 
 end
 
