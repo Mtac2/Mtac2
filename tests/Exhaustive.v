@@ -1,3 +1,4 @@
+Require Import Strings.String.
 From Mtac2 Require Import Base List Exhaustive.
 Import M.notations.
 
