@@ -632,9 +632,9 @@ Module notations.
   Notation "'intros'" := intros_all : tactic_scope.
 
   Notation "'cintro' x '{-' t '-}'" :=
-    (intro_cont (fun x=>t)) (at level 0, right associativity) : tactic_scope.
+    (evar_intro_cont (fun x=>t)) (at level 0, right associativity) : tactic_scope.
   Notation "'cintros' x .. y '{-' t '-}'" :=
-    (intro_cont (fun x=>.. (intro_cont (fun y=>t)) ..))
+    (evar_intro_cont (fun x=>.. (evar_intro_cont (fun y=>t)) ..))
     (at level 0, x binder, y binder, t at next level, right associativity) : tactic_scope.
 
   Notation "'simpl'" := (treduce RedSimpl) : tactic_scope.
