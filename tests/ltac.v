@@ -73,3 +73,11 @@ MProof.
   intros n m H.
   induction n &> induction m &> T.try trivial.
 Abort.
+
+Goal forall n m,  1 + n = S m -> n = m.
+MProof.
+  intros n m H.
+  Ltac unf H := unfold Nat.add in H.
+  ltac "unf" [m: Dyn H] &> (select (_ = _) >>= fun H' => ltac "injection" [m: Dyn H']).
+  trivial.
+Qed.

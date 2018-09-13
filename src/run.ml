@@ -97,7 +97,8 @@ module Goal = struct
 
   let make_replace env (sigma: evar_map) oldtype newtype id goal =
     let var = mkVar id in
-    let sigma, eq = CoqEq.mkEqRefl sigma env oldtype var in
+    let sigma, sort = Evarutil.new_Type env sigma in
+    let sigma, eq = CoqEq.mkEqRefl sigma env sort oldtype in
     let sigma, rep = mkHypReplace sigma env in
     sigma, mkApp (rep, [|oldtype;newtype;var;eq;goal |])
 
