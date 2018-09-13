@@ -526,14 +526,18 @@ Definition progress {A} (t : gtactic A) : gtactic A := fun g =>
     changes or no goal is left. *)
 Definition repeat (t : tactic) : tactic :=
   fix0 _ (fun rec g =>
-    r <- try t g; (* if it fails, the execution will stop below *)
+    r <- filter_goals =<< try t g; (* if it fails, the execution will stop below *)
     match r with
     | [m:(m: _,g')] =>
       mmatch g with
-      | g' => M.ret [m:(m: tt,g)] (* the goal is the same, return *)
-      | _ => rec g'
+      | g' => M.ret [m:(m: tt,g)] (* the goal is the exact same, return *)
+      | _ => open_and_apply rec g'
       end
-    | _ => M.ret r
+    | [m:] => M.ret r
+    | l => (* got several goals, recurse on each *)
+      gs <- M.map (fun '(m: _ , g) =>open_and_apply rec g) l;
+      let res := dreduce (@mconcat, mapp) (mconcat gs) in
+      M.ret res
     end).
 
 Definition map_term (f : forall d:dynr, M d.(typer)) : forall d : dynr, M d.(typer) :=
