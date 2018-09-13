@@ -55,3 +55,8 @@ MProof.
   T.specialize f x.
   T.assumption.
 Qed.
+
+Example repeat_it: True /\ True /\ True  /\ (False -> False)  /\ True.
+MProof.
+  T.repeat (T.split || T.exact I || T.assumption || intros).
+Qed.
