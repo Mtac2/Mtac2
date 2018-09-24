@@ -29,7 +29,7 @@ Qed.
     one might tink that it's wrong to return [y] or [P]. However, these terms
     where well-typed in the original context, so there is no problem. [x] is the
     only one being added to the context, and the one to care about. *)
-Definition nu_let {T} (n: name) (t: T)
+Definition full_nu_let {T} (n: name) (t: T)
   {B : Type}
   (f : forall A (x y: A) P (eqxy: x =m= y) (t': P) (eqP: t =j= t'), M B) :
   M B.
@@ -43,25 +43,25 @@ Qed.
     should be sound to return the let-binding. The reason why the returned term
     has the same type as [P] is because [let z:A := y in t{z/x}] has type
     [P{y/x}] and, since [x =m= y], we get [P{x/x}] which is [P]. *)
-Definition abs_let : forall {A : Type} {P : Type} (x y : A) (eqxy: x=m=y) (t: P),
+Definition full_abs_let : forall {A : Type} {P : Type} (x y : A) (eqxy: x=m=y) (t: P),
     M {t' : P & t =m= t'}.
   intros. exact M.mkt.
 Qed.
-Print Assumptions JMeq_types.
 
 Definition old_nu_let {A B C : Type} (n: name) (blet: C) (f: A -> C -> M B) : M B :=
-  nu_let n blet (fun A' x y P eqxy t' eqt'  =>
+  full_nu_let n blet (fun A' x y P eqxy t' eqt'  =>
     eqAA' <- M.unify_or_fail UniCoq A' A;
     let x := reduce (RedWhd [rl:RedMatch]) (match eqAA' with meq_refl => x end) in
     let eqCP := dreduce (@JMeq_types, @meq_sym) (meq_sym (JMeq_types eqt')) in
     let t' := reduce (RedWhd [rl:RedMatch]) (match eqCP with meq_refl => t' end) in
     f x t').
 
+
 Obligation Tactic := intros.
 Program
 Definition completeness {B} (term: B) : M {blet : B & blet =m= term} :=
-  nu_let (TheName "m") term (fun A m d P eqmd body eqP=>
-    body_let <- abs_let (P:=P) m d eqmd body;
+  full_nu_let (TheName "m") term (fun A m d P eqmd body eqP=>
+    body_let <- full_abs_let (P:=P) m d eqmd body;
     let (blet, jeq) := body_let in
     M.ret (existT _ _ _ : { blet : _ & blet =m= term})).
 Next Obligation.
@@ -75,18 +75,22 @@ Next Obligation.
   cbv.
   simpl in jeq.
   destruct eqmd.
-  destruct (JMeq_types term body eqP).
+  destruct (JMeq_types eqP).
   rewrite eqP.
   rewrite jeq.
   reflexivity.
 Defined.
 
-Definition soundness {A} {P} (x d: A) (term: P) (eqxd : x =m= d) : M {t : P & t =m= term}.
-  refine (letb <- abs_let x d eqxd term; let (blet, eq) := letb in _).
-  refine (nu_let (TheName "m") blet (fun B a b T eqab t' eqblet => _)).
+Program
+Definition full_soundness {A} {P} (x d: A) (term: P) (eqxd : x =m= d) : M {t : P & t =m= term} :=
+  letb <- full_abs_let x d eqxd term;
+  let (blet, eq) := letb in
+  full_nu_let (TheName "m") blet (fun B a b T eqab t' eqblet =>
+     _).
+Next Obligation.
   refine (M.ret (existT _ _ _)).
   simpl in eq.
-  generalize (JMeq_types _ _ eqblet).
+  generalize (JMeq_types eqblet).
   intro eqPT.
   generalize t' eqblet.
   clear t' eqblet.
