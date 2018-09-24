@@ -8,7 +8,7 @@ From Coq Require Import JMeq.
 
 Notation "x =j= y" := (JMeq x y)
                  (at level 70, y at next level, no associativity).
-Lemma JMeq_types : forall {A B} (x: A) (y: B) (H: x =j= y), A =m= B.
+Lemma JMeq_types : forall {A B} {x: A} {y: B} (H: x =j= y), A =m= B.
 Proof.
   intros.
   destruct H. reflexivity.
@@ -47,6 +47,15 @@ Definition abs_let : forall {A : Type} {P : Type} (x y : A) (eqxy: x=m=y) (t: P)
     M {t' : P & t =m= t'}.
   intros. exact M.mkt.
 Qed.
+Print Assumptions JMeq_types.
+
+Definition old_nu_let {A B C : Type} (n: name) (blet: C) (f: A -> C -> M B) : M B :=
+  nu_let n blet (fun A' x y P eqxy t' eqt'  =>
+    eqAA' <- M.unify_or_fail UniCoq A' A;
+    let x := reduce (RedWhd [rl:RedMatch]) (match eqAA' with meq_refl => x end) in
+    let eqCP := dreduce (@JMeq_types, @meq_sym) (meq_sym (JMeq_types eqt')) in
+    let t' := reduce (RedWhd [rl:RedMatch]) (match eqCP with meq_refl => t' end) in
+    f x t').
 
 Obligation Tactic := intros.
 Program
