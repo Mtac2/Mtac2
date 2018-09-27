@@ -11,6 +11,7 @@
 Set Implicit Arguments.
 
 Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 Require Import Notations.
@@ -68,7 +69,8 @@ Add Printing Let msigT2.
     [(mproj1_msig y)] is the witness [a] and [(mproj2_msig y)] is the
     proof of [(P a)] *)
 
-(* Set Universe Polymorphism. *)
+(* Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity. *)
 Section Subset_mprojections.
 
   Variable A : Type.
