@@ -9,6 +9,7 @@
 Set Implicit Arguments.
 
 Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
 Unset Universe Minimization ToSet.
 
 Require Import Notations.
@@ -18,7 +19,8 @@ Require Import Notations.
 (* (********************************************************************) *)
 (* (** * Container datatypes *) *)
 
-(* (* Set Universe Polymorphism. *) *)
+(* (* Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity. *) *)
 
 
 Inductive munit : Set :=
