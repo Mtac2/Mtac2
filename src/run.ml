@@ -739,7 +739,7 @@ let check_dependencies env sigma x t =
 
 
 (** Abstract *)
-type abs = AbsProd | AbsFun | AbsLet | AbsFix
+type abs = AbsFun | AbsLet | AbsFix
 
 (** checks if (option) definition od and type ty has named
     vars included in vars *)
@@ -1256,13 +1256,6 @@ let rec run' ctxt (vms : vm list) =
                     | MConstr (Mabs_let, (a, p, x, t, y)) ->
                         abs vms AbsLet ctxt a p x y 0 (to_econstr t)
 
-                    | MConstr (Mabs_prod_type, (a, x, y)) ->
-                        (* HACK: put mkProp as returning type *)
-                        abs vms AbsProd ctxt a (of_econstr mkProp) x y 0 mkProp
-                    | MConstr (Mabs_prod_prop, (a, x, y)) ->
-                        (* HACK: put mkProp as returning type *)
-                        abs vms AbsProd ctxt a (of_econstr mkProp) x y 0 mkProp
-
                     | MConstr (Mabs_fix, (a, f, t, n)) ->
                         let n = CoqN.from_coq (env, sigma) (to_econstr n) in
                         (* HACK: put mkProp as returning type *)
@@ -1688,7 +1681,6 @@ and abs vms case ctxt a p x y n t : data_stack =
       let y' = Vars.subst_vars [name] y in
       let t =
         match case with
-        | AbsProd -> mkProd (Name name, a, y')
         | AbsFun -> mkLambda (Name name, a, y')
         | AbsLet -> mkLetIn (Name name, t, a, y')
         | AbsFix -> mkFix (([|n-1|], 0), ([|Name name|], [|a|], [|y'|]))

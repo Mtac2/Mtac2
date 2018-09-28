@@ -93,18 +93,6 @@ Definition abs_fun: forall{A: Type} {P: A->Type} (x: A), P x -> t (forall x, P x
 Definition abs_let: forall{A: Type} {P: A->Type} (x: A) (y: A), P x -> t (let x := y in P x).
   make. Qed.
 
-(** [abs_prod x e] returns [forall x, e]. It raises [NotAVar] if [x] is not a
-    variable, or [AbsDependencyError] if [e] or its type [P] depends on a
-    variable also depending on [x]. *)
-Definition abs_prod_type: forall{A: Type} (x : A), Type -> t Type.
-  make. Qed.
-
-(** [abs_prod x e] returns [forall x, e]. It raises [NotAVar] if [x] is not a
-    variable, or [AbsDependencyError] if [e] or its type [P] depends on a
-    variable also depending on [x]. *)
-Definition abs_prod_prop: forall{A: Type} (x : A), Prop -> t Prop.
-  make. Qed.
-
 (** [abs_fix f t n] returns [fix f {struct n} := t].
     [f]'s type must have n products, that is, be [forall x1, ..., xn, T] *)
 Definition abs_fix: forall{A: Type}, A -> A -> N -> t A.
@@ -987,6 +975,15 @@ Definition isCase {A} (x: A) :=
 
 Definition bunify {A} (x y: A) (u: Unification) : t bool :=
   mif unify x y u then ret true else ret false.
+
+(** [abs_prod x e] returns [forall x, e]. It raises [NotAVar] if [x] is not a
+    variable, or [AbsDependencyError] if [e] or its type [P] depends on a
+    variable also depending on [x]. *)
+Definition abs_prod_type: forall{A: Type} (x : A), Type -> t Type :=
+  fun A a B=>r <- abs_fun a B; ret (forall x:A, r x).
+
+Definition abs_prod_prop: forall{A: Type} (x : A), Prop -> t Prop :=
+  fun A a B=>r <- abs_fun a B; ret (forall x:A, r x).
 
 End M.
 

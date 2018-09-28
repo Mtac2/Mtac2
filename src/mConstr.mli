@@ -39,8 +39,6 @@ type 'a mconstr_head =
   | Mnu_let : (arg_type * arg_type * arg_type * arg_string * arg_any * arg_fun) mconstr_head
   | Mabs_fun : (arg_type * arg_fun * arg_any * arg_any) mconstr_head
   | Mabs_let : (arg_type * arg_fun * arg_any * arg_any * arg_any) mconstr_head
-  | Mabs_prod_prop : (arg_type * arg_any * arg_type) mconstr_head
-  | Mabs_prod_type : (arg_type * arg_any * arg_type) mconstr_head
   | Mabs_fix : (arg_type * arg_any * arg_any * arg_N) mconstr_head
   | Mget_binder_name : (arg_type * arg_any) mconstr_head
   | Mremove : (arg_type * arg_type * arg_any * arg_any) mconstr_head

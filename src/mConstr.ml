@@ -42,8 +42,6 @@ type 'a mconstr_head =
   | Mnu_let : (arg_type * arg_type * arg_type * arg_string * arg_any * arg_fun) mconstr_head
   | Mabs_fun : (arg_type * arg_fun * arg_any * arg_any) mconstr_head
   | Mabs_let : (arg_type * arg_fun * arg_any * arg_any * arg_any) mconstr_head
-  | Mabs_prod_prop : (arg_type * arg_any * arg_type) mconstr_head
-  | Mabs_prod_type : (arg_type * arg_any * arg_type) mconstr_head
   | Mabs_fix : (arg_type * arg_any * arg_any * arg_N) mconstr_head
   | Mget_binder_name : (arg_type * arg_any) mconstr_head
   | Mremove : (arg_type * arg_type * arg_any * arg_any) mconstr_head
@@ -103,8 +101,6 @@ let num_args_of_mconstr (type a) (mh : a mconstr_head) =
   | Mnu_let -> 6
   | Mabs_fun -> 4
   | Mabs_let -> 5
-  | Mabs_prod_prop -> 3
-  | Mabs_prod_type -> 3
   | Mabs_fix -> 4
   | Mget_binder_name -> 2
   | Mremove -> 4
@@ -207,14 +203,6 @@ let isabs_fun = isconstant name_abs_fun
 let name_abs_let = constant_of_string "abs_let"
 (* let mkabs_let = mkconstr name_abs_let *)
 let isabs_let = isconstant name_abs_let
-
-let name_abs_prod_prop = constant_of_string "abs_prod_prop"
-(* let mkabs_prod_prop = mkconstr name_abs_prod_prop *)
-let isabs_prod_prop = isconstant name_abs_prod_prop
-
-let name_abs_prod_type = constant_of_string "abs_prod_type"
-(* let mkabs_prod_type = mkconstr name_abs_prod_type *)
-let isabs_prod_type = isconstant name_abs_prod_type
 
 let name_abs_fix = constant_of_string "abs_fix"
 (* let mkabs_fix = mkconstr name_abs_fix *)
@@ -409,10 +397,6 @@ let mconstr_head_of h =
       MHead Mabs_fun
   | _ when isabs_let h ->
       MHead Mabs_let
-  | _ when isabs_prod_type h ->
-      MHead Mabs_prod_type
-  | _ when isabs_prod_prop h ->
-      MHead Mabs_prod_prop
   | _ when isabs_fix h ->
       MHead Mabs_fix
   | _ when isget_binder_name h ->
@@ -552,10 +536,6 @@ let mconstr_of (type a) args (h : a mconstr_head) =
       MConstr (Mabs_fun, (args 0, args 1, args 2, args 3))
   | Mabs_let ->
       MConstr (Mabs_let, (args 0, args 1, args 2, args 3, args 4))
-  | Mabs_prod_type ->
-      MConstr (Mabs_prod_type, (args 0, args 1, args 2))
-  | Mabs_prod_prop ->
-      MConstr (Mabs_prod_prop, (args 0, args 1, args 2))
   | Mabs_fix ->
       MConstr (Mabs_fix, (args 0, args 1, args 2, args 3))
   | Mget_binder_name ->
