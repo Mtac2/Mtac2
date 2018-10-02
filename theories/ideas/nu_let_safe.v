@@ -59,7 +59,7 @@ Definition old_nu_let {A B C : Type} (n: name) (blet: C) (f: A -> C -> M B) : M 
 
 Obligation Tactic := intros.
 Program
-Definition completeness {B} (term: B) : M {blet : B & blet =m= term} :=
+Definition let_completeness {B} (term: B) : M {blet : B & blet =m= term} :=
   full_nu_let (TheName "m") term (fun A m d P eqmd body eqP=>
     body_let <- full_abs_let (P:=P) m d eqmd body;
     let (blet, jeq) := body_let in
@@ -82,7 +82,7 @@ Next Obligation.
 Defined.
 
 Program
-Definition full_soundness {A} {P} (x d: A) (term: P) (eqxd : x =m= d) : M {t : P & t =m= term} :=
+Definition let_soundness {A} {P} (x d: A) (term: P) (eqxd : x =m= d) : M {t : P & t =m= term} :=
   letb <- full_abs_let x d eqxd term;
   let (blet, eq) := letb in
   full_nu_let (TheName "m") blet (fun B a b T eqab t' eqblet =>
@@ -99,3 +99,59 @@ Next Obligation.
   rewrite eq. rewrite eqblet.
   reflexivity.
 Qed.
+
+Print Module M.M.
+
+(** Let [D] equal to [forall x:A, B], it executes [f A (fun x:A=>B) meq_refl] and returs its value (no check needed).
+    The reason not to introduce variable [x] is because it can be done later by the user if needed. *)
+Definition dest_fun_type (T C: Type): Type.
+  refine (forall (t: T), (forall A (x: A) (B: A->Type) (b: B x)
+  (eqTB : T =m= (forall z:A, B z)) (eqt: (_ : (forall z, B z)) x =m= b), M C) -> M C).
+  rewrite eqTB in t. exact t.
+Defined.
+
+Definition dest_fun {T C} : dest_fun_type T C.
+  intros; constructor. Qed.
+
+Definition abs_fun: forall{A: Type} {P: A->Type} (x: A) (t: P x),
+  M {t': forall x, P x & t' x =m= t}.
+  constructor. Qed.
+
+
+Require Import ssreflect.
+
+Program
+Definition fun_completeness {T: Type} (t: T) : M {A:Type & {P:A->Type & {funp : forall x:A, P x & funp =j= t}}} :=
+  dest_fun t (fun A x B b eqTB eqt =>
+    absf <- abs_fun x b;
+    let (t', eqtb') := absf in
+      M.ret (existT _ A (existT _ B (existT _ t' _)))).
+Next Obligation.
+  simpl in *.
+  cbv in eqt.
+  move: eqTB eqt.
+  Fail case.
+Admitted.
+
+
+(* Axiom forall_extensionality : forall (A : Type) (B C : A -> Type), (forall x : A, B x =m= C x) -> (forall x : A, B x) =m= (forall x : A, C x). *)
+(* Axiom forall_extensionality_domain : forall (A B: Type) (C: A -> Type) (D: B -> Type), (forall x : A, C x) =m= (forall x : B, D x) -> A =m= B. *)
+
+(* Program *)
+(* Definition prod_type_soundness {A: Type} (a: A) (B: Type) : M {P : A -> Type & P a =m= B} := *)
+(*   absp <- abs_prod_type a B; *)
+(*   let (P, PeqB) := absp in *)
+(*   dest_prod_type (forall x:A, P x) (fun A' B' eqBB' => *)
+(*      M.ret (existT _ _ _ : { P : _ & P a =m= B})). *)
+(* Next Obligation. *)
+(*   simpl in *. *)
+(*   generalize x; clear x. *)
+(*   apply forall_extensionality_domain in eqBB'. *)
+(*   rewrite eqBB'. *)
+(*   exact B'. *)
+(* Defined. *)
+(* Next Obligation. *)
+(*   simpl in *. *)
+(*   unfold prod_type_soundness_obligation_1. *)
+(*   rewrite -PeqB. *)
+(* Admitted. *)
