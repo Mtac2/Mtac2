@@ -15,7 +15,7 @@ module Constrs = struct
 
   let mkConstr name = lazy (
     try of_constr @@
-      Universes.constr_of_global
+      UnivGen.constr_of_global
         (Nametab.global_of_path (Libnames.path_of_string name))
     with Not_found -> raise (Constr_not_found name)
        | Invalid_argument _ -> raise (Constr_poly name)

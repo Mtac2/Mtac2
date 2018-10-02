@@ -39,10 +39,10 @@ let print (sigma: Evd.evar_map) env s =
                          (str (CoqString.from_coq (env, sigma) s)))
 
 let print_constr (sigma: Evd.evar_map) env t =
-  Feedback.msg_notice (app (str "[DEBUG] ") (Termops.print_constr_env env sigma t))
+  Feedback.msg_notice (app (str "[DEBUG] ") (Printer.pr_econstr_env env sigma t))
 
 let constr_to_string (sigma: Evd.evar_map) env t =
-  Pp.string_of_ppcmds (Termops.print_constr_env env sigma t)
+  Pp.string_of_ppcmds (Printer.pr_econstr_env env sigma t)
 
 
 (** Functions to convert between fconstr and econstr *)
@@ -139,7 +139,7 @@ module Goal = struct
             eog args.(4)
         | _ -> failwith "Should not happen"
       else
-        CErrors.user_err Pp.(app (str "Not a goal: ") (Termops.print_constr_env env sigma goal))
+        CErrors.user_err Pp.(app (str "Not a goal: ") (Printer.pr_econstr_env env sigma goal))
     in eog
 
   let goal_of_evar (env:env) sigma ev =
@@ -883,7 +883,7 @@ let run_declare_def env sigma kind name opaque ty bod =
   let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, Entries.Monomorphic_const_entry ctx) in
   let gr = Globnames.ConstRef kn in
   let () = Lemmas.call_hook fix_exn (vernac_definition_hook false kind) Global gr  in
-  let c = (Universes.constr_of_global gr) in
+  let c = (UnivGen.constr_of_global gr) in
   let env = Global.env () in
   (* Feedback.msg_notice *)
   (*   (Termops.print_constr_env env c); *)
@@ -1407,7 +1407,6 @@ let rec run' ctxt (vms : vm list) =
                     | MConstr (Mcall_ltac, (sort, concl, name, args)) ->
                         let open Tacinterp in
                         let open Tacexpr in
-                        let open Misctypes in
                         let open Loc in
                         let open Names in
                         let concl, name, args = to_econstr concl, to_econstr name, to_econstr args in
@@ -1416,8 +1415,8 @@ let rec run' ctxt (vms : vm list) =
                         let tac_name = Tacenv.locate_tactic (Libnames.qualid_of_string name) in
                         let arg_name = "lx_" in
                         let args = List.mapi (fun i a->(Id.of_string (arg_name ^ string_of_int i), Value.of_constr a)) args in
-                        let args_var = List.map (fun (n, _) -> Reference (ArgVar (CAst.make n))) args in
-                        let to_call = TacArg (tag (TacCall (tag (ArgArg (tag tac_name), args_var)))) in
+                        let args_var = List.map (fun (n, _) -> Reference (Locus.ArgVar (CAst.make n))) args in
+                        let to_call = TacArg (tag (TacCall (tag (Locus.ArgArg (tag tac_name), args_var)))) in
                         begin
                           try
                             let undef = Evar.Map.domain (Evd.undefined_map sigma) in

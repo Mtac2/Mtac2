@@ -117,7 +117,7 @@ module MetaCoqRun = struct
           Unsafe.tclSETGOALS goals
 
     | Run.Err (_, e) ->
-        CErrors.user_err (str "Uncaught exception: " ++ (Termops.print_constr e))
+        CErrors.user_err (str "Uncaught exception: " ++ (Printer.pr_econstr_env env sigma e))
 
   let evar_of_goal gl =
     let open Proofview.Goal in
@@ -194,7 +194,7 @@ module MetaCoqRun = struct
     match Run.run (env, sigma) c with
     | Run.Val _ -> ()
     | Run.Err (_, e) ->
-        CErrors.user_err (str "Uncaught exception: " ++ Termops.print_constr e)
+        CErrors.user_err (str "Uncaught exception: " ++ Printer.pr_econstr_env env sigma e)
 
 end
 
@@ -265,4 +265,4 @@ let end_proof () =
     remove_dangling_evars ();
   (* The following invokes the usual Qed. *)
   let open Vernacexpr in
-  Lemmas.save_proof (Proved (Opaque,None))
+  Lemmas.save_proof (Proved (Proof_global.Opaque,None))
