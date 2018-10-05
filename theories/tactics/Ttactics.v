@@ -179,6 +179,46 @@ Definition lower {A} (t: ttac A) : M A :=
   ''(m: r, _) <- t;
   ret r.
 
+(** with_goal_prop is an easy way of focusing on the current goal to go from
+    [tactic] to [ttac]. It is cheap when the goal is correctly annotated as
+    a Prop and no more expensive than focusing via `match_goal` when it isn't.
+ *)
+Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
+  match g with
+  | @Goal S.SProp G g =>
+    ''(m: x, gs) <- F G;
+    M.cumul_or_fail UniCoq x g;;
+    M.map (fun g => M.ret (m:tt,g)) gs
+  | @Goal S.SType G g =>
+    gP <- evar Prop;
+    mtry
+      cumul_or_fail UniMatch gP G;;
+      ''(m: x, gs) <- F gP;
+      M.cumul_or_fail UniCoq x g;;
+      M.map (fun g => M.ret (m:tt,g)) gs
+    with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
+  | _ => raise NotAGoal
+  end.
+
+(** with_goal_type is an easy way of focusing on the current goal to go from
+    [tactic] to [ttac]. It is always cheap and will upcast props.
+ *)
+Definition with_goal_type (F : forall (T : Type), ttac T) : tactic := fun g =>
+  match g with
+  | @Goal S.SProp G g =>
+    ''(m: x, gs) <- F G;
+    M.cumul_or_fail UniCoq x g;;
+    M.map (fun g => M.ret (m:tt,g)) gs
+  | @Goal S.SType G g =>
+    gP <- evar Prop;
+    mtry
+      cumul_or_fail UniMatch gP G;;
+      ''(m: x, gs) <- F G;
+      M.cumul_or_fail UniCoq x g;;
+      M.map (fun g => M.ret (m:tt,g)) gs
+    with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
+  | _ => raise NotAGoal
+  end.
 
 Module MatchGoalTT.
 Import TacticsBase.T.notations.
