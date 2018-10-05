@@ -57,7 +57,7 @@ Definition old_nu_let {A B C : Type} (n: name) (blet: C) (f: A -> C -> M B) : M 
     f x t').
 
 
-Obligation Tactic := intros.
+Obligation Tactic := simpl; intros.
 Program
 Definition let_completeness {B} (term: B) : M {blet : B & blet =m= term} :=
   full_nu_let (TheName "m") term (fun A m d P eqmd body eqP=>
@@ -65,13 +65,11 @@ Definition let_completeness {B} (term: B) : M {blet : B & blet =m= term} :=
     let (blet, jeq) := body_let in
     M.ret (existT _ _ _ : { blet : _ & blet =m= term})).
 Next Obligation.
-  simpl in *.
   apply JMeq_types in eqP.
   rewrite eqP.
   exact blet.
 Defined.
 Next Obligation.
-  simpl.
   cbv.
   simpl in jeq.
   destruct eqmd.
@@ -102,15 +100,18 @@ Qed.
 
 Print Module M.M.
 
-(** Let [D] equal to [forall x:A, B], it executes [f A (fun x:A=>B) meq_refl] and returs its value (no check needed).
-    The reason not to introduce variable [x] is because it can be done later by the user if needed. *)
-Definition dest_fun_type (T C: Type): Type.
-  refine (forall (t: T), (forall A (x: A) (B: A->Type) (b: B x)
+(** Let [T] equals to [forall x:A, B x] and [t] equals to [fun x:A => b], it
+    introduces [x:A] in the context, and executes [f A x B b meq_refl meq_refl],
+    the first [meq_refl] being the equality of types [T =m= forall x:A, B x] and
+    the second of the body, morally [t x =m= b]. The value returned by [f] must
+    not contain [x]. *)
+Definition dest_fun_type (T C: Type) (t: T): Type.
+  refine ((forall A (x: A) (B: A->Type) (b: B x)
   (eqTB : T =m= (forall z:A, B z)) (eqt: (_ : (forall z, B z)) x =m= b), M C) -> M C).
   rewrite eqTB in t. exact t.
 Defined.
 
-Definition dest_fun {T C} : dest_fun_type T C.
+Definition dest_fun {T C} t : dest_fun_type T C t.
   intros; constructor. Qed.
 
 Definition abs_fun: forall{A: Type} {P: A->Type} (x: A) (t: P x),
@@ -120,6 +121,15 @@ Definition abs_fun: forall{A: Type} {P: A->Type} (x: A) (t: P x),
 
 Require Import ssreflect.
 
+
+Lemma equal_f_dep : forall {A B} {f g : forall (x : A), B x},
+  f =m= g -> forall x, f x =m= g x.
+Proof. by move=>? ? ? ? ->. Qed.
+
+Axiom functional_extensionality_dep : forall {A} {B : A -> Type},
+  forall (f g : forall x : A, B x),
+  (forall x, f x =m= g x) -> f =m= g.
+
 Program
 Definition fun_completeness {T: Type} (t: T) : M {A:Type & {P:A->Type & {funp : forall x:A, P x & funp =j= t}}} :=
   dest_fun t (fun A x B b eqTB eqt =>
@@ -127,31 +137,71 @@ Definition fun_completeness {T: Type} (t: T) : M {A:Type & {P:A->Type & {funp : 
     let (t', eqtb') := absf in
       M.ret (existT _ A (existT _ B (existT _ t' _)))).
 Next Obligation.
-  simpl in *.
   cbv in eqt.
-  move: eqTB eqt.
-  Fail case.
+  rewrite -eqt in eqtb'.
+  move: eqtb'.
+  (* We know that [t' x =m= t' x] but we can't conclude that [t' =m=
+  t]. Informally, this holds because [x] can be substituted by any [y], and then
+  conclude with functional_extensionality_dep. *)
 Admitted.
 
+Axiom forall_extensionality : forall (A : Type) (B C : A -> Type),
+  (forall x : A, B x =m= C x) -> (forall x : A, B x) =m= (forall x : A, C x).
 
-(* Axiom forall_extensionality : forall (A : Type) (B C : A -> Type), (forall x : A, B x =m= C x) -> (forall x : A, B x) =m= (forall x : A, C x). *)
-(* Axiom forall_extensionality_domain : forall (A B: Type) (C: A -> Type) (D: B -> Type), (forall x : A, C x) =m= (forall x : B, D x) -> A =m= B. *)
+Axiom forall_extensionality_domain : forall (A B: Type) (C: A -> Type) (D: B -> Type),
+  (forall x : A, C x) =m= (forall x : B, D x) -> A =m= B. (* this is not true I think *)
 
-(* Program *)
-(* Definition prod_type_soundness {A: Type} (a: A) (B: Type) : M {P : A -> Type & P a =m= B} := *)
-(*   absp <- abs_prod_type a B; *)
-(*   let (P, PeqB) := absp in *)
-(*   dest_prod_type (forall x:A, P x) (fun A' B' eqBB' => *)
-(*      M.ret (existT _ _ _ : { P : _ & P a =m= B})). *)
-(* Next Obligation. *)
-(*   simpl in *. *)
-(*   generalize x; clear x. *)
-(*   apply forall_extensionality_domain in eqBB'. *)
-(*   rewrite eqBB'. *)
-(*   exact B'. *)
-(* Defined. *)
-(* Next Obligation. *)
-(*   simpl in *. *)
-(*   unfold prod_type_soundness_obligation_1. *)
-(*   rewrite -PeqB. *)
-(* Admitted. *)
+Axiom forall_extensionality_codomain : forall (A: Type) (C: A -> Type) (D: A -> Type),
+  (forall x, C x) =m= (forall x, D x) -> C =m= D. (* does it make sense? *)
+
+Program
+Definition fun_soundness {A: Type} {P: A->Type} (x: A) (b: P x) : M {b':P x & b' =m= b} :=
+  absf <- abs_fun x b;
+  let (funp, feq) := absf in
+  dest_fun funp (fun A' x' B' b' eqPP' eqbb' =>
+     M.ret (existT _ _ _ : {b':P x & b' =m= b})).
+Next Obligation.
+  move/forall_extensionality_domain: (eqPP')=>eqAA'.
+  move: B' x' b' eqPP' eqbb'.
+  rewrite -eqAA'.
+  intros.
+  move/forall_extensionality_codomain: (eqPP')=>eqPB'.
+  move: b' eqPP' eqbb'.
+  rewrite -eqPB'.
+  move=>b' eqPP'.
+  cbv.
+Admitted.
+
+Require Import BinNat.
+Inductive level := aLevel : N -> level | aVar : N -> level.
+Inductive sort := sProp | sSet | sType : level -> sort.
+
+Definition dest_sort : Type -> M sort.
+  intros. exact M.mkt. Qed.
+
+Definition make_sort : sort -> M Type.
+  intros. exact M.mkt. Qed.
+
+(* There's nothing we can prove about this *)
+
+
+(** Let's see what we can do with decompose_forallT *)
+Require Import Mtac2.lib.Datatypes.
+
+(* So far it doesn't provide any equality, so we can't prove anything *)
+Axiom admit : forall P, P.
+Program
+Definition forall_complete (T:Type) : M {T':Type & T' =m= T} :=
+  M.decompose_forallT (B:=fun _=>{T':Type & T' =m= T}) T (fun A b =>
+     M.nu Generate mNone (fun x=>
+       r <- M.abs_prod_type x (b x);
+       M.ret (existT _ r (admit _)) : M {T':Type & T' =m= T})) (M.failwith "error").
+
+Require Import Mtac2.
+(* but it works *)
+Goal (forall x, x > 0 : Type) =m= (forall x, x > 0 : Type).
+MProof.
+  r <- forall_complete (forall x, x > 0);
+  let (x, _) := r in
+  T.exact (meq_refl x).
+Qed.
