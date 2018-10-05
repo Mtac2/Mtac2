@@ -118,6 +118,19 @@ Definition change A {B} (f : ttac A) : ttac B :=
    end
   )%MC.
 
+Definition change_dep {X} (B : X -> Type) x {y} (f : ttac (B x)) : ttac (B y) :=
+  (
+  e <- M.unify x y UniCoq;
+  match e with
+  | mSome e =>
+      match e in Logic.meq _ z return ttac (B z) with
+      | Logic.meq_refl => f
+      end
+  | mNone => M.raise TTchange_Exception
+  end
+  )%MC.
+
+
 Definition vm_compute {A} : ttac (A -> A) :=
   (
     M.ret (m: (fun a : A => a <: A), [m:])
@@ -177,6 +190,17 @@ Definition ucomp1 {A B} (t: ttac A) (u: ttac B) : ttac A :=
 Definition lower {A} (t: ttac A) : M A :=
   ''(m: r, _) <- t;
   ret r.
+
+
+(** [rewrite] allows to rewrite with an equation in a specific part of the goal. *)
+Definition rewrite {X : Type} (C : X -> Type) {a b : X} (H : a = b) :
+  ttac (C b) -> ttac (C a) := fun t =>
+  ''(m: x, gs) <- t;
+  M.ret (m:
+          match H in _ = z return (C z) -> (C a) with
+          | eq_refl => fun x => x
+          end x,
+          gs).
 
 (** with_goal_prop is an easy way of focusing on the current goal to go from
     [tactic] to [ttac]. It is cheap when the goal is correctly annotated as
