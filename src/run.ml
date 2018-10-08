@@ -70,6 +70,7 @@ module Goal = struct
     let sigma, t = mkUConstr "Goals.goal" sigma env in
     (sigma, mkApp (t, [|gs|]))
   let mkGoal = mkUConstr "Goals.Goal"
+  let mkGoalOut = mkUConstr "Goals.GoalOut"
   let mkAHyp = mkUConstr "Goals.AHyp"
   let mkHypLet = mkUConstr "Goals.HypLet"
   let mkHypRemove = mkUConstr "Goals.HypRem"
@@ -84,9 +85,8 @@ module Goal = struct
     if isSort sigma tt then
       let sort = ESorts.kind sigma (destSort sigma tt) in
       let ssort = Lazy.force (if Sorts.is_prop sort then mkSProp else mkSType) in
-      let sigma, gs = if base then mkgs_base sigma env else mkgs_any sigma env in
-      let sigma, tg = mkGoal sigma env in
-      sigma, mkApp (tg, [|gs; ssort; ty;ev|])
+      let sigma, tg = (if base then mkGoal else mkGoalOut) sigma env in
+      sigma, mkApp (tg, [|ssort; ty;ev|])
     else
       failwith ("WAT? Not a sort?" ^ (constr_to_string sigma env tt))
 
@@ -121,29 +121,29 @@ module Goal = struct
       let (c, args) = decompose_appvect sigma goal in
       if isConstruct sigma c then
         match get_constructor_pos sigma c with
-        | 0 -> (* AGoal *)
-            let evar = whd_evar sigma args.(3) in
+        | 0 | 1 -> (* AGoal *)
+            let evar = whd_evar sigma args.(2) in
             if isEvar sigma evar then
               Some (fst (destEvar sigma evar))
             else (* it is defined *)
               None
-        | 1 -> (* AHyp *)
+        | 2 -> (* AHyp *)
             let func = args.(1) in
             if isLambda sigma func then
               let (_, _, body) = destLambda sigma func in
               eog body
             else
               None
-        | 2 -> (* HypLet *)
+        | 3 -> (* HypLet *)
             let goal = args.(1) in
             if isLetIn sigma goal then
               let (_, _, _, body) = destLetIn sigma goal in
               eog body
             else
               None
-        | 3 -> (* RemHyp *)
+        | 4 -> (* RemHyp *)
             eog args.(2)
-        | 4 -> (* HypReplace *)
+        | 5 -> (* HypReplace *)
             eog args.(4)
         | _ -> failwith "Should not happen"
       else
