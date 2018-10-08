@@ -19,7 +19,7 @@ val make_evar : evar_map -> env -> constr -> evar_map * constr (* used in metaCo
 val run : (env * evar_map) -> constr -> data
 
 module Goal : sig
-  val mkTheGoal : types -> constr -> Evd.evar_map -> Environ.env -> (Evd.evar_map * constr)
+  val mkTheGoal : ?base:bool -> types -> constr -> Evd.evar_map -> Environ.env -> (Evd.evar_map * constr)
   val evar_of_goal : Evd.evar_map -> Environ.env -> constr -> Evar.t option
 end
 
