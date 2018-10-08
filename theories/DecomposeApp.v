@@ -96,7 +96,7 @@ Definition decompose_app_tactic {m : MTele} {A : Type} {B : A -> Type} {C : MTel
     ''(mexistT _ m' T') <- MTele_of A T t;
     M.unify m m' UniCoq;;
     M.cumul UniCoq C t;;
-    let x := fun uni f (g : goal) => @M.decompose_app' A (fun a => mlist (mprod (B a) goal)) m uni a C (f g) in
+    let x := fun uni f (g : goal gs_base) => @M.decompose_app' A (fun a => mlist (mprod (B a) (goal gs_any))) m uni a C (f g) in
     let y := fun uni f => x uni (mtele_convert' f) in
     M.ret y
   ).

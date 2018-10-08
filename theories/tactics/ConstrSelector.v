@@ -51,7 +51,7 @@ Notation "'case' c 'do' t" := (snth_index c t) (at level 40).
 Import M.notations.
 Local Close Scope tactic_scope.
 Definition snth_indices (l : mlist dyn) (t : tactic) : selector unit := fun goals=>
-  M.fold_left (fun (accu : mlist (unit *m goal)) (d : dyn)=>
+  M.fold_left (fun (accu : mlist (unit *m goal gs_any)) (d : dyn)=>
     dcase d as c in
     i <- index c;
     let ogoal := mnth_error goals i in
@@ -67,7 +67,7 @@ Definition apply_except (l : mlist dyn) (t : tactic) : selector unit := fun goal
   a_constr <- match mhd_error l with mSome d=> M.ret d | _ => M.failwith "apply_except: empty list" end;
   dcase a_constr as T, c in
   constrs <- get_constrs T;
-  M.fold_left (fun (accu : mlist (unit *m goal)) (d : dyn)=>
+  M.fold_left (fun (accu : mlist (unit *m goal gs_any)) (d : dyn)=>
       dcase d as c in
       i <- index c;
       let ogoal := mnth_error goals i in

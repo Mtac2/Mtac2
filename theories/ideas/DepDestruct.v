@@ -362,7 +362,6 @@ Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) : M
   M.ret atele.
 
 Import TacticsBase.T.notations.
-Program
 Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
     ind <- get_ind A;
       let (nsortit, constrs) := ind in
@@ -412,5 +411,5 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
           | HypRem _ _ => M.raise NotAGoal
           | HypReplace _ _ _ => M.raise NotAGoal
           end);;
-          let goals' := dreduce (@mmap) (mmap (mpair tt) goals) in
+          let goals' := dreduce (@mmap) (mmap (A:=goal gs_base) (fun '(@Goal gs_base _ _ g) => mpair tt (Goal _ g)) goals) in
           M.ret goals'.

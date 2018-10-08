@@ -17,9 +17,13 @@ Inductive Hyp : Type :=
 (*   | HypReplace : forall {A B:Type}, A -> A =m= B -> goal -> goal. *)
 
 
-Inductive goal@{U131 U132} : Type :=
-  | Goal : forall (s : Sort) {A : stype_of@{U131 U132} s}, selem_of@{U132 U131 U132 U132} A -> goal
-  | AHyp : forall {A : Type@{U132}}, (A -> goal) -> goal
-  | HypLet : Type@{U132} -> goal -> goal
-  | HypRem : forall {A : Type@{U132}}, A -> goal -> goal
-  | HypReplace : forall {A B : Type@{U132}},  A -> meq@{U131} A B -> goal -> goal.
+Inductive goal_state := | gs_base | gs_any.
+
+Inductive goal@{U131 U132} : goal_state -> Type :=
+  | Goal : forall {gs:goal_state} (s : Sort) {A : stype_of@{U131 U132} s}, selem_of@{U132 U131 U132 U132} A -> goal gs
+  | AHyp : forall {A : Type@{U132}}, (A -> goal gs_any) -> goal gs_any
+  | HypLet : Type@{U132} -> goal gs_any -> goal gs_any
+  | HypRem : forall {A : Type@{U132}}, A -> goal gs_any -> goal gs_any
+  | HypReplace : forall {A B : Type@{U132}},  A -> meq@{U131} A B -> goal gs_any -> goal gs_any.
+
+Global Arguments Goal [_] _ [_] _.

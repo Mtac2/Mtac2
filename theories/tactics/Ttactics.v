@@ -14,7 +14,7 @@ Module TT.
 
 (** A typed tactic is a program that promises in its type the goal it solves,
     pehaps creating (dynamically-typed) goals. *)
-Definition ttac A := M (A *m mlist goal).
+Definition ttac A := M (A *m mlist (goal gs_any)).
 
 Bind Scope typed_tactic_scope with ttac.
 Delimit Scope typed_tactic_scope with TT.
@@ -24,7 +24,7 @@ Delimit Scope typed_tactic_scope with TT.
     precise goal possible.  For that, we need to backtrack in case it is not a
     [Prop] (and treat it as a [Type]). *)
 Mtac Do New Exception NotAProp.
-Definition to_goal (A : Type) : M (A *m goal) :=
+Definition to_goal (A : Type) : M (A *m goal gs_base) :=
   mtry
     P <- evar Prop;
     of <- unify_univ P A UniMatchNoRed;
@@ -42,7 +42,9 @@ Definition to_goal (A : Type) : M (A *m goal) :=
 (** [demote] is a [ttac] that proves anything by simply postponing it as a
     goal. *)
 Definition demote {A: Type} : ttac A :=
-  ''(m: a, g) <- to_goal A; M.ret (m: a, [m: g]).
+  ''(m: a, g) <- to_goal A;
+  let '(@Goal gs_base _ _ g) := g in
+  M.ret (m: a, [m: Goal _ g]).
 
 (** [use t] tries to solve the goal with tactic [t] *)
 Definition use {A} (t : tactic) : ttac A :=
@@ -54,7 +56,8 @@ Arguments use [_] _%tactic.
 
 Definition idtac {A} : ttac A :=
     ''(m: a, g) <- to_goal A;
-    M.ret (m: a, [m: g]).
+    let '(@Goal gs_base _ _ g) := g in
+    M.ret (m: a, [m: Goal _ g]).
 
 (** [by'] is like [use] but it ensures there are no goals left. *)
 Definition by' {A} (t : tactic) : ttac A :=
@@ -88,7 +91,7 @@ Definition Mappend {A} (xs ys : mlist A) :=
   M.ret zs.
 
 (** [to_T t] uses the result of a [ttac] as a [tactic]. *)
-Definition to_T {A} : (A *m mlist goal) -> tactic :=
+Definition to_T {A} : (A *m mlist (goal _)) -> tactic :=
   (fun '(m: a, gs) g =>
     exact a g;;
     let gs := dreduce (@mmap) (mmap (mpair tt) gs) in
@@ -182,7 +185,7 @@ Definition ucomp1 {A B} (t: ttac A) (u: ttac B) : ttac A :=
   match gls1 with
   | [m: gl] =>
     ''(m: v2, gls) <- u;
-    exact v2 gl;;
+    open_and_apply (exact v2) gl;;
     M.ret (m: v1, gls)
   | _ => mfail "more than a goal"%string
   end.
@@ -208,11 +211,11 @@ Definition rewrite {X : Type} (C : X -> Type) {a b : X} (H : a = b) :
  *)
 Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
   match g with
-  | @Goal S.SProp G g =>
+  | @Goal gs_base S.SProp G g =>
     ''(m: x, gs) <- F G;
     M.cumul_or_fail UniCoq x g;;
     M.map (fun g => M.ret (m:tt,g)) gs
-  | @Goal S.SType G g =>
+  | @Goal gs_base S.SType G g =>
     gP <- evar Prop;
     mtry
       cumul_or_fail UniMatch gP G;;
@@ -220,7 +223,6 @@ Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
       M.cumul_or_fail UniCoq x g;;
       M.map (fun g => M.ret (m:tt,g)) gs
     with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
-  | _ => raise NotAGoal
   end.
 
 (** with_goal_type is an easy way of focusing on the current goal to go from
@@ -228,11 +230,11 @@ Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
  *)
 Definition with_goal_type (F : forall (T : Type), ttac T) : tactic := fun g =>
   match g with
-  | @Goal S.SProp G g =>
+  | @Goal gs_base S.SProp G g =>
     ''(m: x, gs) <- F G;
     M.cumul_or_fail UniCoq x g;;
     M.map (fun g => M.ret (m:tt,g)) gs
-  | @Goal S.SType G g =>
+  | @Goal gs_base S.SType G g =>
     gP <- evar Prop;
     mtry
       cumul_or_fail UniMatch gP G;;
@@ -240,7 +242,6 @@ Definition with_goal_type (F : forall (T : Type), ttac T) : tactic := fun g =>
       M.cumul_or_fail UniCoq x g;;
       M.map (fun g => M.ret (m:tt,g)) gs
     with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
-  | _ => raise NotAGoal
   end.
 
 Module MatchGoalTT.
