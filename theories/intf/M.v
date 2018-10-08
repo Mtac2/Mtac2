@@ -193,7 +193,7 @@ Definition get_reference: string -> t dyn.
 Definition get_var: string -> t dyn.
   make. Qed.
 
-Definition call_ltac : forall(sort: Sort) {A: sort}, string->mlist dyn -> t (mprod A (mlist goal)).
+Definition call_ltac : forall(sort: Sort) {A: sort}, string->mlist dyn -> t (mprod A (mlist (goal gs_any))).
   make. Qed.
 
 Definition list_ltac: t unit.
@@ -789,20 +789,19 @@ Definition is_prop_or_type (d : dyn) : t bool :=
 
 (** [goal_type g] extracts the type of the goal or raises [NotAGoal]
     if [g] is not [Goal]. *)
-Definition goal_type (g : goal) : t Type :=
+Definition goal_type (g : goal gs_base) : t Type :=
   match g with
-  | @Goal s A x =>
+  | @Goal gs_base s A x =>
     match s as s return stype_of s -> t Type with
       | SProp => fun A => ret (A:Type)
       | SType => fun A => ret A end A
-  | _ => raise NotAGoal
   end.
 
 (** [goal_prop g] extracts the prop of the goal or raises [NotAGoal]
     if [g] is not [Goal], or [CantCoerce] its type can't be cast to a Prop. *)
-Definition goal_prop (g : goal) : t Prop :=
+Definition goal_prop (g : goal gs_base) : t Prop :=
   match g with
-  | @Goal s A _ =>
+  | @Goal gs_base s A _ =>
     match s as s return forall A:stype_of s, t Prop with
       | SProp => fun A:Prop => ret A
       | SType => fun A:Type =>
@@ -812,20 +811,18 @@ Definition goal_prop (g : goal) : t Prop :=
          ret gP
         with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
     end A
-  | _ => raise NotAGoal
   end.
 
 (** Convertion functions from [dyn] to [goal]. *)
-Definition dyn_to_goal (d : dyn) : t goal :=
+Definition dyn_to_goal (d : dyn) : t (goal gs_base) :=
   mmatch d with
-  | [? (A:Prop) x] @Dyn A x => ret (@Goal SProp A x)
-  | [? (A:Type) x] @Dyn A x => ret (@Goal SType A x)
+  | [? (A:Prop) x] @Dyn A x => ret (@Goal _ SProp A x)
+  | [? (A:Type) x] @Dyn A x => ret (@Goal _ SType A x)
   end.
 
-Definition goal_to_dyn (g : goal) : t dyn :=
+Definition goal_to_dyn (g : goal gs_base) : t dyn :=
   match g with
-  | Goal _ d => ret (Dyn d)
-  | _ => raise NotAGoal
+  | @Goal gs_base _ _ d => ret (Dyn d)
   end.
 
 Definition cprint {A} (s : string) (c : A) : t unit :=
@@ -850,15 +847,14 @@ Definition print_hyps : t unit :=
   let l := mrev' l in
   iterate print_hyp l.
 
-Definition print_goal (g : goal) : t unit :=
+Definition print_goal (g : goal gs_base) : t unit :=
   let repeat c := (fix repeat s n :=
     match n with
     | 0 => s
     | S n => repeat (c++s)%string n
     end) ""%string in
   sg <- match g with
-        | @Goal _ G _ => pretty_print G
-        | _ => raise NotAGoal
+        | @Goal gs_base _ G _ => pretty_print G
         end;
   let sep := repeat "="%string 20 in
   print_hyps;;

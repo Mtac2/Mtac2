@@ -16,10 +16,10 @@ Require Import Strings.String.
 (** For that reason, we use the following record instead of a Vector.t: we want
     to easily embed tactics into ntactics and back. *)
 Record PackedVec (A: Type) (count: nat) := mkPackedVec {
-  goals : mlist (A *m goal)
+  goals : mlist (A *m goal gs_any)
 }.
 
-Definition ntactic A n := goal -> M (PackedVec A n).
+Definition ntactic A n := goal gs_base -> M (PackedVec A n).
 
 Import M.
 Import M.notations.
@@ -48,11 +48,11 @@ Import Datatypes.
 (** [max_apply t] applies theorem t to the current goal.
     It generates a subgoal for each non-dependent hypothesis in the theorem. *)
 Definition max_apply {T} (c : T) : tactic := fun g=>
-  match g with @Goal SType gT eg =>
-    (mfix1 go (d : dyn) : M (mlist (unit *m goal)) :=
+  match g with @Goal gs_base SType gT eg =>
+    (mfix1 go (d : dyn) : M (mlist (unit *m goal _)) :=
       (* let (_, el) := d in *)
       (* mif M.unify_cumul el eg UniCoq then M.ret [m:] else *)
-        mmatch d return M (mlist (unit *m goal)) with
+        mmatch d return M (mlist (unit *m goal _)) with
         | [? T1 T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
@@ -66,8 +66,7 @@ Definition max_apply {T} (c : T) : tactic := fun g=>
           dcase d as ty, el in
           M.raise (T.CantApply ty gT)
         end) (Dyn c)
-  | Goal SProp _ => M.failwith "It's a prop!"
-  | _ => M.raise NotAGoal
+  | @Goal gs_base SProp _ _ => M.failwith "It's a prop!"
   end.
 
 Definition count_nondep_binders (T: Type) : M nat :=
