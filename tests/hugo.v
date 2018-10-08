@@ -25,7 +25,7 @@ Definition to_fin_MP : T.selector unit := (fun l=>
   M.mapi (fun i '(m: _, g) =>
     H <- prove_leq i n;
     let v := rcbv (of_nat_lt H) in
-    T.exact v g) l;;
+    T.open_and_apply (T.exact v) g) l;;
   M.ret [m:])%MC.
 
 Goal my_enum_type -> Fin.t 3.

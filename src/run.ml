@@ -62,7 +62,13 @@ module RedList = GenericList (struct
 
 module Goal = struct
 
-  let mkgoal = mkUConstr "Goals.goal"
+  let mkgs_base = mkUConstr "Goals.gs_base"
+  let mkgs_any = mkUConstr "Goals.gs_any"
+
+  let mkgoal ?base:(base=true) sigma env =
+    let sigma, gs = if base then mkgs_base sigma env else mkgs_any sigma env in
+    let sigma, t = mkUConstr "Goals.goal" sigma env in
+    (sigma, mkApp (t, [|gs|]))
   let mkGoal = mkUConstr "Goals.Goal"
   let mkAHyp = mkUConstr "Goals.AHyp"
   let mkHypLet = mkUConstr "Goals.HypLet"
@@ -72,14 +78,15 @@ module Goal = struct
   let mkSType = Constrs.mkConstr "Mtac2.intf.Sorts.S.SType"
   let mkSProp = Constrs.mkConstr "Mtac2.intf.Sorts.S.SProp"
 
-  let mkTheGoal ty ev sigma env =
+  let mkTheGoal ?base:(base=true) ty ev sigma env =
     let tt = Retyping.get_type_of env sigma ty in
     let tt = Reductionops.nf_all env sigma tt in
     if isSort sigma tt then
       let sort = ESorts.kind sigma (destSort sigma tt) in
       let ssort = Lazy.force (if Sorts.is_prop sort then mkSProp else mkSType) in
+      let sigma, gs = if base then mkgs_base sigma env else mkgs_any sigma env in
       let sigma, tg = mkGoal sigma env in
-      sigma, mkApp (tg, [|ssort; ty;ev|])
+      sigma, mkApp (tg, [|gs; ssort; ty;ev|])
     else
       failwith ("WAT? Not a sort?" ^ (constr_to_string sigma env tt))
 
@@ -115,7 +122,7 @@ module Goal = struct
       if isConstruct sigma c then
         match get_constructor_pos sigma c with
         | 0 -> (* AGoal *)
-            let evar = whd_evar sigma args.(2) in
+            let evar = whd_evar sigma args.(3) in
             if isEvar sigma evar then
               Some (fst (destEvar sigma evar))
             else (* it is defined *)
@@ -143,7 +150,7 @@ module Goal = struct
         CErrors.user_err Pp.(app (str "Not a goal: ") (Termops.print_constr_env env sigma goal))
     in eog
 
-  let goal_of_evar (env:env) sigma ev =
+  let goal_of_evar ?base:(base=true) (env:env) sigma ev =
     let open Context.Named in
     let open Declaration in
     let evinfo = Evd.find_undefined sigma ev in
@@ -177,7 +184,7 @@ module Goal = struct
       | [] -> (sigma, accu) in
     let ids = List.map (fun v -> Constr.mkVar (Declaration.get_id v)) evenv in
     let evar = (ev, Array.of_list ids) in
-    let sigma, tg = mkTheGoal (of_constr @@ Evd.existential_type sigma evar) (of_constr @@ Constr.mkEvar evar) sigma env in
+    let sigma, tg = mkTheGoal ~base:base (of_constr @@ Evd.existential_type sigma evar) (of_constr @@ Constr.mkEvar evar) sigma env in
     compute sigma tg evenv (* we're missing the removal of the variables not ocurring in evenv *)
 
 end
@@ -1444,9 +1451,9 @@ let rec run' ctxt (vms : vm list) =
                             let (c, sigma) = Pfedit.refine_by_tactic env sigma concl (Tacinterp.eval_tactic_ist ist to_call) in
                             let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
                             let new_undef = Evar.Set.elements new_undef in
-                            let sigma, goal = Goal.mkgoal sigma env in
+                            let sigma, goal = Goal.mkgoal ~base:false sigma env in
                             let sigma, listg = CoqList.mkType sigma env goal in
-                            let sigma, goals = CoqList.pto_coq env goal (fun e sigma->Goal.goal_of_evar env sigma e) new_undef sigma in
+                            let sigma, goals = CoqList.pto_coq env goal (fun e sigma->Goal.goal_of_evar ~base:false env sigma e) new_undef sigma in
                             let sigma, pair = CoqPair.mkPair sigma env concl listg (of_constr c) goals in
                             ereturn sigma pair
                           with CErrors.UserError(s,ppm) ->
