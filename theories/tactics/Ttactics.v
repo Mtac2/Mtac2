@@ -43,8 +43,8 @@ Definition to_goal (A : Type) : M (A *m goal gs_base) :=
     goal. *)
 Definition demote {A: Type} : ttac A :=
   ''(m: a, g) <- to_goal A;
-  let '(@Goal gs_base _ _ g) := g in
-  M.ret (m: a, [m: Goal _ g]).
+  let '(Goal _ g) := g in
+  M.ret (m: a, [m: GoalOut _ g]).
 
 (** [use t] tries to solve the goal with tactic [t] *)
 Definition use {A} (t : tactic) : ttac A :=
@@ -56,8 +56,8 @@ Arguments use [_] _%tactic.
 
 Definition idtac {A} : ttac A :=
     ''(m: a, g) <- to_goal A;
-    let '(@Goal gs_base _ _ g) := g in
-    M.ret (m: a, [m: Goal _ g]).
+    let '(Goal _ g) := g in
+    M.ret (m: a, [m: GoalOut _ g]).
 
 (** [by'] is like [use] but it ensures there are no goals left. *)
 Definition by' {A} (t : tactic) : ttac A :=
@@ -167,7 +167,7 @@ Definition tpass {A} := lift (M.evar A).
 Definition texists {A} {Q:A->Prop} : ttac (exists (x:A), Q x) :=
   e <- M.evar A;
   pf <- M.evar (Q e);
-  M.ret (m: ex_intro _ e pf, [m: Goal SProp pf]).
+  M.ret (m: ex_intro _ e pf, [m: GoalOut SProp pf]).
 
 Definition tassumption {A:Type} : ttac A :=
   lift (M.select _).
@@ -211,11 +211,11 @@ Definition rewrite {X : Type} (C : X -> Type) {a b : X} (H : a = b) :
  *)
 Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
   match g with
-  | @Goal gs_base S.SProp G g =>
+  | @Goal S.SProp G g =>
     ''(m: x, gs) <- F G;
     M.cumul_or_fail UniCoq x g;;
     M.map (fun g => M.ret (m:tt,g)) gs
-  | @Goal gs_base S.SType G g =>
+  | @Goal S.SType G g =>
     gP <- evar Prop;
     mtry
       cumul_or_fail UniMatch gP G;;
@@ -230,11 +230,11 @@ Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
  *)
 Definition with_goal_type (F : forall (T : Type), ttac T) : tactic := fun g =>
   match g with
-  | @Goal gs_base S.SProp G g =>
+  | @Goal S.SProp G g =>
     ''(m: x, gs) <- F G;
     M.cumul_or_fail UniCoq x g;;
     M.map (fun g => M.ret (m:tt,g)) gs
-  | @Goal gs_base S.SType G g =>
+  | @Goal S.SType G g =>
     gP <- evar Prop;
     mtry
       cumul_or_fail UniMatch gP G;;
