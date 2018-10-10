@@ -97,7 +97,7 @@ module Goal = struct
 
   let make_replace env (sigma: evar_map) oldtype newtype id goal =
     let var = mkVar id in
-    let sigma, sort = Evarutil.new_Type env sigma in
+    let sigma, sort = Evarutil.new_Type sigma in
     let sigma, eq = CoqEq.mkEqRefl sigma env sort oldtype in
     let sigma, rep = mkHypReplace sigma env in
     sigma, mkApp (rep, [|oldtype;newtype;var;eq;goal |])
@@ -1808,7 +1808,8 @@ let run (env0, sigma) t : data =
       Val (sigma', v)
 
 (** set the run function in unicoq *)
-let _ = Munify.set_lift_constr (fun env sigma -> (mkUConstr "Lift.lift" sigma env))
+let lift_gr = lazy (mkUGlobal "Lift.lift")
+let _ = Munify.set_lift_constr (fun env sigma -> (Constrs.mkUConstr_of_global (Lazy.force lift_gr) sigma env))
 let _ = Munify.set_run (fun env sigma t ->
   match run (env, sigma) t with
   | Err _ -> None

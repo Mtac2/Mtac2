@@ -13,37 +13,52 @@ module Constrs = struct
   exception Constr_not_found of string
   exception Constr_poly of string
 
-  let mkConstr name = lazy (
+  let glob_to_string gr = Libnames.string_of_path (Nametab.path_of_global gr)
+
+  let mkGlobal name = lazy (Nametab.global_of_path (Libnames.path_of_string name))
+
+  let mkConstr_of_global gr =
+    let gr = Lazy.force gr in
     try of_constr @@
-      UnivGen.constr_of_global
-        (Nametab.global_of_path (Libnames.path_of_string name))
-    with Not_found -> raise (Constr_not_found name)
-       | Invalid_argument _ -> raise (Constr_poly name)
-  )
+      UnivGen.constr_of_global gr
+    with Not_found -> raise (Constr_not_found (glob_to_string gr))
+       | Invalid_argument _ -> raise (Constr_poly (glob_to_string gr))
 
-  let mkUConstr name sigma env =
-    try fresh_global env sigma
-          (Nametab.global_of_path (Libnames.path_of_string name))
-    with Not_found -> raise (Constr_not_found name)
+  let mkConstr name =
+    lazy (mkConstr_of_global (mkGlobal name))
 
-  let isConstr sigma = fun r c -> eq_constr sigma (Lazy.force r) c
+  let mkUGlobal name =
+    Nametab.global_of_path (Libnames.path_of_string name)
 
-  let isUConstr r sigma env = fun c ->
-    eq_constr_nounivs sigma (snd (mkUConstr r sigma env)) c
+  let mkUConstr_of_global gr sigma env =
+    try fresh_global env sigma gr
+    with Not_found ->
+      raise (Constr_not_found (glob_to_string gr))
+
+  let mkUConstr name sigma env = mkUConstr_of_global (mkUGlobal name) sigma env
+
+  let isGlobal sigma r c =
+    Globnames.is_global (Lazy.force r) (to_constr sigma c)
+
+  let isConstr sigma = fun r c -> eq_constr_nounivs sigma (Lazy.force r) c
+
+
+  let isUConstr r sigma env =
+    is_global sigma r
 
 end
 
 module ConstrBuilder = struct
   open Constrs
 
-  type t = string
+  type t = Globnames.global_reference Lazy.t
 
-  let from_string (s:string) : t = s
+  let from_string (s:string) : t = lazy (Nametab.global_of_path (Libnames.path_of_string s))
 
-  let build s = Lazy.force (mkConstr s)
-  let build_app s args = mkApp (Lazy.force (mkConstr s), args)
+  let build (s : t) = mkConstr_of_global s
+  let build_app s args = mkApp (mkConstr_of_global s, args)
 
-  let equal sigma s = isConstr sigma (mkConstr s)
+  let equal sigma s = isGlobal sigma s
 
   let from_coq s (_, sigma) cterm =
     let (head, args) = decompose_appvect sigma cterm in
@@ -53,15 +68,15 @@ end
 module UConstrBuilder = struct
   open Constrs
 
-  type t = string
+  type t = Globnames.global_reference Lazy.t
 
-  let from_string (s:string) : t = s
+  let from_string (s:string) : t = lazy (Nametab.global_of_path (Libnames.path_of_string s))
 
   let build_app s sigma env args =
-    let (sigma, c) = mkUConstr s sigma env in
+    let (sigma, c) = mkUConstr_of_global (Lazy.force s) sigma env in
     (sigma, mkApp (c, args))
 
-  let equal = isUConstr
+  let equal s = isUConstr (Lazy.force s)
 
   let from_coq s (env, sigma) cterm =
     let (head, args) = decompose_appvect sigma cterm in
@@ -196,13 +211,13 @@ end
 module CoqPositive = struct
   open Constrs
 
-  let xI = mkConstr "Coq.Numbers.BinNums.xI"
-  let xO = mkConstr "Coq.Numbers.BinNums.xO"
-  let xH = mkConstr "Coq.Numbers.BinNums.xH"
+  let xI = mkGlobal "Coq.Numbers.BinNums.xI"
+  let xO = mkGlobal "Coq.Numbers.BinNums.xO"
+  let xH = mkGlobal "Coq.Numbers.BinNums.xH"
 
-  let isH sigma = isConstr sigma xH
-  let isI sigma = isConstr sigma xI
-  let isO sigma = isConstr sigma xO
+  let isH sigma = isGlobal sigma xH
+  let isI sigma = isGlobal sigma xI
+  let isO sigma = isGlobal sigma xO
 
   let from_coq (env, evd) c =
     let rec fc i c =
@@ -224,21 +239,21 @@ module CoqPositive = struct
 
   let rec to_coq n =
     if n = 1 then
-      Lazy.force xH
+      mkConstr_of_global xH
     else if n mod 2 = 0 then
-      mkApp(Lazy.force xO, [|to_coq (n / 2)|])
+      mkApp(mkConstr_of_global xO, [|to_coq (n / 2)|])
     else
-      mkApp(Lazy.force xI, [|to_coq ((n-1)/2)|])
+      mkApp(mkConstr_of_global xI, [|to_coq ((n-1)/2)|])
 end
 
 module CoqN = struct
   open Constrs
   (* let tN = Constr.mkConstr "Coq.Numbers.BinNums.N" *)
-  let h0 = mkConstr "Coq.Numbers.BinNums.N0"
-  let hP = mkConstr "Coq.Numbers.BinNums.Npos"
+  let h0 = mkGlobal "Coq.Numbers.BinNums.N0"
+  let hP = mkGlobal "Coq.Numbers.BinNums.Npos"
 
-  let is0 sigma = isConstr sigma h0
-  let isP sigma = isConstr sigma hP
+  let is0 sigma = isGlobal sigma h0
+  let isP sigma = isGlobal sigma hP
 
   exception NotAnN
 
@@ -260,25 +275,25 @@ module CoqN = struct
 
   let to_coq n =
     if n = 0 then
-      Lazy.force h0
+      mkConstr_of_global h0
     else
-      mkApp(Lazy.force hP, [|CoqPositive.to_coq n|])
+      mkApp(mkConstr_of_global hP, [|CoqPositive.to_coq n|])
 end
 
 module CoqZ = struct
   open Constrs
 
-  let z0 = mkConstr "Coq.Numbers.BinNums.Z0"
-  let zpos = mkConstr "Coq.Numbers.BinNums.Zpos"
-  let zneg = mkConstr "Coq.Numbers.BinNums.Zneg"
+  let z0 =   mkGlobal "Coq.Numbers.BinNums.Z0"
+  let zpos = mkGlobal "Coq.Numbers.BinNums.Zpos"
+  let zneg = mkGlobal "Coq.Numbers.BinNums.Zneg"
 
   let to_coq n =
     if n = 0 then
-      Lazy.force z0
+      mkConstr_of_global z0
     else if n > 0 then
-      mkApp(Lazy.force zpos, [|CoqPositive.to_coq n|])
+      mkApp(mkConstr_of_global zpos, [|CoqPositive.to_coq n|])
     else
-      mkApp(Lazy.force zneg, [|CoqPositive.to_coq n|])
+      mkApp(mkConstr_of_global zneg, [|CoqPositive.to_coq n|])
 end
 
 module CoqBool = struct

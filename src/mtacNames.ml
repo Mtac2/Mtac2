@@ -5,6 +5,7 @@ open Constrs
 
 let metaCoq_module_name = "Mtac2.intf"
 let mkConstr e = Constrs.mkConstr (metaCoq_module_name ^ "." ^ e)
+let mkUGlobal e = Constrs.mkUGlobal (metaCoq_module_name ^ "." ^ e)
 let mkUConstr e = Constrs.mkUConstr (metaCoq_module_name ^ "." ^ e)
 let mkBuilder e = ConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
 let mkUBuilder e = UConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
