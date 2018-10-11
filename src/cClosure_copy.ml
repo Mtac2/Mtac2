@@ -291,30 +291,40 @@ let constant_value_in env (kn,u) =
   | Undef _ -> raise (NotEvaluableConst NoBody)
 
 let ref_value_cache ({i_cache = cache} as infos)  ref =
-  try
-    Some (KeyTable.find cache.i_tab ref)
-  with Not_found ->
-  try
-    let body, u =
-      match ref with
-      | RelKey n ->
-          let len = Array.length cache.i_rels in
-          let i = n - 1 in
-          let () = if i < 0 || len <= i then raise Not_found in
-          begin match Array.unsafe_get cache.i_rels i with
-          | None -> raise Not_found
-          | Some t -> lift n t, Univ.Instance.empty
-          end
-      | VarKey id -> assoc_defined id cache.i_env, Univ.Instance.empty
-      | ConstKey cst -> constant_value_in cache.i_env cst
-    in
-    let v = cache.i_repr infos body u in
-    KeyTable.add cache.i_tab ref v;
-    Some v
-  with
-  | Not_found (* List.assoc *)
-  | NotEvaluableConst _ (* Const *)
-    -> None
+  match ref with
+  | ConstKey cst ->
+      (try
+         let (c,u) = constant_value_in cache.i_env cst in
+         Some (cache.i_repr infos c u)
+       with
+       | Not_found (* List.assoc *)
+       | NotEvaluableConst _ (* Const *)
+         -> None)
+  | _ ->
+      try
+        Some (KeyTable.find cache.i_tab ref)
+      with Not_found ->
+      try
+        let body, u =
+          match ref with
+          | RelKey n ->
+              let len = Array.length cache.i_rels in
+              let i = n - 1 in
+              let () = if i < 0 || len <= i then raise Not_found in
+              begin match Array.unsafe_get cache.i_rels i with
+              | None -> raise Not_found
+              | Some t -> lift n t, Univ.Instance.empty
+              end
+          | VarKey id -> assoc_defined id cache.i_env, Univ.Instance.empty
+          | ConstKey cst -> constant_value_in cache.i_env cst
+        in
+        let v = cache.i_repr infos body u in
+        KeyTable.add cache.i_tab ref v;
+        Some v
+      with
+      | Not_found (* List.assoc *)
+      | NotEvaluableConst _ (* Const *)
+        -> None
 
 let evar_value cache ev =
   cache.i_sigma ev
