@@ -46,7 +46,7 @@ let constr_to_string (sigma: Evd.evar_map) env t =
 
 
 (** Functions to convert between fconstr and econstr *)
-let of_econstr e = CClosure_copy.inject (EConstr.Unsafe.to_constr e)
+let of_econstr e = CClosure_copy.inject (EConstr.Unsafe.to_constr e) Univ.Instance.empty
 let to_econstr f = EConstr.of_constr (CClosure_copy.term_of_fconstr f)
 
 
@@ -956,7 +956,6 @@ type ctxt = {env: Environ.env;
              sigma: Evd.evar_map;
              nus: int;
              stack: CClosure_copy.stack;
-             infos: CClosure_copy.fconstr CClosure_copy.infos
             }
 
 type vm = Code of fconstr | Ret of fconstr | Fail of fconstr
@@ -1059,9 +1058,7 @@ let rec run' ctxt (vms : vm list) =
         (* let cont ctxt h args = (run'[@tailcall]) {ctxt with stack=Zapp args::stack} (Code h :: vms) in *)
 
         let evars ev = safe_evar_value sigma ev in
-        let infos = {ctxt.infos with i_cache={ctxt.infos.i_cache with i_sigma=evars} } in
-        let ctxt = {ctxt with infos} in
-        (* let infos = CClosure_copy.create_clos_infos ~evars CClosure_copy.allnolet env in *)
+        let infos = CClosure_copy.create_clos_infos ~evars CClosure_copy.allnolet env in
 
         let reduced_term, stack = reduce_noshare infos (* (CClosure.create_tab ()) *) t stack
         (* RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t *)
@@ -1116,7 +1113,7 @@ let rec run' ctxt (vms : vm list) =
                   (* print_constr sigma env b; *)
                   (* (run'[@tailcall]) ctxt (upd (mkApp (Vars.subst1 b t, args))) *)
                   (* (run'[@tailcall]) ctxt (upd (of_econstr (Vars.subst1 b (to_econstr t)))) *)
-                  let e = (Esubst.subs_cons([|of_econstr b|],e)) in
+                  let e = (fstsndapp Esubst.subs_cons [|of_econstr b|] e) in
                   (* print_constr sigma env (to_econstr (mk_red (FCLOS (bd, e)))); *)
                   (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
 
@@ -1129,7 +1126,7 @@ let rec run' ctxt (vms : vm list) =
             else
               (* (run'[@tailcall]) ctxt (upd (mkApp (Vars.subst1 b t, args))) *)
               (* (run'[@tailcall]) ctxt (upd (of_econstr (Vars.subst1 (to_econstr b) (to_econstr t)))) *)
-              let e = (Esubst.subs_cons([|v|],e)) in
+              let e = (fstsndapp Esubst.subs_cons [|v|] e) in
               (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
 
         | FFlex (ConstKey (hc, _)) ->
@@ -1792,11 +1789,10 @@ let multi_subst_inv sigma l c =
 let run (env0, sigma) t : data =
   let subs, env = db_to_named sigma env0 in
   let t = multi_subst sigma subs t in
-  let t = CClosure_copy.inject (EConstr.Unsafe.to_constr t) in
+  let t = CClosure_copy.inject (EConstr.Unsafe.to_constr t) Univ.Instance.empty in
   let (sigma, renv) = build_hypotheses sigma env in
   let evars ev = safe_evar_value sigma ev in
-  let infos = CClosure_copy.create_clos_infos ~evars CClosure_copy.allnolet env in
-  match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure_copy.empty_stack; infos} [Code t] with
+  match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure_copy.empty_stack} [Code t] with
   | Err (sigma', v, _) ->
       (* let v = Vars.replace_vars vsubs v in *)
       let v = multi_subst_inv sigma' subs (to_econstr v) in
