@@ -31,7 +31,6 @@ type ctxt = {
   sigma: Evd.evar_map;
   nus: int;
   stack: CClosure_copy.stack;
-  infos: CClosure_copy.fconstr CClosure_copy.infos;
 }
 
 type vm = Code of CClosure_copy.fconstr | Ret of CClosure_copy.fconstr | Fail of CClosure_copy.fconstr
