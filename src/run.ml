@@ -907,7 +907,7 @@ let run_declare_def env sigma kind name opaque ty bod =
   let id = Names.Id.of_string name in
   let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, ctx) in
   let gr = Globnames.ConstRef kn in
-  let () = Lemmas.call_hook ~fix_exn ?hook:(vernac_definition_hook false kind) uctx [] Global gr  in
+  let () = Lemmas.call_hook ~fix_exn ?hook:(vernac_definition_hook false kind) uctx [] (Global ImportDefaultBehavior) gr  in
   let c = UnivGen.constr_of_monomorphic_global gr in
   let env = Global.env () in
   (* Feedback.msg_notice *)
