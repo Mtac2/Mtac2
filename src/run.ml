@@ -454,7 +454,7 @@ module UnificationStrategy = struct
     Munify.unify_match_nored;
     (fun _ ts env sigma conv_pb t1 t2->
        try
-         match evar_conv_x ts env sigma conv_pb t1 t2 with
+         match evar_conv_x (default_flags_of ts) env sigma conv_pb t1 t2 with
          | Success sigma -> Success (solve_unif_constraints_with_heuristics env sigma)
          | e -> e
        with _ -> UnifFailure (sigma, Pretype_errors.ProblemBeyondCapabilities))
