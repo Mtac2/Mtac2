@@ -1810,7 +1810,15 @@ let run (env0, sigma) t : data =
       Val (sigma', v)
 
 (** set the run function in unicoq *)
-let _ = Munify.set_lift_constr (fun env sigma -> (mkUConstr "Lift.lift" sigma env))
+let _ =
+  let lift_constr = ref None in
+  Munify.set_lift_constr (fun env sigma ->
+    match !lift_constr with
+    | None ->
+        let lc = snd (mkUConstr "Lift.lift" sigma env) in
+        lift_constr := Some lc;
+        sigma, lc
+    | Some lc -> sigma, lc)
 let _ = Munify.set_run (fun env sigma t ->
   match run (env, sigma) t with
   | Err _ -> None
