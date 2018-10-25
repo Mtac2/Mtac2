@@ -46,3 +46,9 @@ Example evar_not_closed_but_ok  :=
 
 Fail Example nu_not_closed_raise_not_groud_uncaught  :=
   ltac:(mrun (\nu e : nat, M.raise (AnException e)%MC)).
+
+Example escapes_a_nu_but_ok  :=
+  ltac:(mrun (
+    \nu f:nat,
+      mtry \nu e : nat, M.raise (AnException f)
+      with AnException f => M.ret 0 end)%MC).
