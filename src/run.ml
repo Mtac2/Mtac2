@@ -974,12 +974,14 @@ type vm = Code of fconstr | Ret of fconstr | Fail of fconstr
 (*   | Fix -> "Fix" *)
 (*   | Rem _ -> "Rem" *)
 
-let check_evars_exception old_sigma new_sigma env c =
+let check_evars_exception exception_sigma mtry_sigma env c =
+  let c = nf_evar exception_sigma c in (* is this necessary? *)
   try
-    let c = nf_evar old_sigma c in
-    let (sigma, _) = Typing.type_of env new_sigma c in
-    (sigma, c)
-  with _ -> E.mkExceptionNotGround new_sigma env c
+    let () = Pretyping.check_evars env mtry_sigma exception_sigma c in
+    (mtry_sigma, c)
+  with
+  | Pretype_errors.PretypeError _ ->
+      E.mkExceptionNotGround mtry_sigma env c
 
 let timers = Hashtbl.create 128
 
