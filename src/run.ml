@@ -1046,7 +1046,14 @@ let rec run' ctxt (vms : vm list) =
       let sigma = Evd.set_universe_context sigma (Evd.evar_universe_context ctxt.sigma) in
       let (sigma, c) = check_evars_exception ctxt.sigma sigma env (to_econstr c) in
       (run'[@tailcall]) {ctxt with sigma; stack=Zapp [|of_econstr c|] :: stack} (Code b::vms)
-  | Fail c, (Nu p :: vms) -> (run'[@tailcall]) (ctxt_nu1 p) (Fail c :: vms)
+  | Fail c, (Nu (name, _, _ as p) :: vms) ->
+      let exc = to_econstr c in
+      if occur_var env sigma name exc then
+        let (sigma, e) = E.mkExceptionNotGround sigma env exc in
+        let ctxt = ctxt_nu1 p in
+        (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
+      else
+        (run'[@tailcall]) (ctxt_nu1 p) (Fail c :: vms)
   | Fail c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Fail c :: vms)
 
   | (Bind _ | Fail _ | Nu _ | Try _ | Rem _), _ -> failwith "ouch1"

@@ -21,6 +21,13 @@ Example not_closed_but_closed (m : nat) :=
 Example nu_not_closed_raise_not_closed  :=
   ltac:(mrun (mtry \nu x:nat, M.raise (AnException x) with ExceptionNotGround => M.ret 0 end)%MC).
 
+(* The following example shows that [\nu] checks for leaked variables when an
+   exception is raised inside of it. The previous example only checks that the
+   exception does not leak any variables _when it reaches the mtry_
+ *)
+Example nu_not_closed_raise_immediately :=
+  ltac:(mrun (mtry ''(tt) <- (\nu x:nat, M.raise (AnException x)); M.raise (AnException 0) with ExceptionNotGround => M.ret 0 end)%MC).
+
 Example nu_not_closed_but_ok  :=
   ltac:(mrun (\nu x:nat, mtry M.raise (AnException x) with [? y] AnException y => M.ret 0 end)%MC).
 
