@@ -12,6 +12,7 @@ Require Import NArith.BinNatDef.
 
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
+Set Polymorphic Inductive Cumulativity.
 
 (** Exceptions *)
 Mtac Do New Exception NoGoalsLeft.

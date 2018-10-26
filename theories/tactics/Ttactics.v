@@ -9,6 +9,7 @@ Import M.notations.
 
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
+Set Polymorphic Inductive Cumulativity.
 
 Module TT.
 
