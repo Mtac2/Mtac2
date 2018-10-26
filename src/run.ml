@@ -792,13 +792,26 @@ let build_hypotheses sigma env =
   let renv = List.map (fun v->let (n, t, ty) = to_tuple v in (mkVar n, t, ty))
                (named_context env) in
   (* the list is reversed: [H : x > 0, x : nat] *)
+  (* Pre-generate all constructors and types. We only need a total of two
+     universes, one for hyps and one for the list constructors. For simplicity,
+     we generate a total of 3 to not have to fiddle with the universes of nil,
+     which we generate as before. *)
+  let (sigma, hypty) = Hypotheses.mkHypType sigma env in
+  let (sigma, ahyp) = UConstrBuilder.build_app  Hypotheses.ahyp_constr sigma env [||] in
+  let (sigma, cons) = Constrs.mkUConstr "Mtac2.lib.Datatypes.mcons" sigma env in (* FIXME: hacky *)
   let rec build renv =
     match renv with
-    | [] -> let (sigma, ty) = Hypotheses.mkHypType sigma env in
-        (CoqList.mkNil sigma env ty)
+    | [] ->
+        (CoqList.mkNil sigma env hypty)
     | (n, t, ty) :: renv ->
         let (sigma, r) = build renv in
-        Hypotheses.cons_hyp ty n t r sigma env
+        let sigma, t = match t with
+          | None -> CoqOption.mkNone sigma env ty
+          | Some t -> CoqOption.mkSome sigma env ty t
+        in
+        let hyp = EConstr.mkApp (ahyp, [|ty; n; t|]) in
+        sigma, EConstr.mkApp (cons, [|hypty; hyp; r|])
+        (* Hypotheses.cons_hyp ty n t r sigma env *)
   in
   build renv
 
