@@ -1,10 +1,8 @@
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
+Set Polymorphic Inductive Cumulativity.
 
 (** Types that can hold either a [Prop] or a [Type] *)
-Set Universe Polymorphism.
-Unset Universe Minimization ToSet.
-
 Module S.
 
 Monomorphic Inductive Sort : Type := SProp | SType.
