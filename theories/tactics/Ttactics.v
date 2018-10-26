@@ -124,6 +124,20 @@ Definition vm_compute {A} : ttac (A -> A) :=
     M.ret (m: (fun a : A => a <: A), [m:])
   )%MC.
 
+Definition change_dep {X} (B : X -> Type) x {y} (f : ttac (B x)) : ttac (B y) :=
+  (
+  e <- M.unify x y UniCoq;
+  match e with
+  | mSome e =>
+      match e in Logic.meq _ z return ttac (B z) with
+      | Logic.meq_refl => f
+      end
+  | mNone => M.raise TTchange_Exception
+  end
+  )%MC.
+
+
+
 Definition vm_change_dep {X} (B : X -> Type) x {y} (f : ttac (B x)) : ttac (B y) :=
   (
     let x' := reduce RedVmCompute x in
