@@ -36,17 +36,17 @@ let glob_mtac_type ist r =
     let env = Global.env () in
     let sigma = Evd.from_env env in
     let body = Global.lookup_constant c in
-    let sigma, ret = match body.const_universes with
+    let ty = body.const_type in
+    let sigma, ty, ret = match body.const_universes with
       | Declarations.Monomorphic_const _ ->
-          sigma, (fun ty -> MonoProgram ty) (* constraints already registered *)
+          sigma, ty, (fun ty -> MonoProgram ty) (* constraints already registered *)
       | Declarations.Polymorphic_const au ->
           (* need to instantiate and register the abstract universes a *)
           let inst, ctx = UnivGen.fresh_instance_from au None in
           (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
           let sigma = Evd.merge_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
-          sigma, (fun ty -> PolyProgram (au, ty))
+          sigma, Vars.subst_instance_constr inst ty, (fun ty -> PolyProgram (au, ty))
     in
-    let ty = body.const_type in
     let ty = EConstr.of_constr ty in
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
     let sigma, metaCoqType = MtacNames.mkT_lazy sigma env in
