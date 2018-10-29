@@ -4,7 +4,6 @@ Import ListNotations.
 
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
-Set Polymorphic Inductive Cumulativity.
 
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
