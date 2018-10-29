@@ -3,7 +3,6 @@ Import Sorts.S.
 
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
-Set Polymorphic Inductive Cumulativity.
 
 (** MTele: a telescope which represent nested binder
 
