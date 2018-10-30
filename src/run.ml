@@ -842,12 +842,11 @@ let run_declare_def env sigma kind name opaque ty bod =
   let open Decl_kinds in
   (* copied from coq 8.6.1 Vernacentries *)
   let fix_exn = Future.fix_exn_of (Future.from_val bod) in
-  let no_hook = Lemmas.mk_hook (fun _ _ -> ()) in
   let vernac_definition_hook p = function
     | Coercion -> Class.add_coercion_hook p
     | CanonicalStructure ->
         if opaque then raise CanonicalStructureMayNotBeOpaque else
-          Lemmas.mk_hook (fun _ -> Recordops.declare_canonical_structure)
+          Lemmas.mk_hook (fun _ _ -> Recordops.declare_canonical_structure)
     | SubClass -> Class.add_subclass_hook p
     (* | Instance -> Lemmas.mk_hook (fun local gr -> *)
     (*   let local = match local with | Global -> false | Local -> true | _ -> raise DischargeLocality in *)
@@ -858,7 +857,7 @@ let run_declare_def env sigma kind name opaque ty bod =
     | IdentityCoercion | Scheme | StructureComponent | Fixpoint ->
         raise UnsupportedDefinitionObjectKind
     | _ ->
-        no_hook
+        Lemmas.no_hook
   in
   (* copied from coq 8.6.1 Decl_kinds *)
   let kinds = [|
@@ -882,7 +881,7 @@ let run_declare_def env sigma kind name opaque ty bod =
   let id = Names.Id.of_string name in
   let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, Entries.Monomorphic_const_entry ctx) in
   let gr = Globnames.ConstRef kn in
-  let () = Lemmas.call_hook fix_exn (vernac_definition_hook false kind) Global gr  in
+  let () = Lemmas.call_hook fix_exn (vernac_definition_hook false kind) UState.empty Global gr  in
   let c = (UnivGen.constr_of_global gr) in
   let env = Global.env () in
   (* Feedback.msg_notice *)
