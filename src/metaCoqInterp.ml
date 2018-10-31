@@ -117,13 +117,17 @@ module MetaCoqRun = struct
         if not istactic then
           Refine.refine ~typecheck:false begin fun evd -> evd, v end
         else
-          let goals = CoqList.from_coq sigma env v in
-          let goals = List.map (fun x -> snd (CoqPair.from_coq (env, sigma) x)) goals in
-          let goals = List.map (Run.Goal.evar_of_goal sigma env) goals in
-          let goals = List.filter Option.has_some goals in
-          let goals = List.map (fun e->Proofview_monad.with_empty_state (Option.get e)) goals in
-          Unsafe.tclSETGOALS goals
-
+          begin
+            try
+              let goals = CoqList.from_coq sigma env v in
+              let goals = List.map (fun x -> snd (CoqPair.from_coq (env, sigma) x)) goals in
+              let goals = List.map (Run.Goal.evar_of_goal sigma env) goals in
+              let goals = List.filter Option.has_some goals in
+              let goals = List.map (fun e->Proofview_monad.with_empty_state (Option.get e)) goals in
+              Unsafe.tclSETGOALS goals
+            with CoqList.NotAList e ->
+              CErrors.user_err (str "The list of goals is not normalized: " ++ (Termops.print_constr e))
+          end
     | Run.Err (_, e) ->
         CErrors.user_err (str "Uncaught exception: " ++ (Termops.print_constr e))
 
