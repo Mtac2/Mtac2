@@ -34,7 +34,7 @@ Definition to_goal (A : Type) : M (A *m goal gs_base) :=
                  ret (m: a', Goal SProp a)
     | mNone => raise NotAProp (* we backtrack to erase P *)
     end
-  with NotAProp =>
+  with [#] NotAProp | =n>
     a <- evar A;
     M.ret (m: a, Goal SType a)
   end.
@@ -285,7 +285,7 @@ Fixpoint match_goal_pattern'
     | mSome eqCA =>
       let a' := rcbv match Logic.meq_sym eqCA in _ =m= X return X with meq_refl => a end in
       mtry match_goal_pattern' u (f a') [m:] (mrev_append l1 l2') g
-      with DoesNotMatchGoal =>
+      with [#] DoesNotMatchGoal | =n>
         go (ahyp a d :m: l1) l2' g
       end
     | mNone => go (ahyp a d :m: l1) l2' g end
@@ -305,7 +305,7 @@ Fixpoint match_goal_base (u : Unification)
   | [m:] => M.raise NoPatternMatchesGoal
   | p :m: ps' =>
     mtry match_goal_pattern u p g
-    with DoesNotMatchGoal => match_goal_base u ps' g end
+    with [#] DoesNotMatchGoal | =n> match_goal_base u ps' g end
   end%MC.
 End MatchGoalTT.
 Import MatchGoalTT.

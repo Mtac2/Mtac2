@@ -127,8 +127,7 @@ module CoqSig : sig
 end
 
 module MCTactics : sig
-  [@@@warning "-3"] (* Term.constr is deprecated in favor of Constr.t, but Constr.t is not accessible to the compiler for some reason :-/ *)
-  val mkGTactic : Environ.env -> Evd.evar_map -> Evd.evar_map * Term.constr
+  val mkGTactic : Environ.env -> Evd.evar_map -> Evd.evar_map * constr
 end
 
 module CoqPair : sig
