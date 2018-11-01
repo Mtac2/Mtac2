@@ -1,4 +1,6 @@
 -R lf lf
+-R ../../theories Mtac2
+-I ../../src
 lf/Preface.v
 lf/Basics.v
 lf/Induction.v

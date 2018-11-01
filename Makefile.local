@@ -15,7 +15,7 @@ post-all:: test
 test: $(TESTRESULTS) $(EXAMPLESRESULTS) sf
 
 sf:
-	cd tests/sf-5; ./configure.sh; make
+	cd tests/sf-5; ./configure.sh; make clean; make
 
 .PHONY=sf
 
