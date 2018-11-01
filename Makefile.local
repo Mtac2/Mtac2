@@ -10,6 +10,8 @@ TESTRESULTS=$(TESTS:.v=.vo)
 EXAMPLES=$(wildcard examples/*.v)
 EXAMPLESRESULTS=$(EXAMPLES:.v=.vo)
 
+all: test
+
 test: $(TESTRESULTS) $(EXAMPLESRESULTS) sf
 
 sf:
