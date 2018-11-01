@@ -118,7 +118,7 @@ module MetaCoqRun = struct
               let goals = List.map (fun e->Proofview_monad.with_empty_state (Option.get e)) goals in
               Unsafe.tclSETGOALS goals
             with CoqList.NotAList e ->
-              CErrors.user_err (str "The list of goals is not normalized: " ++ (Termops.print_constr e))
+              CErrors.user_err (str "The list of goals is not normalized: " ++ (Printer.pr_econstr_env env sigma e))
           end
     | Run.Err (_, e) ->
         CErrors.user_err (str "Uncaught exception: " ++ (Printer.pr_econstr_env env sigma e))

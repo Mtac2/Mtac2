@@ -17,8 +17,6 @@ test: $(TESTRESULTS) $(EXAMPLESRESULTS) sf
 sf:
 	cd tests/sf-5; ./configure.sh; make clean; make
 
-.PHONY=sf
-
 TIMINGS=$(wildcard timings/*.v)
 TIMINGRESULTS=$(TIMINGS:.v=.vo)
 
