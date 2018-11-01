@@ -13,7 +13,7 @@ EXAMPLESRESULTS=$(EXAMPLES:.v=.vo)
 test: $(TESTRESULTS) $(EXAMPLESRESULTS) sf
 
 sf:
-	cd tests/sf-5; ./configure.sh; make
+	cd tests/sf-5; ./configure.sh; make clean; make
 
 TIMINGS=$(wildcard timings/*.v)
 TIMINGRESULTS=$(TIMINGS:.v=.vo)
