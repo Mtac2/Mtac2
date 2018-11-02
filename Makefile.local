@@ -22,15 +22,15 @@ timing: $(TIMINGRESULTS)
 
 tests/%.vo: tests/%.v real-all
 	$(SHOW)COQC $<
-	$(HIDE)(($(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $< $(TIMING_EXTRA) && echo "[OK] " $<) || ( EXITSTATE="$$?"; echo "\033[0;31m[KO]\033[0m" $<; exit "$$EXITSTATE" ))
+	$(HIDE)(($(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA) && echo "[OK] " $<) || ( EXITSTATE="$$?"; echo "\033[0;31m[KO]\033[0m" $<; exit "$$EXITSTATE" ))
 .PHONY=test
 
 examples/%.vo: examples/%.v real-all
 	$(SHOW)COQC $<
-	$(HIDE)(($(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $< $(TIMING_EXTRA) && echo "[OK] " $<) || ( EXITSTATE="$$?"; echo "\033[0;31m[KO]\033[0m" $<; exit "$$EXITSTATE" ))
+	$(HIDE)(($(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA) && echo "[OK] " $<) || ( EXITSTATE="$$?"; echo "\033[0;31m[KO]\033[0m" $<; exit "$$EXITSTATE" ))
 .PHONY=test
 
 timings/%.vo: timings/%.v real-all
 	$(SHOW)COQC $<
-	$(HIDE)(($(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $< $(TIMING_EXTRA) && echo "[OK] " $<) || ( EXITSTATE="$$?"; echo "\033[0;31m[KO]\033[0m" $<; exit "$$EXITSTATE" ))
+	$(HIDE)(($(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA) && echo "[OK] " $<) || ( EXITSTATE="$$?"; echo "\033[0;31m[KO]\033[0m" $<; exit "$$EXITSTATE" ))
 .PHONY=timing
