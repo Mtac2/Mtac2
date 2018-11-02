@@ -87,3 +87,19 @@ Goal forall A (x y : A), x = y.
   intros A x y.
   Fail mrun (M.abs_fun (P:=fun x => x = y) y (@eq_refl _ _) >>= M.print_term;; M.evar _)%MC.
 Abort.
+
+Fixpoint n_ary n :=
+  match n with
+  | 0 => True
+  | S n' => True -> n_ary n'
+  end.
+
+Goal let x := 1 in eq_refl = (eq_refl : n_ary x = (True -> True)).
+  intros x.
+  pose (t := (M.abs_fun (P:=fun y =>eq_refl = (eq_refl : n_ary y = n_ary y)) x eq_refl
+    >>= fun f =>M.ret (f x : eq_refl = (eq_refl : n_ary x = (True -> True))))%MC).
+  Fail (mrun t).
+  (* it must fail, because x is a definition. otherwise, we could end up with an
+  ill-typed term (fun y => eq_refl = (eq_refl : n_ary y = (True -> True))) *)
+  Fail Check (fun y => eq_refl = (eq_refl : n_ary y = (True -> True))).
+Abort.
