@@ -722,15 +722,13 @@ let compute_deps env sigma x =
     let name = destVar sigma x in
     name_deps env sigma name
   else
-    failwith "check_dependencies should not be called with not a var or rel"
+    failwith "check_dependencies should not be called with not a var"
 
 (* given a rel or var x and a term t and its type ty, it checks if t or ty does not depend on x *)
 let check_abs_deps env sigma x t ty =
   let ndeps = compute_deps env sigma x in
   let open Id.Set in
-  is_empty ndeps ||
-  (* The term might depend on x, which by invariant we now is a
-     variable (since ndeps is not empty) *)
+  (* The term might depend on x *)
   (subset (inter (collect_vars sigma t) ndeps) (singleton (destVar sigma x)) &&
    is_empty (inter (collect_vars sigma ty) ndeps))
 
