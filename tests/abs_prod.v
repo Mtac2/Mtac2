@@ -26,3 +26,16 @@ MProof.
   mmatch aP with (forall y, y <= 0):Type => M.ret I end).
   K.
 Qed.
+
+Fixpoint n_ary n :=
+  match n with
+  | 0 => True
+  | S n' => True -> n_ary n'
+  end.
+
+Goal let x := 1 in Prop.
+  intros x.
+  pose (t := M.abs_prod_prop x (eq_refl = (eq_refl : n_ary x = (True -> True)))).
+  Fail mrun (t >>= T.exact)%tactic.
+  (* It should fail because otherwise it will create an ill-typed prop *)
+Abort.

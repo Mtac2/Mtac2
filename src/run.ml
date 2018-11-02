@@ -1711,7 +1711,7 @@ and abs vms case ctxt a p x y n t : data_stack =
      substitute the context, which is impossible *)
   if isVar sigma x then
     let name = destVar sigma x in
-    if case = AbsFun && has_definition name then
+    if case <> AbsLet && has_definition name then
       let (sigma, e) = E.mkAbsVariableIsADefinition sigma env x in
       (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
     else if check_abs_deps env sigma x y p then
