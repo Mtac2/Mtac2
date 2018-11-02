@@ -7,7 +7,7 @@ Unset Universe Minimization ToSet.
 
 Module S.
 
-Inductive Sort : Type := SProp | SType.
+Monomorphic Inductive Sort : Type := SProp | SType.
 
 (** Creates a fresh type according to [s] *)
 Definition stype_of (s : Sort) : Type :=
