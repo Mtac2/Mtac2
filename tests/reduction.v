@@ -180,3 +180,10 @@ MProof.
     let x := reduce (RedStrong [rl: RedDeltaOnly [rl: Dyn "x"]]) 0 in M.failwith "Shouldn't be here"
   with ReductionFailure => M.ret tt end)%MC.
 Qed.
+
+Example shouldn_t_fail_horribly_with_bad_reduction (r: Reduction) : unit.
+MProof.
+  (mtry
+    let x := reduce r 0 in M.failwith "Shouldn't be here"
+  with ReductionFailure => M.ret tt end)%MC.
+Qed.
