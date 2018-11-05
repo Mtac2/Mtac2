@@ -431,9 +431,8 @@ module ReductionStrategy = struct
       (* note that [args] can be an empty array, or an array with one element: the flags *)
       let strategy, args = decompose_appvect sigma strategy in
       ReductionValue (redfuns.(get_constructor_pos sigma strategy) args env sigma c)
-    with RedList.NotAList _ ->
-      ReductionStuck
-       | Failure _ -> ReductionFailure
+    with RedList.NotAList _ -> ReductionStuck
+       | _ -> ReductionFailure
 
   (* let whd_betadeltaiota_nolet = whdfun CClosure_copy.allnolet *)
 
