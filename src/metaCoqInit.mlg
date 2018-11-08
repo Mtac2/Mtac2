@@ -1,6 +1,10 @@
 (** This module initializes the plugin (parser extension, callbacks, …). *)
 
+{
+
 open Pcoq  (* required by Camlp5 *)
+
+}
 
 (**
 
@@ -12,6 +16,8 @@ open Pcoq  (* required by Camlp5 *)
 
 *)
 DECLARE PLUGIN "MetaCoq"
+
+{
 
 (** Defines the parser of the proof mode for MetaCoq.
 
@@ -87,17 +93,21 @@ let mproof_instr : MetaCoqInstr.mproof_instr Pcoq.Entry.t =
 
 *)
 
-VERNAC mproof_mode EXTEND MProofInstr
-  [ - mproof_instr(_instr) ] => [ let open Vernacexpr in VtProofStep {parallel = `No; proof_block_detection = None}, VtLater ] ->
-  [ MetaCoqInterp.interp_proof_constr _instr ]
+}
+
+VERNAC { mproof_mode } EXTEND MProofInstr
+| [ mproof_instr(_instr) ] => { let open Vernacexpr in VtProofStep {parallel = `No; proof_block_detection = None}, VtLater } ->
+  { MetaCoqInterp.interp_proof_constr _instr }
 END
 
 (** The parsing rule for the non terminal [mproof_instr]. *)
-GEXTEND Gram
+GRAMMAR EXTEND Gram
 GLOBAL: mproof_instr;
   mproof_instr :
-    [[ c=Pcoq.Constr.operconstr ; "." -> MetaCoqInstr.MetaCoq_constr c ]];
+    [[ c=Pcoq.Constr.operconstr ; "." -> { MetaCoqInstr.MetaCoq_constr c } ]];
 END
+
+{
 
 (** Initialize the proof mode MProof for MetaCoq. *)
 
@@ -134,6 +144,8 @@ let () =
       end
   }
 
+}
+
 (** The following command extends both the parser and the interpreter
    of the Vernacular language so that a new keyword "MProof" is
    recognized and is interpreted as the entry point for a proof
@@ -168,10 +180,10 @@ let () =
      in Vernacentries.interp.
 *)
 VERNAC COMMAND EXTEND MProofCommand
-  [ "MProof" ]
-  => [ Vernacexpr.VtProofMode proof_mode_identifier, Vernacexpr.VtNow  ]
-  -> [ MetaCoqInterp.interp_mproof_command () ]
+| [ "MProof" ]
+  => { (Vernacexpr.VtProofMode proof_mode_identifier, Vernacexpr.VtNow) }
+  -> { MetaCoqInterp.interp_mproof_command () }
 | [ "MQed" ]
-  => [ Vernacexpr.VtProofMode proof_mode_identifier, Vernacexpr.VtNow  ]
-  -> [ MetaCoqInterp.end_proof () ]
+  => { (Vernacexpr.VtProofMode proof_mode_identifier, Vernacexpr.VtNow) }
+  -> { MetaCoqInterp.end_proof () }
 END
