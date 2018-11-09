@@ -239,6 +239,8 @@ module Exceptions = struct
 
   let mkReductionFailure = mkDebugEx "ReductionFailure"
 
+  let mkNotAUnifStrategy = mkDebugEx "NotAUnifStrategy"
+
   let mkNotAMatchExp = mkDebugEx "NotAMatchExp"
 
   let mkNotAnInductive = mkDebugEx "NotAnInductive"
@@ -472,15 +474,19 @@ module UnificationStrategy = struct
       pattern matching to instantiate external evars. It returns
       Success or UnifFailure and a bool stating if the strategy used
       was one of the Match. *)
+  exception NotAUnifStrategy of EConstr.t
   let unify oevars sigma env strategy conv_pb t1 t2 =
-    let ts = get_ts env in
-    let pos = get_constructor_pos sigma strategy in
-    let evars =
-      match oevars with
-      | Some e -> e
-      | _ -> Evar.Map.domain (Evd.undefined_map sigma) in
-    (funs.(pos) evars ts env sigma conv_pb t1 t2,
-     pos > unicoq_pos && pos < evarconv_pos)
+    try
+      let ts = get_ts env in
+      let pos = get_constructor_pos sigma strategy in
+      let evars =
+        match oevars with
+        | Some e -> e
+        | _ -> Evar.Map.domain (Evd.undefined_map sigma) in
+      (funs.(pos) evars ts env sigma conv_pb t1 t2,
+       pos > unicoq_pos && pos < evarconv_pos)
+    with Constr.DestKO ->
+      raise (NotAUnifStrategy strategy)
 
 end
 
@@ -1380,12 +1386,14 @@ let rec run' ctxt (vms : vm list) =
                     | MConstr (Munify, (_,_, uni, x, y, ts, tf)) ->
                         let x, y, uni = to_econstr x, to_econstr y, to_econstr uni in
                         begin
-                          let r = UnificationStrategy.unify None sigma env uni Reduction.CONV x y in
-                          match r with
+                          let open UnificationStrategy in
+                          match unify None sigma env uni Reduction.CONV x y with
                           | Evarsolve.Success sigma, _ ->
                               (run'[@tailcall]) {ctxt with sigma = sigma} (Code ts :: vms)
                           | _, _ ->
                               (run'[@tailcall]) ctxt (Code tf :: vms)
+                          | exception NotAUnifStrategy u ->
+                              efail (E.mkNotAUnifStrategy sigma env u)
                         end
 
                     | MConstr (Munify_univ, (x, y, uni)) ->

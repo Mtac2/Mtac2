@@ -10,6 +10,7 @@ Definition StuckTerm : Exception. exact exception. Qed.
 
 Definition NotAList : Exception. exact exception. Qed.
 
+Definition NotAUnifStrategy : Exception. exact exception. Qed.
 Definition ReductionFailure : Exception. exact exception. Qed.
 
 Definition TermNotGround : Exception. exact exception. Qed.
