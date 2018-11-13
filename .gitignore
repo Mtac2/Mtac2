@@ -51,3 +51,5 @@
 .dir-locals.el
 
 # output of tests
+src/metaCoqInit.ml
+src/metaCoqTactic.ml
