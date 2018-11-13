@@ -28,7 +28,7 @@ ARGUMENT EXTEND mtac_type
   GLOBALIZED BY { glob_mtac_type }
   SUBSTITUTED BY { subst_mtac_type }
 
-| [ global(l) ] -> { [ l ] }
+| [ global(l) ] -> { l }
 END
 
 TACTIC EXTEND mrun
