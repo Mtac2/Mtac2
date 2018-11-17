@@ -1416,7 +1416,7 @@ let rec run' ctxt (vms : vm list) =
                         let arg_name = "lx_" in
                         let args = List.mapi (fun i a->(Id.of_string (arg_name ^ string_of_int i), Value.of_constr a)) args in
                         let args_var = List.map (fun (n, _) -> Reference (Locus.ArgVar (CAst.make n))) args in
-                        let to_call = TacArg (tag (TacCall (tag (Locus.ArgArg (tag tac_name), args_var)))) in
+                        let to_call = TacArg (CAst.make (TacCall (CAst.make (Locus.ArgArg (tag tac_name), args_var)))) in
                         begin
                           try
                             let undef = Evar.Map.domain (Evd.undefined_map sigma) in
