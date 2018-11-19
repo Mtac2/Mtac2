@@ -7,9 +7,7 @@ services:
 
 env:
   matrix:
-  - COQ_IMAGE="coqorg/coq:8.8.0"
-  - COQ_IMAGE="coqorg/coq:8.8.1"
-  - COQ_IMAGE="coqorg/coq:8.8.2"
+  - COQ_IMAGE="coqorg/coq:8.8"
 
 install: |
   # Run the COQ container and display build metadata
@@ -29,6 +27,7 @@ script:
     export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
     set -ex
     sudo chown -R coq:coq /home/coq/Mtac2
+    ./configure.sh
     make
     make test
     "
