@@ -1,26 +1,39 @@
+dist: trusty
 sudo: required
-dist: bionic
-language: c
-cache:
-  apt: true
-  directories:
-    - $HOME/.opam
-install:
-- sudo add-apt-repository --yes ppa:avsm/ppa
-- sudo apt-get update -qq
-- sudo apt-get install -qq -y opam
-- opam init -y
-- eval $(opam config env)
-- opam config var root
-- travis_wait opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev || echo
-- travis_wait opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev || echo
-- travis_wait opam update -y
-- travis_wait opam install -y coq.dev ocamlfind coq-unicoq
-- opam list
+language: generic
+
+services:
+  - docker
+
+env:
+  matrix:
+  - COQ_IMAGE="coqorg/coq:8.8.0"
+  - COQ_IMAGE="coqorg/coq:8.8.1"
+  - COQ_IMAGE="coqorg/coq:8.8.2"
+
+install: |
+  # Run the COQ container and display build metadata
+  docker run -d -i --init --name=COQ -v ${TRAVIS_BUILD_DIR}:/home/coq/Mtac2 -w /home/coq/Mtac2 ${COQ_IMAGE}
+  docker exec COQ /bin/bash --login -c "
+    export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
+    set -ex
+    opam config list
+    opam repo list
+    opam list
+    opam install -y coq-unicoq
+    "
 script:
-- ./configure.sh
-- make printenv
-- make clean && make && make install && (make -k test)
+- echo -e "${ANSI_YELLOW}Building Mtac2...${ANSI_RESET}" && echo -en 'travis_fold:start:Mtac2.build\\r'
+- |
+  docker exec COQ /bin/bash --login -c "
+    export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
+    set -ex
+    sudo chown -R coq:coq /home/coq/Mtac2
+    make
+    make test
+    "
+- docker stop COQ  # optional
+- echo -en 'travis_fold:end:Mtac2.build\\r'
 
 notifications:
   webhooks:
