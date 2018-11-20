@@ -1,0 +1,17 @@
+(library
+ (name MetaCoqPlugin)
+ (public_name coq.plugins.mtac2)
+ (flags :standard -warn-error -3 -open Unicoq)
+ (modules_without_implementation metaCoqInstr)
+ (libraries coq.plugins.ltac coq.plugins.unicoq))
+
+(rule
+ (targets metaCoqInit.ml)
+ (deps (:pp-file metaCoqInit.mlg))
+ (action (run coqpp %{pp-file})))
+
+(rule
+ (targets metaCoqTactic.ml)
+ (deps (:pp-file metaCoqTactic.mlg))
+ (action (run coqpp %{pp-file})))
+
