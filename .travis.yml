@@ -7,7 +7,7 @@ services:
 
 env:
   matrix:
-  - COQ_IMAGE="coqorg/coq:8.8"
+  - COQ_IMAGE="coqorg/coq:dev"
 
 install: |
   # Run the COQ container and display build metadata
