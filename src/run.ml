@@ -366,9 +366,9 @@ module ReductionStrategy = struct
         if ci < Array.length redflags then
           red_add reds redflags.(ci)
         else if ci = posDeltaC then
-          red_add_transparent reds Names.cst_full_transparent_state
+          red_add_transparent reds TransparentState.cst_full
         else if ci = posDeltaX then
-          red_add_transparent reds Names.var_full_transparent_state
+          red_add_transparent reds TransparentState.var_full
         else
           failwith "Unknown flag"
       else if isApp sigma f then
@@ -430,7 +430,7 @@ module ReductionStrategy = struct
   (* let whd_betadeltaiota_nolet = whdfun CClosure_copy.allnolet *)
 
   let whd_all_novars =
-    let flags = red_add_transparent betaiota Names.cst_full_transparent_state in
+    let flags = red_add_transparent betaiota TransparentState.cst_full in
     whdfun flags
 
   let whd_betadeltaiota = whdfun CClosure_copy.all
@@ -1230,7 +1230,7 @@ let rec run' ctxt (vms : vm list) =
                                 begin
                                   let ta = to_econstr ta in
                                   let (_, d, dty, body) = destLetIn sigma c in
-                                  let eqaty = Munify.unify_evar_conv Names.full_transparent_state env sigma CONV ta dty in
+                                  let eqaty = Munify.unify_evar_conv TransparentState.full env sigma CONV ta dty in
                                   let eqtypes = match eqaty with Success _ -> true | _ -> false in
                                   if not eqtypes then
                                     efail (Exceptions.mkNotTheSameType sigma env ta)

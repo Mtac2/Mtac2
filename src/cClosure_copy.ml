@@ -70,11 +70,11 @@ let with_stats c =
   end else
     Lazy.force c
 
-let all_opaque = (Id.Pred.empty, Cpred.empty)
-let all_transparent = (Id.Pred.full, Cpred.full)
+let all_opaque = TransparentState.empty
+let all_transparent = TransparentState.full
 
-let is_transparent_variable (ids, _) id = Id.Pred.mem id ids
-let is_transparent_constant (_, csts) cst = Cpred.mem cst csts
+let is_transparent_variable ts id = TransparentState.is_transparent_variable ts id
+let is_transparent_constant ts cst = TransparentState.is_transparent_constant ts cst
 
 (* module type RedFlagsSig = sig
  *   type reds
