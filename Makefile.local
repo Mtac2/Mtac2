@@ -2,7 +2,7 @@
 #RED='\033[0;31m'
 #NC='\033[0m' # No Color
 #COQC=coqc
-COQ_SRC_SUBDIRS+=user-contrib/Unicoq
+CAMLPKGS += -package Unicoq
 
 TESTS=$(wildcard tests/*.v)
 TESTRESULTS=$(TESTS:.v=.vo)
