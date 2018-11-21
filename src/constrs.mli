@@ -7,15 +7,15 @@ module Constrs : sig
   exception Constr_not_found of string
   exception Constr_poly of string
 
-  val mkUGlobal : string -> Globnames.global_reference
+  val mkUGlobal : string -> Names.GlobRef.t
 
   val mkConstr : string -> constr Lazy.t
 
-  val mkConstr_of_global : Globnames.global_reference Lazy.t -> constr
+  val mkConstr_of_global : Names.GlobRef.t Lazy.t -> constr
 
   val mkUConstr : string -> evar_map -> Environ.env -> (Evd.evar_map * constr)
 
-  val mkUConstr_of_global : Globnames.global_reference -> evar_map -> Environ.env -> (Evd.evar_map * constr)
+  val mkUConstr_of_global : Names.GlobRef.t -> evar_map -> Environ.env -> (Evd.evar_map * constr)
 
   val isConstr : evar_map -> constr Lazy.t -> constr -> bool
 end
