@@ -1,3 +1,4 @@
+CAMLFLAGS = "-warn-error +a"
 CAMLDEBUG = "-g"
 -I src
 -R theories Mtac2
