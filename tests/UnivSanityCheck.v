@@ -1,4 +1,6 @@
 From Mtac2 Require Import Mtac2.
+Import M.
+Import M.notations.
 
 Print Universes "universes-mtac2.txt".
 Import M.
@@ -20,8 +22,13 @@ Definition count_cmd := find_cmd ++ " | wc -l  | tr -d ' '".
 Definition assert_cmd := "[ $(" ++ count_cmd ++ ") = """ ++ magic_number ++ """ ]".
 
 Definition cmd := Eval compute in eval (print assert_cmd;; ret assert_cmd).
+Eval compute in eval (os_cmd count_cmd).
+Definition is_linux := "[ $(uname) = ""Linux"" ] ".
 
-Goal eval (os_cmd cmd) = Z0.
+Goal eval (os_cmd is_linux >>= fun x=>match x with
+     | Z0 => M.print "Running test";; os_cmd cmd
+     | _ => M.print "Not running test";; M.ret Z0
+     end) = Z0.
   reflexivity.
 Qed.
 
