@@ -20,8 +20,6 @@ open Constrs
 
 open CClosure_copy
 
-open Unicoq
-
 (* warning 40 is about picking a constructor name from a module that is not in scope *)
 [@@@ocaml.warning "-40"]
 
