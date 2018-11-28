@@ -1,9 +1,10 @@
 (library
  (name MetaCoqPlugin)
- (public_name coq.plugins.mtac2)
- (flags :standard -warn-error -3 -open Unicoq)
+ (public_name mtac2.plugin)
+ (flags :standard -warn-error -3-9-23-26-27-32-33-50 -open Unicoq)
  (modules_without_implementation metaCoqInstr)
- (libraries coq.plugins.ltac coq.plugins.unicoq))
+ (modules :standard \ machine)
+ (libraries coq.plugins.ltac unicoq.plugin))
 
 (rule
  (targets metaCoqInit.ml)
