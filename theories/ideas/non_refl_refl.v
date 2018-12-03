@@ -205,3 +205,41 @@ MProof.
   let (x, _) := r in
   T.exact (meq_refl x).
 Qed.
+
+Import M.notations.
+
+(** An [abs_fun] function without generating terms of equalities on the OCaml side *)
+Definition abs_fun' {A : Type} {P : A -> Type} (x : A) {B : _} (c : P x) :
+  (forall (f : forall x, P x), M (B (f x))) -> M (B c).
+  constructor. Qed.
+
+
+(** The abs_fun from above can be defined in term of this last one: *)
+Definition abs_fun'' : forall{A: Type} {P: A->Type} (x: A) (c : P x),
+    M {t': forall x, P x & t' x =m= c}.
+  intros. refine (abs_fun' x (B:=fun c => {t' : forall x, P x & t' x =m= c}) _ _).
+  intros. refine (M.ret _). econstructor. reflexivity.
+Defined.
+
+(** Given a function [F : A->Type], it returns [forall x, F x] (and a proof of
+this equality)*)
+Definition abs_prod' {A} (F: A->Type) : M {T:Type& T =m= forall x, F x}.
+  constructor. Qed.
+
+(** Just for the record, this is how you get the original abs_prod *)
+Definition abs_prod {A} (x:A) (t: Type) : M Type :=
+  f <- M.abs_fun x t;
+  ''(existT _ T _) <- abs_prod' f;
+  M.ret T.
+
+(** A version of [abs_prod] returning proofs: given [x] and [t], it returns a
+term [T] and a function [F] such that [T = forall y, F y], and [F x = t]. *)
+Definition abs_prod_pf {A} (x:A) (t: Type) : M {T & {F & F x =m= t /\ T =m= forall x, F x}}.
+  refine (
+  ''(existT _ f pf) <- abs_fun'' x t;
+  ''(existT _ T pfT) <- abs_prod' f;
+  M.ret _).
+  exists T.
+  exists f.
+  split; assumption.
+Defined.
