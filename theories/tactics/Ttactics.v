@@ -15,7 +15,7 @@ Module TT.
 
 (** A typed tactic is a program that promises in its type the goal it solves,
     pehaps creating (dynamically-typed) goals. *)
-Definition ttac A := M (A *m mlist goal).
+Definition ttac A := M (A *m mlist (goal gs_any)).
 
 Bind Scope typed_tactic_scope with ttac.
 Delimit Scope typed_tactic_scope with TT.
@@ -25,7 +25,7 @@ Delimit Scope typed_tactic_scope with TT.
     precise goal possible.  For that, we need to backtrack in case it is not a
     [Prop] (and treat it as a [Type]). *)
 Mtac Do New Exception NotAProp.
-Definition to_goal (A : Type) : M (A *m goal) :=
+Definition to_goal (A : Type) : M (A *m goal gs_base) :=
   mtry
     P <- evar Prop;
     of <- unify_univ P A UniMatchNoRed;
@@ -43,7 +43,9 @@ Definition to_goal (A : Type) : M (A *m goal) :=
 (** [demote] is a [ttac] that proves anything by simply postponing it as a
     goal. *)
 Definition demote {A: Type} : ttac A :=
-  ''(m: a, g) <- to_goal A; M.ret (m: a, [m: g]).
+  ''(m: a, g) <- to_goal A;
+  let '(Goal _ g) := g in
+  M.ret (m: a, [m: GoalOut _ g]).
 
 (** [use t] tries to solve the goal with tactic [t] *)
 Definition use {A} (t : tactic) : ttac A :=
@@ -55,7 +57,8 @@ Arguments use [_] _%tactic.
 
 Definition idtac {A} : ttac A :=
     ''(m: a, g) <- to_goal A;
-    M.ret (m: a, [m: g]).
+    let '(Goal _ g) := g in
+    M.ret (m: a, [m: GoalOut _ g]).
 
 (** [by'] is like [use] but it ensures there are no goals left. *)
 Definition by' {A} (t : tactic) : ttac A :=
@@ -89,7 +92,7 @@ Definition Mappend {A} (xs ys : mlist A) :=
   M.ret zs.
 
 (** [to_T t] uses the result of a [ttac] as a [tactic]. *)
-Definition to_T {A} : (A *m mlist goal) -> tactic :=
+Definition to_T {A} : (A *m mlist (goal _)) -> tactic :=
   (fun '(m: a, gs) g =>
     exact a g;;
     let gs := dreduce (@mmap) (mmap (mpair tt) gs) in
@@ -124,6 +127,20 @@ Definition vm_compute {A} : ttac (A -> A) :=
     M.ret (m: (fun a : A => a <: A), [m:])
   )%MC.
 
+Definition change_dep {X} (B : X -> Type) x {y} (f : ttac (B x)) : ttac (B y) :=
+  (
+  e <- M.unify x y UniCoq;
+  match e with
+  | mSome e =>
+      match e in Logic.meq _ z return ttac (B z) with
+      | Logic.meq_refl => f
+      end
+  | mNone => M.raise TTchange_Exception
+  end
+  )%MC.
+
+
+
 Definition vm_change_dep {X} (B : X -> Type) x {y} (f : ttac (B x)) : ttac (B y) :=
   (
     let x' := reduce RedVmCompute x in
@@ -152,7 +169,7 @@ Definition tpass {A} := lift (M.evar A).
 Definition texists {A} {Q:A->Prop} : ttac (exists (x:A), Q x) :=
   e <- M.evar A;
   pf <- M.evar (Q e);
-  M.ret (m: ex_intro _ e pf, [m: Goal SProp pf]).
+  M.ret (m: ex_intro _ e pf, [m: GoalOut SProp pf]).
 
 Definition tassumption {A:Type} : ttac A :=
   lift (M.select _).
@@ -170,7 +187,7 @@ Definition ucomp1 {A B} (t: ttac A) (u: ttac B) : ttac A :=
   match gls1 with
   | [m: gl] =>
     ''(m: v2, gls) <- u;
-    exact v2 gl;;
+    open_and_apply (exact v2) gl;;
     M.ret (m: v1, gls)
   | _ => mfail "more than a goal"%string
   end.
@@ -197,7 +214,6 @@ Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
       M.cumul_or_fail UniCoq x g;;
       M.map (fun g => M.ret (m:tt,g)) gs
     with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
-  | _ => raise NotAGoal
   end.
 
 (** with_goal_type is an easy way of focusing on the current goal to go from
@@ -217,7 +233,6 @@ Definition with_goal_type (F : forall (T : Type), ttac T) : tactic := fun g =>
       M.cumul_or_fail UniCoq x g;;
       M.map (fun g => M.ret (m:tt,g)) gs
     with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
-  | _ => raise NotAGoal
   end.
 
 Module MatchGoalTT.
