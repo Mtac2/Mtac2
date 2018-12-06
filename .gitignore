@@ -36,9 +36,6 @@
 *.cmxs
 *.cmxa
 
-# ocamlbuild working directory
-/_build/
-
 # ocamlbuild targets
 *.byte
 *.native
@@ -53,3 +50,8 @@
 # output of tests
 src/metaCoqInit.ml
 src/metaCoqTactic.ml
+
+# ocamlbuild working directory
+_build/
+.merlin
+*.install
