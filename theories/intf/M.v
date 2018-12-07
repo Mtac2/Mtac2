@@ -323,7 +323,7 @@ Definition replace {A B C} (x:A) : A =m= B -> t C -> t C.
 
 Definition declare_mind
            (params : MTele)
-           (sigs : mlist (string *m (MTele_ConstT m:{ mt_ind &(MTele_Ty mt_ind)} params)))
+           (sigs : mlist (string *m (MTele_ConstT m:{ mt_ind &(MTele_ConstT S.Sort mt_ind)} params)))
            (constrs :
               mfold_right
                 (fun '(m: _; ind) acc =>
