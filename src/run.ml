@@ -76,15 +76,12 @@ module Goal = struct
   let mkHypRemove = mkUConstr "Goals.HypRem"
   let mkHypReplace = mkUConstr "Goals.HypReplace"
 
-  let mkSType = Constrs.mkConstr "Mtac2.intf.Sorts.S.SType"
-  let mkSProp = Constrs.mkConstr "Mtac2.intf.Sorts.S.SProp"
-
   let mkTheGoal ?base:(base=true) ty ev sigma env =
     let tt = Retyping.get_type_of env sigma ty in
     let tt = Reductionops.nf_all env sigma tt in
     if isSort sigma tt then
       let sort = ESorts.kind sigma (destSort sigma tt) in
-      let ssort = Lazy.force (if Sorts.is_prop sort then mkSProp else mkSType) in
+      let sigma, ssort = if Sorts.is_prop sort then CoqSort.mkSProp env sigma else CoqSort.mkSType env sigma in
       let sigma, tg = (if base then mkGoal else mkGoalOut) sigma env in
       sigma, mkApp (tg, [|ssort; ty;ev|])
     else

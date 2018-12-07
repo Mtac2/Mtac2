@@ -455,3 +455,31 @@ module CoqSigT = struct
     | Some args -> (args.(2), args.(3))
 
 end
+
+module CoqSort = struct
+  open UConstrBuilder
+
+  let sType = from_string "Mtac2.intf.Sorts.S.SType"
+  let sProp = from_string "Mtac2.intf.Sorts.S.SProp"
+
+  let mkSType env sigma = build_app sType sigma env [||]
+  let mkSProp env sigma = build_app sProp sigma env [||]
+
+  exception NotASort
+
+  type sort = SProp | SType
+
+  let from_coq sigma env cterm =
+    match from_coq sProp (env, sigma) cterm with
+    | Some args -> SProp
+    | None ->
+        match from_coq sType (env, sigma) cterm with
+        | None -> raise NotASort
+        | Some args -> SType
+
+  let to_coq sigma env = function
+    | SProp -> mkSProp env sigma
+    | SType -> mkSType env sigma
+
+
+end

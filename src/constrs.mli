@@ -159,3 +159,14 @@ module CoqSigT : sig
 
   val from_coq : Evd.evar_map -> Environ.env -> constr -> (constr * constr)
 end
+
+
+module CoqSort : sig
+  val mkSType : Environ.env -> Evd.evar_map -> Evd.evar_map * EConstr.t
+  val mkSProp : Environ.env -> Evd.evar_map -> Evd.evar_map * EConstr.t
+  exception NotASort
+  type sort = SProp | SType
+  val from_coq : Evd.evar_map -> 'a -> EConstr.t -> sort
+  val to_coq :
+    Evd.evar_map -> Environ.env -> sort -> Evd.evar_map * EConstr.t
+end
