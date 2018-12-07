@@ -147,3 +147,15 @@ module CoqPTele : sig
 
   val from_coq : Evd.evar_map -> Environ.env -> constr -> (constr * constr) option
 end
+
+module CoqMTele : sig
+  exception NotAnMTele
+
+  val from_coq : Evd.evar_map -> Environ.env -> constr -> (constr * constr) option
+end
+
+module CoqSigT : sig
+  exception NotAmexistT
+
+  val from_coq : Evd.evar_map -> Environ.env -> constr -> (constr * constr)
+end

@@ -80,5 +80,9 @@ End S.
 
 Import S.
 
+Delimit Scope Sort_scope with sort.
+Notation "'[sort' '∀' x .. y , T ]" := (ForAll (fun x => .. (fun y => T) ..)) (x binder, y binder) : Sort_scope.
+Notation "'[sort' 'λ' x .. y , T ]" := (Fun (fun x => .. (fun y => T) ..)) (x binder, y binder, T at next level) : Sort_scope.
+
 Coercion stype_of : Sort >-> Sortclass.
 Coercion selem_of : stype_of >-> Sortclass.

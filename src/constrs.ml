@@ -406,8 +406,8 @@ end
 module CoqPTele = struct
   open UConstrBuilder
 
-  let pBaseBuilder = from_string "Mtac2.MTele.pBase"
-  let pTeleBuilder = from_string "Mtac2.MTele.pTele"
+  let pBaseBuilder = from_string "Mtac2.intf.MTele.pBase"
+  let pTeleBuilder = from_string "Mtac2.intf.MTele.pTele"
 
   (* let mkType env sigma tele = build_app pTeleBuilder sigma env [|tele|] *)
   let mkPBase env sigma tele = build_app pBaseBuilder sigma env [|tele|]
@@ -423,4 +423,35 @@ module CoqPTele = struct
         | Some _ -> None
         end
     | Some args -> Some (args.(2), args.(3))
+end
+
+module CoqMTele = struct
+  open UConstrBuilder
+
+  let mBaseBuilder = from_string "Mtac2.intf.MTele.mBase"
+  let mTeleBuilder = from_string "Mtac2.intf.MTele.mTele"
+
+  exception NotAnMTele
+
+  let from_coq sigma env cterm =
+    match from_coq mTeleBuilder (env, sigma) cterm with
+    | None ->
+        begin match from_coq mBaseBuilder (env, sigma) cterm with
+        | None -> raise NotAnMTele
+        | Some _ -> None
+        end
+    | Some args -> Some (args.(0), args.(1))
+end
+
+module CoqSigT = struct
+  open UConstrBuilder
+  let mexistTBuilder = from_string "Mtac2.lib.Specif.mexistT"
+
+  exception NotAmexistT
+
+  let from_coq sigma env cterm =
+    match from_coq mexistTBuilder (env, sigma) cterm with
+    | None -> raise NotAmexistT
+    | Some args -> (args.(2), args.(3))
+
 end

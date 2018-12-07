@@ -1,6 +1,6 @@
 Require Import Strings.String.
 Require Import NArith.BinNat.
-From Mtac2 Require Import Logic Datatypes Logic List Utils MTele Pattern.
+From Mtac2 Require Import Logic Datatypes Logic List Utils MTele Pattern Specif.
 Import ListNotations.
 Import ProdNotations.
 From Mtac2.intf Require Export Sorts Exceptions Dyn Reduction Unification DeclarationDefs Goals Case Tm_kind Name.
@@ -319,6 +319,36 @@ Definition kind_of_term: forall{A: Type}, A -> t tm_kind.
     the type [A] of hypothesis [x] with [B], using the [eq] witness of their
     equality. *)
 Definition replace {A B C} (x:A) : A =m= B -> t C -> t C.
+  make. Qed.
+
+Definition declare_mind
+           (params : MTele)
+           (sigs : mlist (string *m (MTele_ConstT m:{ mt_ind &(MTele_Ty mt_ind)} params)))
+           (constrs :
+              mfold_right
+                (fun '(m: _; ind) acc =>
+                   MTele_val (MTele_In SType (fun a' => MTele_Ty (mprojT1 (a'.(acc_constT) ind))))
+                   -> acc
+                (* MTele_val (MTele_In SType (fun a => MTele_Ty (mprojT1 (a.(acc_const) ind)))) -> acc *)
+                )%type
+                (
+                  (
+                    MTele_val (MTele_In SType
+                                        (fun a =>
+                                           mfold_right
+                                             (fun '(m: _; ind) acc =>
+                                                mlist (string *m m:{mt_constr & MTele_ConstT (ArgsOf (mprojT1 (a.(acc_constT) ind))) mt_constr}) *m acc
+                                             )%type
+                                             unit
+                                             sigs
+                                        )
+                              )
+                  )
+                )
+                sigs
+           ) :
+  (* t (mfold_right (fun '(m: _; _; mexistT _ mt_ind T) acc => MTele_val T *m acc)%type unit sigs). *)
+  t unit.
   make. Qed.
 
 Arguments t _%type.

@@ -1,5 +1,6 @@
 CAMLC = "ocamlc -c -rectypes -thread -warn-error +a"
 CAMLDEBUG = "-g"
+-arg -bt
 -I src
 -R theories Mtac2
 -Q tests Mtac2Tests

@@ -53,6 +53,7 @@ Arguments msigT2 (A P Q)%type.
 (* Notation "{ x : A  |  P  & Q }" := (msig2 (A:=A) (fun x => P) (fun x => Q)) : *)
 (*   type_scope. *)
 (* Notation "{ x : A  & P }" := (msigT (A:=A) (fun x => P)) : type_scope. *)
+Notation "'m:{' x .. y & P }" := (msigT (fun x => .. (msigT (fun y => P)) ..)) (x binder, y binder) : type_scope.
 (* Notation "{ x : A  & P  & Q }" := (msigT2 (A:=A) (fun x => P) (fun x => Q)) : *)
 (*   type_scope. *)
 

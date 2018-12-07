@@ -1,8 +1,10 @@
-From Mtac2 Require Import Sorts.
+From Mtac2 Require Import Sorts Specif.
 Import Sorts.S.
 
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
+Set Polymorphic Inductive Cumulativity.
+Set Printing Coercions.
 
 (** MTele: a telescope which represent nested binder
 
@@ -21,8 +23,8 @@ match n with
 | mBase => T
 | mTele F => ForAll (fun x => MTele_Const T (F x))
 end.
-Definition MTele_ConstP (T : Prop) (n : MTele) := @MTele_Const SProp T n.
-Definition MTele_ConstT (T : Type) (n : MTele) := @MTele_Const SType T n.
+Definition MTele_ConstP (T : Prop) (n : MTele) : Prop := @MTele_Const SProp T n.
+Definition MTele_ConstT (T : Type) (n : MTele) : Type := @MTele_Const SType T n.
 
 Fixpoint MTele_const {s : Sort} {T : s} {n : MTele} : @MTele_Const s T n -> stype_of s :=
   match n return MTele_Const T n -> _ with
@@ -30,20 +32,27 @@ Fixpoint MTele_const {s : Sort} {T : s} {n : MTele} : @MTele_Const s T n -> styp
   | mTele F => fun C => ForAll (fun x => MTele_const (App C x))
   end.
 
-Definition MTele_constP {T : Prop} {n} := @MTele_const SProp T n.
-Definition MTele_constT {T : Type} {n} := @MTele_const SType T n.
+Definition MTele_constP {T : Prop} {n} : MTele_ConstP T n -> Prop := @MTele_const SProp T n.
+Definition MTele_constT {T : Type} {n} : MTele_ConstT T n -> Type := @MTele_const SType T n.
 
 (** MTele_Sort: compute `∀ x .. z, Type` from a given MTele *)
 Set Printing Universes.
-Fixpoint MTele_Sort (s : Sort) (n : MTele) : Type :=
+Definition MTele_Sort (s : Sort) (n : MTele) : Type := MTele_ConstT (stype_of s) n.
+Fixpoint MTele_Sort' (s : Sort) (n : MTele) : Type :=
   match n with
   | mBase => stype_of s
-  | mTele F => forall x, MTele_Sort s (F x)
+  | mTele F => forall x, MTele_Sort' s (F x)
   end.
+(* Lemma MTele_Sort_eq s n : MTele_Sort s n -> MTele_Sort' s n. *)
+(* Proof. induction n. intros H. exact H. intros H x. apply X0. apply H. Qed. *)
+
+(* Lemma MTele_Sort_eq' s n : MTele_Sort' s n -> MTele_Sort s n. *)
+(* Proof. induction n. intros H. exact H. cbn. intros H x. apply X0. apply H. Qed. *)
 
 Definition MTele_Ty := (MTele_Sort SType).
 Definition MTele_Pr := (MTele_Sort SProp).
 
+(* Definition MTele_sort {s : Sort} {n : MTele} : MTele_Sort s n -> Type := @MTele_constT _ n. *)
 Fixpoint MTele_sort {s : Sort} {n : MTele} :
   forall S : MTele_Sort s n, Type :=
   match n return MTele_Sort s n -> Type with
@@ -56,12 +65,11 @@ Fixpoint MTele_sort {s : Sort} {n : MTele} :
 (* Coercion MTele_Ty : MTele >-> Sortclass. *)
 
 (** MTele_val: compute `λ x .. z, T x .. z` from `T : MTele_ty n` *)
-Definition MTele_val {s} : forall {n : MTele}, MTele_Sort s n -> s :=
-  fix go n :=
-    match n as n return MTele_Sort s n -> s with
-    | mBase => fun f => f
-    | mTele F => fun f => ForAll (fun x => go _ (f x))
-    end.
+Fixpoint MTele_val {s} {n : MTele} : MTele_Sort s n -> s :=
+  match n as n return MTele_Sort s n -> s with
+  | mBase => fun f => f
+  | mTele F => fun f => ForAll (fun x => MTele_val (f x))
+  end.
 
 Definition MTele_valT {n} : MTele_Ty n -> Type :=
   MTele_val (s := SType) (n:=n).
@@ -126,11 +134,18 @@ Fixpoint MTele_to {s : Sort} {B : s} {G: forall X, (X -> s) -> s} {n : MTele} (b
 Intuitively, they are meant to represent (extensionally) "having access" to the
 values for every binder in the telescope. It is possible, though, to simply
 return fixed [stype_of s] values and corresponding inhabitants. *)
+Set Printing Coercions.
 Record accessor (n : MTele) :=
   Accessor {
-      acc_sort : forall {s : Sort}, MTele_Sort s n -> s;
-      acc_val : forall {s : Sort} {T : MTele_Sort s n}, MTele_val T -> acc_sort T;
+      acc_const : forall {s : Sort} {T : s}, MTele_Const T n -> T;
+      acc_constP {P : Prop} : MTele_ConstP P n -> P := @acc_const SProp P;
+      acc_constT {T : Type} : MTele_ConstT T n -> T := @acc_const SType T;
+      acc_sort {s : Sort} : MTele_Sort s n -> s := @acc_const SType _ ;
+      acc_val : forall {s : Sort} (T : MTele_Sort s n), MTele_val T -> acc_sort T;
     }.
+Arguments acc_const {_} _ {_} {_} _.
+Arguments acc_constP {_} _ {_} _.
+Arguments acc_constT {_} _ {_} _.
 Arguments acc_sort {_} _ {_} _.
 Arguments acc_val {_} _ {_ _} _.
 
@@ -140,13 +155,13 @@ values at the same time to compute a new telescoped _type_. *)
 Fixpoint MTele_In (s : Sort) {n : MTele} :
   (accessor n -> s) -> MTele_Sort s n :=
   match n as n return (accessor n -> s) -> MTele_Sort s n with
-  | mBase => fun thunk => thunk (Accessor mBase (fun s T => T) (fun _ _ v => v))
+  | mBase => fun thunk => thunk (Accessor mBase (fun s T C => C) (fun _ _ v => v))
   | mTele F =>
     fun thunk t =>
       MTele_In s (fun a =>
                     thunk
                       (Accessor (mTele F)
-                                (fun _ T => a.(acc_sort) (T t))
+                                (fun _ T C => a.(acc_const) (App C t))
                                 (fun _ _ v => a.(acc_val) (App v t))
                       )
                  )
@@ -170,14 +185,14 @@ Fixpoint MTele_in (s : Sort) {n : MTele} :
           (forall a : accessor n, a.(acc_sort) (MTele_In s thunk))
         -> MTele_val (MTele_In (n:=n) s thunk)
   with
-  | mBase => fun _ thunk => thunk (Accessor mBase (fun s T => T) (fun _ _ v => v))
+  | mBase => fun _ thunk => thunk (Accessor mBase (fun s T C => C) (fun _ _ v => v))
   | mTele F =>
     fun _ thunk =>
       Fun (fun t =>
              MTele_in s (fun a =>
                            thunk
                              (Accessor (mTele F)
-                                       (fun _ T => a.(acc_sort) (T t))
+                                       (fun _ T C => a.(acc_const) (App C t))
                                        (fun _ _ v => a.(acc_val) (App v t))
                              )
                         )
@@ -264,6 +279,30 @@ Fixpoint PTele_Sort {s} {n} (p : PTele n) : MTele_Sort s n -> MTele_Sort s p :=
   | pBase => fun x => x
   | pTele _ p => fun T => PTele_Sort p (T _)
   end.
+
+
+
+(** Currying and Uncurrying for Telescope Types and Functions *)
+Fixpoint ArgsOf (m : MTele) : Type :=
+  match m with
+  | mBase => unit
+  | mTele f => msigT (fun x => ArgsOf (f x))
+  end.
+
+Fixpoint apply_sort {s : Sort} {m : MTele} :
+  MTele_Sort s m -> ArgsOf m -> stype_of s :=
+  match m with
+  | mBase => fun T _ => T
+  | mTele f => fun T '(mexistT _ x U) => apply_sort (T x) U
+  end.
+
+Fixpoint apply_val {s : Sort} {m : MTele} :
+  forall {T : MTele_Sort s m} (v : MTele_val T) (a : ArgsOf m), selem_of (apply_sort T a) :=
+  match m with
+  | mBase => fun _ v _ => v
+  | mTele f => fun _ v '(mexistT _ x U) => apply_val (App v x) U
+  end.
+
 
 
 (* Old MTele functions redefined on top of the more general newer ones above *)
