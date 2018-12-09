@@ -853,7 +853,7 @@ let eta_expand_ind_stack env ind m s (f, s') =
       let pars = mib.Declarations.mind_nparams in
       let right = fapp_stack (f, s') in
       let (depth, args, s) = strip_update_shift_app m s in
-      (** Try to drop the params, might fail on partially applied constructors. *)
+      (* Try to drop the params, might fail on partially applied constructors. *)
       let argss = try_drop_parameters depth pars args in
       let hstack = Array.map (fun p ->
         { norm = Red; (* right can't be a constructor though *)
