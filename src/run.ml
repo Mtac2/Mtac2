@@ -30,6 +30,7 @@ let get_constructor_pos sigma c = let (_, pos), _ = destConstruct sigma c in pos
 
 (** print informative exceptions *)
 let debug_ex = ref false
+
 (** traces execution *)
 let trace = ref false
 
@@ -1451,7 +1452,8 @@ let rec run' ctxt (vms : vm list) =
                             let undef = Evar.Map.domain (Evd.undefined_map sigma) in
                             let args_map = List.fold_left (fun m (k, v)-> Id.Map.add k v m) Id.Map.empty args in
                             let ist = { (default_ist ()) with lfun = args_map } in
-                            let (c, sigma) = Pfedit.refine_by_tactic env sigma concl (Tacinterp.eval_tactic_ist ist to_call) in
+                            let name, poly = Id.of_string "mtac2", false in
+                            let (c, sigma) = Pfedit.refine_by_tactic ~name ~poly env sigma concl (Tacinterp.eval_tactic_ist ist to_call) in
                             let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
                             let new_undef = Evar.Set.elements new_undef in
                             let sigma, goal = Goal.mkgoal ~base:false sigma env in
