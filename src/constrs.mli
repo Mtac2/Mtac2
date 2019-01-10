@@ -166,7 +166,7 @@ module CoqSort : sig
   val mkSProp : Environ.env -> Evd.evar_map -> Evd.evar_map * EConstr.t
   exception NotASort
   type sort = SProp | SType
-  val from_coq : Evd.evar_map -> 'a -> EConstr.t -> sort
+  val from_coq : Evd.evar_map -> Environ.env -> EConstr.t -> sort
   val to_coq :
     Evd.evar_map -> Environ.env -> sort -> Evd.evar_map * EConstr.t
 end
