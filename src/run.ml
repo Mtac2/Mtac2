@@ -1003,9 +1003,9 @@ let mTele_to_foralls sigma env tele funs b =
     (n+1, funs, (name, ty)::acc)
   ) (0, funs, []) tele
   in
-  let funs = b n_args funs in
+  let sigma, funs = b sigma n_args funs in
   let arity = List.fold_left (fun t (name, ty) -> EConstr.mkProd (name, ty, t)) funs binders in
-  n_args, arity
+  sigma, n_args, arity
 
 
 let rec zip = function
@@ -1051,7 +1051,13 @@ let declare_mind env sigma params sigs mut_constrs =
       (* print_constr sigma env t; *)
       (* print_constr sigma env ind_sig; *)
       let (ind_tele, ind_ty) = CoqSigT.from_coq sigma env (strip_lambdas sigma ind_sig  n_params) in
-      let n_ind_args, ind_arity = mTele_to_foralls sigma env ind_tele ind_ty (fun _ t -> t) in
+      let sigma, n_ind_args, ind_arity = mTele_to_foralls sigma env ind_tele ind_ty (fun sigma _ t ->
+        match CoqSort.from_coq sigma env t with
+        | SProp -> sigma, mkProp
+        | SType ->
+            let sigma, univ = Evd.new_univ_variable (Evd.UnivFlexible false) sigma in
+            sigma, mkType univ
+      ) in
       let name = CoqString.from_coq (env, sigma) name in
       let name = Id.of_string name in
       let ind_arity_full = List.fold_left (fun arity (name, typeX) -> mkProd (name, typeX, arity)) ind_arity params_rev in
@@ -1067,12 +1073,12 @@ let declare_mind env sigma params sigs mut_constrs =
     ) ind_env params
   in
 
-  Feedback.msg_debug (Pp.str "inductives:");
-  Feedback.msg_debug (Printer.pr_context_of param_env sigma);
-  List.iter ((fun (name, _, _, ind_arity, ind_arity_full) ->
-    print_constr sigma param_env ind_arity;
-    print_constr sigma env ind_arity_full;
-  )) inds;
+  (* Feedback.msg_debug (Pp.str "inductives:");
+   * Feedback.msg_debug (Printer.pr_context_of param_env sigma);
+   * List.iter ((fun (name, _, _, ind_arity, ind_arity_full) ->
+   *   print_constr sigma param_env ind_arity;
+   *   print_constr sigma env ind_arity_full;
+   * )) inds; *)
 
   let n_inds = List.length inds in
   (* is there no Nat.iter in ocaml?? *)
@@ -1085,19 +1091,19 @@ let declare_mind env sigma params sigs mut_constrs =
   (* Convert [constrs], now an [n_inds]-tuple of lists, into a list *)
   let sigma, _, constrs, unit_leftover = List.fold_left (fun (sigma, k_ind, acc, mut_constrs)(_, n_ind_args, _, _,_)  ->
     (* print_constr sigma env mut_constrs; *)
-    Feedback.msg_debug (Pp.int n_ind_args);
+    (* Feedback.msg_debug (Pp.int n_ind_args); *)
     let constrs, mut_constrs = CoqPair.from_coq (env, sigma) mut_constrs in
     let sigma, constrs = CoqList.from_coq_conv sigma env (fun sigma constr ->
       (* print_constr sigma env constr; *)
       let name, constr = CoqPair.from_coq (env, sigma) constr in
       let (constr_tele, constr_type) = CoqSigT.from_coq sigma env constr in
-      let n_constr_args, constr_type = mTele_to_foralls sigma env constr_tele constr_type (fun n_constr_args t ->
+      let sigma, n_constr_args, constr_type = mTele_to_foralls sigma env constr_tele constr_type (fun sigma n_constr_args t ->
         let leftover_unit, args = fold_nat (fun _ (t, acc) ->
-          print_constr sigma env t;
+          (* print_constr sigma env t; *)
           let (arg, t) = CoqSigT.from_coq sigma env t in
           (t, arg::acc)
         ) (t, []) (n_ind_args) in
-        EConstr.applist (EConstr.mkRel (n_params + n_inds - k_ind + n_constr_args), List.map (EConstr.Vars.lift n_constr_args) param_args @ rev args)
+        sigma, EConstr.applist (EConstr.mkRel (n_params + n_inds - k_ind + n_constr_args), List.map (EConstr.Vars.lift n_constr_args) param_args @ rev args)
       )
       in
       let name = CoqString.from_coq (env, sigma) name in
@@ -1111,16 +1117,16 @@ let declare_mind env sigma params sigs mut_constrs =
   let constrs = List.rev constrs in
 
   assert (List.length constrs == List.length inds);
-  Feedback.msg_debug (Pp.str "constructors:");
-  Feedback.msg_debug (Printer.pr_context_of ind_env sigma);
-  Feedback.msg_debug (
-    Pp.prlist_with_sep (fun () -> Pp.str "\n\n") (
-      Pp.prlist_with_sep (fun () -> Pp.str "\n") (fun (name,t) ->
-        let open Pp in
-        Name.print (Names.Name name) ++ str ": " ++
-        Printer.pr_econstr_env ind_env sigma t)
-    ) constrs
-  );
+  (* Feedback.msg_debug (Pp.str "constructors:");
+   * Feedback.msg_debug (Printer.pr_context_of ind_env sigma);
+   * Feedback.msg_debug (
+   *   Pp.prlist_with_sep (fun () -> Pp.str "\n\n") (
+   *     Pp.prlist_with_sep (fun () -> Pp.str "\n") (fun (name,t) ->
+   *       let open Pp in
+   *       Name.print (Names.Name name) ++ str ": " ++
+   *       Printer.pr_econstr_env ind_env sigma t)
+   *   ) constrs
+   * ); *)
   (* List.iter (List.iter (fun (name, constr) -> print_constr sigma ind_env constr)) constrs; *)
   let open Entries in
   let mind_entry_inds = List.fold_left (fun acc ((mind_entry_typename, n_ind_args, _, mind_entry_arity, _), constrs) ->
