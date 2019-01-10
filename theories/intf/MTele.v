@@ -134,7 +134,7 @@ Fixpoint MTele_to {s : Sort} {B : s} {G: forall X, (X -> s) -> s} {n : MTele} (b
 Intuitively, they are meant to represent (extensionally) "having access" to the
 values for every binder in the telescope. It is possible, though, to simply
 return fixed [stype_of s] values and corresponding inhabitants. *)
-Set Printing Coercions.
+Set Primitive Projections.
 Record accessor (n : MTele) :=
   Accessor {
       acc_const : forall {s : Sort} {T : s}, MTele_Const T n -> T;
@@ -177,15 +177,16 @@ Notation "'[WithP' now_ty , now_val '=>' T ]" :=
 
 (** MTele_in: gain access to potentially multiple telescoped types and values at the same time to compute a new telescoped _value_ of type `MTele_In ..`. *)
 Fixpoint MTele_in (s : Sort) {n : MTele} :
-  forall {thunk},
-  (forall a : accessor n, a.(acc_sort) (MTele_In s thunk))
+  forall {thunk : accessor n -> s},
+  (forall a : accessor n, thunk a)
   -> MTele_val (MTele_In (n:=n) s thunk) :=
   match n as n return
-        forall thunk,
-          (forall a : accessor n, a.(acc_sort) (MTele_In s thunk))
+        forall thunk : accessor n -> s,
+          (forall a : accessor n, thunk a)
         -> MTele_val (MTele_In (n:=n) s thunk)
   with
-  | mBase => fun _ thunk => thunk (Accessor mBase (fun s T C => C) (fun _ _ v => v))
+  | mBase =>
+    fun _ thunk => thunk (Accessor mBase (fun s T C => C) (fun _ _ v => v))
   | mTele F =>
     fun _ thunk =>
       Fun (fun t =>
