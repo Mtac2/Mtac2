@@ -290,12 +290,16 @@ Fixpoint ArgsOf (m : MTele) : Type :=
   | mTele f => msigT (fun x => ArgsOf (f x))
   end.
 
-Fixpoint apply_sort {s : Sort} {m : MTele} :
-  MTele_Sort s m -> ArgsOf m -> stype_of s :=
+Fixpoint apply_const {s : Sort} {m : MTele} {T : s} :
+  MTele_Const T m -> ArgsOf m -> T :=
   match m with
-  | mBase => fun T _ => T
-  | mTele f => fun T '(mexistT _ x U) => apply_sort (T x) U
+  | mBase => fun t _ => t
+  | mTele f => fun t '(mexistT _ x U) => apply_const (App t x) U
   end.
+
+Definition apply_sort {s : Sort} {m : MTele} :
+  MTele_Sort s m -> ArgsOf m -> stype_of s :=
+  @apply_const SType m (stype_of s).
 
 Fixpoint apply_val {s : Sort} {m : MTele} :
   forall {T : MTele_Sort s m} (v : MTele_val T) (a : ArgsOf m), selem_of (apply_sort T a) :=
