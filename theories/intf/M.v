@@ -361,6 +361,15 @@ Definition fapp {A:Type} {B:Type} (f : t (A -> B)) (x : t A) : t B :=
 Definition Cevar (A : Type) (ctx : mlist Hyp) : t A := gen_evar A (mSome ctx).
 Definition evar (A : Type) : t A := gen_evar A mNone.
 
+Definition sorted_evar (s: Sort) : forall T : s, t T :=
+  match
+    s as s'
+    return (forall T : stype_of s', t (@selem_of s' T))
+  with
+  | SProp => fun T => M.evar T
+  | SType => fun T => M.evar T
+  end.
+
 Definition unify {A : Type} (x y : A) (U : Unification) : t (moption (x =m= y)) :=
   unify_cnt (B:=fun x => moption (meq x y)) U x y
             (ret (mSome (@meq_refl _ y)))

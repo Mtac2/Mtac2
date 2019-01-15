@@ -53,41 +53,23 @@ Definition eexact {A} (x:A) : tactic := fun g =>
     Raises [NotAProduct] if the goal is not a product or a let-binding. *)
 Definition intro_base {A B} (var : name) (t : A -> gtactic B) : gtactic B := fun g =>
   mmatch g return M (mlist (B *m goal gs_any)) with
-  | [? B (def: B) P e] @Goal SProp (let x := def in P x) e =n>
+  | [? s B (def: B) P e] @Goal s (let x := def in P x) e =n>
     (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
     eqBA <- M.unify_or_fail UniCoq B A;
     M.nu var (mSome def) (fun x=>
       let Px := reduce (RedWhd [rl:RedBeta]) (P x) in
-      e' <- M.evar Px;
+      e' <- M.sorted_evar _ Px;
       nG <- M.abs_let (P:=P) x def e';
       exact nG g;;
       let x := reduce (RedWhd [rl:RedMatch]) (match eqBA with meq_refl => x end) in
-      t x (Goal SProp e') >>= let_close_goals x)
-  | [? P e] @Goal SProp (forall x:A, P x : Prop) e =u>
+      t x (Goal s e') >>= let_close_goals x)
+  | [? (s:Sort) (P:_->s) e] @Goal s (ForAll (fun x:A => P x)) e =u>
     M.nu var mNone (fun x=>
       let Px := reduce (RedWhd [rl:RedBeta]) (P x) in
-      e' <- M.evar Px;
+      e' <- M.sorted_evar _ Px;
       nG <- M.abs_fun (P:=P) x e';
       exact nG g;;
-      t x (Goal SProp e') >>= close_goals x)
-
-  | [? B (def: B) P e] @Goal SType (let x := def in P x) e =n>
-    (* normal match will not instantiate meta-variables from the scrutinee, so we do the inification here*)
-    eqBA <- M.unify_or_fail UniCoq B A;
-    M.nu var (mSome def) (fun x=>
-      let Px := reduce (RedWhd [rl:RedBeta]) (P x) in
-      e' <- M.evar Px;
-      nG <- M.abs_let (P:=P) x def e';
-      exact nG g;;
-      let x := reduce (RedWhd [rl:RedMatch]) (match eqBA with meq_refl => x end) in
-      t x (Goal SType e') >>= let_close_goals x)
-  | [? P e] @Goal SType (forall x:A, P x) e =u>
-    M.nu var mNone (fun x=>
-      let Px := reduce (RedWhd [rl:RedBeta]) (P x) in
-      e' <- M.evar Px;
-      nG <- M.abs_fun (P:=P) x e';
-      exact nG g;;
-      t x (Goal SType e') >>= close_goals x)
+      t x (@Goal s Px e') >>= close_goals x)
 
   | [? B P e] @Goal SProp (forall x:B, P x : Prop) e =u>
     mtry M.unify_or_fail UniCoq A B;; M.failwith "intros: impossible"
