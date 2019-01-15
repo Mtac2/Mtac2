@@ -17,8 +17,8 @@ Arguments stype_of !_ : simpl nomatch.
 (** When working with a sort [s], we cannot simply say "we have an
     element of [stype_of s]". For that, we make [selem_of T], where
     [T] is a [stype_of s]. *)
-Definition selem_of {s : Sort} (x : stype_of s) : Type :=
-  match s return stype_of s -> Type with
+Definition selem_of@{i j+} {s : Sort} (x : stype_of@{i j} s) : Type@{j} :=
+  match s return stype_of s -> Type@{j} with
   | SType => fun x => x
   | SProp => fun x => x
   end x.
