@@ -8,10 +8,9 @@ Copyright (c) 2018 Jan-Oliver Kaiser <janno@mpi-sws.org>
 Distributed under the terms of the MIT License,
 see LICENSE for details.
 
-This archive is a plugin for Coq containing the new tactic language
+This repository contains a plugin for Coq with the tactic language
 described in the paper
-[Mtac2: Typed Tactics for Backward Reasoning in Coq](http://www.mpi-sws.org/~beta/papers/Kaiseretal18.pdf).
-
+[Mtac2: Typed Tactics for Backward Reasoning in Coq](http://plv.mpi-sws.org/mtac).
 
 The project has 3 subdirectories:
 * `src` contains the code of the plugin.
