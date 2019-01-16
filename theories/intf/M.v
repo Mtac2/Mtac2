@@ -365,9 +365,8 @@ Definition evar@{a H} (A : Type@{a}) : t A := gen_evar@{a H} A mNone.
 Set Universe Minimization ToSet.
 
 Definition sorted_evar (s: Sort) : forall T : s, t T :=
-  match
-    s as s'
-    return (forall T : stype_of s', t (@selem_of s' T))
+  match s
+    return (forall T : stype_of s, t (@selem_of s T))
   with
   | SProp => fun T => M.evar T
   | SType => fun T => M.evar T
