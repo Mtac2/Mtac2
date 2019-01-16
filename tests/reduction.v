@@ -127,19 +127,17 @@ Qed.
 Example reduction_only2 : unit.
 MProof.
   Fail
-    (e <- evar unit;
-    n <- evar nat;
+    (e <- M.evar unit;
+    n <- M.evar nat;
     let x := reduce (RedStrong [RedBeta; RedDeltaOnly [Dyn (@id)]])
       (id ((fun x=>x)) (n+0)) in
     assert_eq x ((fun A (x:A)=>x) nat ((fun x=>x) (n + 0))))%MC.
-  (e <- M.evar unit;
-  n <- M.evar nat;
+  (n <- M.evar nat;
   let x := reduce (RedStrong [rl:RedBeta; RedDeltaOnly [rl:Dyn (@id)]])
     (id ((fun x=>x)) (n+0)) in
+  M.unify n 0 UniMatchNoRed;;
   M.ret tt)%MC.
-  Unshelve.
-  M.ret tt.
-MQed.
+Qed.
 
 Set Nested Proofs Allowed.
 

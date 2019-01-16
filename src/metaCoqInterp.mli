@@ -23,4 +23,3 @@ val glob_mtac_type : 'a -> Libnames.qualid -> mrun_arg_type * Names.GlobRef.t
 
 val interp_proof_constr : MetaCoqInstr.mproof_instr -> unit
 val interp_mproof_command : unit -> unit
-val end_proof : unit -> unit
