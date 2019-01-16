@@ -3,7 +3,8 @@ Import M.notations.
 Definition test := c <- M.declare dok_Definition "bla" false 1; M.print_term c.
 Goal unit.
   MProof.
-  c <- M.declare dok_Definition "ble" false 1; M.print_term c.
+  (* TODO: inlining test here doesn't work because of universes. *)
+  test.
 Qed.
 
 Goal unit.
@@ -87,7 +88,11 @@ Compute fun x y =>
                       with | UnboundVar => M.ret tt end
                )).
 
+(* This basically fails because of weird universe issues. *)
 Compute M.eval (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c).
+Definition decl_blu := (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c).
+(* TODO: again, inlining does not work here. *)
+Compute ltac:(mrun decl_blu).
 
 Print blu.
 
