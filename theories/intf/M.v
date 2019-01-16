@@ -366,7 +366,7 @@ Set Universe Minimization ToSet.
 
 Definition sorted_evar (s: Sort) : forall T : s, t T :=
   match s
-    return (forall T : stype_of s, t (@selem_of s T))
+    return (forall T : stype_of s, t (selem_of T))
   with
   | SProp => fun T => M.evar T
   | SType => fun T => M.evar T
