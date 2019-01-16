@@ -63,8 +63,7 @@ Arguments meq_rect [A] x P _ y _.
 (* Section Logic_lemmas. *)
 
 Section equality.
-  Variables A B : Type.
-  Variable f : A -> B.
+  Variables A : Type.
   Variables x y z : A.
 
   Theorem meq_sym : x =m= y -> y =m= x.
@@ -77,6 +76,8 @@ Section equality.
     destruct 2; trivial.
   Defined.
 
+  Variable B : Type.
+  Variable f : A -> B.
   Theorem mf_equal : x =m= y -> f x =m= f y.
   Proof.
     destruct 1; reflexivity.

@@ -4,14 +4,15 @@ Import ListNotations.
 
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
+Set Polymorphic Inductive Cumulativity.
 
 (** Pattern matching without pain *)
 (* The M will be instantiated with the M monad or the gtactic monad. In principle,
 we could make it part of the B, but then higher order unification will fail. *)
-Inductive pattern (M : Type -> Prop) (A : Type) (B : A -> Type) (y : A) : Prop :=
+Inductive pattern@{a b} (M : Type@{b} -> Prop) (A : Type@{a}) (B : A -> Type@{b}) (y : A) : Prop :=
   | pany : M (B y) -> pattern M A B y
   | pbase : forall x : A, (y =m= x ->M (B x)) -> Unification -> pattern M A B y
-  | ptele : forall {C:Type}, (forall x : C, pattern M A B y) -> pattern M A B y
+  | ptele : forall {C:Type@{a}}, (forall x : C, pattern M A B y) -> pattern M A B y
   | psort : (Sort -> pattern M A B y) -> pattern M A B y.
 
 
@@ -20,19 +21,18 @@ Arguments pbase {M A B y} _ _ _.
 Arguments ptele {M A B y C} _.
 Arguments psort {M A B y} _.
 
-
-Inductive branch {M : Type -> Prop} : forall {A : Type} {B : A -> Type} {y : A}, Prop :=
-| branch_pattern {A B y}: pattern M A B y -> @branch M A B y
-| branch_app_static {A B y}:
+Inductive branch@{a b c+} {M : Type@{b} -> Prop} : forall {A : Type@{a}} {B : A -> Type@{b}} {y : A}, Prop :=
+| branch_pattern {A : Type@{a}} {B : A -> Type@{b}} {y}: pattern M A B y -> @branch M A B y
+| branch_app_static {A : Type@{a}} {B : A -> Type@{b}} {y}:
     forall {m} (uni : Unification) (C : MTele_ConstT A m),
       MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => M (B a)) C) ->
       @branch M A B y
-| branch_forallP {B y}:
-    (forall (X : Type) (Y : X -> Prop), M (B (forall x : X, Y x))) ->
+| branch_forallP {B : Prop -> Type@{b}} {y}:
+    (forall (X : Type@{c}) (Y : X -> Prop), M (B (forall x : X, Y x))) ->
     @branch M Prop B y
-| branch_forallT {B y}:
-    (forall (X : Type) (Y : X -> Type), M (B (forall x : X, Y x))) ->
-    @branch M Type B y.
+| branch_forallT {B : Type@{c} -> Type@{b}} {y : Type@{c}}:
+    (forall (X : Type@{c}) (Y : X -> Type@{c}), M (B (forall x : X, Y x))) ->
+    @branch M Type@{c} B y.
 Arguments branch _ _ _ _ : clear implicits.
 
 

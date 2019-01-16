@@ -11,7 +11,7 @@ Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
 
 Set Universe Polymorphism.
-Unset Universe Minimization ToSet.
+(* Unset Universe Minimization ToSet. *)
 
 (** Exceptions *)
 Mtac Do New Exception NoGoalsLeft.
@@ -22,7 +22,7 @@ Mtac Do New Exception NoPatternMatchesGoal.
 Import ProdNotations.
 
 (** The type for tactics *)
-Definition gtactic (A: Type) := goal gs_base -> M.t (mlist (mprod A (goal gs_any))).
+Definition gtactic@{a g1 g2+} (A: Type@{a}) := goal@{g1 g2} gs_base -> M.t (mlist@{a} (mprod A (goal@{g1 g2} gs_any))).
 Definition tactic := gtactic unit.
 
 Delimit Scope tactic_scope with tactic.

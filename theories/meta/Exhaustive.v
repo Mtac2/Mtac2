@@ -1,6 +1,11 @@
 From Mtac2 Require Import Base List.
 Import M.notations.
 
+
+Set Universe Polymorphism.
+Unset Universe Minimization ToSet.
+Set Polymorphic Inductive Cumulativity.
+
 (** This file implements exhaustive [mmatch]es by introducing the [mmatch t
     exhaustively_with ... end] syntax.
 
