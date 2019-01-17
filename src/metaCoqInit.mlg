@@ -129,20 +129,8 @@ let proof_mode_identifier = "MProof"
     We also reset to the noedit_mode when we quit the MetaCoq proof
     mode.
 *)
-(* FIXME: (Yann) What is exactly this noedit_mode? *)
-let () =
-  Proof_global.register_proof_mode {
-    Proof_global.
-    name  = proof_mode_identifier ;
-    set   =
-      begin fun () ->
-        Pvernac.set_command_entry mproof_mode
-      end ;
-    reset =
-      begin fun () ->
-       Pvernac.(set_command_entry Vernac_.noedit_mode)
-      end
-  }
+
+let _ = Pvernac.register_proof_mode proof_mode_identifier mproof_mode
 
 (** The following command extends both the parser and the interpreter
    of the Vernacular language so that a new keyword "MProof" is
