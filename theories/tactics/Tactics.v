@@ -71,7 +71,7 @@ Definition intro_base {A B} (var : name) (t : A -> gtactic B) : gtactic B := fun
       exact nG g;;
       t x (@Goal s Px e') >>= close_goals x)
 
-  | [? B P e] @Goal SProp (forall x:B, P x : Prop) e =u>
+  | [? (s:Sort) B (P:_->s) e] @Goal s (ForAll (fun x:A => P x)) e =u>
     mtry M.unify_or_fail UniCoq A B;; M.failwith "intros: impossible"
     with _ => M.raise IntroDifferentType end
 
