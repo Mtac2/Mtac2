@@ -342,8 +342,7 @@ Definition print_goal : tactic := with_goal M.print_goal.
 Definition selector A := mlist (A *m goal gs_any) -> M (mlist (A *m goal gs_any)).
 
 Instance tactic_selector A : Seq A A (selector A) := fun t s g =>
-  l <- t g;
-  filter_goals l >>= s.
+  t g >>= filter_goals >>= s.
 
 Module S.
   Definition nth {A} (n : nat) (t : gtactic A) : selector A := fun l =>
