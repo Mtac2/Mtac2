@@ -248,10 +248,10 @@ Definition fmap {A B} (f : A -> B) (x : gtactic A) : gtactic B :=
 Definition fapp {A B} (f : gtactic (A -> B)) (x : gtactic A) : gtactic B :=
   bind f (fun g => fmap g x).
 
-Fixpoint gmap {A} (tacs : mlist (gtactic A)) (gs : mlist (goal gs_any)) : M (mlist (mlist (A *m goal gs_any))) :=
+Fixpoint gmap {A B} (tacs : mlist (gtactic A)) (gs : mlist (B *m goal gs_any)) : M (mlist (mlist (A *m goal gs_any))) :=
   match tacs, gs with
   | [m:], [m:] => M.ret [m:]
-  | tac :m: tacs', g :m: gs' => mcons <$> open_and_apply tac g <*> gmap tacs' gs'
+  | tac :m: tacs', (m: _, g) :m: gs' => mcons <$> open_and_apply tac g <*> gmap tacs' gs'
   | l, l' => M.raise NotSameSize
   end.
 
@@ -262,8 +262,8 @@ Arguments seq {A B C _} _%tactic _%tactic.
 Instance seq_one {A B} : Seq A B (gtactic B) := fun t1 t2 => bind t1 (fun _ => t2).
 
 Instance seq_list {A B} : Seq A B (mlist (gtactic B)) := fun t f g =>
-  gs <- filter_goals =<< t g;
-  ls <- gmap f (mmap msnd gs);
+  gs <- t g >>= filter_goals;
+  ls <- gmap f gs;
   let res := dreduce (@mconcat, mapp) (mconcat ls) in
   M.ret res.
 
