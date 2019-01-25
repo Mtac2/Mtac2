@@ -11,6 +11,7 @@ Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
 
 Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
 (* Unset Universe Minimization ToSet. *)
 
 (** Exceptions *)
@@ -22,8 +23,8 @@ Mtac Do New Exception NoPatternMatchesGoal.
 Import ProdNotations.
 
 (** The type for tactics *)
-Definition gtactic@{a g1 g2+} (A: Type@{a}) := goal@{g1 g2} gs_base -> M.t (mlist@{a} (mprod A (goal@{g1 g2} gs_any))).
-Definition tactic := gtactic unit.
+Definition gtactic@{a g1 g2+} (A: Type@{a}) := goal@{g1 g2} gs_base -> M.t (mlist@{_} (mprod A (goal@{g1 g2} gs_any))).
+Definition tactic := gtactic@{Set _ _ _} unit.
 
 Delimit Scope tactic_scope with tactic.
 Bind Scope tactic_scope with gtactic.
@@ -268,12 +269,11 @@ Instance seq_list {A B} : Seq A B (mlist (gtactic B)) := fun t f g =>
   M.ret res.
 
 (** match_goal *)
-
-Inductive goal_pattern (B : Type) : Prop :=
-  | gbase : forall {A}, A -> gtactic B -> goal_pattern B
-  | gbase_context : forall {A}, A -> ((A -> Type) -> gtactic B) -> goal_pattern B
-  | gtele : forall {C}, (C -> goal_pattern B) -> goal_pattern B
-  | gtele_evar : forall {C}, (C -> goal_pattern B) -> goal_pattern B.
+Inductive goal_pattern@{a b+} (B : Type@{b}) : Prop :=
+  | gbase : forall {A : Type@{a}}, A -> gtactic B -> goal_pattern B
+  | gbase_context : forall {A:Type@{a}}, A -> ((A -> Type) -> gtactic B) -> goal_pattern B
+  | gtele : forall {C : Type@{a}}, (C -> goal_pattern B) -> goal_pattern B
+  | gtele_evar : forall {C : Type@{a}}, (C -> goal_pattern B) -> goal_pattern B.
 Arguments gbase {B A} _ _.
 Arguments gbase_context {B} {A} _ _.
 Arguments gtele {B C} _.

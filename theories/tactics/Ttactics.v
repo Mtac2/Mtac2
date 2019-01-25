@@ -8,13 +8,14 @@ Import M.
 Import M.notations.
 
 Set Universe Polymorphism.
-Unset Universe Minimization ToSet.
+Set Polymorphic Inductive Cumulativity.
+(* Unset Universe Minimization ToSet. *)
 
 Module TT.
 
 (** A typed tactic is a program that promises in its type the goal it solves,
     pehaps creating (dynamically-typed) goals. *)
-Definition ttac A := M (A *m mlist (goal gs_any)).
+Definition ttac@{a g1 g2+} (A : Type@{a}) := M (mprod@{a g2} A (mlist (goal@{g2 g1} gs_any))).
 
 Bind Scope typed_tactic_scope with ttac.
 Delimit Scope typed_tactic_scope with TT.
@@ -27,9 +28,9 @@ Mtac Do New Exception NotAProp.
 Definition to_goal (A : Type) : M (A *m goal gs_base) :=
   mtry
     P <- evar Prop;
-    of <- unify_univ P A UniMatchNoRed;
+    of <- unify_univ@{Set _ _} P A UniMatchNoRed;
     match of with
-    | mSome f => a <- M.evar P;
+    | mSome f => a <- M.evar@{Set} P;
                  let a' := reduce (RedOneStep [rl: RedBeta]) (f a) in
                  ret (m: a', Goal SProp a)
     | mNone => raise NotAProp (* we backtrack to erase P *)
@@ -247,11 +248,11 @@ Definition with_goal_type (F : forall (T : Type), ttac T) : tactic := fun g =>
 Module MatchGoalTT.
 Import TacticsBase.T.notations.
 Import Mtac2.lib.Logic.
-Inductive goal_pattern : Prop :=
-  | gbase : forall (A : _), ttac A -> goal_pattern
-  | gbase_context : forall {A} (a : A), (forall (C : A -> Type), ttac (C a)) -> goal_pattern
-  | gtele : forall {C}, (C -> goal_pattern) -> goal_pattern
-  | gtele_evar : forall {C}, (C -> goal_pattern) -> goal_pattern.
+Inductive goal_pattern@{tt1 tt2 tt3 tt4 dom+} : Prop :=
+  | gbase : forall (A : Type@{tt1}), ttac@{_ tt2 tt3 tt4} A -> goal_pattern
+  | gbase_context : forall {A : Type@{dom}} (a : A), (forall (C : A -> Type@{tt1}), ttac@{_ tt2 tt3 tt4} (C a)) -> goal_pattern
+  | gtele : forall {C : Type@{dom}}, (C -> goal_pattern) -> goal_pattern
+  | gtele_evar : forall {C : Type@{dom}}, (C -> goal_pattern) -> goal_pattern.
 Arguments gbase _ _.
 Arguments gbase_context {A} _ _.
 Arguments gtele {C} _.
@@ -268,8 +269,8 @@ Definition match_goal_context
   | mNone => M.raise DoesNotMatchGoal
   end.
 
-Fixpoint match_goal_pattern'
-    (u : Unification) (p : goal_pattern) : mlist Hyp -> mlist Hyp -> tactic :=
+Fixpoint match_goal_pattern'@{l+}
+    (u : Unification) (p : goal_pattern) : mlist@{l} Hyp -> mlist@{l} Hyp -> tactic :=
   fix go l1 l2 g :=
   match p, l2 with
   | gbase P t, _ =>

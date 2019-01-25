@@ -13,7 +13,7 @@ Require Import NArith.BinNat.
 Require Import NArith.BinNatDef.
 
 Set Universe Polymorphism.
-Unset Universe Minimization ToSet.
+(* Unset Universe Minimization ToSet. *)
 
 Module T.
 Export TacticsBase.T.

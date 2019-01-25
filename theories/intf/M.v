@@ -70,7 +70,7 @@ Definition is_var: forall{A : Type}, A->t bool.
    [NameExistsInContext] if the name "x" is in the context, or
    [VarAppearsInValue] if executing [f x] results in a term containing variable
    [x]. *)
-Definition nu: forall{A: Type}{B: Type}, name -> moption A -> (A -> t B) -> t B.
+Definition nu: forall{A: Type} {B: Type}, name -> moption A -> (A -> t B) -> t B.
   make. Qed.
 
 (* [@nu_let A B C n t f] expects [t] to be [let y : A' := t1 in t2] and executes
@@ -142,16 +142,16 @@ Definition remove : forall{A: Type} {B: Type}, A -> t B -> t B.
     something that is not a variable, it raises [NotAVar]. If it contains duplicated
     occurrences of a variable, it raises a [DuplicatedVariable].
 *)
-Definition gen_evar@{a H}: forall(A: Type@{a}), moption@{a} (mlist@{a} Hyp@{H}) -> t A.
+Definition gen_evar@{a H1 H2}: forall(A: Type@{a}), moption@{H2} (mlist@{H2} Hyp@{H1}) -> t A.
   make. Qed.
 
 (** [is_evar e] returns if [e] is a meta-variable. *)
-Definition is_evar: forall{A: Type}, A -> t bool.
+Definition is_evar: forall{A: Type}, A -> t@{Set} bool.
   make. Qed.
 
 (** [hash e n] returns a number smaller than [n] representing
     a hash of term [e] *)
-Definition hash: forall{A: Type}, A -> N -> t N.
+Definition hash: forall{A: Type}, A -> N -> t@{Set} N.
   make. Qed.
 
 (** [solve_typeclasses] calls type classes resolution. *)
@@ -360,7 +360,9 @@ Definition fapp {A:Type} {B:Type} (f : t (A -> B)) (x : t A) : t B :=
   bind f (fun g => fmap g x).
 
 Definition Cevar (A : Type) (ctx : mlist Hyp) : t A := gen_evar A (mSome ctx).
-Definition evar@{a H} (A : Type@{a}) : t A := gen_evar@{a H} A mNone.
+Monomorphic Universe evar_no_context.
+Monomorphic Constraint Set < evar_no_context.
+Definition evar@{a|} (A : Type@{a}) : t A := gen_evar@{a Set evar_no_context} A mNone.
 
 Set Universe Minimization ToSet.
 
@@ -436,16 +438,16 @@ End monad_notations.
 
 Import monad_notations.
 
-Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Exception) (p : pattern t A P y) : t (P y) :=
+Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Exception) (p : pattern@{a p} t A P y) : t (P y) :=
   match p with
   | pany b => b
   | pbase x f u =>
-    oeq <- unify x y u;
+    oeq <- unify@{a} x y u;
     match oeq return t (P y) with
     | mSome eq =>
       (* eq has type x =m= t, but for the pattern we need t = x. *)
     (*      we still want to provide eq_refl though, so we reduce it *)
-      let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
+      let h := reduce@{Set} (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
       let 'meq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
       let b := (* reduce (RedWhd [rl:RedBeta]) *) (f h) in b
@@ -456,7 +458,7 @@ Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excepti
     mtry'
       (open_pattern E (f SProp))
       (fun e =>
-         M.unify_cnt UniMatchNoRed e E (open_pattern E (f SType)) (raise e)
+         M.unify_cnt@{Set _} UniMatchNoRed e E (open_pattern E (f SType)) (raise e)
          (* oeq <- M.unify e E UniMatchNoRed; *)
          (* match oeq with *)
          (* | mSome _ => open_pattern E (f SType) *)
@@ -465,7 +467,7 @@ Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excepti
       )
   end.
 
-Definition open_branch {A P y} (E : Exception) (b : branch t A P y) : t (P y) :=
+Definition open_branch' {A P y} (E : Exception) (b : branch t A P y) : t (P y) :=
   match b in branch _ A' P y' return forall z: A', z =m= y' -> t (P y') with
   | @branch_pattern _ A P _ p =>
     fun z eq =>
@@ -486,19 +488,24 @@ Definition open_branch {A P y} (E : Exception) (b : branch t A P y) : t (P y) :=
   (* | _ => fun _ _ => M.failwith "not implemented" *)
   end y meq_refl.
 
-Fixpoint mmatch'' {A:Type} {P: A -> Type} (E : Exception) (y : A) (failure : t (P y)) (ps : mlist (branch t A P y)) : t (P y) :=
+Definition open_branch@{a p+} := Eval unfold open_branch' in @open_branch'@{p Set a _ _ Set Set _ Set}.
+Arguments open_branch {A P y} _ _.
+
+(* The first universe of the [branch] could be shared with [A] but somehow that makes our iris case study slower in a reproducible way.  *)
+Fixpoint mmatch''@{a p+} {A:Type@{a}} {P: A -> Type@{p}} (E : Exception) (y : A) (failure : t (P y)) (ps : mlist@{Set} (branch t A P y)) : t (P y) :=
   match ps with
   | [m:] => failure
   | p :m: ps' =>
-    mtry' (open_branch (y:=y) E p) (fun e =>
-      is_head (B:=fun e => P y) (m := mBase) UniMatchNoRed E e (mmatch'' E y failure ps') (raise e))
+    mtry' (open_branch@{a p _ _ _} (y:=y) E p) (fun e =>
+      is_head@{Set p a _} (B:=fun e => P y) (m := mBase) UniMatchNoRed E e (mmatch'' E y failure ps') (raise e))
           (* TODO: don't abuse is_head for this. *)
   end.
 
-Definition mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist (branch t A P y)) : t (P y) :=
+Definition mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist@{Set} (branch t A P y)) : t (P y) :=
   mmatch'' E y (raise NoPatternMatches) ps.
 
 Definition NotCaught : Exception. constructor. Qed.
+
 
 Module notations_pre.
   Export monad_notations.
@@ -761,8 +768,8 @@ Fixpoint string_rev_flatten (ss : mlist string) :=
   | s :m: ss => string_rev_app s (string_rev_flatten ss)
   end.
 
-Definition fail_strs (l : mlist dyn) : M.t string :=
-  fix2 (fun _ _ => string) (fun go l (acc : mlist string) =>
+Definition fail_strs (l : mlist@{Set} dyn) : M.t string :=
+  fix2@{Set Set Set} (fun _ _ => string) (fun go l (acc : mlist string) =>
   match l with
   | [m: ] =>
     let r := reduce (RedVmCompute) (string_rev (string_rev_flatten acc)) in
@@ -846,12 +853,13 @@ Definition is_prop_or_type (d : dyn) : t bool :=
 
 (** [goal_type g] extracts the type of the goal or raises [NotAGoal]
     if [g] is not [Goal]. *)
-Definition goal_type (g : goal gs_base) : t Type :=
-  match g with
+Definition goal_type@{g1 g2} (g : goal@{g2 g1} gs_base) : t Type@{g1} :=
+  match g in goal gs return match gs return Type@{g2} with gs_base => t Type@{g1} | _ => IDProp end with
   | @Goal s A x =>
-    match s as s return stype_of s -> t Type with
-      | SProp => fun A => ret (A:Type)
+    match s as s return stype_of s -> t Type@{g1} with
+      | SProp => fun A => ret (A:Type@{g1})
       | SType => fun A => ret A end A
+  | _ => idProp
   end.
 
 (** [goal_prop g] extracts the prop of the goal or raises [NotAGoal]
