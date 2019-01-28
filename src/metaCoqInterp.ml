@@ -211,16 +211,12 @@ end
     - Get back and focus on the current proof
     - Set the proof mode to "MProof" mode.
     - Print subgoals *)
-[@@@ocaml.warning "-3"] (* deprecated use of set_proof_mode *)
 let interp_mproof_command () =
   let proof = Proof_global.give_me_the_proof () in
   if Proof.is_done proof then
     CErrors.user_err (str "Nothing left to prove here.")
   else
-    begin
-      Proof_global.set_proof_mode "MProof";
-      Feedback.msg_info @@ Printer.pr_open_subgoals ~proof;
-    end
+    Feedback.msg_info @@ Printer.pr_open_subgoals ~proof
 
 (** Interpreter of a mtactic *)
 let interp_instr = function
