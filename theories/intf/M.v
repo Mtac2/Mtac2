@@ -467,7 +467,7 @@ Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excepti
       )
   end.
 
-Definition open_branch' {A P y} (E : Exception) (b : branch t A P y) : t (P y) :=
+Definition open_branch {A P y} (E : Exception) (b : branch t A P y) : t (P y) :=
   match b in branch _ A' P y' return forall z: A', z =m= y' -> t (P y') with
   | @branch_pattern _ A P _ p =>
     fun z eq =>
@@ -488,16 +488,13 @@ Definition open_branch' {A P y} (E : Exception) (b : branch t A P y) : t (P y) :
   (* | _ => fun _ _ => M.failwith "not implemented" *)
   end y meq_refl.
 
-Definition open_branch@{a p+} := Eval unfold open_branch' in @open_branch'@{p Set a _ _ Set Set _ Set}.
-Arguments open_branch {A P y} _ _.
-
 (* The first universe of the [branch] could be shared with [A] but somehow that makes our iris case study slower in a reproducible way.  *)
 Fixpoint mmatch''@{a p+} {A:Type@{a}} {P: A -> Type@{p}} (E : Exception) (y : A) (failure : t (P y)) (ps : mlist@{Set} (branch t A P y)) : t (P y) :=
   match ps with
   | [m:] => failure
   | p :m: ps' =>
-    mtry' (open_branch@{a p _ _ _} (y:=y) E p) (fun e =>
-      is_head@{Set p a _} (B:=fun e => P y) (m := mBase) UniMatchNoRed E e (mmatch'' E y failure ps') (raise e))
+    mtry' (open_branch (y:=y) E p) (fun e =>
+      is_head (B:=fun e => P y) (m := mBase) UniMatchNoRed E e (mmatch'' E y failure ps') (raise e))
           (* TODO: don't abuse is_head for this. *)
   end.
 

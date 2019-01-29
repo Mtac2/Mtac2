@@ -88,6 +88,7 @@ induction mt as [|X F IHmt].
 - cbn. refine (fun x => x).
 - cbn. intros ? ? ?.
   refine (IHmt _ _ _ _); auto.
+  apply X0.
 Defined.
 
 Definition decompose_app_tactic {m : MTele} {A : Type} {B : A -> Type} {C : MTele_ConstT A m} {T: Type} (a : A) (t : T) :
