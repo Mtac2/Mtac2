@@ -263,7 +263,7 @@ Definition set_trace: bool -> t unit.
        unify with the respective given candidate in [u .. w].
  *)
 Definition is_head :
-  forall {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m)
+  forall {A : Type} {B : A -> Type} {m:MTele} (uni : Unification) (a : A) (C : MTele_ConstT A m)
          (success : MTele_sort (MTele_ConstMap (si := Typeₛ) Propₛ (T:=A) (fun a => t (B a)) C))
          (failure: t (B a)),
     t (B a).
@@ -402,7 +402,7 @@ Definition dbg_term {A} (s: string) (x : A) : t unit :=
 
 
 Definition decompose_app'
-           {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m)
+           {A : Type} {B : A -> Type} {m:MTele} (uni : Unification) (a : A) (C : MTele_ConstT A m)
            (success : MTele_sort (MTele_ConstMap (si := Typeₛ) Propₛ (T:=A) (fun a => t (B a)) C)) :
   t (B a) :=
   is_head uni a C success (raise WrongTerm).
@@ -493,7 +493,8 @@ Definition open_branch {A P y} (E : Exception) (b : branch t A P y) : t (P y) :=
   (* | _ => fun _ _ => M.failwith "not implemented" *)
   end y meq_refl.
 
-Fixpoint mmatch'' {A:Type} {P: A -> Type} (E : Exception) (y : A) (failure : t (P y)) (ps : mlist (branch t A P y)) : t (P y) :=
+(* The first universe of the [branch] could be shared with [A] but somehow that makes our iris case study slower in a reproducible way.  *)
+Fixpoint mmatch''@{a p+} {A:Type@{a}} {P: A -> Type@{p}} (E : Exception) (y : A) (failure : t (P y)) (ps : mlist@{Set} (branch t A P y)) : t (P y) :=
   match ps with
   | [m:] => failure
   | p :m: ps' =>
