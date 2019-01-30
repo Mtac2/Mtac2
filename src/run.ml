@@ -1033,7 +1033,7 @@ let declare_mind env sigma params sigs mut_constrs =
       in
       let vars = Id.Set.add id vars in
       let params = (name, typeX):: params in
-      (n+1, (id, Entries.LocalAssumEntry (EConstr.to_constr sigma typeX))::acc, vars, params)
+      (n+1, (Context.Rel.Declaration.LocalAssum (Name id, EConstr.to_constr sigma typeX))::acc, vars, params)
     ) (0, [], vars, []) params in
 
   let params_rev = params in
@@ -1149,7 +1149,7 @@ let declare_mind env sigma params sigs mut_constrs =
              mind_entry_params;
              mind_entry_universes=Entries.Monomorphic_ind_entry (Evd.universe_context_set sigma);
              mind_entry_private=None;
-            } Universes.empty_binders [] in
+            } UnivNames.empty_binders [] in
   (sigma, CoqUnit.mkTT)
 
 
