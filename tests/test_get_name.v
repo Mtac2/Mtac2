@@ -4,7 +4,7 @@ Goal True.
 MProof.
   (s <- M.get_binder_name (fun name:nat=>name);
   match String.string_dec s "name" with
-  | Specif.left _ => M.ret I
+  | left _ => M.ret I
   | _ => M.raise exception
   end)%MC.
 Qed.
@@ -15,7 +15,7 @@ MProof.
   Unshelve.
   (s <- M.get_binder_name name;
   match String.string_dec s "name" with
-  | Specif.left _ => M.ret I
+  | left _ => M.ret I
   | _ => M.raise exception
   end)%MC.
 Qed.
@@ -25,7 +25,7 @@ MProof.
   M.nu (TheName "name") mNone (fun x:nat=>
   s <- M.get_binder_name x;
   match String.string_dec s "name" with
-  | Specif.left _ => M.ret I
+  | left _ => M.ret I
   | _ => M.raise exception
   end)%MC.
 Qed.
@@ -35,7 +35,7 @@ MProof.
   (r <- M.nu (TheName "name") mNone (fun x:nat => M.abs_fun x x);
   s <- M.get_binder_name r;
   match String.string_dec s "name" with
-  | Specif.left _ => M.ret I
+  | left _ => M.ret I
   | _ => M.raise exception
   end)%MC.
 Qed.

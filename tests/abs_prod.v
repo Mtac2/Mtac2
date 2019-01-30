@@ -39,3 +39,8 @@ Goal let x := 1 in Prop.
   Fail mrun (t >>= T.exact)%tactic.
   (* It should fail because otherwise it will create an ill-typed prop *)
 Abort.
+
+Mtac Do (
+       let t := forall x : nat, (fun T => T) Type in
+       let t := reduce (RedOneStep [rl: RedBeta]) t in
+       print_term t).

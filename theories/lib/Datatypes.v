@@ -62,6 +62,7 @@ Inductive mprod (A B:Type) : Type :=
 Module ProdNotations.
 Infix "*m" := (mprod) (at level 40) : type_scope.
 Notation "(m: x , y , .. , z )" := (mpair .. (mpair x y) .. z) : core_scope.
+Notation "(m: x ; .. ; y ; z )" := (mpair x .. (mpair y z) ..) : core_scope.
 End ProdNotations.
 
 Arguments mpair {A B} _ _.

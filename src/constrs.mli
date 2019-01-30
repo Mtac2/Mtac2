@@ -147,3 +147,26 @@ module CoqPTele : sig
 
   val from_coq : Evd.evar_map -> Environ.env -> constr -> (constr * constr) option
 end
+
+module CoqMTele : sig
+  exception NotAnMTele
+
+  val from_coq : Evd.evar_map -> Environ.env -> constr -> (constr * constr) option
+end
+
+module CoqSigT : sig
+  exception NotAmexistT
+
+  val from_coq : Evd.evar_map -> Environ.env -> constr -> (constr * constr)
+end
+
+
+module CoqSort : sig
+  val mkSType : Environ.env -> Evd.evar_map -> Evd.evar_map * EConstr.t
+  val mkSProp : Environ.env -> Evd.evar_map -> Evd.evar_map * EConstr.t
+  exception NotASort
+  type sort = SProp | SType
+  val from_coq : Evd.evar_map -> Environ.env -> EConstr.t -> sort
+  val to_coq :
+    Evd.evar_map -> Environ.env -> sort -> Evd.evar_map * EConstr.t
+end

@@ -77,15 +77,12 @@ module Goal = struct
   let mkHypRemove = mkUConstr "Goals.HypRem"
   let mkHypReplace = mkUConstr "Goals.HypReplace"
 
-  let mkSType = Constrs.mkConstr "Mtac2.intf.Sorts.S.SType"
-  let mkSProp = Constrs.mkConstr "Mtac2.intf.Sorts.S.SProp"
-
   let mkTheGoal ?base:(base=true) ty ev sigma env =
     let tt = Retyping.get_type_of env sigma ty in
     let tt = Reductionops.nf_all env sigma tt in
     if isSort sigma tt then
       let sort = ESorts.kind sigma (destSort sigma tt) in
-      let ssort = Lazy.force (if Sorts.is_prop sort then mkSProp else mkSType) in
+      let sigma, ssort = if Sorts.is_prop sort then CoqSort.mkSProp env sigma else CoqSort.mkSType env sigma in
       let sigma, tg = (if base then mkGoal else mkGoalOut) sigma env in
       sigma, mkApp (tg, [|ssort; ty;ev|])
     else
@@ -955,6 +952,207 @@ let run_declare_implicits env sigma gr impls =
   (sigma, CoqUnit.mkTT)
 
 
+let rec below_lambdas sigma t f = function
+  | 0 -> f t
+  | k when k > 0 ->
+      let n, typeT, t = destLambda sigma t in
+      let t = below_lambdas sigma t f (k - 1) in
+      mkLambda (n, typeT, t)
+  | _ -> raise (Failure "below_lambdas must not be called with negative values.")
+
+let rec below_prods sigma t f = function
+  | 0 -> f t
+  | k when k > 0 ->
+      let n, typeT, t = destProd sigma t in
+      let t = below_lambdas sigma t f (k - 1) in
+      mkProd (n, typeT, t)
+  | _ -> raise (Failure "below_lambdas must not be called with negative values.")
+
+let rec strip_lambdas sigma t = function
+  | 0 -> t
+  | k when k > 0 ->
+      let n, typeT, t = destLambda sigma t in
+      let t = strip_lambdas sigma t (k - 1) in
+      t
+  | _ -> raise (Failure "strip_lambdas must not be called with negative values.")
+
+let rec fold_nat f t = function
+  | 0 -> t
+  | k when k > 0 ->
+      fold_nat f (f k t) (k - 1)
+  | _ -> raise (Failure "fold_nat must not be called with negative values.")
+
+let rec mTele_fold_left sigma env f acc t  =
+  match CoqMTele.from_coq sigma env t with
+  | None -> acc
+  | Some ((typeX,contF)) ->
+      let (name,ty,t) = destLambda sigma contF in
+      let acc = f acc (name, typeX) in
+      mTele_fold_left sigma env f acc t
+
+let rec mTele_fold_right sigma env f acc t  =
+  match CoqMTele.from_coq sigma env t with
+  | None -> acc
+  | Some ((typeX,contF)) ->
+      let (_,_,t') = destLambda sigma contF in
+      f t (mTele_fold_right sigma env f acc t')
+
+(* turns [[tele x .. z]] and [fun x .. z => T] into [forall x .. z, b(T)] *)
+let mTele_to_foralls sigma env tele funs b =
+  let n_args, funs, binders = mTele_fold_left sigma env (fun (n,funs,acc) (name, typeX) ->
+    let (name, ty, funs) = destLambda sigma funs in
+    (n+1, funs, (name, ty)::acc)
+  ) (0, funs, []) tele
+  in
+  let sigma, funs = b sigma n_args funs in
+  let arity = List.fold_left (fun t (name, ty) -> EConstr.mkProd (name, ty, t)) funs binders in
+  sigma, n_args, arity
+
+
+let rec zip = function
+  | ([], []) -> []
+  | (x::l1, y::l2) -> (x,y):: zip (l1, l2)
+  | _ -> raise (Failure "zip called with lists of unequal length.")
+
+let rec unzip = function
+  | [] -> [], []
+  | (x,y)::l ->
+      let l1,l2 = unzip l in
+      (x :: l1, y::l2)
+
+let declare_mind env sigma params sigs mut_constrs =
+  let vars = vars_of_env env in
+  (* Calculate length and LocalEntry list from parameter telescope.
+     The LocalEntry list is reversed because we are using a left fold.
+  *)
+  let n_params, mind_entry_params, _, params =
+    mTele_fold_left sigma env (fun (n, acc, vars, params) (name, typeX) ->
+      let id = match name with
+        | Anonymous -> Namegen.next_name_away (Name (Id.of_string "")) vars
+        | Name id -> id
+      in
+      let vars = Id.Set.add id vars in
+      let params = (name, typeX):: params in
+      (n+1, (id, Entries.LocalAssumEntry (EConstr.to_constr sigma typeX))::acc, vars, params)
+    ) (0, [], vars, []) params in
+
+  let params_rev = params in
+  let params = List.rev params in
+
+  let param_env =
+    List.fold_left (fun param_env (name, typeX) ->
+      Environ.push_rel (Context.Rel.Declaration.LocalAssum (name, EConstr.to_constr sigma typeX)) param_env
+    ) env params
+  in
+
+  (* let mind_entry_params = List.rev mind_entry_params in *)
+  let sigma, inds = CoqList.from_coq_conv sigma env (
+    fun sigma t ->
+      let (name, ind_sig) = CoqPair.from_coq (env, sigma) t in
+      (* print_constr sigma env t; *)
+      (* print_constr sigma env ind_sig; *)
+      let (ind_tele, ind_ty) = CoqSigT.from_coq sigma env (strip_lambdas sigma ind_sig  n_params) in
+      let sigma, n_ind_args, ind_arity = mTele_to_foralls sigma env ind_tele ind_ty (fun sigma _ t ->
+        match CoqSort.from_coq sigma env t with
+        | SProp -> sigma, mkProp
+        | SType ->
+            let sigma, univ = Evd.new_univ_variable (Evd.UnivFlexible false) sigma in
+            sigma, mkType univ
+      ) in
+      let name = CoqString.from_coq (env, sigma) name in
+      let name = Id.of_string name in
+      let ind_arity_full = List.fold_left (fun arity (name, typeX) -> mkProd (name, typeX, arity)) ind_arity params_rev in
+      (sigma, (name, n_ind_args, ind_ty, ind_arity, ind_arity_full))
+  ) sigs in
+
+  let ind_env = List.fold_left (fun ind_env (name, _,_, _, ind_arity_full) ->
+    Environ.push_rel (Context.Rel.Declaration.LocalAssum (Name.Name name, EConstr.to_constr sigma ind_arity_full)) ind_env
+  ) env inds in
+  let ind_env =
+    List.fold_left (fun param_env (name, typeX) ->
+      Environ.push_rel (Context.Rel.Declaration.LocalAssum (name, EConstr.to_constr sigma typeX)) param_env
+    ) ind_env params
+  in
+
+  (* Feedback.msg_debug (Pp.str "inductives:");
+   * Feedback.msg_debug (Printer.pr_context_of param_env sigma);
+   * List.iter ((fun (name, _, _, ind_arity, ind_arity_full) ->
+   *   print_constr sigma param_env ind_arity;
+   *   print_constr sigma env ind_arity_full;
+   * )) inds; *)
+
+  let n_inds = List.length inds in
+  (* is there no Nat.iter in ocaml?? *)
+  (* print_constr sigma env mut_constrs; *)
+  (* Strip off [n_params + n_inds] many lambdas. TODO: error handling, potentially delta-reduce. *)
+  let mut_constrs = strip_lambdas sigma mut_constrs (n_params + n_inds) in
+  (* prepare the list of parameters which we will append to the inductive type at the end of every constructor before we append indices. *)
+  (* let param_args = fold_nat (fun k acc -> mkRel (n_params + n_inds - k + 1) :: acc) [] n_params in *)
+  let param_args = List.mapi (fun i (name, typeX) -> mkRel (n_params - i)) params in
+  (* Convert [constrs], now an [n_inds]-tuple of lists, into a list *)
+  let sigma, _, constrs, unit_leftover = List.fold_left (fun (sigma, k_ind, acc, mut_constrs)(_, n_ind_args, _, _,_)  ->
+    (* print_constr sigma env mut_constrs; *)
+    (* Feedback.msg_debug (Pp.int n_ind_args); *)
+    let constrs, mut_constrs = CoqPair.from_coq (env, sigma) mut_constrs in
+    let sigma, constrs = CoqList.from_coq_conv sigma env (fun sigma constr ->
+      (* print_constr sigma env constr; *)
+      let name, constr = CoqPair.from_coq (env, sigma) constr in
+      let (constr_tele, constr_type) = CoqSigT.from_coq sigma env constr in
+      let sigma, n_constr_args, constr_type = mTele_to_foralls sigma env constr_tele constr_type (fun sigma n_constr_args t ->
+        let leftover_unit, args = fold_nat (fun _ (t, acc) ->
+          (* print_constr sigma env t; *)
+          let (arg, t) = CoqSigT.from_coq sigma env t in
+          (t, arg::acc)
+        ) (t, []) (n_ind_args) in
+        sigma, EConstr.applist (EConstr.mkRel (n_params + n_inds - k_ind + n_constr_args), List.map (EConstr.Vars.lift n_constr_args) param_args @ rev args)
+      )
+      in
+      let name = CoqString.from_coq (env, sigma) name in
+      let name = Id.of_string name in
+      (sigma, (name, constr_type))
+    ) constrs in
+    (sigma, k_ind+1, constrs::acc, mut_constrs)
+  ) (sigma, 0, [], mut_constrs) inds in
+
+  (* constrs now reversed because of a left fold. *)
+  let constrs = List.rev constrs in
+
+  assert (List.length constrs == List.length inds);
+  (* Feedback.msg_debug (Pp.str "constructors:");
+   * Feedback.msg_debug (Printer.pr_context_of ind_env sigma);
+   * Feedback.msg_debug (
+   *   Pp.prlist_with_sep (fun () -> Pp.str "\n\n") (
+   *     Pp.prlist_with_sep (fun () -> Pp.str "\n") (fun (name,t) ->
+   *       let open Pp in
+   *       Name.print (Names.Name name) ++ str ": " ++
+   *       Printer.pr_econstr_env ind_env sigma t)
+   *   ) constrs
+   * ); *)
+  (* List.iter (List.iter (fun (name, constr) -> print_constr sigma ind_env constr)) constrs; *)
+  let open Entries in
+  let mind_entry_inds = List.fold_left (fun acc ((mind_entry_typename, n_ind_args, _, mind_entry_arity, _), constrs) ->
+    let mind_entry_consnames, mind_entry_lc = unzip constrs in
+    let mind_entry_lc = List.map (EConstr.to_constr sigma) mind_entry_lc in
+    let mind_entry_arity = EConstr.to_constr sigma mind_entry_arity in
+    let mind_entry_template = false in
+    {mind_entry_typename;
+     mind_entry_arity;
+     mind_entry_template;
+     mind_entry_consnames;
+     mind_entry_lc} :: acc
+  ) [] (zip (inds, constrs)) in
+  let mind_entry_inds = List.rev mind_entry_inds in
+  let _ = ComInductive.declare_mutual_inductive_with_eliminations
+            {mind_entry_record=None;
+             mind_entry_finite=Declarations.Finite;
+             mind_entry_inds;
+             mind_entry_params;
+             mind_entry_universes=Entries.Monomorphic_ind_entry (Evd.universe_context_set sigma);
+             mind_entry_private=None;
+            } Universes.empty_binders [] in
+  (sigma, CoqUnit.mkTT)
+
+
 let koft sigma t =
   let lf n = Lazy.force (MtacNames.mkConstr ("Tm_kind." ^ n)) in
   let open Constr in
@@ -1190,11 +1388,11 @@ let rec run' ctxt (vms : vm list) =
                   let efail (sigma, fc) = fail (sigma, of_econstr fc) in
 
 
-                  (* (\* repetition :( *\) *)
+                  (* (* repetition :( *) *)
                   (* let return sigma c = (run'[@tailcall]) {ctxt with sigma} (Ret c :: vms) in *)
                   (* let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in *)
 
-                  (* (\* wrappers for return and fail to conveniently return/fail with EConstrs *\) *)
+                  (* (* wrappers for return and fail to conveniently return/fail with EConstrs *) *)
                   (* let ereturn s fc = return s (of_econstr fc) in *)
                   (* let efail (sigma, fc) = fail (sigma, of_econstr fc) in *)
 
@@ -1685,6 +1883,10 @@ let rec run' ctxt (vms : vm list) =
 
                     | MConstr (Mkind_of_term, (_, t)) ->
                         ereturn sigma (koft sigma (CClosure_copy.term_of_fconstr t))
+
+                    | MConstr (Mdeclare_mind, (params, inds, constrs)) ->
+                        let sigma, types = declare_mind env sigma (to_econstr params) (to_econstr inds) (to_econstr constrs) in
+                        ereturn sigma types
                   end
               | exception Not_found ->
                   let h = EConstr.mkConst hc in

@@ -37,7 +37,7 @@ Import Mtac2.lib.List.
 
 Instance nseq_list {A B} n (nt: ntactic A n) (l: mlist (gtactic B)) pf: NSeq nt l pf := fun g =>
   gs <- nt g;
-  ls <- T.gmap l (mmap msnd gs.(goals));
+  ls <- T.gmap l gs.(goals);
   let res := dreduce (@mconcat, @mapp) (mconcat ls) in
   T.filter_goals res.
 

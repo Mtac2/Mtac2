@@ -1,6 +1,6 @@
 Require Import Strings.String.
 Require Import NArith.BinNat.
-From Mtac2 Require Import Logic Datatypes Logic List Utils MTele Pattern.
+From Mtac2 Require Import Logic Datatypes Logic List Utils MTele Pattern Specif.
 Import ListNotations.
 Import ProdNotations.
 From Mtac2.intf Require Export Sorts Exceptions Dyn Reduction Unification DeclarationDefs Goals Case Tm_kind Name.
@@ -60,6 +60,7 @@ Definition fix5: forall{A1: Type} {A2: A1->Type} {A3: forall(a1: A1), A2 a1->Typ
   forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3) (x5 : A5 x1 x2 x3 x4), t (B x1 x2 x3 x4 x5).
   make. Qed.
 
+
 (** [is_var e] returns if [e] is a variable. *)
 Definition is_var: forall{A : Type}, A->t bool.
   make. Qed.
@@ -117,7 +118,7 @@ Definition abs_fix: forall{A: Type}, A -> A -> N -> t A.
     - [t = let x := d in b].
     It raises [WrongTerm] in any other case.
 *)
-Definition get_binder_name: forall{A: Type}, A -> t string.
+Definition get_binder_name: forall{A: Type}, A -> t@{Set} string.
   make. Qed.
 
 (** [remove x t] executes [t] in a context without variable [x].
@@ -141,7 +142,7 @@ Definition remove : forall{A: Type} {B: Type}, A -> t B -> t B.
     something that is not a variable, it raises [NotAVar]. If it contains duplicated
     occurrences of a variable, it raises a [DuplicatedVariable].
 *)
-Definition gen_evar: forall(A: Type), moption (mlist Hyp) -> t A.
+Definition gen_evar@{a H}: forall(A: Type@{a}), moption@{a} (mlist@{a} Hyp@{H}) -> t A.
   make. Qed.
 
 (** [is_evar e] returns if [e] is a meta-variable. *)
@@ -154,15 +155,15 @@ Definition hash: forall{A: Type}, A -> N -> t N.
   make. Qed.
 
 (** [solve_typeclasses] calls type classes resolution. *)
-Definition solve_typeclasses : t unit.
+Definition solve_typeclasses : t@{Set} unit.
   make. Qed.
 
 (** [print s] prints string [s] to stdout. *)
-Definition print : string -> t unit.
+Definition print : string -> t@{Set} unit.
   make. Qed.
 
 (** [pretty_print e] converts term [e] to string. *)
-Definition pretty_print : forall{A: Type}, A -> t string.
+Definition pretty_print : forall{A: Type}, A -> t@{Set} string.
   make. Qed.
 
 (** [hyps] returns the list of hypotheses. *)
@@ -212,7 +213,7 @@ Definition list_ltac: t unit.
   make. Qed.
 
 (** [read_line] returns the string from stdin. *)
-Definition read_line: t string.
+Definition read_line: t@{Set} string.
   make. Qed.
 
 (** [decompose x] decomposes value [x] into a head and a spine of
@@ -321,6 +322,36 @@ Definition kind_of_term: forall{A: Type}, A -> t tm_kind.
 Definition replace {A B C} (x:A) : A =m= B -> t C -> t C.
   make. Qed.
 
+Definition declare_mind
+           (params : MTele)
+           (sigs : mlist (string *m (MTele_ConstT m:{ mt_ind &(MTele_ConstT S.Sort mt_ind)} params)))
+           (constrs :
+              mfold_right
+                (fun '(m: _; ind) acc =>
+                   MTele_val (MTele_In SType (fun a' => MTele_Ty (mprojT1 (a'.(acc_constT) ind))))
+                   -> acc
+                (* MTele_val (MTele_In SType (fun a => MTele_Ty (mprojT1 (a.(acc_const) ind)))) -> acc *)
+                )%type
+                (
+                  (
+                    MTele_val (MTele_In SType
+                                        (fun a =>
+                                           mfold_right
+                                             (fun '(m: _; ind) acc =>
+                                                mlist (string *m m:{mt_constr & MTele_ConstT (ArgsOf (mprojT1 (a.(acc_constT) ind))) mt_constr}) *m acc
+                                             )%type
+                                             unit
+                                             sigs
+                                        )
+                              )
+                  )
+                )
+                sigs
+           ) :
+  (* t (mfold_right (fun '(m: _; _; mexistT _ mt_ind T) acc => MTele_val T *m acc)%type unit sigs). *)
+  t unit.
+  make. Qed.
+
 Arguments t _%type.
 
 Definition fmap {A:Type} {B:Type} (f : A -> B) (x : t A) : t B :=
@@ -329,18 +360,26 @@ Definition fapp {A:Type} {B:Type} (f : t (A -> B)) (x : t A) : t B :=
   bind f (fun g => fmap g x).
 
 Definition Cevar (A : Type) (ctx : mlist Hyp) : t A := gen_evar A (mSome ctx).
-Definition evar (A : Type) : t A := gen_evar A mNone.
+Definition evar@{a H} (A : Type@{a}) : t A := gen_evar@{a H} A mNone.
 
-Definition unify {A : Type} (x y : A) (U : Unification) : t (moption (x =m= y)) :=
-  unify_cnt (B:=fun x => moption (meq x y)) U x y
-            (ret (mSome (@meq_refl _ y)))
-            (ret mNone).
+Set Universe Minimization ToSet.
+
+Definition sorted_evar (s: Sort) : forall T : s, t T :=
+  match s with
+  | SProp => fun T => M.evar T
+  | SType => fun T => M.evar T
+  end.
+
+Definition unify@{a} {A : Type@{a}} (x y : A) (U : Unification) : t@{a} (moption@{a} (meq@{a} x y)) :=
+  unify_cnt (B:=fun x => moption@{a} (meq x y)) U x y
+            (ret@{a} (mSome@{a} (@meq_refl _ y)))
+            (ret@{a} mNone@{a}).
 
 
 Definition raise {A:Type} (e: Exception): t A :=
   bind get_debug_exceptions (fun b=>
   if b then
-    bind (pretty_print e) (fun s=>
+    bind (pretty_print@{Set} e) (fun s=>
     bind (print ("raise " ++ s)) (fun _ =>
     raise' e))
   else
@@ -348,9 +387,12 @@ Definition raise {A:Type} (e: Exception): t A :=
 
 Definition failwith {A} (s : string) : t A := raise (Failure s).
 
-
+(* TODO: figure out why this is incompatible with [Minimization ToSet]. (It
+breaks tests/declare.v.) *)
+Unset Universe Minimization ToSet.
 Definition print_term {A} (x : A) : t unit :=
   bind (pretty_print x) (fun s=> print s).
+Set Universe Minimization ToSet.
 
 Definition dbg_term {A} (s: string) (x : A) : t unit :=
   bind (pretty_print x) (fun t=> print (s++t)).
@@ -394,15 +436,15 @@ End monad_notations.
 
 Import monad_notations.
 
-Fixpoint open_pattern {A P y} (E : Exception) (p : pattern t A P y) : t (P y) :=
+Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Exception) (p : pattern t A P y) : t (P y) :=
   match p with
   | pany b => b
   | pbase x f u =>
     oeq <- unify x y u;
     match oeq return t (P y) with
     | mSome eq =>
-      (* eq has type x =m= t, but for the pattern we need t = x.
-         we still want to provide eq_refl though, so we reduce it *)
+      (* eq has type x =m= t, but for the pattern we need t = x. *)
+    (*      we still want to provide eq_refl though, so we reduce it *)
       let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
       let 'meq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
@@ -414,11 +456,12 @@ Fixpoint open_pattern {A P y} (E : Exception) (p : pattern t A P y) : t (P y) :=
     mtry'
       (open_pattern E (f SProp))
       (fun e =>
-         oeq <- M.unify e E UniMatchNoRed;
-         match oeq with
-         | mSome _ => open_pattern E (f SType)
-         | mNone => raise e
-         end
+         M.unify_cnt UniMatchNoRed e E (open_pattern E (f SType)) (raise e)
+         (* oeq <- M.unify e E UniMatchNoRed; *)
+         (* match oeq with *)
+         (* | mSome _ => open_pattern E (f SType) *)
+         (* | mNone => raise e *)
+         (* end *)
       )
   end.
 
