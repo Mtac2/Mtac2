@@ -22,10 +22,10 @@ open Evd
 
 (*   (\** [set is_local ref (recargs, nargs, flags)] *\) *)
 (*   val set : *)
-(*     bool -> Globnames.global_reference -> (int list * int * flag list) -> unit *)
+(*     bool -> Names.GlobRef.t -> (int list * int * flag list) -> unit *)
 (*   val get : *)
-(*     Globnames.global_reference -> (int list * int * flag list) option *)
-(*   val print : Globnames.global_reference -> Pp.std_ppcmds *)
+(*     Names.GlobRef.t -> (int list * int * flag list) option *)
+(*   val print : Names.GlobRef.t -> Pp.std_ppcmds *)
 (* end *)
 
 (* (\** Option telling if reduction should use the refolding machinery of cbn *)
@@ -43,7 +43,7 @@ open Evd
 (*   (Environ.env -> Evd.evar_map -> Constr.constr -> unit) -> unit *)
 
 (* (\* [set_reduction_effect cst name] declares effect [name] to be called when [cst] is found *\) *)
-(* val set_reduction_effect : Globnames.global_reference -> effect_name -> unit *)
+(* val set_reduction_effect : Names.GlobRef.t -> effect_name -> unit *)
 
 (* (\* [effect_hook env sigma key term] apply effect associated to [key] on [term] *\) *)
 (* val reduction_effect_hook : Environ.env -> Evd.evar_map -> Constr.constr -> *)

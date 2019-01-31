@@ -1,6 +1,6 @@
 val metaCoq_module_name : string
 val mkConstr : string -> EConstr.constr Lazy.t
-val mkUGlobal: string -> Globnames.global_reference
+val mkUGlobal: string -> Names.GlobRef.t
 val mkUConstr: string ->
   Evd.evar_map -> Environ.env -> Evd.evar_map * EConstr.constr
 val mkBuilder: string -> Constrs.ConstrBuilder.t

@@ -101,7 +101,7 @@ module Goal = struct
 
   let make_replace env (sigma: evar_map) oldtype newtype id goal =
     let var = mkVar id in
-    let sigma, sort = Evarutil.new_Type env sigma in
+    let sigma, sort = Evarutil.new_Type sigma in
     let sigma, eq = CoqEq.mkEqRefl sigma env sort oldtype in
     let sigma, rep = mkHypReplace sigma env in
     sigma, mkApp (rep, [|oldtype;newtype;var;eq;goal |])
@@ -1285,9 +1285,9 @@ let rec run' ctxt (vms : vm list) =
         (* let cont ctxt h args = (run'[@tailcall]) {ctxt with stack=Zapp args::stack} (Code h :: vms) in *)
 
         let evars ev = safe_evar_value sigma ev in
-        let infos = CClosure.create_clos_infos ~evars CClosure.allnolet env in
+        let infos = CClosure_copy.create_clos_infos ~evars CClosure.allnolet env in
 
-        let reduced_term, stack = reduce_noshare infos (CClosure.create_tab ()) t stack
+        let reduced_term, stack = reduce_noshare infos (* CClosure.create_tab () *) t stack
         (* RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t *)
         in
 

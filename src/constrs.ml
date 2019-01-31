@@ -51,7 +51,7 @@ end
 module ConstrBuilder = struct
   open Constrs
 
-  type t = Globnames.global_reference Lazy.t
+  type t = Names.GlobRef.t Lazy.t
 
   let from_string (s:string) : t = lazy (Nametab.global_of_path (Libnames.path_of_string s))
 
@@ -68,7 +68,7 @@ end
 module UConstrBuilder = struct
   open Constrs
 
-  type t = Globnames.global_reference Lazy.t
+  type t = Names.GlobRef.t Lazy.t
 
   let from_string (s:string) : t = lazy (Nametab.global_of_path (Libnames.path_of_string s))
 
