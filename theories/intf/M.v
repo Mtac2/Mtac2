@@ -366,8 +366,8 @@ Set Universe Minimization ToSet.
 
 Definition sorted_evar (s: Sort) : forall T : s, t T :=
   match s with
-  | SProp => fun T => M.evar T
-  | SType => fun T => M.evar T
+  | SProp => fun T:Prop => M.evar T
+  | SType => fun T:Type => M.evar T
   end.
 
 Definition unify@{a} {A : Type@{a}} (x y : A) (U : Unification) : t@{a} (moption@{a} (meq@{a} x y)) :=
