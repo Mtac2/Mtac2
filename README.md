@@ -1,3 +1,12 @@
+-------------------------------------------------------------------------------
+## Branch outdated
+This branch is not maintained anymore. It is quite outdated with respect to the
+8.8 branch, the main reason being that Coq 8.8 brought significant changes that
+improved significantly Mtac2's performance. If you need an updated version of
+Mtac2, please drop us a line, but we urge you to switch to a newer Coq version.
+
+-------------------------------------------------------------------------------
+
 # Mtac2
 
 A typed tactic language for Coq.
