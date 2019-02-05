@@ -25,27 +25,27 @@ Delimit Scope typed_tactic_scope with TT.
     precise goal possible.  For that, we need to backtrack in case it is not a
     [Prop] (and treat it as a [Type]). *)
 Mtac Do New Exception NotAProp.
-Definition to_goal (A : Type) : M (A *m goal gs_base) :=
+Definition to_goal (A : Type) : M (A *m goal gs_open) :=
   mtry
     P <- evar Prop;
     of <- unify_univ@{Set _ _} P A UniMatchNoRed;
     match of with
     | mSome f => a <- M.evar@{Set} P;
                  let a' := reduce (RedOneStep [rl: RedBeta]) (f a) in
-                 ret (m: a', Goal SProp a)
+                 ret (m: a', Metavar SProp a)
     | mNone => raise NotAProp (* we backtrack to erase P *)
     end
   with [#] NotAProp | =n>
     a <- evar A;
-    M.ret (m: a, Goal SType a)
+    M.ret (m: a, Metavar SType a)
   end.
 
 (** [demote] is a [ttac] that proves anything by simply postponing it as a
     goal. *)
 Definition demote {A: Type} : ttac A :=
   ''(m: a, g) <- to_goal A;
-  let '(Goal _ g) := g in
-  M.ret (m: a, [m: GoalOut _ g]).
+  let '(Metavar _ g) := g in
+  M.ret (m: a, [m: AnyMetavar _ g]).
 
 (** [use t] tries to solve the goal with tactic [t] *)
 Definition use {A} (t : tactic) : ttac A :=
@@ -57,8 +57,8 @@ Arguments use [_] _%tactic.
 
 Definition idtac {A} : ttac A :=
     ''(m: a, g) <- to_goal A;
-    let '(Goal _ g) := g in
-    M.ret (m: a, [m: GoalOut _ g]).
+    let '(Metavar _ g) := g in
+    M.ret (m: a, [m: AnyMetavar _ g]).
 
 (** [by'] is like [use] but it ensures there are no goals left. *)
 Definition by' {A} (t : tactic) : ttac A :=
@@ -168,7 +168,7 @@ Definition tpass {A} := lift (M.evar A).
 Definition texists {A} {Q:A->Prop} : ttac (exists (x:A), Q x) :=
   e <- M.evar A;
   pf <- M.evar (Q e);
-  M.ret (m: ex_intro _ e pf, [m: GoalOut SProp pf]).
+  M.ret (m: ex_intro _ e pf, [m: AnyMetavar SProp pf]).
 
 Definition tassumption {A:Type} : ttac A :=
   lift (M.select _).
@@ -212,11 +212,11 @@ Definition rewrite {X : Type} (C : X -> Type) {a b : X} (H : a = b) :
  *)
 Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
   match g with
-  | @Goal S.SProp G g =>
+  | @Metavar S.SProp G g =>
     ''(m: x, gs) <- F G;
     M.cumul_or_fail UniCoq x g;;
     M.map (fun g => M.ret (m:tt,g)) gs
-  | @Goal S.SType G g =>
+  | @Metavar S.SType G g =>
     gP <- evar Prop;
     mtry
       cumul_or_fail UniMatch gP G;;
@@ -231,11 +231,11 @@ Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
  *)
 Definition with_goal_type (F : forall (T : Type), ttac T) : tactic := fun g =>
   match g with
-  | @Goal S.SProp G g =>
+  | @Metavar S.SProp G g =>
     ''(m: x, gs) <- F G;
     M.cumul_or_fail UniCoq x g;;
     M.map (fun g => M.ret (m:tt,g)) gs
-  | @Goal S.SType G g =>
+  | @Metavar S.SType G g =>
     gP <- evar Prop;
     mtry
       cumul_or_fail UniMatch gP G;;

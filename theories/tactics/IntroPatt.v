@@ -90,7 +90,7 @@ Definition to_tactic (ip : IP) (do_intro : LIP -> tactic) : tactic :=
   end.
 Import ProdNotations.
 Definition do_intro :  LIP -> tactic :=
-  mfix2 do_intro (lip : LIP) (g : goal gs_base) : M (mlist (unit *m goal gs_any)) :=
+  mfix2 do_intro (lip : LIP) (g : goal gs_open) : M (mlist (unit *m goal gs_any)) :=
   (match lip return tactic with
   | lnil => T.idtac
   | lcons ip lnil => to_tactic ip do_intro

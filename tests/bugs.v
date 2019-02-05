@@ -55,8 +55,8 @@ Definition destcase_work := ltac:(mrun (M.bind (M.destcase (match 3 with 0 => tr
 (* Force a solved goal to be returned. *)
 Definition faulty_exact {A} (x : A) : tactic := fun g =>
   (match g with
-   | Goal _ g' =>
-     M.cumul UniCoq x g';; M.ret [m: (m: tt, GoalOut _ g')]
+   | Metavar _ g' =>
+     M.cumul UniCoq x g';; M.ret [m: (m: tt, AnyMetavar _ g')]
   end)%MC.
 Goal True /\ 1=1.
 MProof.
@@ -64,7 +64,7 @@ MProof.
 (fun g =>
    r<- M.map (fun '(m: x,g') => open_and_apply ((faulty_exact) I) g') =<< apply conj g;
    M.ret (mconcat r)
-)%MC &> (fun g : goal gs_base =>
+)%MC &> (fun g : goal gs_open =>
            (is_open g >>= M.print_term);;
            M.print_term g;; reflexivity g)%MC.
 Qed.
