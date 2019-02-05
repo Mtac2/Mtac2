@@ -848,22 +848,21 @@ Definition is_prop_or_type (d : dyn) : t bool :=
   | _ => ret false
   end.
 
-(** [goal_type g] extracts the type of the goal or raises [NotAGoal]
-    if [g] is not [Goal]. *)
-Definition goal_type@{g1 g2} (g : goal@{g2 g1} gs_base) : t Type@{g1} :=
-  match g in goal gs return match gs return Type@{g2} with gs_base => t Type@{g1} | _ => IDProp end with
-  | @Goal s A x =>
+(** [goal_type g] extracts the type of the goal. *)
+Definition goal_type@{g1 g2} (g : goal@{g2 g1} gs_open) : t Type@{g1} :=
+  match g in goal gs return match gs return Type@{g2} with gs_open => t Type@{g1} | _ => IDProp end with
+  | @Metavar s A x =>
     match s as s return stype_of s -> t Type@{g1} with
       | SProp => fun A => ret (A:Type@{g1})
       | SType => fun A => ret A end A
   | _ => idProp
   end.
 
-(** [goal_prop g] extracts the prop of the goal or raises [NotAGoal]
-    if [g] is not [Goal], or [CantCoerce] its type can't be cast to a Prop. *)
-Definition goal_prop (g : goal gs_base) : t Prop :=
+(** [goal_prop g] extracts the prop of the goal or raises [CantCoerce] its type
+can't be cast to a Prop. *)
+Definition goal_prop (g : goal gs_open) : t Prop :=
   match g with
-  | @Goal s A _ =>
+  | @Metavar s A _ =>
     match s as s return forall A:stype_of s, t Prop with
       | SProp => fun A:Prop => ret A
       | SType => fun A:Type =>
@@ -876,15 +875,15 @@ Definition goal_prop (g : goal gs_base) : t Prop :=
   end.
 
 (** Convertion functions from [dyn] to [goal]. *)
-Definition dyn_to_goal (d : dyn) : t (goal gs_base) :=
+Definition dyn_to_goal (d : dyn) : t (goal gs_open) :=
   mmatch d with
-  | [? (A:Prop) x] @Dyn A x => ret (@Goal SProp A x)
-  | [? (A:Type) x] @Dyn A x => ret (@Goal SType A x)
+  | [? (A:Prop) x] @Dyn A x => ret (@Metavar SProp A x)
+  | [? (A:Type) x] @Dyn A x => ret (@Metavar SType A x)
   end.
 
-Definition goal_to_dyn (g : goal gs_base) : t dyn :=
+Definition goal_to_dyn (g : goal gs_open) : t dyn :=
   match g with
-  | Goal _ d => ret (Dyn d)
+  | Metavar _ d => ret (Dyn d)
   end.
 
 Definition cprint {A} (s : string) (c : A) : t unit :=
@@ -909,14 +908,14 @@ Definition print_hyps : t unit :=
   let l := mrev' l in
   iterate print_hyp l.
 
-Definition print_goal (g : goal gs_base) : t unit :=
+Definition print_goal (g : goal gs_open) : t unit :=
   let repeat c := (fix repeat s n :=
     match n with
     | 0 => s
     | S n => repeat (c++s)%string n
     end) ""%string in
   sg <- match g with
-        | @Goal _ G _ => pretty_print G
+        | @Metavar _ G _ => pretty_print G
         end;
   let sep := repeat "="%string 20 in
   print_hyps;;

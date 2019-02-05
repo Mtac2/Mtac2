@@ -24,7 +24,7 @@ MProof.
   (\tactic g =>
    r <- induction n g;
    match r with
-   | (m:_,GoalOut _ _) :m: _ => M.ret r
+   | (m:_,AnyMetavar _ _) :m: _ => M.ret r
    | _ => M.raise exception
    end) &> [m:apply le_n| apply le_S;; assumption].
 Qed.
