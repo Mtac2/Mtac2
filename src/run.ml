@@ -63,15 +63,15 @@ module RedList = GenericList (struct
 
 module Goal = struct
 
-  let mkgs_base = mkUConstr "Goals.gs_base"
+  let mkgs_base = mkUConstr "Goals.gs_open"
   let mkgs_any = mkUConstr "Goals.gs_any"
 
   let mkgoal ?base:(base=true) sigma env =
     let sigma, gs = if base then mkgs_base sigma env else mkgs_any sigma env in
     let sigma, t = mkUConstr "Goals.goal" sigma env in
     (sigma, mkApp (t, [|gs|]))
-  let mkGoal = mkUConstr "Goals.Goal"
-  let mkGoalOut = mkUConstr "Goals.GoalOut"
+  let mkMetavar = mkUConstr "Goals.Metavar"
+  let mkAnyMetavar = mkUConstr "Goals.AnyMetavar"
   let mkAHyp = mkUConstr "Goals.AHyp"
   let mkHypLet = mkUConstr "Goals.HypLet"
   let mkHypRemove = mkUConstr "Goals.HypRem"
@@ -83,7 +83,7 @@ module Goal = struct
     if isSort sigma tt then
       let sort = ESorts.kind sigma (destSort sigma tt) in
       let sigma, ssort = if Sorts.is_prop sort then CoqSort.mkSProp env sigma else CoqSort.mkSType env sigma in
-      let sigma, tg = (if base then mkGoal else mkGoalOut) sigma env in
+      let sigma, tg = (if base then mkMetavar else mkAnyMetavar) sigma env in
       sigma, mkApp (tg, [|ssort; ty;ev|])
     else
       failwith ("WAT? Not a sort?" ^ (constr_to_string sigma env tt))

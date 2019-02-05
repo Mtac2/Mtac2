@@ -156,7 +156,7 @@ Module Mtac_V4.
 
   Definition promote_uninst_evar {X} {A} (x : X) (a : A *m mlist (goal _)) : ttac (A) :=
     let '(m: a, gs) := a in
-    mif is_evar x then ret (m: a, GoalOut SType x :m: gs) else ret (m: a, gs).
+    mif is_evar x then ret (m: a, AnyMetavar SType x :m: gs) else ret (m: a, gs).
 
   Definition has_open_subgoals {A} (a : A *m mlist (goal gs_any)) : M bool :=
     ret (match msnd a with [m:] => true | _ => false end).
