@@ -32,6 +32,7 @@ install: |
     export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
     export OPAMJOBS=${CPU_CORES}
     set -ex
+    env
     opam config list
     opam repo list
     opam list
