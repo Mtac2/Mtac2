@@ -23,6 +23,20 @@ branches:
     # We want to have CI for all master branches that target specific coq versions.
     - /master-.*/
 
+before_cache:
+  # Save tagged docker images
+  - >
+    mkdir -p $HOME/docker && docker images -a --filter='dangling=false' --format '{{.Repository}}:{{.Tag}} {{.ID}}'
+    | xargs -n 2 -t sh -c 'test -e $HOME/docker/$1.tar.gz || docker save $0 | gzip -2 > $HOME/docker/$1.tar.gz'
+
+before_install:
+  # Load cached docker images
+  - if [[ -d $HOME/docker ]]; then ls $HOME/docker/*.tar.gz | xargs -I {file} sh -c "zcat {file} | docker load"; fi
+
+cache:
+  directories:
+    ~/docker-images
+
 install: |
   # Run the COQ container and display build metadata
   docker run -d -i --init --name=COQ -v ${TRAVIS_BUILD_DIR}:/home/coq/Mtac2 -w /home/coq/Mtac2 ${COQ_IMAGE}
@@ -32,10 +46,11 @@ install: |
     opam config list
     opam repo list
     opam list
-    opam repo add coq-released https://coq.inria.fr/opam/released
-    opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
+    opam repo list | grep coq-released || opam repo add coq-released https://coq.inria.fr/opam/released
+    opam repo list | grep coq-core-dev || opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
     opam repo list
     sudo apt install -y m4
+    opam update --development
     opam install -y coq.dev
     coqc --version
     opam pin --ignore-constraints-on=coq add coq-unicoq https://github.com/unicoq/unicoq.git#master
