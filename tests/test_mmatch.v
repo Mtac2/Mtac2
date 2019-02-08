@@ -93,7 +93,7 @@ Qed.
 
 
 (* This definition fails because Coq is unable to find the returning type*)
-Fail Definition test (t : nat)  :=
+Definition test (t : nat)  :=
   mmatch t with
   | 0 => ret (eq_refl 0)
   end.
