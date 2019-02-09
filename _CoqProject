@@ -4,7 +4,7 @@ CAMLDEBUG = "-g"
 -I src
 -R theories Mtac2
 -Q tests Mtac2Tests
--arg -bt
+-arg "-w -unrecognized-unicode"
 src/metaCoqInit.ml4
 src/metaCoqInstr.mli
 src/constrs.ml

@@ -262,8 +262,8 @@ Definition set_trace: bool -> t unit.
        unify with the respective given candidate in [u .. w].
  *)
 Definition is_head :
-  forall {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m)
-         (success : MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C))
+  forall {A : Type} {B : A -> Type} {m:MTele} (uni : Unification) (a : A) (C : MTele_ConstT A m)
+         (success : MTele_sort (MTele_ConstMap (si := Typeₛ) Propₛ (T:=A) (fun a => t (B a)) C))
          (failure: t (B a)),
     t (B a).
   make. Qed.
@@ -328,13 +328,13 @@ Definition declare_mind
            (constrs :
               mfold_right
                 (fun '(m: _; ind) acc =>
-                   MTele_val (MTele_In SType (fun a' => MTele_Ty (mprojT1 (a'.(acc_constT) ind))))
+                   MTele_val (MTele_In Typeₛ (fun a' => MTele_Ty (mprojT1 (a'.(acc_constT) ind))))
                    -> acc
-                (* MTele_val (MTele_In SType (fun a => MTele_Ty (mprojT1 (a.(acc_const) ind)))) -> acc *)
+                (* MTele_val (MTele_In Typeₛ (fun a => MTele_Ty (mprojT1 (a.(acc_const) ind)))) -> acc *)
                 )%type
                 (
                   (
-                    MTele_val (MTele_In SType
+                    MTele_val (MTele_In Typeₛ
                                         (fun a =>
                                            mfold_right
                                              (fun '(m: _; ind) acc =>
@@ -368,8 +368,8 @@ Set Universe Minimization ToSet.
 
 Definition sorted_evar (s: Sort) : forall T : s, t T :=
   match s with
-  | SProp => fun T => M.evar T
-  | SType => fun T => M.evar T
+  | Propₛ => fun T:Prop => M.evar T
+  | Typeₛ => fun T:Type => M.evar T
   end.
 
 Definition unify@{a} {A : Type@{a}} (x y : A) (U : Unification) : t@{a} (moption@{a} (meq@{a} x y)) :=
@@ -402,8 +402,8 @@ Definition dbg_term {A} (s: string) (x : A) : t unit :=
 
 
 Definition decompose_app'
-           {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m)
-           (success : MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C)) :
+           {A : Type} {B : A -> Type} {m:MTele} (uni : Unification) (a : A) (C : MTele_ConstT A m)
+           (success : MTele_sort (MTele_ConstMap (si := Typeₛ) Propₛ (T:=A) (fun a => t (B a)) C)) :
   t (B a) :=
   is_head uni a C success (raise WrongTerm).
 
@@ -456,12 +456,12 @@ Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excepti
   | @ptele _ _ _ _ C f => e <- evar C; open_pattern E (f e)
   | psort f =>
     mtry'
-      (open_pattern E (f SProp))
+      (open_pattern E (f Propₛ))
       (fun e =>
-         M.unify_cnt@{Set _} UniMatchNoRed e E (open_pattern E (f SType)) (raise e)
+         M.unify_cnt UniMatchNoRed e E (open_pattern E (f Typeₛ)) (raise e)
          (* oeq <- M.unify e E UniMatchNoRed; *)
          (* match oeq with *)
-         (* | mSome _ => open_pattern E (f SType) *)
+         (* | mSome _ => open_pattern E (f Typeₛ) *)
          (* | mNone => raise e *)
          (* end *)
       )
@@ -849,13 +849,12 @@ Definition is_prop_or_type (d : dyn) : t bool :=
   end.
 
 (** [goal_type g] extracts the type of the goal. *)
-Definition goal_type@{g1 g2} (g : goal@{g2 g1} gs_open) : t Type@{g1} :=
-  match g in goal gs return match gs return Type@{g2} with gs_open => t Type@{g1} | _ => IDProp end with
+Definition goal_type (g : goal gs_open) : t Type :=
+  match g in goal gs with
   | @Metavar s A x =>
-    match s as s return stype_of s -> t Type@{g1} with
-      | SProp => fun A => ret (A:Type@{g1})
-      | SType => fun A => ret A end A
-  | _ => idProp
+    match s as s return stype_of s -> t Type with
+      | Propₛ => fun A => ret (A:Type)
+      | Typeₛ => fun A => ret A end A
   end.
 
 (** [goal_prop g] extracts the prop of the goal or raises [CantCoerce] its type
@@ -864,8 +863,8 @@ Definition goal_prop (g : goal gs_open) : t Prop :=
   match g with
   | @Metavar s A _ =>
     match s as s return forall A:stype_of s, t Prop with
-      | SProp => fun A:Prop => ret A
-      | SType => fun A:Type =>
+      | Propₛ => fun A:Prop => ret A
+      | Typeₛ => fun A:Type =>
         gP <- evar Prop;
         mtry
          cumul_or_fail UniMatch gP A;;
@@ -877,8 +876,8 @@ Definition goal_prop (g : goal gs_open) : t Prop :=
 (** Convertion functions from [dyn] to [goal]. *)
 Definition dyn_to_goal (d : dyn) : t (goal gs_open) :=
   mmatch d with
-  | [? (A:Prop) x] @Dyn A x => ret (@Metavar SProp A x)
-  | [? (A:Type) x] @Dyn A x => ret (@Metavar SType A x)
+  | [? (A:Prop) x] @Dyn A x => ret (@Metavar Propₛ A x)
+  | [? (A:Type) x] @Dyn A x => ret (@Metavar Typeₛ A x)
   end.
 
 Definition goal_to_dyn (g : goal gs_open) : t dyn :=

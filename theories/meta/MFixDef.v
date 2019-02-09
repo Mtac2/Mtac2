@@ -5,7 +5,7 @@ Import M.notations.
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 
-Local Notation MFA T := (MTele_val (MTele_C SType SProp M T)).
+Local Notation MFA T := (MTele_val (MTele_C Typeₛ Propₛ M T)).
 
 Fixpoint uncurry {m : MTele} :
   forall {T : MTele_Ty m},

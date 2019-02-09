@@ -32,12 +32,12 @@ Definition to_goal (A : Type) : M (A *m goal gs_open) :=
     match of with
     | mSome f => a <- M.evar@{Set} P;
                  let a' := reduce (RedOneStep [rl: RedBeta]) (f a) in
-                 ret (m: a', Metavar SProp a)
+                 ret (m: a', Metavar Propₛ a)
     | mNone => raise NotAProp (* we backtrack to erase P *)
     end
   with [#] NotAProp | =n>
     a <- evar A;
-    M.ret (m: a, Metavar SType a)
+    M.ret (m: a, Metavar Typeₛ a)
   end.
 
 (** [demote] is a [ttac] that proves anything by simply postponing it as a
@@ -168,7 +168,7 @@ Definition tpass {A} := lift (M.evar A).
 Definition texists {A} {Q:A->Prop} : ttac (exists (x:A), Q x) :=
   e <- M.evar A;
   pf <- M.evar (Q e);
-  M.ret (m: ex_intro _ e pf, [m: AnyMetavar SProp pf]).
+  M.ret (m: ex_intro _ e pf, [m: AnyMetavar Propₛ pf]).
 
 Definition tassumption {A:Type} : ttac A :=
   lift (M.select _).
@@ -212,11 +212,11 @@ Definition rewrite {X : Type} (C : X -> Type) {a b : X} (H : a = b) :
  *)
 Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
   match g with
-  | @Metavar S.SProp G g =>
+  | @Metavar Propₛ G g =>
     ''(m: x, gs) <- F G;
     M.cumul_or_fail UniCoq x g;;
     M.map (fun g => M.ret (m:tt,g)) gs
-  | @Metavar S.SType G g =>
+  | @Metavar Typeₛ G g =>
     gP <- evar Prop;
     mtry
       cumul_or_fail UniMatch gP G;;
@@ -231,11 +231,11 @@ Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
  *)
 Definition with_goal_type (F : forall (T : Type), ttac T) : tactic := fun g =>
   match g with
-  | @Metavar S.SProp G g =>
+  | @Metavar Propₛ G g =>
     ''(m: x, gs) <- F G;
     M.cumul_or_fail UniCoq x g;;
     M.map (fun g => M.ret (m:tt,g)) gs
-  | @Metavar S.SType G g =>
+  | @Metavar Typeₛ G g =>
     gP <- evar Prop;
     mtry
       cumul_or_fail UniMatch gP G;;

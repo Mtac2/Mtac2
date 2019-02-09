@@ -15,12 +15,12 @@ Unset Universe Minimization ToSet.
 *)
 
 (* FIX: proper error messaging *)
-Definition MTele_of (A : Type) : forall T, T -> M (msigT (MTele_Const (s:=SType) A)) :=
+Definition MTele_of (A : Type) : forall T, T -> M (msigT (MTele_Const (s:=Typeₛ) A)) :=
   let matchtele := fun T => mTele (fun _ : T => mBase) in
   let fixtele := mTele (matchtele) in
   mfix'
     (m:=fixtele)
-    (fun T (_ : T) => msigT (MTele_Const (s:=SType) A))
+    (fun T (_ : T) => msigT (MTele_Const (s:=Typeₛ) A))
     (
       fun f T =>
         mtmmatch'
@@ -31,15 +31,15 @@ Definition MTele_of (A : Type) : forall T, T -> M (msigT (MTele_Const (s:=SType)
           [m:
              (@mtpbase
                 _
-                (fun T => T -> M (msigT (MTele_Const (s:=SType) A)))
+                (fun T => T -> M (msigT (MTele_Const (s:=Typeₛ) A)))
                 A
-                (fun t : A => M.ret (mexistT (MTele_Const (s:=SType) A) mBase t))
+                (fun t : A => M.ret (mexistT (MTele_Const (s:=Typeₛ) A) mBase t))
                 UniCoq
              )
           |  (mtptele (fun (X : Type) => mtptele (fun (F : forall x : X, Type) =>
               @mtpbase
                 _
-                (fun T => T -> M (msigT (MTele_Const (s:=SType) A)))
+                (fun T => T -> M (msigT (MTele_Const (s:=Typeₛ) A)))
                 (forall x : X, F x)
                 (fun t : _ =>
                    M.nu (FreshFrom T) mNone (fun x =>
@@ -48,8 +48,8 @@ Definition MTele_of (A : Type) : forall T, T -> M (msigT (MTele_Const (s:=SType)
                                    ''(mexistT _ n T) <- f Fx tx;
                                    n' <- M.abs_fun (P:=fun _ => MTele) x n;
                                    T' <- M.coerce T;
-                                   T' <- M.abs_fun (P:=fun x => MTele_Const (s:=SType) A (n' x)) x T';
-                                   M.ret (mexistT (MTele_Const (s:=SType) A) (mTele n') T')
+                                   T' <- M.abs_fun (P:=fun x => MTele_Const (s:=Typeₛ) A (n' x)) x T';
+                                   M.ret (mexistT (MTele_Const (s:=Typeₛ) A) (mTele n') T')
                                 )
                 )
                 UniCoq
@@ -59,7 +59,7 @@ Definition MTele_of (A : Type) : forall T, T -> M (msigT (MTele_Const (s:=SType)
 
 Definition decompose_app {m : MTele} {A : Type} {B : A -> Type} {C : MTele_ConstT A m} {T: Type} (a : A) (t : T)
   :
-  M (Unification -> MTele_sort (MTele_ConstMap (si:=SType) SProp (fun a : A => M (B a)) C) -> M (B a)) :=
+  M (Unification -> MTele_sort (MTele_ConstMap (si:=Typeₛ) Propₛ (fun a : A => M (B a)) C) -> M (B a)) :=
   (
     ''(mexistT _ m' T') <- MTele_of A T t;
     M.unify m m' UniCoq;;
@@ -81,9 +81,9 @@ Notation "'<[decapp' a 'with' b ]>" :=
   (at level 0, a at next level, b at next level) : M_scope.
 
 
-Local Definition mtele_convert' {A : Type} {B : A -> Prop} {G : Type} {mt} {C : MTele_ConstT A mt} :
-  MTele_sort (MTele_ConstMap (si:=SType) SProp (fun a => G -> B a) C)
-  -> (G -> MTele_sort (MTele_ConstMap (si:=SType) SProp B C)).
+Local Definition mtele_convert' {A : Type} {B : A -> Prop} {G : Type} {mt:MTele} {C : MTele_ConstT A mt} :
+  MTele_sort (MTele_ConstMap (si:=Typeₛ) Propₛ (fun a => G -> B a) C)
+  -> (G -> MTele_sort (MTele_ConstMap (si:=Typeₛ) Propₛ B C)).
 induction mt as [|X F IHmt].
 - cbn. refine (fun x => x).
 - cbn. intros ? ? ?.
@@ -92,7 +92,7 @@ induction mt as [|X F IHmt].
 Defined.
 
 Definition decompose_app_tactic {m : MTele} {A : Type} {B : A -> Type} {C : MTele_ConstT A m} {T: Type} (a : A) (t : T) :
-  M (Unification -> MTele_sort (MTele_ConstMap (si:=SType) SProp (fun a : A => gtactic (B a)) C) -> gtactic (B a)) :=
+  M (Unification -> MTele_sort (MTele_ConstMap (si:=Typeₛ) Propₛ (fun a : A => gtactic (B a)) C) -> gtactic (B a)) :=
   (
     ''(mexistT _ m' T') <- MTele_of A T t;
     M.unify m m' UniCoq;;

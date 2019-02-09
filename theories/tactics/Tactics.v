@@ -138,24 +138,24 @@ Definition copy_ctx {A} (B : A -> Type) : dyn -> M Type :=
     remove [x] from the goal. *)
 Definition generalize {A} (x : A) : tactic := fun g =>
   match g with
-  | @Metavar SType P _ =>
+  | @Metavar Typeₛ P _ =>
      aP <- M.abs_prod_type x P; (* aP = (forall x:A, P) *)
      e <- M.evar aP;
      mmatch aP with
      | [? Q : A -> Type] (forall z:A, Q z) =n> [H]
         let e' := reduce (RedWhd [rl:RedMatch]) match H in _ =m= Q return Q with meq_refl _ => e end in
         exact (e' x) g;;
-        M.ret [m:(m: tt, AnyMetavar SType e)]
+        M.ret [m:(m: tt, AnyMetavar Typeₛ e)]
      | _ => M.failwith "generalize"
      end
-  | @Metavar SProp P _ =>
+  | @Metavar Propₛ P _ =>
      aP <- M.abs_prod_prop x P; (* aP = (forall x:A, P) *)
      e <- M.evar aP;
      mmatch aP with
      | [? Q : A -> Prop] (forall z:A, Q z) =n> [H]
         let e' := reduce (RedWhd [rl:RedMatch]) match H in _ =m= Q return Q with meq_refl _ => e end in
         exact (e' x) g;;
-        M.ret [m:(m: tt, AnyMetavar SProp e)]
+        M.ret [m:(m: tt, AnyMetavar Propₛ e)]
      | _ => M.failwith "generalize"
      end
   end.
@@ -163,17 +163,17 @@ Definition generalize {A} (x : A) : tactic := fun g =>
 (** Clear hypothesis [x] and continues the execution on [cont] *)
 Definition cclear {A B} (x:A) (cont : gtactic B) : gtactic B := fun g=>
   match g with
-  | @Metavar SProp gT _ =>
+  | @Metavar Propₛ gT _ =>
     ''(e,l) <- M.remove x (
       e <- M.evar gT;
-      l <- cont (Metavar SProp e);
+      l <- cont (Metavar Propₛ e);
       M.ret (e, l));
     exact e g;;
     rem_hyp x l
-  | @Metavar SType gT _ =>
+  | @Metavar Typeₛ gT _ =>
     ''(e,l) <- M.remove x (
       e <- M.evar gT;
-      l <- cont (Metavar SType e);
+      l <- cont (Metavar Typeₛ e);
       M.ret (e, l));
     exact e g;;
     rem_hyp x l
@@ -230,11 +230,11 @@ Definition apply {T} (c : T) : tactic := fun g=>
         | [? (T1 : Prop) T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
-          M.ret ((m: tt, AnyMetavar SProp e) :m: r)
+          M.ret ((m: tt, AnyMetavar Propₛ e) :m: r)
         | [? T1 T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
-          M.ret ((m: tt, AnyMetavar SType e) :m: r)
+          M.ret ((m: tt, AnyMetavar Typeₛ e) :m: r)
         | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
@@ -258,7 +258,7 @@ Definition change (P : Type) : tactic := fun g =>
   gT <- M.goal_type g;
   e <- M.evar P;
   exact e g;;
-  M.ret [m:(m: tt, AnyMetavar SType e)].
+  M.ret [m:(m: tt, AnyMetavar Typeₛ e)].
 
 Definition destruct_all (T : Type) : tactic := fun g=>
   l <- M.filter (fun '(@ahyp Th _ _) =>
@@ -335,8 +335,8 @@ Definition cassert_base {A} (name : name)
       r <- M.evar gT; (* The new goal now referring to n *)
       value <- M.abs_fun x r;
       exact (value a) g;; (* instantiate the old goal with the new one *)
-      v <- cont x (Metavar SType r) >>= close_goals x;
-      M.ret ((m: tt,AnyMetavar SType a) :m: v)
+      v <- cont x (Metavar Typeₛ r) >>= close_goals x;
+      M.ret ((m: tt,AnyMetavar Typeₛ a) :m: v)
     end
   ). (* append the goal for a to the top of the goals *)
 
@@ -347,16 +347,16 @@ Definition cassert {A} (cont : A -> tactic) : tactic := fun g=>
     [T] is the type of the current goal. *)
 Definition cut (U : Type) : tactic := fun g =>
   match g with
-  | @Metavar SProp T _ =>
+  | @Metavar Propₛ T _ =>
     ut <- M.evar (U -> T);
     u <- M.evar U;
     exact (ut u) g;;
-    M.ret [m:(m: tt,AnyMetavar SProp ut)| (m: tt,AnyMetavar SType u)]
-  | @Metavar SType T _ =>
+    M.ret [m:(m: tt,AnyMetavar Propₛ ut)| (m: tt,AnyMetavar Typeₛ u)]
+  | @Metavar Typeₛ T _ =>
     ut <- M.evar (U -> T);
     u <- M.evar U;
     exact (ut u) g;;
-    M.ret [m:(m: tt,AnyMetavar SType ut)| (m: tt,AnyMetavar SType u)]
+    M.ret [m:(m: tt,AnyMetavar Typeₛ ut)| (m: tt,AnyMetavar Typeₛ u)]
   end.
 
 (* performs simpl in each hypothesis and in the goal *)
@@ -367,19 +367,19 @@ Definition simpl_in_all : tactic := fun g =>
     M.ret (@ahyp A x ot :m: hyps)
   ) [m:] =<< M.hyps;
   match g with
-  | @Metavar SProp T e' =>
+  | @Metavar Propₛ T e' =>
     let T := rsimpl T in
     e <- M.Cevar T l; (* create the new goal in the new context *)
       (* we need normal unification since g might be a compound value *)
     mif M.unify e' e UniMatchNoRed then
-      M.ret [m:(m: tt,AnyMetavar SProp e)]
+      M.ret [m:(m: tt,AnyMetavar Propₛ e)]
     else M.failwith "simpl_in_all: Prop"
-  | @Metavar SType T e' =>
+  | @Metavar Typeₛ T e' =>
     let T := rsimpl T in
     e <- M.Cevar T l; (* create the new goal in the new context *)
       (* we need normal unification since g might be a compound value *)
     mif M.unify e' e UniMatchNoRed then
-      M.ret [m:(m: tt,AnyMetavar SType e)]
+      M.ret [m:(m: tt,AnyMetavar Typeₛ e)]
     else M.failwith "simpl_in_all: Type"
   end.
 
@@ -387,18 +387,18 @@ Definition reduce_in (r : Reduction) {P} (H : P) : tactic := fun g =>
   let P' := reduce r P in
   M.replace (A:=P) (B:=P') H meq_refl (
     match g with
-    | @Metavar SType gT _ =>
+    | @Metavar Typeₛ gT _ =>
       e <- M.evar gT;
-      oeq <- M.unify (Metavar SType e) g UniCoq;
+      oeq <- M.unify (Metavar Typeₛ e) g UniCoq;
       match oeq with
-      | mSome _ => M.ret [m:(m: tt, HypReplace (A:=P) (B:=P') H meq_refl (AnyMetavar SType e))]
+      | mSome _ => M.ret [m:(m: tt, HypReplace (A:=P) (B:=P') H meq_refl (AnyMetavar Typeₛ e))]
       | _ => M.failwith "reduce_in: impossible"
       end
-    | @Metavar SProp gT _ =>
+    | @Metavar Propₛ gT _ =>
       e <- M.evar gT;
-      oeq <- M.unify (Metavar SProp e) g UniCoq;
+      oeq <- M.unify (Metavar Propₛ e) g UniCoq;
       match oeq with
-      | mSome _ => M.ret [m:(m: tt, HypReplace (A:=P) (B:=P') H meq_refl (AnyMetavar SProp e))]
+      | mSome _ => M.ret [m:(m: tt, HypReplace (A:=P) (B:=P') H meq_refl (AnyMetavar Propₛ e))]
       | _ => M.failwith "reduce_in: impossible"
       end
     end).
@@ -409,20 +409,20 @@ Definition simpl_in {P} (H : P) : tactic :=
 (** exists tactic *)
 Definition mexists {A} (x: A) : tactic := fun g =>
   match g with
-  | @Metavar SType _ _ =>
+  | @Metavar Typeₛ _ _ =>
     P <- M.evar (A -> Type);
     e <- M.evar _;
-    oeq <- M.unify g (Metavar SType (@existT _ P x e)) UniCoq;
+    oeq <- M.unify g (Metavar Typeₛ (@existT _ P x e)) UniCoq;
     match oeq with
-    | mSome _ => M.ret [m:(m: tt,AnyMetavar SType e)]
+    | mSome _ => M.ret [m:(m: tt,AnyMetavar Typeₛ e)]
     | _ => M.raise GoalNotExistential
     end
-  | @Metavar SProp _ _ =>
+  | @Metavar Propₛ _ _ =>
     P <- M.evar (A -> Prop);
     e <- M.evar _;
-    oeq <- M.unify g (Metavar SProp (@ex_intro _ P x e)) UniCoq;
+    oeq <- M.unify g (Metavar Propₛ (@ex_intro _ P x e)) UniCoq;
     match oeq with
-    | mSome _ => M.ret [m:(m: tt,AnyMetavar SProp e)]
+    | mSome _ => M.ret [m:(m: tt,AnyMetavar Propₛ e)]
     | _ => M.raise GoalNotExistential
     end
   end.
@@ -431,7 +431,7 @@ Definition eexists: tactic := fun g=>
   T <- M.evar Type;
   x <- M.evar T;
   l <- mexists x g;
-  let res := dreduce (@mapp) (l +m+ [m:(m: tt, AnyMetavar SType x)]) in
+  let res := dreduce (@mapp) (l +m+ [m:(m: tt, AnyMetavar Typeₛ x)]) in
   M.ret res.
 
 (** [n_etas n f] takes a function f with type [forall x1, ..., xn, T]
@@ -470,7 +470,7 @@ Definition fix_tac (f : name) (n : N) : tactic := fun g =>
     fixp <- M.abs_fix f fixp n;
     (* fixp is now the fixpoint with the evar as body *)
     (* The new goal is enclosed with the definition of f *)
-    new_goal <- M.abs_fun f (AnyMetavar SType new_goal);
+    new_goal <- M.abs_fun f (AnyMetavar Typeₛ new_goal);
     M.ret (fixp, AHyp new_goal)
   );
   exact f g;;
@@ -528,7 +528,7 @@ Definition map_term (f : forall d:dynr, M d.(typer)) : forall d : dynr, M d.(typ
 Definition unfold_slow {A} (x : A) : tactic := fun g =>
   let def := reduce (RedOneStep [rl:RedDelta]) x in
   match g with
-  | @Metavar SType gT _ =>
+  | @Metavar Typeₛ gT _ =>
     gT' <- map_term (fun d =>
                       let (ty, el) := d in
                       mmatch d as d return M d.(typer) with
@@ -537,8 +537,8 @@ Definition unfold_slow {A} (x : A) : tactic := fun g =>
                       end) (Dynr gT);
     e <- M.evar gT';
     exact e g;;
-    M.ret [m:(m: tt,AnyMetavar SType e)]
-  | @Metavar SProp gT _ =>
+    M.ret [m:(m: tt,AnyMetavar Typeₛ e)]
+  | @Metavar Propₛ gT _ =>
     gT' <- map_term (fun d =>
                       let (ty, el) := d in
                       mmatch d as d return M d.(typer) with
@@ -547,21 +547,21 @@ Definition unfold_slow {A} (x : A) : tactic := fun g =>
                       end) (Dynr gT);
     e <- M.evar gT';
     exact e g;;
-    M.ret [m:(m: tt,AnyMetavar SProp e)]
+    M.ret [m:(m: tt,AnyMetavar Propₛ e)]
   end.
 
 Definition unfold {A} (x : A) : tactic := fun g =>
   match g with
-  | @Metavar SType gT _ =>
+  | @Metavar Typeₛ gT _ =>
     let gT' := dreduce (x) gT in
     ng <- M.evar gT';
     exact ng g;;
-    M.ret [m:(m: tt, AnyMetavar SType ng)]
-  | @Metavar SProp gT _ =>
+    M.ret [m:(m: tt, AnyMetavar Typeₛ ng)]
+  | @Metavar Propₛ gT _ =>
     let gT' := dreduce (x) gT in
     ng <- M.evar gT';
     exact ng g;;
-    M.ret [m:(m: tt, AnyMetavar SProp ng)]
+    M.ret [m:(m: tt, AnyMetavar Propₛ ng)]
   end.
 
 Definition unfold_in {A B} (x : A) (h : B) : tactic :=
