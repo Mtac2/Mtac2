@@ -87,7 +87,7 @@ Definition branch_map {A} {B} (y : A) (g : (goal _)) (b : branch gtactic A B y) 
   | branch_pattern p =>
     branch_pattern (pattern_map g _ p)
   | branch_app_static U ct cont =>
-    let cont := MTele.MTele_constmap_app (si:=SType) SProp (fun _ _ => _) ct cont g in
+    let cont := MTele.MTele_constmap_app (si:=Typeₛ) Propₛ (fun _ _ => _) ct cont g in
     @branch_app_static _ _ _ _ _ U _ cont
   | branch_forallP cont => branch_forallP (fun X Y => cont X Y g)
   | branch_forallT cont => branch_forallT (fun X Y => cont X Y g)
@@ -124,15 +124,15 @@ Definition ltac (t : string) (args : mlist dyn) : tactic := fun g =>
 
 Definition treduce (r : Reduction) : tactic := fun g=>
   match g with
-  | @Metavar SType T e=>
+  | @Metavar Typeₛ T e=>
     let T' := reduce r T in
     e <- M.evar T';
-    mif M.cumul UniEvarconv g (@Metavar SType T e) then M.ret [m:(m: tt, @AnyMetavar SType _ e)]
+    mif M.cumul UniEvarconv g (@Metavar Typeₛ T e) then M.ret [m:(m: tt, @AnyMetavar Typeₛ _ e)]
     else M.failwith "treduce"
-  | @Metavar SProp T e=>
+  | @Metavar Propₛ T e=>
     let T' := reduce r T in
     e <- M.evar T';
-    mif M.cumul UniEvarconv g (@Metavar SProp T e) then M.ret [m:(m: tt, @AnyMetavar SProp _ e)]
+    mif M.cumul UniEvarconv g (@Metavar Propₛ T e) then M.ret [m:(m: tt, @AnyMetavar Propₛ _ e)]
     else M.failwith "treduce"
   end.
 
@@ -151,11 +151,11 @@ Definition abstract_from_sort (s:Sort) {A} (x:A) (B:s) : M (moption (A -> s)) :=
       M.raise (Backtrack y f) (* nasty HACK: we backtract so as not to get evars
       floating: we only care about the term! (which should be well typed in the
       right sigma) *)
-    | [? y (f:A->SProp) t] [m: @AnyMetavar SProp (let z := y in f z) t] =u>
+    | [? y (f:A->Propₛ) t] [m: @AnyMetavar Propₛ (let z := y in f z) t] =u>
       (* sometimes it might cast down a Prop (that was previously casted to Type *)
       match s as s' return M (moption (A -> s')) with
-      | SProp => M.print_term gs;; M.failwith "abstract_from_sort: mmatch"
-      | SType => M.raise (Backtrack (s:=SType) y (f:A->Prop))
+      | Propₛ => M.print_term gs;; M.failwith "abstract_from_sort: mmatch"
+      | Typeₛ => M.raise (Backtrack (s:=Typeₛ) y (f:A->Prop))
       end
     | _ => M.print_term gs;; M.failwith "abstract_from_sort: mmatch goal not ground"
     end
@@ -164,12 +164,12 @@ Definition abstract_from_sort (s:Sort) {A} (x:A) (B:s) : M (moption (A -> s)) :=
   | [?s] Failure s => M.raise (Failure s)
   | [?s] LtacError s => M.ret mNone (* we suppose it's not matched *)
   end.
-Definition abstract_from_type {A} := @abstract_from_sort SType A.
+Definition abstract_from_type {A} := @abstract_from_sort Typeₛ A.
 
 Definition wrapper {A} (t: A) : Prop. exact False. Qed.
 
 Definition abstract_from_term {A} {B} (x:A) (t : B) : M (moption (A -> B)) :=
-  f <- abstract_from_sort SProp x (wrapper t);
+  f <- abstract_from_sort Propₛ x (wrapper t);
   mmatch f with
   | [? g] mSome (fun z:A=>wrapper (g z)) => M.ret (mSome g)
   | mNone => M.ret mNone
@@ -300,12 +300,12 @@ Fixpoint match_goal_pattern' {B}
     else M.raise DoesNotMatchGoal
   | gbase_context x t, _ =>
     match g with
-    | @Metavar SProp gT _ =>
+    | @Metavar Propₛ gT _ =>
       (fun (A : Prop) =>
-      match_goal_context SProp x A t g) gT
-    | @Metavar SType gT _ =>
+      match_goal_context Propₛ x A t g) gT
+    | @Metavar Typeₛ gT _ =>
       (fun (A : Type) =>
-      match_goal_context SType x A t g) gT
+      match_goal_context Typeₛ x A t g) gT
     end
   | @gtele _ C f, @ahyp A a d :m: l2' =>
     oeqCA <- M.unify C A u;

@@ -25,7 +25,7 @@ Inductive branch@{a b c+} {M : Type@{b} -> Prop} : forall {A : Type@{a}} {B : A 
 | branch_pattern {A : Type@{a}} {B : A -> Type@{b}} {y}: pattern M A B y -> @branch M A B y
 | branch_app_static {A : Type@{a}} {B : A -> Type@{b}} {y}:
     forall {m} (uni : Unification) (C : MTele_ConstT A m),
-      MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => M (B a)) C) ->
+      MTele_sort (MTele_ConstMap (si := Typeₛ) Propₛ (T:=A) (fun a => M (B a)) C) ->
       @branch M A B y
 | branch_forallP {B : Prop -> Type@{b}} {y}:
     (forall (X : Type@{c}) (Y : X -> Prop), M (B (forall x : X, Y x))) ->

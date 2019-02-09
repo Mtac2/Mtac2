@@ -1054,8 +1054,8 @@ let declare_mind env sigma params sigs mut_constrs =
       let (ind_tele, ind_ty) = CoqSigT.from_coq sigma env (strip_lambdas sigma ind_sig  n_params) in
       let sigma, n_ind_args, ind_arity = mTele_to_foralls sigma env ind_tele ind_ty (fun sigma _ t ->
         match CoqSort.from_coq sigma env t with
-        | SProp -> sigma, mkProp
-        | SType ->
+        | Prop_sort -> sigma, mkProp
+        | Type_sort ->
             let sigma, univ = Evd.new_univ_variable (Evd.UnivFlexible false) sigma in
             sigma, mkType univ
       ) in
