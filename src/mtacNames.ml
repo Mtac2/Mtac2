@@ -34,8 +34,8 @@ let isConstant sigma const c =
   | _ -> false
 
 let isFConstant const fc =
-  match CClosure_copy.fterm_of fc with
-  | CClosure_copy.FFlex (Names.ConstKey (n, _)) ->
+  match CClosure.fterm_of fc with
+  | CClosure.FFlex (Names.ConstKey (n, _)) ->
       Names.Constant.equal n const
   | _ -> false
 

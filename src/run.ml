@@ -18,7 +18,7 @@ open Evarconv
 
 open Constrs
 
-open CClosure_copy
+open CClosure
 
 (* warning 40 is about picking a constructor name from a module that is not in scope *)
 [@@@ocaml.warning "-40"]
@@ -46,8 +46,8 @@ let constr_to_string (sigma: Evd.evar_map) env t =
 
 
 (** Functions to convert between fconstr and econstr *)
-let of_econstr e = CClosure_copy.inject (EConstr.Unsafe.to_constr e) Univ.Instance.empty
-let to_econstr f = EConstr.of_constr (CClosure_copy.term_of_fconstr f)
+let of_econstr e = CClosure.inject (EConstr.Unsafe.to_constr e)
+let to_econstr f = EConstr.of_constr (CClosure.term_of_fconstr f)
 
 
 open MtacNames
@@ -284,8 +284,8 @@ module E = Exceptions
 
 module ReductionStrategy = struct
   open Reductionops
-  open CClosure_copy
-  open CClosure_copy.RedFlags
+  open CClosure
+  open CClosure.RedFlags
   open Context
 
   let reduce_constant = constant_of_string "Reduction.reduce"
@@ -296,7 +296,7 @@ module ReductionStrategy = struct
   let has_definition ts env sigma t =
     if isVar sigma t then
       let var = destVar sigma t in
-      if not (is_transparent_variable ts var) then
+      if not (CClosure.is_transparent_variable ts var) then
         false
       else
         let n = Environ.lookup_named var env in
@@ -307,7 +307,7 @@ module ReductionStrategy = struct
       Option.has_some (Rel.Declaration.get_value n)
     else if isConst sigma t then
       let (c, _) = destConst sigma t in
-      is_transparent_constant ts c && Environ.evaluable_constant c env
+      CClosure.is_transparent_constant ts c && Environ.evaluable_constant c env
     else
       false
 
@@ -383,7 +383,7 @@ module ReductionStrategy = struct
         if isConstruct sigma c && Array.length args = 1 then
           let reds, func =
             if get_constructor_pos sigma c = posDeltaOnly then
-              red_add_transparent (red_add reds fDELTA) all_opaque,
+              red_add_transparent (red_add reds fDELTA) Names.empty_transparent_state,
               red_add
             else (* must be posDeltaBut *)
               red_add_transparent reds
@@ -410,8 +410,9 @@ module ReductionStrategy = struct
     let evars ev = safe_evar_value sigma ev in
     (* let infos = CClosure.create_clos_infos ~evars flags env in (CClosure.whd_val
        infos (CClosure.create_tab ()) c) *)
-    let infos = CClosure_copy.create_clos_infos ~evars flags env in
-    (CClosure_copy.whd_val infos c)
+    let infos = create_clos_infos ~evars flags env in
+    let tabs = CClosure.create_tab () in
+    (CClosure.whd_val infos tabs c)
 
   let redfuns = [|
     (fun _ _ _ c -> c);
@@ -433,13 +434,13 @@ module ReductionStrategy = struct
     with RedList.NotAList _ -> ReductionStuck
        | _ -> ReductionFailure
 
-  (* let whd_betadeltaiota_nolet = whdfun CClosure_copy.allnolet *)
+  (* let whd_betadeltaiota_nolet = whdfun CClosure.allnolet *)
 
   let whd_all_novars =
     let flags = red_add_transparent betaiota Names.cst_full_transparent_state in
     whdfun flags
 
-  let whd_betadeltaiota = whdfun CClosure_copy.all
+  let whd_betadeltaiota = whdfun CClosure.all
 end
 
 module RE = ReductionStrategy
@@ -1176,7 +1177,7 @@ type ctxt = {env: Environ.env;
              renv: fconstr;
              sigma: Evd.evar_map;
              nus: int;
-             stack: CClosure_copy.stack;
+             stack: CClosure.stack;
             }
 
 type vm = Code of fconstr | Ret of fconstr | Fail of fconstr
@@ -1210,11 +1211,13 @@ let check_exception exception_sigma mtry_sigma env c =
 
 let timers = Hashtbl.create 128
 
+
+let create_clos_infos ?(evars=fun _ -> None) flgs env =
+  let env = set_typing_flags ({(Environ.typing_flags env) with share_reduction = false}) env in
+  CClosure.create_clos_infos ~evars:evars flgs env
+
 let reduce_noshare infos t stack =
-  let b = !CClosure_copy.share in
-  CClosure_copy.share := false;
-  let r = CClosure_copy.whd_stack infos t stack in
-  CClosure_copy.share := b;
+  let r = CClosure.whd_stack infos t stack in
   r
 
 let pop_args num stack =
@@ -1285,9 +1288,8 @@ let rec run' ctxt (vms : vm list) =
         (* let cont ctxt h args = (run'[@tailcall]) {ctxt with stack=Zapp args::stack} (Code h :: vms) in *)
 
         let evars ev = safe_evar_value sigma ev in
-        let infos = CClosure_copy.create_clos_infos ~evars CClosure.allnolet env in
-
-        let reduced_term, stack = reduce_noshare infos (* CClosure.create_tab () *) t stack
+        let infos = create_clos_infos ~evars CClosure.allnolet env in
+        let reduced_term, stack = reduce_noshare infos (CClosure.create_tab ()) t stack
         (* RE.whd_betadeltaiota_nolet env ctxt.fixpoints sigma t *)
         in
 
@@ -1340,7 +1342,7 @@ let rec run' ctxt (vms : vm list) =
                   (* print_constr sigma env b; *)
                   (* (run'[@tailcall]) ctxt (upd (mkApp (Vars.subst1 b t, args))) *)
                   (* (run'[@tailcall]) ctxt (upd (of_econstr (Vars.subst1 b (to_econstr t)))) *)
-                  let e = (fstsndapp Esubst.subs_cons [|of_econstr b|] e) in
+                  let e = (Esubst.subs_cons ([|of_econstr b|], e)) in
                   (* print_constr sigma env (to_econstr (mk_red (FCLOS (bd, e)))); *)
                   (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
 
@@ -1353,7 +1355,7 @@ let rec run' ctxt (vms : vm list) =
             else
               (* (run'[@tailcall]) ctxt (upd (mkApp (Vars.subst1 b t, args))) *)
               (* (run'[@tailcall]) ctxt (upd (of_econstr (Vars.subst1 (to_econstr b) (to_econstr t)))) *)
-              let e = (fstsndapp Esubst.subs_cons [|v|] e) in
+              let e = (Esubst.subs_cons ([|v|], e)) in
               (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
 
         | FFlex (ConstKey (hc, _)) ->
@@ -1374,7 +1376,7 @@ let rec run' ctxt (vms : vm list) =
 
                   let hf = reduced_term in
 
-                  if !trace then print_constr sigma env (EConstr.of_constr (CClosure_copy.term_of_fconstr (mk_red (FApp (reduced_term,args)))));
+                  if !trace then print_constr sigma env (EConstr.of_constr (CClosure.term_of_fconstr (mk_red (FApp (reduced_term,args)))));
 
                   let ctxt = {ctxt with stack} in
 
@@ -1812,7 +1814,7 @@ let rec run' ctxt (vms : vm list) =
                                  stack=Zapp [|h_type; arg_type; h; arg|] ::
                                  stack} (upd cont) | exception Constr.DestKO ->
                               *)
-                              let h_type = ReductionStrategy.whdfun (CClosure_copy.all) env sigma (of_econstr (h_type)) in
+                              let h_type = ReductionStrategy.whdfun (CClosure.all) env sigma (of_econstr (h_type)) in
                               let h_typefun = to_lambda sigma 1 (EConstr.of_constr h_type) in
                               let arg_type = (match EConstr.destLambda sigma h_typefun with | (_, ty, _) -> ty) in
                               let (h_type, arg_type, h, arg) = (of_econstr h_typefun, of_econstr arg_type, of_econstr h, of_econstr arg) in
@@ -1881,7 +1883,7 @@ let rec run' ctxt (vms : vm list) =
                         ereturn sigma CoqUnit.mkTT
 
                     | MConstr (Mkind_of_term, (_, t)) ->
-                        ereturn sigma (koft sigma (CClosure_copy.term_of_fconstr t))
+                        ereturn sigma (koft sigma (CClosure.term_of_fconstr t))
 
                     | MConstr (Mdeclare_mind, (params, inds, constrs)) ->
                         let sigma, types = declare_mind env sigma (to_econstr params) (to_econstr inds) (to_econstr constrs) in
@@ -2023,10 +2025,10 @@ let multi_subst_inv sigma l c =
 let run (env0, sigma) t : data =
   let subs, env = db_to_named sigma env0 in
   let t = multi_subst sigma subs t in
-  let t = CClosure_copy.inject (EConstr.Unsafe.to_constr t) Univ.Instance.empty in
+  let t = CClosure.inject (EConstr.Unsafe.to_constr t) in
   let (sigma, renv) = build_hypotheses sigma env in
   let evars ev = safe_evar_value sigma ev in
-  match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure_copy.empty_stack} [Code t] with
+  match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure.empty_stack} [Code t] with
   | Err (sigma', v, _) ->
       (* let v = Vars.replace_vars vsubs v in *)
       let v = multi_subst_inv sigma' subs (to_econstr v) in

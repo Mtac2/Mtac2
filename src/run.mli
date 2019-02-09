@@ -2,7 +2,7 @@ open Environ
 open Evd
 open EConstr
 
-type elem_stack = (evar_map * CClosure_copy.fconstr * CClosure_copy.stack)
+type elem_stack = (evar_map * CClosure.fconstr * CClosure.stack)
 
 type elem = (evar_map * constr)
 
@@ -27,18 +27,18 @@ end
 
 type ctxt = {
   env: Environ.env;
-  renv: CClosure_copy.fconstr;
+  renv: CClosure.fconstr;
   sigma: Evd.evar_map;
   nus: int;
-  stack: CClosure_copy.stack;
+  stack: CClosure.stack;
 }
 
-type vm = Code of CClosure_copy.fconstr | Ret of CClosure_copy.fconstr | Fail of CClosure_copy.fconstr
-        | Bind of CClosure_copy.fconstr | Try of (Evd.evar_map * CClosure_copy.stack * CClosure_copy.fconstr)
-        | Nu of (Names.Id.t * Environ.env * CClosure_copy.fconstr)
-        | Rem of (Environ.env * CClosure_copy.fconstr * bool)
+type vm = Code of CClosure.fconstr | Ret of CClosure.fconstr | Fail of CClosure.fconstr
+        | Bind of CClosure.fconstr | Try of (Evd.evar_map * CClosure.stack * CClosure.fconstr)
+        | Nu of (Names.Id.t * Environ.env * CClosure.fconstr)
+        | Rem of (Environ.env * CClosure.fconstr * bool)
 
-(* val run_fix : ctxt -> vm list -> CClosure_copy.fconstr -> CClosure_copy.fconstr array -> CClosure_copy.fconstr -> CClosure_copy.fconstr -> CClosure_copy.fconstr array *)
+(* val run_fix : ctxt -> vm list -> CClosure.fconstr -> CClosure.fconstr array -> CClosure.fconstr -> CClosure.fconstr -> CClosure.fconstr array *)
 
 val run' : ctxt -> vm list -> data_stack
 
