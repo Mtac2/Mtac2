@@ -211,12 +211,7 @@ end
     - Get back and focus on the current proof
     - Set the proof mode to "MProof" mode.
     - Print subgoals *)
-let interp_mproof_command () =
-  let proof = Proof_global.give_me_the_proof () in
-  if Proof.is_done proof then
-    CErrors.user_err (str "Nothing left to prove here.")
-  else
-    Feedback.msg_info @@ Printer.pr_open_subgoals ~proof
+let interp_mproof_command () = ()
 
 (** Interpreter of a mtactic *)
 let interp_instr = function
