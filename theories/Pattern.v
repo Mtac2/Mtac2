@@ -130,9 +130,11 @@ Delimit Scope with_pattern_scope with with_pattern.
 
 (* Syntax for decomposition of applications with a known head symbol.
 
-   All arrows are annotated with "n" to signal that no reduction of the overall
-   term will happen. The delimiter symbol "$" is annotated with the reduction
-   strategy used for the initial arguments *)
+   The [=>] arrows are annotated with the reduction strategy used for the
+   initial arguments that are part of the head symbol term [f]. The delimiter
+   [|] separates the head symbol term from the arguments, which are binders that
+   can be refered to in [b]
+*)
 
 Notation "'[#' ] f '|' x .. z '=n>' b" :=
   (branch_app_static
@@ -140,10 +142,10 @@ Notation "'[#' ] f '|' x .. z '=n>' b" :=
      UniMatchNoRed
      f
      (fun x => .. (fun z => b) ..)
-  ) (at level 91, x binder, z binder) : branch_scope.
+  ) (at level 201, x binder, z binder) : branch_scope.
 
 Notation "'[#' ] f '|' '=n>' b" :=
-  (branch_app_static (m := mBase) UniMatchNoRed f b) (at level 91) : branch_scope.
+  (branch_app_static (m := mBase) UniMatchNoRed f b) (at level 201) : branch_scope.
 
 Notation "'[#' ] f '|' x .. z '=m>' b" :=
   (branch_app_static
@@ -151,10 +153,10 @@ Notation "'[#' ] f '|' x .. z '=m>' b" :=
      UniMatch
      f
      (fun x => .. (fun z => b) ..)
-  ) (at level 91, x binder, z binder) : branch_scope.
+  ) (at level 201, x binder, z binder) : branch_scope.
 
 Notation "'[#' ] f '|' '=m>' b" :=
-  (branch_app_static (m := mBase) UniMatch f b) (at level 91) : branch_scope.
+  (branch_app_static (m := mBase) UniMatch f b) (at level 201) : branch_scope.
 
 Notation "'[#' ] f '|' x .. z '=u>' b" :=
   (branch_app_static
@@ -162,10 +164,10 @@ Notation "'[#' ] f '|' x .. z '=u>' b" :=
      UniCoq
      f
      (fun x => .. (fun z => b) ..)
-  ) (at level 91, x binder, z binder) : branch_scope.
+  ) (at level 201, x binder, z binder) : branch_scope.
 
 Notation "'[#' ] f '|' '=u>' b" :=
-  (branch_app_static (m := mBase) UniCoq f b) (at level 91) : branch_scope.
+  (branch_app_static (m := mBase) UniCoq f b) (at level 201) : branch_scope.
 
 Notation "'[#' ] f '|' x .. z '=c>' b" :=
   (branch_app_static
@@ -173,10 +175,10 @@ Notation "'[#' ] f '|' x .. z '=c>' b" :=
      UniEvarconv
      f
      (fun x => .. (fun z => b) ..)
-  ) (at level 91, x binder, z binder) : branch_scope.
+  ) (at level 201, x binder, z binder) : branch_scope.
 
 Notation "'[#' ] f '|' '=c>' b" :=
-  (branch_app_static (m := mBase) UniEvarconv f b) (at level 91) : branch_scope.
+  (branch_app_static (m := mBase) UniEvarconv f b) (at level 201) : branch_scope.
 
 
 (* Syntax for decomposition of [forall x : X, P x].
@@ -187,7 +189,7 @@ Notation "'[#' ] f '|' '=c>' b" :=
  *)
 Notation "'[!Prop' ] 'forall' '_' : X , P =n> b" :=
   (branch_forallP (fun X P => b))
-    (at level 91) : branch_scope.
+    (at level 201) : branch_scope.
 Notation "'[!Type' ] 'forall' '_' : X , P =n> b" :=
   (branch_forallT (fun X P => b))
-    (at level 91) : branch_scope.
+    (at level 201) : branch_scope.

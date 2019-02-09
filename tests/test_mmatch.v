@@ -227,6 +227,15 @@ Mtac Do (
       end
      ).
 
+
+(* Checking notation levels *)
+Mtac Do (
+       mmatch (3 + 5) with
+       | [#] plus | x y =n> _ <- M.ret tt; M.unify_or_fail UniMatchNoRed (x,y) (3,5)
+       | [#] plus | x y =n> M.ret tt;; M.unify_or_fail UniMatchNoRed (x,y) (3,5)
+      end
+     ).
+
 (* This example will fail because it does perform any reduction on the initial
    arguments *)
 Fail Mtac Do (
