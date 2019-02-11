@@ -898,12 +898,12 @@ let run_declare_def env sigma kind name opaque ty bod =
   ; Instance
   ; Method|]
   in
-  let ctx = Evd.universe_context_set sigma in
+  let ctx = Evd.univ_entry ~poly:false sigma in
   let kind_pos = get_constructor_pos sigma kind in
   let kind = kinds.(kind_pos) in
   let name = CoqString.from_coq (env, sigma) name in
   let id = Names.Id.of_string name in
-  let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, Entries.Monomorphic_const_entry ctx) in
+  let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, ctx) in
   let gr = Globnames.ConstRef kn in
   let () = Lemmas.call_hook ~fix_exn ~hook:(vernac_definition_hook false kind) Global gr  in
   let c = (UnivGen.constr_of_global gr) in
@@ -1148,7 +1148,8 @@ let declare_mind env sigma params sigs mut_constrs =
              mind_entry_finite=Declarations.Finite;
              mind_entry_inds;
              mind_entry_params;
-             mind_entry_universes=Entries.Monomorphic_ind_entry (Evd.universe_context_set sigma);
+             mind_entry_universes=Evd.univ_entry ~poly:false sigma;
+             mind_entry_variance=None;
              mind_entry_private=None;
             } UnivNames.empty_binders [] in
   (sigma, CoqUnit.mkTT)
@@ -1437,7 +1438,7 @@ let rec run' ctxt (vms : vm list) =
                                   let ot = CoqOption.from_coq sigma env (to_econstr ot) in
                                   let env' = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
                                   let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
-                                  (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
+                                  (run'[@tailcall]) {env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
                                     (Code f :: Nu (name, env, ctxt.renv) :: vms)
                                 end
                           | StuckName -> efail (Exceptions.mkWrongTerm sigma env s)
@@ -1467,7 +1468,7 @@ let rec run' ctxt (vms : vm list) =
                                     let var = mkVar name in
                                     let body = Vars.subst1 var body in
                                     let (sigma, renv') = Hypotheses.cons_hyp dty var (Some d) (to_econstr ctxt.renv) sigma env in
-                                    (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name); of_econstr body|] :: stack}
+                                    (run'[@tailcall]) {env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name); of_econstr body|] :: stack}
                                       (Code f :: Nu (name, env, ctxt.renv) :: vms)
                                 end
                           | StuckName -> efail (Exceptions.mkWrongTerm sigma env s)

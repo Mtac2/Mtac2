@@ -38,9 +38,9 @@ let glob_mtac_type ist r =
     let body = Global.lookup_constant c in
     let ty = body.const_type in
     let sigma, ty, ret = match body.const_universes with
-      | Declarations.Monomorphic_const _ ->
+      | Declarations.Monomorphic _ ->
           sigma, ty, (fun ty -> MonoProgram ty) (* constraints already registered *)
-      | Declarations.Polymorphic_const au ->
+      | Declarations.Polymorphic au ->
           (* need to instantiate and register the abstract universes a *)
           let inst, ctx = UnivGen.fresh_instance_from au None in
           (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
