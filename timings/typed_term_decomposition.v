@@ -1,8 +1,9 @@
 From Mtac2 Require Import Base MTele DecomposeApp Tactics List.
 Import M.notations.
 Import ProdNotations.
-Import Mtac2.List.ListNotations.
+Import Mtac2.lib.List.ListNotations.
 From Mtac2Tests Require Import typed_term_decomposition.
+From Coq Require Import String.
 
 Definition test1_iter :=
        Nat.iter 5000 (fun r => test1;; r) (M.ret tt).
