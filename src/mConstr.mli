@@ -1,4 +1,4 @@
-type arg = CClosure_copy.fconstr
+type arg = CClosure.fconstr
 
 type arg_any = arg
 type arg_type = arg
@@ -87,4 +87,4 @@ and mconstr = | MConstr : 'a mconstr_head * 'a -> mconstr
 
 val num_args_of_mconstr : 'a mconstr_head -> int
 val mconstr_head_of : Names.Constant.t -> mhead
-val mconstr_of : (int -> CClosure_copy.fconstr) -> 'a mconstr_head -> mconstr
+val mconstr_of : (int -> CClosure.fconstr) -> 'a mconstr_head -> mconstr

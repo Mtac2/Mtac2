@@ -128,7 +128,7 @@ end
 type state = constr * constr Stack.t
 
 val whd_state_gen :
-  CClosure_copy.RedFlags.reds -> Environ.env -> (EConstr.t, EConstr.t) Context.Named.pt  -> Evd.evar_map -> state -> state * Cst_stack.t
+  CClosure.RedFlags.reds -> Environ.env -> (EConstr.t, EConstr.t) Context.Named.pt  -> Evd.evar_map -> state -> state * Cst_stack.t
 
-val iterate_whd_gen : bool -> CClosure_copy.RedFlags.reds ->
+val iterate_whd_gen : bool -> CClosure.RedFlags.reds ->
   Environ.env -> Evd.evar_map -> constr -> constr
