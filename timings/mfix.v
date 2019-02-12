@@ -2,7 +2,6 @@ From Mtac2 Require Import Mtac2 MTele MTeleMatch MFixDef MTeleMatchDef.
 
 
 Definition Mtest : nat -> nat -> nat -> nat -> M nat :=
-  Eval cbn [mfix' curry uncurry UNCURRY RETURN] in
   mfix' (m :=mTele (fun a1 => mTele (fun a2 => mTele (fun a3 => mTele (fun a4 => mBase)))))
         (fun a1 a2 a3 a4 => nat)
        (fun (rec : nat -> nat -> nat -> nat -> M nat) a b c d =>
