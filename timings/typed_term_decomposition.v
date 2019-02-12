@@ -3,7 +3,7 @@ Import M.notations.
 Import ProdNotations.
 Import Mtac2.lib.List.ListNotations.
 From Mtac2Tests Require Import typed_term_decomposition.
-Require Import String.
+From Coq Require Import String.
 
 Definition test1_iter :=
        Nat.iter 5000 (fun r => test1;; r) (M.ret tt).
