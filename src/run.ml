@@ -865,13 +865,12 @@ let run_declare_def env sigma kind name opaque ty bod =
   let open Decl_kinds in
   (* copied from coq 8.6.1 Vernacentries *)
   let fix_exn = Future.fix_exn_of (Future.from_val bod) in
-  let no_hook = Lemmas.mk_hook (fun _ _ -> ()) in
   let vernac_definition_hook p = function
-    | Coercion -> Class.add_coercion_hook p
+    | Coercion -> Some (Class.add_coercion_hook p)
     | CanonicalStructure ->
         if opaque then raise CanonicalStructureMayNotBeOpaque else
-          Lemmas.mk_hook (fun _ -> Recordops.declare_canonical_structure)
-    | SubClass -> Class.add_subclass_hook p
+          Some (Lemmas.mk_hook (fun _ _ _ -> Recordops.declare_canonical_structure))
+    | SubClass -> Some (Class.add_subclass_hook p)
     (* | Instance -> Lemmas.mk_hook (fun local gr -> *)
     (*   let local = match local with | Global -> false | Local -> true | _ -> raise DischargeLocality in *)
     (*   let () = Typeclasses.declare_instance None local gr *)
@@ -880,8 +879,7 @@ let run_declare_def env sigma kind name opaque ty bod =
     | Instance
     | IdentityCoercion | Scheme | StructureComponent | Fixpoint ->
         raise UnsupportedDefinitionObjectKind
-    | _ ->
-        no_hook
+    | _ -> None
   in
   (* copied from coq 8.6.1 Decl_kinds *)
   let kinds = [|
@@ -899,13 +897,14 @@ let run_declare_def env sigma kind name opaque ty bod =
   ; Method|]
   in
   let ctx = Evd.univ_entry ~poly:false sigma in
+  let uctx = Evd.evar_universe_context sigma in
   let kind_pos = get_constructor_pos sigma kind in
   let kind = kinds.(kind_pos) in
   let name = CoqString.from_coq (env, sigma) name in
   let id = Names.Id.of_string name in
   let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, ctx) in
   let gr = Globnames.ConstRef kn in
-  let () = Lemmas.call_hook ~fix_exn ~hook:(vernac_definition_hook false kind) Global gr  in
+  let () = Lemmas.call_hook ~fix_exn ?hook:(vernac_definition_hook false kind) uctx [] Global gr  in
   let c = (UnivGen.constr_of_global gr) in
   let env = Global.env () in
   (* Feedback.msg_notice *)
