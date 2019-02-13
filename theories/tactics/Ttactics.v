@@ -244,6 +244,21 @@ Definition with_goal_type (F : forall (T : Type), ttac T) : tactic := fun g =>
     with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
   end.
 
+
+Definition with_goal_sort (F : forall {s : Sort} (T : s), ttac T) (e : Exception) : tactic :=
+  fun g =>
+    match g with
+    | @Metavar s T g =>
+      ''(m: t, gs) <- F T;
+      o <- M.unify g t UniMatchNoRed;
+      match o with
+      | mSome _ =>
+        gs <- M.map (fun x => M.ret (mpair tt x)) gs;
+        M.ret gs
+      | mNone => raise e
+      end
+    end.
+
 Module MatchGoalTT.
 Import TacticsBase.T.notations.
 Import Mtac2.lib.Logic.
@@ -258,14 +273,16 @@ Arguments gtele {C} _.
 Arguments gtele_evar {C} _.
 
 Set Printing Implicit.
-Definition match_goal_context
-    {A} (x: A) (y: Type) (cont: forall (C : A -> Type), ttac (C x)) : tactic :=
-  r <- T.abstract_from_term x y;
-  match r with
-  | mSome r =>
-    cont r >>=
-    to_T
-  | mNone => M.raise DoesNotMatchGoal
+
+(* [with_upcast] is necessary to call the continuation in [gbase_context] on a
+   sorted goal after abstracting from the goal. It avoids a [selem_of] coercion
+   that would otherwise be introduced. *)
+Definition with_upcast {s : Sort} {A} {a : A} :
+  (forall (C : A -> Type), ttac (C a)) ->
+  forall C : (A -> s), ttac (C a) :=
+  match s with
+  | Propₛ => fun t (f : A -> Propₛ) => t f
+  | Typeₛ => fun t (f : A -> Typeₛ) => t f
   end.
 
 Fixpoint match_goal_pattern'
@@ -273,12 +290,26 @@ Fixpoint match_goal_pattern'
   fix go l1 l2 g :=
   match p, l2 with
   | gbase P t, _ =>
-    gT <- M.goal_type g;
-    mif M.cumul u P gT then (r <- t; to_T r g)
-    else M.raise DoesNotMatchGoal
+    with_goal_sort (
+        fun s G =>
+          o <- M.unify_univ P G u;
+          match o with
+          | mSome f =>
+            ''(m: p, gs) <- t;
+            let fp := reduce (RedOneStep [rl:RedBeta]) (f p) in
+            M.ret (m: fp, gs)
+          | mNone => raise DoesNotMatchGoal
+          end
+      ) (DoesNotMatchGoal) g
   | gbase_context x t, _ =>
-    gT <- M.goal_type g;
-    match_goal_context x gT t g
+    with_goal_sort (
+        fun s G =>
+          T.abstract_from_sort_dep s x G
+                                   (fun C => C *m mlist (goal gs_any))
+                                   (* avoid [selem_of] coercions *)
+                                   (with_upcast t)
+                                   (raise DoesNotMatchGoal)
+      ) (DoesNotMatch) g
   | @gtele C f, @ahyp A a d :m: l2' =>
     oeqCA <- M.unify C A u;
     match oeqCA with
