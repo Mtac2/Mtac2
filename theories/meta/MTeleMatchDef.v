@@ -18,7 +18,7 @@ Arguments mtptele {A m C} _.
 Arguments mtpsort {A m} _.
 
 
-Local Notation MFA T := (MTele_val (MTele_C SType SProp M T)).
+Local Notation MFA T := (MTele_val (MTele_C Typeₛ Propₛ M T)).
 
 Polymorphic Definition mtmmatch' A m (T : forall x, MTele_Ty (m x)) (y : A)
            (ps : mlist (mtpattern A (fun x => MFA (T x)))) : selem_of (MFA (T y)) :=
@@ -65,11 +65,11 @@ Polymorphic Definition mtmmatch' A m (T : forall x, MTele_Ty (m x)) (y : A)
                           go (f c)
                         | mtpsort f =>
                           M.mtry'
-                            (go (f SProp))
+                            (go (f Propₛ))
                             (fun e =>
                               oeq <- M.unify e DoesNotMatch UniMatchNoRed;
                               match oeq with
-                              | mSome _ => go (f SType)
+                              | mSome _ => go (f Typeₛ)
                               | mNone => M.raise e
                               end
                             )

@@ -158,7 +158,7 @@ Definition compi {A} {B} (g : M A) (h : M B) : M (A * B) :=
 (** Solves goal A provided tactic t *)
 Definition Mby' {A} (t: tactic) : M A :=
   e <- evar A;
-  l <- t (Goal SType e);
+  l <- t (Goal Typeₛ e);
   l' <- T.filter_goals l;
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
 
@@ -169,14 +169,14 @@ Definition Muse {A} (t: tactic) : M A :=
     of <- unify_univ P A UniMatchNoRed;
     match of with
     | mSome f => e <- M.evar P;
-                 t (Goal SProp e);;
+                 t (Goal Propₛ e);;
                  let e := reduce (RedOneStep [rl: RedBeta]) (f e) in
                  ret e
     | mNone => raise NotAProp
     end
   with | NotAProp =>
     e <- evar A;
-    t (Goal SType e);;
+    t (Goal Typeₛ e);;
     ret e
   end.
 
@@ -195,7 +195,7 @@ Definition dest_pair {T} (x:T) : M (dyn * dyn) :=
 (*     it generates a goal for each unsolved variable in the pair. *)
 Program Definition to_goals : forall {A}, A -> M (mlist (unit *m goal)) :=
   mfix2 to_goals (A: Type) (a: A) : M _ :=
-  mif is_evar a then ret [m: (m: tt, Goal SType a)]
+  mif is_evar a then ret [m: (m: tt, Goal Typeₛ a)]
   else
     mif is_prod A then
       ''(d1, d2) <- dest_pair a;

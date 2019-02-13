@@ -24,8 +24,8 @@ match n with
 | mBase => T
 | mTele F => ForAll (fun x => MTele_Const T (F x))
 end.
-Definition MTele_ConstP (T : Prop) (n : MTele) : Prop := @MTele_Const SProp T n.
-Definition MTele_ConstT@{i+} (T : Type@{i}) (n : MTele@{i}) : Type@{i} := @MTele_Const SType T n.
+Definition MTele_ConstP (T : Prop) (n : MTele) : Prop := @MTele_Const Propₛ T n.
+Definition MTele_ConstT@{i+} (T : Type@{i}) (n : MTele@{i}) : Type@{i} := @MTele_Const Typeₛ T n.
 
 Fixpoint MTele_const {s : Sort} {T : s} {n : MTele} : @MTele_Const s T n -> stype_of s :=
   match n return MTele_Const T n -> _ with
@@ -33,8 +33,8 @@ Fixpoint MTele_const {s : Sort} {T : s} {n : MTele} : @MTele_Const s T n -> styp
   | mTele F => fun C => ForAll (fun x => MTele_const (App C x))
   end.
 
-Definition MTele_constP {T : Prop} {n} : MTele_ConstP T n -> Prop := @MTele_const SProp T n.
-Definition MTele_constT {T : Type} {n} : MTele_ConstT T n -> Type := @MTele_const SType T n.
+Definition MTele_constP {T : Prop} {n} : MTele_ConstP T n -> Prop := @MTele_const Propₛ T n.
+Definition MTele_constT {T : Type} {n} : MTele_ConstT T n -> Type := @MTele_const Typeₛ T n.
 
 (** MTele_Sort: compute `∀ x .. z, Type` from a given MTele *)
 Definition MTele_Sort@{i j k} (s : Sort) (n : MTele@{i}) : Type@{j} := MTele_ConstT@{j k} (stype_of@{j i} s) n.
@@ -49,8 +49,8 @@ Fixpoint MTele_Sort' (s : Sort) (n : MTele) : Type :=
 (* Lemma MTele_Sort_eq' s n : MTele_Sort' s n -> MTele_Sort s n. *)
 (* Proof. induction n. intros H. exact H. cbn. intros H x. apply X0. apply H. Qed. *)
 
-Definition MTele_Ty := (MTele_Sort SType).
-Definition MTele_Pr := (MTele_Sort SProp).
+Definition MTele_Ty := (MTele_Sort Typeₛ).
+Definition MTele_Pr := (MTele_Sort Propₛ).
 
 (* Definition MTele_sort {s : Sort} {n : MTele} : MTele_Sort s n -> Type := @MTele_constT _ n. *)
 Fixpoint MTele_sort@{i+} {s : Sort} {n : MTele@{i}} :
@@ -72,15 +72,15 @@ Fixpoint MTele_val {s} {n : MTele} : MTele_Sort s n -> s :=
   end.
 
 Definition MTele_valT {n} : MTele_Ty n -> Type :=
-  MTele_val (s := SType) (n:=n).
+  MTele_val (s := Typeₛ) (n:=n).
   (* ltac:( *)
-  (*   let e := constr:(MTele_val (s := SType) (n:=n)) in *)
+  (*   let e := constr:(MTele_val (s := Typeₛ) (n:=n)) in *)
   (*   let e := (eval red in e) in *)
   (*   let e := (eval cbv match beta delta [ForAll stype_of] in e) in *)
   (*   let e := (eval fold MTele_Ty in e) in *)
   (*   exact e). *)
 Definition MTele_valP {n} : MTele_Pr n -> Prop :=
-  MTele_val (s := SProp) (n:=n).
+  MTele_val (s := Propₛ) (n:=n).
 
 (* Coercion MTele_valT : MTele_Ty >-> Sortclass. *)
 
@@ -138,9 +138,9 @@ Set Primitive Projections.
 Record accessor (n : MTele) :=
   Accessor {
       acc_const : forall {s : Sort} {T : s}, MTele_Const T n -> T;
-      acc_constP {P : Prop} : MTele_ConstP P n -> P := @acc_const SProp P;
-      acc_constT {T : Type} : MTele_ConstT T n -> T := @acc_const SType T;
-      acc_sort {s : Sort} : MTele_Sort s n -> s := @acc_const SType _ ;
+      acc_constP {P : Prop} : MTele_ConstP P n -> P := @acc_const Propₛ P;
+      acc_constT {T : Type} : MTele_ConstT T n -> T := @acc_const Typeₛ T;
+      acc_sort {s : Sort} : MTele_Sort s n -> s := @acc_const Typeₛ _ ;
       acc_val : forall {s : Sort} (T : MTele_Sort s n), MTele_val T -> acc_sort T;
     }.
 Arguments acc_const {_} _ {_} {_} _.
@@ -168,11 +168,11 @@ Fixpoint MTele_In (s : Sort) {n : MTele} :
   end.
 
 Notation "'[WithT' now_ty , now_val '=>' T ]" :=
-  (MTele_In SType (fun '(Accessor _ now_ty now_val) => T))
+  (MTele_In Typeₛ (fun '(Accessor _ now_ty now_val) => T))
     (at level 0, format "[WithT  now_ty ,  now_val  =>  T ]").
 
 Notation "'[WithP' now_ty , now_val '=>' T ]" :=
-  (MTele_In SProp (fun '(Accessor _ now_ty now_val) => T))
+  (MTele_In Propₛ (fun '(Accessor _ now_ty now_val) => T))
     (at level 0, format "[WithP  now_ty ,  now_val  =>  T ]").
 
 (** MTele_in: gain access to potentially multiple telescoped types and values at the same time to compute a new telescoped _value_ of type `MTele_In ..`. *)
@@ -201,26 +201,26 @@ Fixpoint MTele_in (s : Sort) {n : MTele} :
   end.
 
 Notation "'[withT' now_ty , now_val '=>' t ]" :=
-  (MTele_in (SType) (fun '(Accessor _ now_ty now_val) => t))
+  (MTele_in (Typeₛ) (fun '(Accessor _ now_ty now_val) => t))
     (at level 0, format "[withT  now_ty ,  now_val  =>  t ]").
 
 Notation "'[withP' now_ty , now_val '=>' t ]" :=
-  (MTele_in (SProp) (fun '(Accessor _ now_ty now_val) => t))
+  (MTele_in (Propₛ) (fun '(Accessor _ now_ty now_val) => t))
     (at level 0, format "[withP  now_ty ,  now_val  =>  t ]").
 
 (** MTele_Map: compute type `∀ x .. z, B x .. z` from type
     `∀ x .. z, A x .. z` *)
 Fixpoint MTele_Map (s so : Sort) {n : MTele} :
-  MTele_sort (MTele_In (SType) (n := n) (fun _ => stype_of s -> stype_of so)) -> MTele_Sort s n -> MTele_Sort so n
+  MTele_sort (MTele_In (Typeₛ) (n := n) (fun _ => stype_of s -> stype_of so)) -> MTele_Sort s n -> MTele_Sort so n
   :=
   match n return
-        MTele_sort (MTele_In (SType) (n := n) (fun _ => stype_of s -> stype_of so)) -> MTele_Sort s n -> MTele_Sort so n
+        MTele_sort (MTele_In (Typeₛ) (n := n) (fun _ => stype_of s -> stype_of so)) -> MTele_Sort s n -> MTele_Sort so n
   with
   | mBase => fun f A => f A
   | mTele F => fun f A t => @MTele_Map s so (F t) (f t) (A t)
   end.
 
-Eval cbn in MTele_In (SType).
+Eval cbn in MTele_In (Typeₛ).
 
 (** MTele_C: MTele_map with a constant function *)
 Fixpoint MTele_C (s so : Sort) {n : MTele} :
@@ -299,7 +299,7 @@ Fixpoint apply_const {s : Sort} {m : MTele} {T : s} :
 
 Definition apply_sort {s : Sort} {m : MTele} :
   MTele_Sort s m -> ArgsOf m -> stype_of s :=
-  @apply_const SType m (stype_of s).
+  @apply_const Typeₛ m (stype_of s).
 
 Fixpoint apply_val {s : Sort} {m : MTele} :
   forall {T : MTele_Sort s m} (v : MTele_val T) (a : ArgsOf m), selem_of (apply_sort T a) :=
@@ -314,7 +314,7 @@ Fixpoint apply_val {s : Sort} {m : MTele} :
 
 Definition MTele_ty (M : Type -> Prop) {n : MTele} :
   forall A : MTele_Ty n, Prop :=
-  fun A => MTele_val (MTele_C SType SProp M A).
+  fun A => MTele_val (MTele_C Typeₛ Propₛ M A).
 
 Notation MT_Acc R T := (forall (M' : Type -> Prop), MTele_ty M' T -> M' R).
 

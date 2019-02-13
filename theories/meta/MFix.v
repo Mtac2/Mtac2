@@ -6,7 +6,7 @@ Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 
 
-Local Definition MFA {n} (T : MTele_Ty n) := (MTele_val (MTele_C SType SProp M T)).
+Local Definition MFA {n} (T : MTele_Ty n) := (MTele_val (MTele_C Typeₛ Propₛ M T)).
 
 (* Less specific version of MTele_of in MTeleMatch.v *)
 Definition MTele_of' :=
