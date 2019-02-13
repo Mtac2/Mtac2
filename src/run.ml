@@ -964,7 +964,7 @@ let rec below_prods sigma t f = function
   | 0 -> f t
   | k when k > 0 ->
       let n, typeT, t = destProd sigma t in
-      let t = below_lambdas sigma t f (k - 1) in
+      let t = below_prods sigma t f (k-1) in
       mkProd (n, typeT, t)
   | _ -> raise (Failure "below_lambdas must not be called with negative values.")
 
