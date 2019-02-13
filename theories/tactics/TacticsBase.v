@@ -143,39 +143,46 @@ Definition treduce (r : Reduction) : tactic := fun g=>
     it work. *)
 Ltac Mssrpattern p := ssrpattern p.
 
-Definition Backtrack {s:Sort} {A} (x:A) (f: A->s) : Exception. exact exception. Qed.
-Definition abstract_from_sort (s:Sort) {A} (x:A) (B:s) : M (moption (A -> s)) :=
+Definition wrapper {A} (t: A) : Prop. exact False. Qed.
+Definition Backtrack {A} {B} (x:A) (C : A -> B) : Exception.
+  exact exception. Qed.
+Definition abstract_from_term_dep {A} {B} (x:A) (y:B) (D : B -> Type)
+           (ok : forall C : A -> B, M (D (C x))) (fail : M (D y)) : M (D y) :=
   mtry
-    ''(m: _, gs) <- M.call_ltac s (A:=B) "Mssrpattern" [m:Dyn x];
+    ''(m: _, gs) <- M.call_ltac Propₛ (A:=wrapper y) "Mssrpattern" [m:Dyn x];
     mmatch gs with
-    | [? y (f:A->s) t] [m: @AnyMetavar s (let z := y in f z) t] =u>
-      M.raise (Backtrack y f) (* nasty HACK: we backtract so as not to get evars
+    | [? y (f:A->B) t] [m: @AnyMetavar Propₛ (let z := y in wrapper (f z)) t] =u>
+      M.raise (@Backtrack A B y f) (* nasty HACK: we backtract so as not to get evars
       floating: we only care about the term! (which should be well typed in the
       right sigma) *)
-    | [? y (f:A->Propₛ) t] [m: @AnyMetavar Propₛ (let z := y in f z) t] =u>
-      (* sometimes it might cast down a Prop (that was previously casted to Type *)
-      match s as s' return M (moption (A -> s')) with
-      | Propₛ => M.print_term gs;; M.failwith "abstract_from_sort: mmatch"
-      | Typeₛ => M.raise (Backtrack (s:=Typeₛ) y (f:A->Prop))
-      end
     | _ => M.print_term gs;; M.failwith "abstract_from_sort: mmatch goal not ground"
     end
-  with [? (f:A-> s)] Backtrack x f => M.ret (mSome f)
+  with
+  | [#] @Backtrack A B x | f =u>
+    o <- M.unify (f x) (y) UniCoq;
+    match o with
+    | mSome eq =>
+      match eq in _ =m= B return M (D B) with
+      | meq_refl => ok f
+      end
+    | mNone => M.failwith "abstract_from_sort: terms not unifiable"
+    end
   | ExceptionNotGround => M.failwith "abstract_from_sort: backtrack"
   | [?s] Failure s => M.raise (Failure s)
-  | [?s] LtacError s => M.ret mNone (* we suppose it's not matched *)
+  | [?s] LtacError s => fail (* we suppose it's not matched *)
   end.
+
+Definition abstract_from_sort_dep (s:Sort) {A} (x:A) (B:s) (D : s -> Type)
+           (ok : forall C : A -> s, M (D (C x))) (fail : M (D B)) : M (D B) :=
+  abstract_from_term_dep x B D ok fail.
+
+Definition abstract_from_sort (s:Sort) {A} (x:A) (B:s) : M (moption (A -> s)) :=
+  abstract_from_sort_dep s x B (fun _ => moption (A -> s))
+                         (fun C => M.ret (mSome C)) (M.ret mNone).
 Definition abstract_from_type {A} := @abstract_from_sort Typeₛ A.
 
-Definition wrapper {A} (t: A) : Prop. exact False. Qed.
-
 Definition abstract_from_term {A} {B} (x:A) (t : B) : M (moption (A -> B)) :=
-  f <- abstract_from_sort Propₛ x (wrapper t);
-  mmatch f with
-  | [? g] mSome (fun z:A=>wrapper (g z)) => M.ret (mSome g)
-  | mNone => M.ret mNone
-  | [? t] mSome t => M.print_term t;; M.failwith "abstract_from_term"
-  end.
+  abstract_from_term_dep x t (fun _ => _) (fun C => M.ret (mSome C)) (M.ret mNone).
 
 
 (** [close_goals x l] takes the list of goals [l] and appends
