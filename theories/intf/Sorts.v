@@ -6,9 +6,6 @@ Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 
 
-Inductive Block_DONT_COMMIT := SType | SProp.
-
-
 Reserved Notation "Typeₛ".
 Reserved Notation "Propₛ".
 Module S.
