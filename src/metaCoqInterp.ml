@@ -192,8 +192,7 @@ module MetaCoqRun = struct
       run env sigma concl evar istactic t
     end
 
-  let run_cmd t =
-    let (sigma, env) = Pfedit.get_current_context () in
+  let run_cmd env sigma t =
     let sigma, c = Constrintern.interp_open_constr env sigma t in
     match Run.run (env, sigma) c with
     | Run.Val _ -> ()
@@ -217,11 +216,11 @@ let interp_mproof_command () = ()
 let interp_instr = function
   | MetaCoqInstr.MetaCoq_constr c -> MetaCoqRun.run_tac c
 
-let exec f =
-  ignore (Pfedit.by (f ()))
+let exec ~pstate f =
+  fst @@ Pfedit.by (f ()) pstate
 
 (** Interpreter of a constr :
     - Interpretes the constr
     - Unfocus on the current proof *)
-let interp_proof_constr instr =
-  exec (fun () -> interp_instr instr)
+let interp_proof_constr ~pstate instr =
+  exec ~pstate (fun () -> interp_instr instr)

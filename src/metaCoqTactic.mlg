@@ -38,7 +38,11 @@ TACTIC EXTEND mrun
 END
 
 VERNAC COMMAND EXTEND MtacDo CLASSIFIED AS SIDEFF
-  | [ "Mtac" "Do" lconstr(c) ] -> {
-      MetaCoqRun.run_cmd c
+  | ![proof] [ "Mtac" "Do" lconstr(c) ] -> {
+    fun ~pstate ->
+    let sigma, env = Option.cata Pfedit.get_current_context
+                       (let e = Global.env () in Evd.from_env e, e) pstate in
+    MetaCoqRun.run_cmd env sigma c;
+    pstate
   }
 END

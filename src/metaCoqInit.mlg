@@ -96,9 +96,9 @@ let mproof_instr : MetaCoqInstr.mproof_instr Pcoq.Entry.t =
 }
 
 VERNAC { mproof_mode } EXTEND MProofInstr
-| [ mproof_instr(_instr) ] =>
+| ![proof] [ mproof_instr(_instr) ] =>
   { let open Vernacexpr in VtProofStep {parallel = `No; proof_block_detection = None}, VtLater } ->
-  { MetaCoqInterp.interp_proof_constr _instr }
+  { fun ~pstate -> Option.map (fun pstate -> MetaCoqInterp.interp_proof_constr ~pstate _instr) pstate }
 END
 
 (** The parsing rule for the non terminal [mproof_instr]. *)
