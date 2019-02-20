@@ -15,7 +15,8 @@ Unset Printing Notations.
 
 Module M.
 
-Variant t : Type -> Prop := mkt : forall{a}, t a.
+CoInductive t (a : Type) : Prop := mkt : t a.
+Arguments mkt {_}.
 
 Local Ltac make := refine (mkt) || (intro; make).
 
@@ -370,8 +371,9 @@ Definition sorted_evar (s: Sort) : forall T : s, t T :=
   | Typeₛ => fun T:Type => M.evar T
   end.
 
+Set Printing Universes.
 Definition unify@{a} {A : Type@{a}} (x y : A) (U : Unification) : t@{a} (moption@{a} (meq@{a} x y)) :=
-  unify_cnt (B:=fun x => moption@{a} (meq x y)) U x y
+  unify_cnt@{a a} (A:=A) (B:=fun x => moption@{a} (meq x y)) U x y
             (ret@{a} (mSome@{a} (@meq_refl _ y)))
             (ret@{a} mNone@{a}).
 
