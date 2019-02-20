@@ -3,9 +3,8 @@ Import M.notations.
 Definition test := c <- M.declare dok_Definition "bla" false 1; M.print_term c.
 Goal unit.
   MProof.
-  (* TODO: inlining test here doesn't work because of universes. *)
-  Fail c <- M.declare dok_Definition "bla" false 1; M.print_term c.
-  test.
+  (* TODO: inlining test here used to *not* work because of universes. *)
+  c <- M.declare dok_Definition "bla" false 1; M.print_term c.
 Qed.
 
 Goal unit.
@@ -82,18 +81,18 @@ Print NAT4. (* definitions before the failing one are declared. *)
 
 (* we should check that the terms are closed w.r.t. section variables *)
 (* JANNO: for now we just raise an catchable exception. *)
-Compute fun x y =>
+Fail Compute fun x y =>
           ltac:(mrun (
                     mtry
                       M.declare dok_Definition "lenS" true (Le.le_n_S x y);; M.ret tt
-                      with | UnboundVar => M.ret tt end
+                      with | UnboundVar => M.failwith "This must fail" | _ => M.ret tt end
                )).
 
-(* This fails because of weird universe issues. *)
-Fail Compute ltac:(mrun (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c)).
+(* This used to fail because of weird universe issues. *)
+Compute ltac:(mrun (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c)).
 Definition decl_blu := (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c).
-(* TODO: again, inlining does not work here. *)
-Compute ltac:(mrun decl_blu).
+(* This now fails because the previous failure no longer exists and [blu] is declared. *)
+Fail Compute ltac:(mrun decl_blu).
 
 Print blu.
 
