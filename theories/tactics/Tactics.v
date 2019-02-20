@@ -45,7 +45,7 @@ Definition eexact {A} (x:A) : tactic := fun g =>
   | @Metavar _ _ g =>
     M.cumul_or_fail UniCoq x g;;
     l <- M.collect_evars g;
-    M.map (fun d => ''(@Metavar _ _ g) <- M.dyn_to_goal d; M.ret (m: tt, AnyMetavar _ g)) l
+    M.map (fun d => '(@Metavar _ _ g) <- M.dyn_to_goal d; M.ret (m: tt, AnyMetavar _ g)) l
   end.
 
 (** [intro_base n t] introduces variable or definition named [n]
@@ -164,14 +164,14 @@ Definition generalize {A} (x : A) : tactic := fun g =>
 Definition cclear {A B} (x:A) (cont : gtactic B) : gtactic B := fun g=>
   match g with
   | @Metavar Propₛ gT _ =>
-    ''(e,l) <- M.remove x (
+    '(e,l) <- M.remove x (
       e <- M.evar gT;
       l <- cont (Metavar Propₛ e);
       M.ret (e, l));
     exact e g;;
     rem_hyp x l
   | @Metavar Typeₛ gT _ =>
-    ''(e,l) <- M.remove x (
+    '(e,l) <- M.remove x (
       e <- M.evar gT;
       l <- cont (Metavar Typeₛ e);
       M.ret (e, l));
@@ -204,7 +204,7 @@ Definition destruct {A : Type} (n : A) : tactic := fun g =>
              |} in
     case <- M.makecase c;
     dcase case as e in exact e g;;
-    M.map (fun d => ''(@Metavar _ _ g) <- M.dyn_to_goal d; M.ret (m: tt, AnyMetavar _ g)) l
+    M.map (fun d => '(@Metavar _ _ g) <- M.dyn_to_goal d; M.ret (m: tt, AnyMetavar _ g)) l
   | _ => I                      (* This makes no sense. It should not be necessary. *)
   end.
 
@@ -289,7 +289,7 @@ Definition change_hyp {P Q} (H : P) (newH: Q) : tactic := fun g=>
   match g with
   | @Metavar sort gT _ =>
      name <- M.get_binder_name H;
-     ''(m: gabs, abs) <- M.remove H (M.nu (TheName name) mNone (fun nH: Q=>
+     '(m: gabs, abs) <- M.remove H (M.nu (TheName name) mNone (fun nH: Q=>
        r <- M.evar gT;
        abs <- M.abs_fun nH r;
        gabs <- M.abs_fun nH (AnyMetavar sort r);
@@ -460,7 +460,7 @@ Definition n_etas (n : nat) {A} (f : A) : M A :=
     [n] products. *)
 Definition fix_tac (f : name) (n : N) : tactic := fun g =>
   gT <- M.goal_type g;
-  ''(f, new_goal) <- M.nu f mNone (fun f : gT =>
+  '(f, new_goal) <- M.nu f mNone (fun f : gT =>
     (* We introduce the recursive definition f and create the new
        goal having it. *)
     new_goal <- M.evar gT;
@@ -635,7 +635,7 @@ Definition apply_one_of (l : mlist dyn) : tactic :=
 
 (** Tries to apply each constructor of the goal type *)
 Definition constructor : tactic :=
-  ''(m: _, l) <- M.constrs =<< goal_type;
+  '(m: _, l) <- M.constrs =<< goal_type;
   apply_one_of l.
 
 Definition apply_in {P Q} (c : P -> Q) (H : P) : tactic :=

@@ -18,7 +18,7 @@ Definition MTele_of' :=
                               )
      | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =c> [H]
        M.nu (FreshFrom F) mNone (fun x =>
-                       ''(existT _ m (existT _ mT E)) <- f (F x);
+                       '(existT _ m (existT _ mT E)) <- f (F x);
                        m' <- M.abs_fun x m;
                        mT' <- (M.coerce mT >>=
                                M.abs_fun (P:=fun x => MTele_Ty (m' x)) x);
@@ -42,7 +42,7 @@ Definition MTele_of : Prop -> M (sigT MTele_Ty) :=
      | [?X : Type] M X =u> M.ret (existT _ mBase X)
      | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =c>
        M.nu (FreshFrom F) mNone (fun x =>
-                       ''(existT _ n T) <- f (F x);
+                       '(existT _ n T) <- f (F x);
                        n' <- M.abs_fun (P:=fun _ => MTele) x n;
                        T' <- M.abs_fun x T;
                        T' <- M.coerce T';
@@ -78,7 +78,7 @@ Definition mfix_eq {m : MTele} {T: MTele_Ty m} {A : Prop} : forall {Eq : MFA T =
 
 Definition mfix_lift {m : MTele} {A : Prop} {F : (A -> A) -> A}:
   lift (
-     ''(existT _ m' (existT _ mT E)) <-mtry  MTele_of' A
+     '(existT _ m' (existT _ mT E)) <-mtry  MTele_of' A
         with
     | [?E] E =>
       M.print_term E;;

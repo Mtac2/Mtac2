@@ -117,7 +117,7 @@ Definition goal_prop : gtactic Prop := with_goal M.goal_prop.
 Definition ltac (t : string) (args : mlist dyn) : tactic := fun g =>
   match g with
   | @Metavar s ty el =>
-    ''(m: v, l) <- @M.call_ltac s ty t args;
+    '(m: v, l) <- @M.call_ltac s ty t args;
     M.unify_or_fail UniCoq v el;;
     let l' := dreduce (@mmap) (mmap (mpair tt) l) in
     M.ret l'
@@ -149,7 +149,7 @@ Definition Backtrack {A} {B} (x:A) (C : A -> B) : Exception.
 Definition abstract_from_term_dep {A} {B} (x:A) (y:B) (D : B -> Type)
            (ok : forall C : A -> B, M (D (C x))) (fail : M (D y)) : M (D y) :=
   mtry
-    ''(m: _, gs) <- M.call_ltac Propₛ (A:=wrapper y) "Mssrpattern" [m:Dyn x];
+    '(m: _, gs) <- M.call_ltac Propₛ (A:=wrapper y) "Mssrpattern" [m:Dyn x];
     mmatch gs with
     | [? y (f:A->B) t] [m: @AnyMetavar Propₛ (let z := y in wrapper (f z)) t] =u>
       M.raise (@Backtrack A B y f) (* nasty HACK: we backtract so as not to get evars
@@ -383,9 +383,12 @@ Module notations.
   Notation "r '<-' t1 ';' t2" := (bind t1 (fun r => t2%tactic))
     (at level 20, t1 at level 100, t2 at level 200,
      format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
-  Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2%tactic) ..))
-    (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200,
-     format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
+  (* Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2%tactic) ..)) *)
+  (*   (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200, *)
+  (*    format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope. *)
+  Notation "' r '<-' t1 ';' t2" := (bind t1 (fun r=> t2%tactic))
+    (at level 20, r pattern, t1 at level 100, t2 at level 200,
+     right associativity, format "'[' ''' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
   Notation "` r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (bind t1 (fun rn => t2%tactic)) ..))
     (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200,
      right associativity, format "'[' '`' r1  ..  rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.

@@ -65,7 +65,7 @@ Definition construct_case A (x: A) (loop: forall r: dynr, M (moption (result x (
   let 'mkCase _ val retrn branches := C in
   nu (FreshFromStr "v") mNone (fun v=>
     new_val_opt <- loop (Dynr val);
-    ''(m: some_branch_depends, new_branches) <-
+    '(m: some_branch_depends, new_branches) <-
      M.fold_right (
        fun branch '(m: some_branch_depends, new_branches) =>
          b <- to_dynr branch;
