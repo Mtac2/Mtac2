@@ -310,7 +310,7 @@ Fixpoint match_goal_pattern'@{l+}
                                    (* avoid [selem_of] coercions *)
                                    (with_upcast t)
                                    (raise DoesNotMatchGoal)
-      ) (DoesNotMatch) g
+      ) (DoesNotMatchGoal) g
   | @gtele C f, @ahyp A a d :m: l2' =>
     oeqCA <- M.unify C A u;
     match oeqCA with
