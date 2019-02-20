@@ -229,15 +229,15 @@ Definition abs_prod' {A} (F: A->Type) : M {T:Type& T =m= forall x, F x}.
 (** Just for the record, this is how you get the original abs_prod *)
 Definition abs_prod {A} (x:A) (t: Type) : M Type :=
   f <- M.abs_fun x t;
-  ''(existT _ T _) <- abs_prod' f;
+  '(existT _ T _) <- abs_prod' f;
   M.ret T.
 
 (** A version of [abs_prod] returning proofs: given [x] and [t], it returns a
 term [T] and a function [F] such that [T = forall y, F y], and [F x = t]. *)
 Definition abs_prod_pf {A} (x:A) (t: Type) : M {T & {F & F x =m= t /\ T =m= forall x, F x}}.
   refine (
-  ''(existT _ f pf) <- abs_fun'' x t;
-  ''(existT _ T pfT) <- abs_prod' f;
+  '(existT _ f pf) <- abs_fun'' x t;
+  '(existT _ T pfT) <- abs_prod' f;
   M.ret _).
   exists T.
   exists f.

@@ -45,7 +45,7 @@ Definition MTele_of (A : Type) : forall T, T -> M (msigT (MTele_Const (s:=Type�
                    M.nu (FreshFrom T) mNone (fun x =>
                                    let Fx := reduce (RedOneStep [rl:RedBeta]) (F x) in
                                    let tx := (* rone_step *) (t x) in
-                                   ''(mexistT _ n T) <- f Fx tx;
+                                   '(mexistT _ n T) <- f Fx tx;
                                    n' <- M.abs_fun (P:=fun _ => MTele) x n;
                                    T' <- M.coerce T;
                                    T' <- M.abs_fun (P:=fun x => MTele_Const (s:=Typeₛ) A (n' x)) x T';
@@ -61,7 +61,7 @@ Definition decompose_app {m : MTele} {A : Type} {B : A -> Type} {C : MTele_Const
   :
   M (Unification -> MTele_sort (MTele_ConstMap (si:=Typeₛ) Propₛ (fun a : A => M (B a)) C) -> M (B a)) :=
   (
-    ''(mexistT _ m' T') <- MTele_of A T t;
+    '(mexistT _ m' T') <- MTele_of A T t;
     M.unify m m' UniCoq;;
     M.cumul UniCoq C t;;
     let x := fun u => @M.decompose_app' A B m u a C in
@@ -93,7 +93,7 @@ Defined.
 Definition decompose_app_tactic {m : MTele} {A : Type} {B : A -> Type} {C : MTele_ConstT A m} {T: Type} (a : A) (t : T) :
   M (Unification -> MTele_sort (MTele_ConstMap (si:=Typeₛ) Propₛ (fun a : A => gtactic (B a)) C) -> gtactic (B a)) :=
   (
-    ''(mexistT _ m' T') <- MTele_of A T t;
+    '(mexistT _ m' T') <- MTele_of A T t;
     M.unify m m' UniCoq;;
     M.cumul UniCoq C t;;
     let x := fun uni f (g : goal gs_open) => @M.decompose_app' A (fun a => mlist (mprod (B a) (goal gs_any))) m uni a C (f g) in

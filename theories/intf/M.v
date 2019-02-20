@@ -416,9 +416,12 @@ Module monad_notations.
   Notation "r '<-' t1 ';' t2" := (bind t1 (fun r=> t2))
     (at level 20, t1 at level 100, t2 at level 200,
      right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
-  Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2) ..))
-    (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200,
-     right associativity, format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
+  Notation "' r '<-' t1 ';' t2" := (bind t1 (fun r=> t2))
+    (at level 20, r pattern, t1 at level 100, t2 at level 200,
+     right associativity, format "'[' ''' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
+  (* Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2) ..)) *)
+  (*   (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200, *)
+  (*    right associativity, format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope. *)
   Notation "` r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (bind t1 (fun rn => t2)) ..))
     (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200,
      right associativity, format "'[' '`' r1  ..  rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
@@ -632,12 +635,12 @@ Definition fold_left {A B} (f : A -> B -> t A) : mlist B -> A -> t A :=
     end.
 
 Definition index_of {A} (f : A -> t bool) (l : mlist A) : t (moption nat) :=
-  ''(_, r) <- fold_left (fun '(i, r) x =>
+  '(m: _, r) <- fold_left (fun '(m: i, r) x =>
     match r with
-    | mSome _ => ret (i,r)
-    | _ => mif f x then ret (i, mSome i) else ret (S i, mNone)
+    | mSome _ => ret (m: i,r)
+    | _ => mif f x then ret (m: i, mSome i) else ret (m: S i, mNone)
     end
-  ) l (0, mNone);
+  ) l (m: 0, mNone);
   ret r.
 
 Fixpoint nth {A} (n : nat) (l : mlist A) : t A :=
@@ -925,7 +928,7 @@ Definition print_goal (g : goal gs_open) : t unit :=
     [CantInstantiate] if it fails to find a suitable instantiation. [t] is beta-reduced
     to avoid false dependencies. *)
 Definition instantiate {A} (x y : A) : t unit :=
-  ''(m: h, _) <- decompose x;
+  '(m: h, _) <- decompose x;
   dcase h as e in
     mif is_evar e then
       let t := reduce (RedWhd [rl:RedBeta]) t in
@@ -948,7 +951,7 @@ Definition collect_evars {A} (x: A) :=
     mif M.is_evar e then M.ret [m: d]
     else
       let e := reduce (RedWhd [rl: RedBeta; RedMatch; RedZeta]) e in
-      ''(m: h, l) <- M.decompose e;
+      '(m: h, l) <- M.decompose e;
       if is_empty l then M.ret [m:]
       else
         f h >>= fun d => M.map f l >>= fun ds => M.ret (mapp d (mconcat ds))
