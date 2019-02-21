@@ -86,6 +86,7 @@ End S.
 
 Import S.
 
+Declare Scope Sort_scope.
 Delimit Scope Sort_scope with sort.
 Notation "Typeₛ" := Type_sort.
 Notation "Propₛ" := Prop_sort.

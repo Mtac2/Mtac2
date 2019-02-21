@@ -33,6 +33,7 @@ Eval hnf in ltac:(mrun (MTele_of (fun x : nat => forall y:nat, M (x = y)))).
 Local Example MTele_of_Test : nat -> msigT MTele_Ty :=
   Eval hnf in ltac:(mrun (MTele_of (fun x : nat => forall y:nat, M (x = y)))).
 
+Declare Scope mtpattern_prog_scope.
 Bind Scope mtpattern_prog_scope with mtpattern.
 Delimit Scope mtpattern_prog_scope with mtpattern_prog.
 
@@ -56,14 +57,16 @@ Notation "d '=m>' t" := (mtpbase d t UniMatch)
 Notation "'_' => b " := (mtptele (fun x=> mtpbase x b%core UniMatch))
   (at level 201, b at next level) : mtpattern_prog_scope.
 
+
+Declare Scope with_mtpattern_prog_scope.
+Delimit Scope with_mtpattern_prog_scope with with_mtpattern_prog.
+
 Notation "'with' | p1 | .. | pn 'end'" :=
   ((@mcons (mtpattern _ _) p1%mtpattern_prog (.. (@mcons (mtpattern _ _) pn%mtpattern_prog mnil) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_mtpattern_prog_scope.
 Notation "'with' p1 | .. | pn 'end'" :=
   ((@mcons (mtpattern _ _) p1%mtpattern_prog (.. (@mcons (mtpattern _ _) pn%mtpattern_prog mnil) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_mtpattern_prog_scope.
-
-Delimit Scope with_mtpattern_prog_scope with with_mtpattern_prog.
 
 Class TC_UNIFY {T : Type} (A B : T) := tc_unify : (A =m= B).
 Arguments tc_unify {_} _ _ {_}.
@@ -130,6 +133,7 @@ Definition mtpbase_eq {A} {m : A -> Prop} (x : A) F (eq : m x =m= F x) : F x -> 
   end.
 
 
+Declare Scope mtpattern_scope.
 Bind Scope mtpattern_scope with mtpattern.
 Delimit Scope mtpattern_scope with mtpattern.
 
@@ -161,14 +165,16 @@ Notation "d '=m>' t" := (mtpbase_eq (m:=mty_of) d ret_ty cs_unify t UniMatch)
 Notation "'_' => b " := (mtptele (m:=mty_of) (fun x=> mtpbase_eq (m:=mty_of) x ret_ty cs_unify b%core UniMatch))
   (at level 201, b at next level) : mtpattern_scope.
 
+
+Declare Scope with_mtpattern_scope.
+Delimit Scope with_mtpattern_scope with with_mtpattern.
+
 Notation "'with' | p1 | .. | pn 'end'" :=
   ((@mcons (mtpattern _ _) p1%mtpattern (.. (@mcons (mtpattern _ _) pn%mtpattern mnil) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_mtpattern_scope.
 Notation "'with' p1 | .. | pn 'end'" :=
   ((@mcons (mtpattern _ _) p1%mtpattern (.. (@mcons (mtpattern _ _) pn%mtpattern mnil) ..)))
   (at level 91, p1 at level 210, pn at level 210) : with_mtpattern_scope.
-
-Delimit Scope with_mtpattern_scope with with_mtpattern.
 
 Notation "'mtmmatch' x 'as' y 'return' T p" :=
   (

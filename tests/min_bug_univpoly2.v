@@ -37,6 +37,7 @@ Inductive t : Type -> Prop :=
 | unify_univ (A B : Type) : t (option (A -> B))
 
 .
+  Declare Scope M_scope.
   Delimit Scope M_scope with MC.
   Open Scope M_scope.
 

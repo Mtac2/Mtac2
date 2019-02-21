@@ -40,6 +40,7 @@ Arguments branch _ _ _ _ : clear implicits.
 (*     (forall X (Y : X -> Type) (f : forall x, Y x) (x : X), M (B _ (f x))) -> *)
 (*     @branch M _ B A y *)
 
+Declare Scope pattern_scope.
 
 Notation "[¿ s .. t ] ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
   (at level 202, s binder, t binder, ps at next level, only parsing) : pattern_scope.
@@ -80,6 +81,8 @@ Notation "p =c> [ H .. G ] b" := (pbase p%core (fun H => .. (fun G => b%core) ..
 
 Delimit Scope pattern_scope with pattern.
 
+Declare Scope branch_scope.
+
 Notation "[¿ s .. t ] ps" := (branch_pattern (psort (fun s => .. (psort (fun t => ps%pattern)) ..)))
   (at level 202, s binder, t binder, ps at next level, only parsing) : branch_scope.
 Notation "'[S?' s .. t ] ps" := (branch_pattern (psort (fun s => .. (psort (fun t => ps%pattern)) ..)))
@@ -118,6 +121,8 @@ Notation "p =c> [ H .. G ] b" := (branch_pattern (pbase p%core (fun H => .. (fun
   (no associativity, at level 201, H binder, G binder) : branch_scope.
 
 Delimit Scope branch_scope with branch.
+
+Declare Scope with_pattern_scope.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
   ((@mcons (branch _ _ _ _) p1%branch (.. (@mcons (branch _ _ _ _) pn%branch [m:]) ..)))
