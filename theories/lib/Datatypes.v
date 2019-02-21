@@ -111,6 +111,7 @@ Cumulative Inductive mlist (A : Type) : Type :=
 
 Arguments mnil {A}.
 Arguments mcons {A} a l.
+Declare Scope mlist_scope.
 Infix ":m:" := mcons (at level 60, right associativity) : mlist_scope.
 Delimit Scope mlist_scope with mlist.
 Bind Scope mlist_scope with mlist.

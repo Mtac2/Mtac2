@@ -408,6 +408,8 @@ Definition decompose_app'
   is_head uni a C success (raise WrongTerm).
 
 
+Declare Scope M_scope.
+
 Module monad_notations.
   Bind Scope M_scope with t.
   Delimit Scope M_scope with MC.

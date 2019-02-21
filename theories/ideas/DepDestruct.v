@@ -30,6 +30,7 @@ Inductive ITele (sort : Sort) : Type :=
 | iBase : sort -> ITele sort
 | iTele : forall {T : Type}, (T -> ITele sort) -> ITele sort.
 
+Declare Scope ITele_scope.
 Delimit Scope ITele_scope with IT.
 Bind Scope ITele_scope with ITele.
 Arguments iBase {_} _.
@@ -53,6 +54,7 @@ Fixpoint ATele {sort} (it : ITele sort) : Type :=
   | @iTele _ T f => { t : T & ATele (f t) }
   end.
 Arguments ATele {_} !_%IT : simpl nomatch.
+Declare Scope ATele_scope.
 Delimit Scope ATele_scope with AT.
 Bind Scope ATele_scope with ATele.
 Definition aBase {isort} {T} : ATele (@iBase isort T) := tt.
@@ -71,6 +73,7 @@ Arguments ITele_App {_ !_%IT} !_%AT : simpl nomatch.
 Inductive CTele {sort} (it : ITele sort) : Type :=
 | cBase : forall {a : ATele it} (c : ITele_App a), CTele it
 | cProd : forall {T : Type}, (T -> CTele it) -> CTele it.
+Declare Scope CTele_scope.
 Delimit Scope CTele_scope with CT.
 Bind Scope CTele_scope with CTele.
 Arguments CTele {_} _%IT.

@@ -321,6 +321,8 @@ Inductive pattern (M : Type -> Type) (A : Type) (B : A -> Type) (y : A) : Prop :
 Arguments pbase {M A B y} _ _ _.
 Arguments ptele {M A B y C} _.
 
+Declare Scope pattern_scope.
+
 Notation "[? x .. y ] ps" := (ptele (fun x => .. (ptele (fun y => ps)).. ))
   (at level 202, x binder, y binder, ps at next level) : pattern_scope.
 Notation "p => [ H ] b" := (pbase p%core (fun H => b%core) UniMatch)
@@ -339,6 +341,8 @@ Notation "p '=u>' [ H ] b" := (pbase p%core (fun H => b%core) UniCoq)
   (no associativity, at level 201, H at next level) : pattern_scope.
 
 Delimit Scope pattern_scope with pattern.
+
+Declare Scope with_pattern_scope.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
   ((@cons (pattern _ _ _ _) p1%pattern (.. (@cons (pattern _ _ _ _) pn%pattern nil) ..)))
@@ -390,6 +394,7 @@ Definition failwith {A} (s : string) : t A := raise (Failure s).
 (*   bind (pretty_print x) (fun s=> print s). *)
 
 Module Export monad_notations.
+  Declare Scope M_scope.
   Delimit Scope M_scope with MC.
   Open Scope M_scope.
 

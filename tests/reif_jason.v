@@ -35,6 +35,7 @@ Module Import PHOAS.
   | Var (v : var)
   | NatMul (x y : expr).
 
+  Declare Scope expr_scope.
   Bind Scope expr_scope with expr.
   Delimit Scope expr_scope with expr.
 

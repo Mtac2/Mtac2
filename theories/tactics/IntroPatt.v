@@ -29,6 +29,7 @@ Definition LIP_app : LIP -> LIP -> LIP :=
     | lnil => fun l2 => l2
     | lcons ip l1 => fun l2 => lcons ip (f l1 l2)
     end.
+Declare Scope IP_scope.
 Bind Scope IP_scope with IP.
 Delimit Scope IP_scope with IP.
 

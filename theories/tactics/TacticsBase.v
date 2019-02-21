@@ -25,6 +25,7 @@ Import ProdNotations.
 Definition gtactic@{a g1 g2+} (A: Type@{a}) := goal@{g1 g2} gs_open -> M.t (mlist@{a} (mprod A (goal@{g1 g2} gs_any))).
 Definition tactic := gtactic unit.
 
+Declare Scope tactic_scope.
 Delimit Scope tactic_scope with tactic.
 Bind Scope tactic_scope with gtactic.
 
@@ -446,6 +447,8 @@ Module notations.
 
   Notation "t || u" := (or t u) : tactic_scope.
 
+  Declare Scope match_goal_pattern_scope.
+
   Notation "[[ |- ps ] ] => t" :=
     (gbase ps t)
     (at level 202, ps at next level) : match_goal_pattern_scope.
@@ -477,6 +480,8 @@ Module notations.
     (at level 202, x binder, y binder, C at level 0, ps at next level) : match_goal_pattern_scope.
 
   Delimit Scope match_goal_pattern_scope with match_goal_pattern.
+
+  Declare Scope match_goal_with_scope.
 
   Notation "'with' | p1 | .. | pn 'end'" :=
     ((@mcons (goal_pattern _) p1%match_goal_pattern (.. (@mcons (goal_pattern _) pn%match_goal_pattern [m:]) ..)))

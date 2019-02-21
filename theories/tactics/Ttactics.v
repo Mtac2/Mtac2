@@ -16,6 +16,7 @@ Module TT.
     pehaps creating (dynamically-typed) goals. *)
 Definition ttac A := M (A *m mlist (goal gs_any)).
 
+Declare Scope typed_tactic_scope.
 Bind Scope typed_tactic_scope with ttac.
 Delimit Scope typed_tactic_scope with TT.
 
@@ -352,6 +353,8 @@ Infix "<**>" := (fappgl Mappend) (at level 61, left associativity) : M_scope.
 Infix "&**" := ucomp1 (at level 60) : M_scope.
 Infix "||t" := tor (at level 59) : M_scope.
 
+Declare Scope typed_match_goal_pattern_scope.
+
 Notation "[[ |- ps ] ] => t" :=
   (gbase ps t)
   (at level 202, ps at next level) : typed_match_goal_pattern_scope.
@@ -383,6 +386,8 @@ Notation "[[ x .. y |- 'context' C [ ps ] ] ] => t" :=
   (at level 202, x binder, y binder, C at level 0, ps at next level) : typed_match_goal_pattern_scope.
 
 Delimit Scope typed_match_goal_pattern_scope with typed_match_goal_pattern.
+
+Declare Scope typed_match_goal_with_scope.
 
 Notation "'with' | p1 | .. | pn 'end'" :=
   ((@mcons (goal_pattern) p1%typed_match_goal_pattern (.. (@mcons (goal_pattern) pn%typed_match_goal_pattern [m:]) ..)))
