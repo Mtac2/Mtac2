@@ -14,7 +14,7 @@ Definition MTele_of {A:Type} (T : A -> Prop) : M (A -> msigT MTele_Ty) :=
     | [?(X : Type) (F : forall x:X, Prop)] (forall x:X, F x) =u>
       M.nu (FreshFrom T) mNone (fun x =>
                       let T' := reduce (RedOneStep [rl:RedBeta]) (F x) in
-                      ''(mexistT _ n T) <- f T';
+                      '(mexistT _ n T) <- f T';
                       n' <- M.abs_fun x n;
                       T' <- (M.coerce (B:=MTele_Ty (n' x)) T >>= M.abs_fun x);
                       M.ret (mexistT _ (mTele n') T')
