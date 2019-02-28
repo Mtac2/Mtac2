@@ -947,7 +947,7 @@ let run_declare_implicits env sigma gr impls =
                 ) impls in
   let impls = List.map_filter (fun x -> x) impls in
   (* since there is no way to declare something explicit, we clear implicits first *)
-  let () = Impargs.declare_manual_implicits false gr [[]] in
+  let () = Impargs.declare_manual_implicits false gr [] in
   let () = Impargs.maybe_declare_manual_implicits false gr impls in
   (sigma, CoqUnit.mkTT)
 
