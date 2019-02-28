@@ -33,3 +33,34 @@ From Coq Require Import String.
 (*   intros. *)
 (*   to_tactic tt_lt_trans &> T.try T.assumption. *)
 (* Qed. *)
+
+Import TT.notations.
+
+
+(* The following test case tries to establish that the proof term of
+[test_vm_compute] matches [id (_ <: _)]. It could really benefit from a
+[constr_eq] primitive. The reason we test this is that we need to be careful
+about [CClosure] operations accidentally removing the cast.
+
+It also serves as a test case for typed tactics where it is often necessary to
+have [vm_compute] calls. *)
+Definition test_vm_compute : True.
+  mrun (TT.apply id <**> TT.vm_compute <**> TT.apply I >>= TT.to_T)%tactic.
+Defined.
+Mtac Do (
+       let t := reduce (RedOneStep [rl: RedDelta]) (test_vm_compute) in
+       M.decompose_app'' t (fun A B f a =>
+                              M.decompose_app'' f (fun C D g b =>
+                                                    mmatch existT id C b return M unit with
+                                                  | [? X (Q : X -> Prop) b] existT id (forall x, Q x) b =u>
+                                                  \nu x : X, let bx := reduce (RedOneStep [rl: RedBeta]) (b x) in
+                                                             k <- M.kind_of_term bx;
+                                                             match k with
+                                                             | tmCast => M.ret tt
+                                                             | _ => M.failwith "Cast disappeared."
+                                                             end
+                                                   end
+                                                  ) : M (unit)
+                           )
+                            (* M.unify_or_fail UniMatchNoRed t (id (fun a : True => a <: True) I) *)
+     )%MC.
