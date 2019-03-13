@@ -147,7 +147,7 @@ module GenericList (LP : ListParams) = struct
 
   exception Skip
   exception NotAList of constr
-  (** given a list of terms and a convertion function fconv
+  (* given a list of terms and a convertion function fconv
       it creates a list of elements using the converstion function.
       if fconv raises Skip, that element is not included.
       if the list is ill-formed, an exception NotAList is raised. *)
