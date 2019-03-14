@@ -32,8 +32,8 @@ Bind Scope tactic_scope with gtactic.
 Module T.
 Definition with_goal {A} (f : goal gs_open -> M A) := fun g : goal gs_open =>
   match g with
-  | Metavar _ g' =>
-    y <- f g; M.ret [m: (m: y, AnyMetavar _ g')]
+  | Metavar _ _ g' =>
+    y <- f g; M.ret [m: (m: y, AnyMetavar _ _ g')]
   end.
 
 Coercion of_M {A} (x : M A) : gtactic A := with_goal (fun _ => x).
@@ -99,24 +99,24 @@ Definition mmatch' {A P} (E : Exception) (y : A)
     (ps : mlist (branch gtactic A P y)) : gtactic (P y) := fun g =>
   M.mmatch' E y (mmap (branch_map y g) ps).
 
-Definition ret {A} (x : A) : gtactic A := fun '(Metavar _ g) => M.ret [m:(m: x, AnyMetavar _ g)].
+Definition ret {A} (x : A) : gtactic A := fun '(Metavar _ _ g) => M.ret [m:(m: x, AnyMetavar _ _ g)].
 Definition idtac : tactic := ret tt.
 
-Definition try (t : tactic) : tactic := fun '(Metavar _ g' as g)=>
-  mtry t g with _ => M.ret [m:(m: tt, AnyMetavar _ g')] end.
+Definition try (t : tactic) : tactic := fun '(Metavar _ _ g' as g)=>
+  mtry t g with _ => M.ret [m:(m: tt, AnyMetavar _ _ g')] end.
 
 Definition or {A} (t u : gtactic A) : gtactic A := fun g=>
   mtry t g with _ => u g end.
 
-Definition get_binder_name {A} (x : A) : gtactic string := fun '(@Metavar _ _ g) =>
-  s <- M.get_binder_name x; M.ret [m:(m: s,AnyMetavar _ g)].
+Definition get_binder_name {A} (x : A) : gtactic string := fun '(Metavar _ _ g) =>
+  s <- M.get_binder_name x; M.ret [m:(m: s,AnyMetavar _ _ g)].
 
 Definition goal_type : gtactic Type := with_goal M.goal_type.
 Definition goal_prop : gtactic Prop := with_goal M.goal_prop.
 
 Definition ltac (t : string) (args : mlist dyn) : tactic := fun g =>
   match g with
-  | @Metavar s ty el =>
+  | Metavar s ty el =>
     '(m: v, l) <- @M.call_ltac s ty t args;
     M.unify_or_fail UniCoq v el;;
     let l' := dreduce (@mmap) (mmap (mpair tt) l) in
@@ -125,15 +125,15 @@ Definition ltac (t : string) (args : mlist dyn) : tactic := fun g =>
 
 Definition treduce (r : Reduction) : tactic := fun g=>
   match g with
-  | @Metavar Typeₛ T e=>
+  | Metavar Typeₛ T e=>
     let T' := reduce r T in
     e <- M.evar T';
-    mif M.cumul UniEvarconv g (@Metavar Typeₛ T e) then M.ret [m:(m: tt, @AnyMetavar Typeₛ _ e)]
+    mif M.cumul UniEvarconv g (Metavar Typeₛ T e) then M.ret [m:(m: tt, AnyMetavar Typeₛ _ e)]
     else M.failwith "treduce"
-  | @Metavar Propₛ T e=>
+  | Metavar Propₛ T e=>
     let T' := reduce r T in
     e <- M.evar T';
-    mif M.cumul UniEvarconv g (@Metavar Propₛ T e) then M.ret [m:(m: tt, @AnyMetavar Propₛ _ e)]
+    mif M.cumul UniEvarconv g (Metavar Propₛ T e) then M.ret [m:(m: tt, AnyMetavar Propₛ _ e)]
     else M.failwith "treduce"
   end.
 
@@ -151,7 +151,7 @@ Definition abstract_from_term_dep {A} {B} (x:A) (y:B) (D : B -> Type)
   mtry
     '(m: _, gs) <- M.call_ltac Propₛ (A:=wrapper y) "Mssrpattern" [m:Dyn x];
     mmatch gs with
-    | [? y (f:A->B) t] [m: @AnyMetavar Propₛ (let z := y in wrapper (f z)) t] =u>
+    | [? y (f:A->B) t] [m: AnyMetavar Propₛ (let z := y in wrapper (f z)) t] =u>
       M.raise (@Backtrack A B y f) (* nasty HACK: we backtract so as not to get evars
       floating: we only care about the term! (which should be well typed in the
       right sigma) *)
@@ -207,7 +207,7 @@ Definition rep_hyp {A B C} (x : A) (e : A =m= B) (l: mlist (C *m goal gs_any)) :
 (** Returns if a goal is open, i.e., a meta-variable. *)
 Definition is_open : forall {gs}, goal gs -> M bool := mfix2 is_open (gs : _) (g : goal gs) : M _ :=
   match g with
-  | Metavar _ e | AnyMetavar _ e => M.is_evar e
+  | Metavar _ _ e | AnyMetavar _ _ e => M.is_evar e
   | @AHyp C f =>
     (* we get the name in order to avoid inserting existing names
       (nu will raise an exception otherwise) *)
@@ -230,7 +230,7 @@ Definition filter_goals {A} : mlist (A *m goal gs_any) -> M (mlist (A *m goal gs
 Definition open_and_apply {A} (t : gtactic A) : goal gs_any -> M (mlist (A *m goal gs_any)) :=
   mfix1 open (g: goal gs_any) : M _ :=
     match g return M _ with
-    | Metavar _ g | AnyMetavar _ g => t (@Metavar _ _ g)
+    | Metavar _ _ g | AnyMetavar _ _ g => t (Metavar _ _ g)
     | @AHyp C f =>
       M.nu (FreshFrom f) mNone (fun x : C =>
         open (f x) >>= close_goals x)
@@ -308,10 +308,10 @@ Fixpoint match_goal_pattern' {B}
     else M.raise DoesNotMatchGoal
   | gbase_context x t, _ =>
     match g with
-    | @Metavar Propₛ gT _ =>
+    | Metavar Propₛ gT _ =>
       (fun (A : Prop) =>
       match_goal_context Propₛ x A t g) gT
-    | @Metavar Typeₛ gT _ =>
+    | Metavar Typeₛ gT _ =>
       (fun (A : Type) =>
       match_goal_context Typeₛ x A t g) gT
     end

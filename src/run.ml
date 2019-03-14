@@ -70,8 +70,12 @@ module Goal = struct
     let sigma, gs = if base then mkgs_base sigma env else mkgs_any sigma env in
     let sigma, t = mkUConstr "Goals.goal" sigma env in
     (sigma, mkApp (t, [|gs|]))
-  let mkMetavar = mkUConstr "Goals.Metavar"
-  let mkAnyMetavar = mkUConstr "Goals.AnyMetavar"
+  let mkMetavar' gs sigma env =
+    let sigma, gsopen = gs sigma env in
+    let sigma, mvar = mkUConstr "Goals.Metavar'" sigma env in
+    (sigma, mkApp (mvar, [|gsopen|]))
+  let mkMetavar = mkMetavar' mkgs_base
+  let mkAnyMetavar = mkMetavar' mkgs_any
   let mkAHyp = mkUConstr "Goals.AHyp"
   let mkHypLet = mkUConstr "Goals.HypLet"
   let mkHypRemove = mkUConstr "Goals.HypRem"
@@ -119,29 +123,29 @@ module Goal = struct
       let (c, args) = decompose_appvect sigma goal in
       if isConstruct sigma c then
         match get_constructor_pos sigma c with
-        | 0 | 1 -> (* AGoal *)
-            let evar = whd_evar sigma args.(2) in
+        | 0 -> (* Metavar' *)
+            let evar = whd_evar sigma args.(3) in
             if isEvar sigma evar then
               Some (fst (destEvar sigma evar))
             else (* it is defined *)
               None
-        | 2 -> (* AHyp *)
+        | 1 -> (* AHyp *)
             let func = args.(1) in
             if isLambda sigma func then
               let (_, _, body) = destLambda sigma func in
               eog body
             else
               None
-        | 3 -> (* HypLet *)
+        | 2 -> (* HypLet *)
             let goal = args.(1) in
             if isLetIn sigma goal then
               let (_, _, _, body) = destLetIn sigma goal in
               eog body
             else
               None
-        | 4 -> (* RemHyp *)
+        | 3 -> (* RemHyp *)
             eog args.(2)
-        | 5 -> (* HypReplace *)
+        | 4 -> (* HypReplace *)
             eog args.(4)
         | _ -> failwith "Should not happen"
       else
