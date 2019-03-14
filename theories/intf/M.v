@@ -854,7 +854,7 @@ Definition is_prop_or_type (d : dyn) : t bool :=
 (** [goal_type g] extracts the type of the goal. *)
 Definition goal_type (g : goal gs_open) : t Type :=
   match g with
-  | @Metavar s A x =>
+  | Metavar s A x =>
     match s as s return stype_of s -> t Type with
       | Propₛ => fun A => ret (A:Type)
       | Typeₛ => fun A => ret A end A
@@ -864,7 +864,7 @@ Definition goal_type (g : goal gs_open) : t Type :=
 can't be cast to a Prop. *)
 Definition goal_prop (g : goal gs_open) : t Prop :=
   match g with
-  | @Metavar s A _ =>
+  | Metavar s A _ =>
     match s as s return forall A:stype_of s, t Prop with
       | Propₛ => fun A:Prop => ret A
       | Typeₛ => fun A:Type =>
@@ -879,13 +879,13 @@ Definition goal_prop (g : goal gs_open) : t Prop :=
 (** Convertion functions from [dyn] to [goal]. *)
 Definition dyn_to_goal (d : dyn) : t (goal gs_open) :=
   mmatch d with
-  | [? (A:Prop) x] @Dyn A x => ret (@Metavar Propₛ A x)
-  | [? (A:Type) x] @Dyn A x => ret (@Metavar Typeₛ A x)
+  | [? (A:Prop) x] @Dyn A x => ret (Metavar Propₛ A x)
+  | [? (A:Type) x] @Dyn A x => ret (Metavar Typeₛ A x)
   end.
 
 Definition goal_to_dyn (g : goal gs_open) : t dyn :=
   match g with
-  | Metavar _ d => ret (Dyn d)
+  | Metavar _ _ d => ret (Dyn d)
   end.
 
 Definition cprint {A} (s : string) (c : A) : t unit :=
@@ -917,7 +917,7 @@ Definition print_goal (g : goal gs_open) : t unit :=
     | S n => repeat (c++s)%string n
     end) ""%string in
   sg <- match g with
-        | @Metavar _ G _ => pretty_print G
+        | Metavar _ G _ => pretty_print G
         end;
   let sep := repeat "="%string 20 in
   print_hyps;;
