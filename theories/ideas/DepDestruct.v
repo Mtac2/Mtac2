@@ -390,7 +390,7 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
                         fun ct =>
                            (selem_of (branch_of_CTele rt ct))
                                        ) cts) in
-          goals <- M.map (fun ty=> r <- M.evar ty; M.ret (Metavar Typeₛ r)) sg; (*FIX: Typeₛ is not right *)
+          goals <- M.map (fun ty=> r <- M.evar ty; M.ret (Metavar Typeₛ _ r)) sg; (*FIX: Typeₛ is not right *)
           branches <- M.map M.goal_to_dyn goals;
           let tsg := reduce RedHNF (type_of sg) in (*FIX: these reductions should be smarter *)
           let rrf := reduce RedSimpl (RTele_Fun rt) in
@@ -402,9 +402,9 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
                        case_return := Dyn rrf;
                        case_branches := branches
                      |};
-          (let '(Metavar s ge) := g in
+          (let '(Metavar s _ ge) := g in
             M.unify_or_fail UniCoq caseterm (Dyn ge);;
             M.ret tt
           );;
-          let goals' := dreduce (@mmap) (mmap (A:=goal gs_open) (fun '(Metavar _ g) => mpair tt (AnyMetavar _ g)) goals) in
+          let goals' := dreduce (@mmap) (mmap (A:=goal gs_open) (fun '(Metavar _ _ g) => mpair tt (AnyMetavar _ _ g)) goals) in
           M.ret goals'.

@@ -19,7 +19,7 @@ Definition simple_rewrite A {x y : A} (p : x = y) : tactic := fun g=>
   | mSome r =>
     newG <- evar (r y);
     T.exact (eq_rect y _ newG x (eq_sym p)) g;;
-    ret [m: (m: tt, AnyMetavar Typeₛ newG)]
+    ret [m: (m: tt, AnyMetavar Typeₛ _ newG)]
   | mNone => M.raise SimpleRewriteNoOccurrence
   end.
 
