@@ -9,6 +9,7 @@ open List
 open Pp
 open Environ
 open Evd
+open Context
 open EConstr
 open Termops
 open Reductionops
@@ -95,14 +96,15 @@ module Goal = struct
   let mkAHypOrDef (name, odef, ty) body sigma env =
     (* we are going to wrap the body in a function, so we need to lift
        the indices. we also replace the name with index 1 *)
-    let body = replace_term sigma (mkVar name) (mkRel 1) (Vars.lift 1 body) in
+    let body = replace_term sigma (mkVar name.binder_name) (mkRel 1) (Vars.lift 1 body) in
+    let name = map_annot Names.Name.mk_name name in
     match odef with
     | None ->
         let sigma, ahyp = mkAHyp sigma env in
-        sigma, mkApp (ahyp, [|ty; mkLambda(Name name,ty,body)|])
+        sigma, mkApp (ahyp, [|ty; mkLambda(name,ty,body)|])
     | Some def ->
         let sigma, hyplet = mkHypLet sigma env in
-        sigma, mkApp (hyplet, [|ty; mkLetIn(Name name,def,ty,body)|])
+        sigma, mkApp (hyplet, [|ty; mkLetIn(name,def,ty,body)|])
 
   let make_replace env (sigma: evar_map) oldtype newtype id goal =
     let var = mkVar id in
@@ -500,10 +502,10 @@ module MNames = struct
   (* let mkFreshFrom = Constr.mkConstr "Mtac2.M.FreshFrom" *)
   (* let mkGenerate = Constr.mkConstr "Mtac2.M.Generate" *)
 
-  let get_name_base (env, sigma) (t: constr) : Names.Name.t option =
+  let get_name_base (env, sigma) (t: constr) =
     (* If t is a defined variable it is reducing it *)
     let t = EConstr.of_constr (RE.whd_all_novars env sigma (of_econstr t)) in
-    if isVar sigma t then Some (Name (destVar sigma t))
+    if isVar sigma t then Some (nameR (destVar sigma t))
     else if isLambda sigma t then
       let (n, _, _) = destLambda sigma t in Some n
     else if isProd sigma t then
@@ -515,7 +517,7 @@ module MNames = struct
   let get_name (env, sigma as ctx) (t: constr) : constr option =
     let name = get_name_base ctx t in
     match name with
-    | Some (Name i) -> Some (CoqString.to_coq (Names.Id.to_string i))
+    | Some {binder_name=Name i} -> Some (CoqString.to_coq (Names.Id.to_string i))
     | Some _ -> (* it is Anonymous. We generate a fresh name. *)
         let n = Namegen.next_name_away (Name (Names.Id.of_string "x")) (vars_of_env env) in
         Some (CoqString.to_coq (Names.Id.to_string n))
@@ -537,8 +539,8 @@ module MNames = struct
           let name = get_name_base ctx args.(1) in
           let name =
             match name with
-            | Some (Name i) -> Names.Id.to_string i
-            | Some Anonymous -> "ann"
+            | Some {binder_name=Name i} -> Names.Id.to_string i
+            | Some {binder_name=Anonymous} -> "ann"
             | None -> "x"
           in
           let name = next_name_away (Names.Id.of_string name) env in
@@ -616,7 +618,8 @@ let make_Case (env, sigma) case =
   if isInd sigma t_type then
     match kind sigma t_type with
     | Ind ((mind, ind_i), _) ->
-        let case_info = Inductiveops.make_case_info env (mind, ind_i) LetPatternStyle in
+        let rci = Sorts.Relevant in
+        let case_info = Inductiveops.make_case_info env (mind, ind_i) rci LetPatternStyle in
         let match_term = EConstr.mkCase (case_info, repr_return, repr_val,
                                          (Array.of_list repr_branches)) in
         let match_type = Retyping.get_type_of env sigma match_term in
@@ -719,7 +722,7 @@ let depends_on env sigma x =
   fold_outside (fun v deps->
     let (n, ot, ty) = Declaration.to_tuple v in
     if name_depends_on sigma deps ty ot then
-      Id.Set.add n deps
+      Id.Set.add n.binder_name deps
     else
       deps) env ~init:deps
 
@@ -778,7 +781,7 @@ let new_env (env, sigma) hyps =
          be defined in the named context *)
       if check_vars sigma odef ty idset then
         let id = destVar sigma var in
-        (id::idlist, Id.Set.add id idset, subs, push_named (Context.Named.Declaration.of_tuple (id, odef, ty)) env')
+        (id::idlist, Id.Set.add id idset, subs, push_named (Context.Named.Declaration.of_tuple (annotR id, odef, ty)) env')
       else
         raise MissingDep
     ) hyps ([], Id.Set.empty, [], empty_env)
@@ -802,7 +805,7 @@ let hash env sigma c size =
 (* reflects the hypotheses in [env] in a list of [ahyp] *)
 let build_hypotheses sigma env =
   let open Context.Named.Declaration in
-  let renv = List.map (fun v->let (n, t, ty) = to_tuple v in (mkVar n, t, ty))
+  let renv = List.map (fun v->let (n, t, ty) = to_tuple v in (mkVar n.binder_name, t, ty))
                (named_context env) in
   (* the list is reversed: [H : x > 0, x : nat] *)
   (* Pre-generate all constructors and types. We only need a total of two
@@ -1031,13 +1034,13 @@ let declare_mind env sigma params sigs mut_constrs =
   *)
   let n_params, mind_entry_params, _, params =
     mTele_fold_left sigma env (fun (n, acc, vars, params) (name, typeX) ->
-      let id = match name with
+      let id = match name.binder_name with
         | Anonymous -> Namegen.next_name_away (Name (Id.of_string "")) vars
         | Name id -> id
       in
       let vars = Id.Set.add id vars in
       let params = (name, typeX):: params in
-      (n+1, (Context.Rel.Declaration.LocalAssum (Name id, EConstr.to_constr sigma typeX))::acc, vars, params)
+      (n+1, (Context.Rel.Declaration.LocalAssum (nameR id, EConstr.to_constr sigma typeX))::acc, vars, params)
     ) (0, [], vars, []) params in
 
   let params_rev = params in
@@ -1070,7 +1073,7 @@ let declare_mind env sigma params sigs mut_constrs =
   ) sigs in
 
   let ind_env = List.fold_left (fun ind_env (name, _,_, _, ind_arity_full) ->
-    Environ.push_rel (Context.Rel.Declaration.LocalAssum (Name.Name name, EConstr.to_constr sigma ind_arity_full)) ind_env
+    Environ.push_rel (Context.Rel.Declaration.LocalAssum (nameR name, EConstr.to_constr sigma ind_arity_full)) ind_env
   ) env inds in
   let ind_env =
     List.fold_left (fun param_env (name, typeX) ->
@@ -1439,7 +1442,7 @@ let rec run' ctxt (vms : vm list) =
                               else
                                 begin
                                   let ot = CoqOption.from_coq sigma env (to_econstr ot) in
-                                  let env' = push_named (Context.Named.Declaration.of_tuple (name, ot, a)) env in
+                                  let env' = push_named (Context.Named.Declaration.of_tuple (annotR name, ot, a)) env in
                                   let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
                                   (run'[@tailcall]) {env=env'; renv=of_econstr renv'; sigma; nus=(ctxt.nus+1); stack=Zapp [|of_econstr (mkVar name)|] :: stack}
                                     (Code f :: Nu (name, env, ctxt.renv) :: vms)
@@ -1467,7 +1470,7 @@ let rec run' ctxt (vms : vm list) =
                                   if not eqtypes then
                                     efail (Exceptions.mkNotTheSameType sigma env ta)
                                   else
-                                    let env' = push_named (Context.Named.Declaration.of_tuple (name, Some d, dty)) env in
+                                    let env' = push_named (Context.Named.Declaration.of_tuple (annotR name, Some d, dty)) env in
                                     let var = mkVar name in
                                     let body = Vars.subst1 var body in
                                     let (sigma, renv') = Hypotheses.cons_hyp dty var (Some d) (to_econstr ctxt.renv) sigma env in
@@ -1602,12 +1605,12 @@ let rec run' ctxt (vms : vm list) =
 
                     | MConstr (Munify_univ, (x, y, uni)) ->
                         let x, y, uni = to_econstr x, to_econstr y, to_econstr uni in
-                        let fT = mkProd(Name.Anonymous, x, y) in
+                        let fT = mkProd(anonR, x, y) in
                         begin
                           let r = UnificationStrategy.unify None sigma env uni Reduction.CUMUL x y in
                           match r with
                           | Evarsolve.Success sigma, _ ->
-                              let id = mkLambda(Name.Anonymous,x,mkRel 1) in
+                              let id = mkLambda(anonR,x,mkRel 1) in
                               let sigma, some = CoqOption.mkSome sigma env fT id in
                               ereturn sigma some
                           | _, _ ->
@@ -1933,10 +1936,10 @@ and abs vms case ctxt a p x y n t : data_stack =
       let y' = Vars.subst_vars [name] y in
       let t =
         match case with
-        | AbsProd -> mkProd (Name name, a, y')
-        | AbsFun -> mkLambda (Name name, a, y')
-        | AbsLet -> mkLetIn (Name name, t, a, y')
-        | AbsFix -> mkFix (([|n-1|], 0), ([|Name name|], [|a|], [|y'|]))
+        | AbsProd -> mkProd (nameR name, a, y')
+        | AbsFun -> mkLambda (nameR name, a, y')
+        | AbsLet -> mkLetIn (nameR name, t, a, y')
+        | AbsFix -> mkFix (([|n-1|], 0), ([|nameR name|], [|a|], [|y'|]))
       in
       (run'[@tailcall]) ctxt (Ret (of_econstr t) :: vms)
     else
@@ -2000,14 +2003,15 @@ let db_to_named sigma env =
     let odef = Option.map (multi_subst sigma subs) odef in
     let ty = multi_subst sigma subs ty in
     (* since the name can be Anonymous, we need to generate a name *)
-    let id =
-      match name with
+    let id = map_annot (function
       | Anonymous ->
           Id.of_string ("_MC" ^ string_of_int n)
       | Name n ->
-          Namegen.next_name_away name vars in
+          Namegen.next_ident_away n vars)
+      name
+    in
     let nvar = Named.Declaration.of_tuple (id, odef, ty) in
-    Id.Set.add id vars, (n, mkVar id) :: subs, push_named nvar env'
+    Id.Set.add id.binder_name vars, (n, mkVar id.binder_name) :: subs, push_named nvar env'
   ) 1 (rel_context env) (vars, [], env') in
   subs, env
 
