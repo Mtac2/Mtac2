@@ -5,6 +5,7 @@ open Ltac_plugin
 open MetaCoqInterp
 open Stdarg
 open Pcoq.Constr
+open Extraargs
 
 DECLARE PLUGIN "MetaCoqPlugin"
 
@@ -33,7 +34,7 @@ TACTIC EXTEND mrun
 END
 
 VERNAC COMMAND EXTEND MtacDo CLASSIFIED AS SIDEFF
-  | [ "Mtac" "Do" uconstr(c) ] -> [
+  | [ "Mtac" "Do" lconstr(c) ] -> [
       MetaCoqRun.run_cmd c
   ]
 END
