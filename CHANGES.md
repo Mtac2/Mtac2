@@ -8,3 +8,8 @@ Notation:
   apostrophe `'`. For example, `'(existT _ x P) <- some_function(); ..` is now
   legal. Previously, one had to write `''(existT _ x P) <- some_function(); ..`.
   This old syntax is no longer available.
+
+
+Vernacular:
+
+- `Mtac Do` now accepts its argument without parentheses.

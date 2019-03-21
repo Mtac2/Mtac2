@@ -5,6 +5,9 @@ Import M.notations.
 (* dumb test *)
 Mtac Do (ret tt).
 
+(* Test without parentheses. *)
+Mtac Do ret tt.
+
 Mtac Do (print_term tt).
 
 (* open terms are OK *)
