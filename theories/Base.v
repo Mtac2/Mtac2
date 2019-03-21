@@ -42,7 +42,6 @@ Definition binder_exception (f: unit->unit) := M.get_binder_name f >>= new_excep
 Notation "'New' 'Exception' n" := (binder_exception (fun n=>n)) (at level 0, n at next level).
 
 Definition Check {A} (x:A) := M.print_term A.
-Notation "'Check' n" := (Check n) (at level 0).
 
 Definition Set_Debug_Exceptions := M.set_debug_exceptions true.
 Definition Unset_Debug_Exceptions := M.set_debug_exceptions false.
