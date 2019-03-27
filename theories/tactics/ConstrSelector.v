@@ -45,7 +45,7 @@ Definition index {A} (c: A) : M _ :=
     end)%MC 0 l.
 
 Definition snth_index {A:Type} (c:A) (t:tactic) : T.selector unit := fun l =>
-  (i <- index c; S.nth i t l)%MC.
+  (i <- index c; S.nth i (fun _=>t) l)%MC.
 
 Notation "'case' c 'do' t" := (snth_index c t) (at level 40).
 Import M.notations.

@@ -352,21 +352,21 @@ Instance tactic_selector A : Seq A A (selector A) := fun t s g =>
   t g >>= filter_goals >>= s.
 
 Module S.
-  Definition nth {A} (n : nat) (t : gtactic A) : selector A := fun l =>
+  Definition nth {A} (n : nat) (f : A -> gtactic A) : selector A := fun l =>
     let (l1, l2) := dreduce (@nsplit) (nsplit n l) in
     match mhd_error l2 with
     | mNone => M.raise NoGoalsLeft
-    | mSome (m: _, g) =>
-      goals <- open_and_apply t g;
+    | mSome (m: x, g) =>
+      goals <- open_and_apply (f x) g;
       let res := dreduce (@mapp, @mtl) (l1 +m+ goals +m+ mtl l2) in
       filter_goals res
     end.
 
   Definition last {A} (t : gtactic A) : selector A := fun l =>
     let n := dreduce (pred, mlength) (pred (mlength l)) in
-    nth n t l.
+    nth n (fun _=>t) l.
 
-  Definition first {A} (t : gtactic A) : selector A := nth 0 t.
+  Definition first {A} (t : gtactic A) : selector A := nth 0 (fun _=>t).
 
   Definition rev {A} : selector A := fun l =>
     let res := dreduce (@mrev', @mrev_append, @mapp) (mrev' l) in M.ret res.
@@ -505,22 +505,22 @@ Module notations.
     (seq t1 ts) (at level 41, left associativity) : tactic_scope.
 
   Notation "t1 '|1>' t2" :=
-    (t1 &> S.nth 0 t2)
+    (t1 &> S.nth 0 (fun _=>t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|2>' t2" :=
-    (t1 &> S.nth 1 t2)
+    (t1 &> S.nth 1 (fun _=>t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|3>' t2" :=
-    (t1 &> S.nth 2 t2)
+    (t1 &> S.nth 2 (fun _=>t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|4>' t2" :=
-    (t1 &> S.nth 3 t2)
+    (t1 &> S.nth 3 (fun _=>t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|5>' t2" :=
-    (t1 &> S.nth 4 t2)
+    (t1 &> S.nth 4 (fun _=>t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|6>' t2" :=
-    (t1 &> S.nth 5 t2)
+    (t1 &> S.nth 5 (fun _=>t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
 
   Notation "t1 'l>' t2" :=
