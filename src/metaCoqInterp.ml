@@ -216,11 +216,11 @@ let interp_mproof_command () = ()
 let interp_instr = function
   | MetaCoqInstr.MetaCoq_constr c -> MetaCoqRun.run_tac c
 
-let exec ~pstate f =
-  fst @@ Pfedit.by (f ()) pstate
+let exec ~ontop f =
+  fst @@ Lemmas.by (f ()) ontop
 
 (** Interpreter of a constr :
     - Interpretes the constr
     - Unfocus on the current proof *)
-let interp_proof_constr ~pstate instr =
-  exec ~pstate (fun () -> interp_instr instr)
+let interp_proof_constr ~ontop instr =
+  exec ~ontop (fun () -> interp_instr instr)
