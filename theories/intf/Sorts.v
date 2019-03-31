@@ -6,14 +6,14 @@ Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
 
 
-Reserved Notation "Typeₛ".
-Reserved Notation "Propₛ".
+Reserved Notation "'Typeₛ'".
+Reserved Notation "'Propₛ'".
 Module S.
 
 Monomorphic Inductive Sort : Type := Prop_sort | Type_sort.
 
-Notation "Typeₛ" := Type_sort.
-Notation "Propₛ" := Prop_sort.
+Notation "'Typeₛ'" := Type_sort.
+Notation "'Propₛ'" := Prop_sort.
 
 (** Creates a fresh type according to [s] *)
 Definition stype_of (s : Sort) : Type :=
@@ -87,9 +87,9 @@ End S.
 Import S.
 
 Delimit Scope Sort_scope with sort.
-Notation "Typeₛ" := Type_sort.
-Notation "Propₛ" := Prop_sort.
-Notation "forallₛ  x .. y ,  T" :=
+Notation "'Typeₛ'" := Type_sort.
+Notation "'Propₛ'" := Prop_sort.
+Notation "'forallₛ'  x .. y ,  T" :=
   (ForAll (fun x => .. (fun y => T) ..))
     (at level 200, x binder, y binder) : Sort_scope.
 Notation "∀ₛ  x .. y ,  T" :=
@@ -98,10 +98,10 @@ Notation "∀ₛ  x .. y ,  T" :=
 Notation "S ->ₛ T" :=
   (∀ₛ _ : S, T)%sort
     (at level 200) : Sort_scope.
-Notation "funₛ  x .. y =>  t" :=
+Notation "'funₛ'  x .. y =>  t" :=
   (Fun (fun x => .. (fun y => t) ..))
     (at level 200, x binder, y binder) : Sort_scope.
-Notation "λₛ  x .. y ,  t" :=
+Notation "'λₛ'  x .. y ,  t" :=
   (Fun (fun x => .. (fun y => t) ..))
     (at level 200, x binder, y binder) : Sort_scope.
 
