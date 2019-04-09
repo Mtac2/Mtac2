@@ -876,7 +876,7 @@ let run_declare_def env sigma kind name opaque ty bod =
     | Coercion -> Some (Class.add_coercion_hook p)
     | CanonicalStructure ->
         if opaque then raise CanonicalStructureMayNotBeOpaque else
-          Some (Lemmas.mk_hook (fun _ _ _ -> Recordops.declare_canonical_structure))
+          Some (Lemmas.mk_hook (fun _ _ _ -> Canonical.declare_canonical_structure))
     | SubClass -> Some (Class.add_subclass_hook p)
     (* | Instance -> Lemmas.mk_hook (fun local gr -> *)
     (*   let local = match local with | Global -> false | Local -> true | _ -> raise DischargeLocality in *)
