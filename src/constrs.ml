@@ -20,7 +20,7 @@ module Constrs = struct
   let mkConstr_of_global gr =
     let gr = Lazy.force gr in
     try of_constr @@
-      UnivGen.constr_of_global gr
+      UnivGen.constr_of_monomorphic_global gr
     with Not_found -> raise (Constr_not_found (glob_to_string gr))
        | Invalid_argument _ -> raise (Constr_poly (glob_to_string gr))
 
@@ -50,7 +50,7 @@ end
 module ConstrBuilder = struct
   open Constrs
 
-  type t = Globnames.global_reference Lazy.t
+  type t = Names.GlobRef.t Lazy.t
 
   let from_string (s:string) : t = lazy (Nametab.global_of_path (Libnames.path_of_string s))
 
@@ -67,7 +67,7 @@ end
 module UConstrBuilder = struct
   open Constrs
 
-  type t = Globnames.global_reference Lazy.t
+  type t = Names.GlobRef.t Lazy.t
 
   let from_string (s:string) : t = lazy (Nametab.global_of_path (Libnames.path_of_string s))
 
@@ -147,9 +147,9 @@ module GenericList (LP : ListParams) = struct
   exception Skip
   exception NotAList of constr
   (* given a list of terms and a convertion function fconv
-      it creates a list of elements using the converstion function.
-      if fconv raises Skip, that element is not included.
-      if the list is ill-formed, an exception NotAList is raised. *)
+     it creates a list of elements using the converstion function.
+     if fconv raises Skip, that element is not included.
+     if the list is ill-formed, an exception NotAList is raised. *)
   let from_coq_conv sigma env (fconv : Evd.evar_map -> constr -> Evd.evar_map * 'a) cterm =
     let rec fcc sigma cterm =
       match from_coq consBuilder (env, sigma) cterm with

@@ -10,19 +10,15 @@ open Pp
 open Environ
 open Evd
 open Context
+open Constr
 open EConstr
 open Termops
 open Reductionops
 open Names
 open Util
 open Evarconv
-
 open Constrs
-
 open CClosure
-
-(* warning 40 is about picking a constructor name from a module that is not in scope *)
-[@@@ocaml.warning "-40"]
 
 let get_ts env = Conv_oracle.get_transp_state (Environ.oracle env)
 
@@ -912,7 +908,7 @@ let run_declare_def env sigma kind name opaque ty bod =
   let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, ctx) in
   let gr = Globnames.ConstRef kn in
   let () = Lemmas.call_hook ~fix_exn ?hook:(vernac_definition_hook false kind) uctx [] Global gr  in
-  let c = (UnivGen.constr_of_global gr) in
+  let c = UnivGen.constr_of_monomorphic_global gr in
   let env = Global.env () in
   (* Feedback.msg_notice *)
   (*   (Termops.print_constr_env env c); *)
@@ -1060,6 +1056,7 @@ let declare_mind env sigma params sigs mut_constrs =
       (* print_constr sigma env ind_sig; *)
       let (ind_tele, ind_ty) = CoqSigT.from_coq sigma env (strip_lambdas sigma ind_sig  n_params) in
       let sigma, n_ind_args, ind_arity = mTele_to_foralls sigma env ind_tele ind_ty (fun sigma _ t ->
+        let open CoqSort in
         match CoqSort.from_coq sigma env t with
         | Prop_sort -> sigma, mkProp
         | Type_sort ->
@@ -1435,6 +1432,7 @@ let rec run' ctxt (vms : vm list) =
                         let s = to_econstr s in
                         (* print_constr sigma env s; *)
                         begin
+                          let open MNames in
                           match MNames.get_from_name (env, sigma) s with
                           | AName (fresh, name) ->
                               if (not fresh) && (Id.Set.mem name (vars_of_env env)) then
@@ -1454,6 +1452,7 @@ let rec run' ctxt (vms : vm list) =
                     | MConstr (Mnu_let, (ta, tb, tc, s, c, f)) ->
                         let s = to_econstr s in
                         begin
+                          let open MNames in
                           match MNames.get_from_name (env, sigma) s with
                           | AName (fresh, name) ->
                               let c = to_econstr c in
@@ -1465,8 +1464,8 @@ let rec run' ctxt (vms : vm list) =
                                 begin
                                   let ta = to_econstr ta in
                                   let (_, d, dty, body) = destLetIn sigma c in
-                                  let eqaty = Unicoq.Munify.unify_evar_conv TransparentState.full env sigma CONV ta dty in
-                                  let eqtypes = match eqaty with Success _ -> true | _ -> false in
+                                  let eqaty = Unicoq.Munify.unify_evar_conv TransparentState.full env sigma Reduction.CONV ta dty in
+                                  let eqtypes = match eqaty with Evarsolve.Success _ -> true | _ -> false in
                                   if not eqtypes then
                                     efail (Exceptions.mkNotTheSameType sigma env ta)
                                   else
@@ -1763,8 +1762,8 @@ let rec run' ctxt (vms : vm list) =
                                     let (unires, _) = UnificationStrategy.unify None sigma env uni Reduction.CONV (to_econstr t_h) c_h in
                                     begin
                                       match unires with
-                                      | Success (sigma) -> traverse sigma t_args c_args
-                                      | UnifFailure _ ->
+                                      | Evarsolve.Success (sigma) -> traverse sigma t_args c_args
+                                      | Evarsolve.UnifFailure _ ->
                                           (* efail (E.mkWrongTerm sigma env c_head) *)
                                           fail ()
                                     end
