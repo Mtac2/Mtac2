@@ -1,2 +1,3 @@
-(lang dune 1.4)
-(name mtac2)
+(lang dune 1.9)
+(using coq 0.1)
+(name coq-mtac2)
