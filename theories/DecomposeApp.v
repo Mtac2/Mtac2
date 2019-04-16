@@ -81,13 +81,14 @@ Notation "'<[decapp' a 'with' b ]>" :=
   (at level 0, a at next level, b at next level) : M_scope.
 
 
-Local Definition mtele_convert' {A : Type} {B : A -> Prop} {G : Type} {mt} {C : MTele_ConstT A mt} :
+Local Definition mtele_convert' {A : Type} {B : A -> Prop} {G : Type} {mt:MTele} {C : MTele_ConstT A mt} :
   MTele_sort (MTele_ConstMap (si:=Typeₛ) Propₛ (fun a => G -> B a) C)
   -> (G -> MTele_sort (MTele_ConstMap (si:=Typeₛ) Propₛ B C)).
 induction mt as [|X F IHmt].
 - cbn. refine (fun x => x).
 - cbn. intros ? ? ?.
   refine (IHmt _ _ _ _); auto.
+  apply X0.
 Defined.
 
 Definition decompose_app_tactic {m : MTele} {A : Type} {B : A -> Type} {C : MTele_ConstT A m} {T: Type} (a : A) (t : T) :

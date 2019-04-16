@@ -145,12 +145,12 @@ Polymorphic Class RET_TY (A : Type) := Ret_Ty { ret_ty : A }.
 Arguments Ret_Ty [_] _.
 Arguments ret_ty [_ _].
 
-Notation "[¿ s .. t ] ps" := (mtpsort (m:=mty_of) (fun s => .. (mtpsort (m:=mty_of) (fun t => ps)) ..))
+Notation "[¿ s .. t ] ps" := (mtpsort (M:=mty_of) (fun s => .. (mtpsort (M:=mty_of) (fun t => ps)) ..))
   (at level 202, s binder, t binder, ps at next level, only parsing) : mtpattern_scope.
-Notation "'[S?' s .. t ] ps" := (mtpsort (m:=mty_of) (fun s => .. (mtpsort (m:=mty_of) (fun t => ps)) ..))
+Notation "'[S?' s .. t ] ps" := (mtpsort (M:=mty_of) (fun s => .. (mtpsort (M:=mty_of) (fun t => ps)) ..))
   (at level 202, s binder, t binder, ps at next level) : mtpattern_scope.
 
-Notation "[? x .. y ] ps" := (mtptele (m:=mty_of) (fun x => .. (mtptele (m:=mty_of) (fun y => ps)).. ))
+Notation "[? x .. y ] ps" := (mtptele (M:=mty_of) (fun x => .. (mtptele (M:=mty_of) (fun y => ps)).. ))
   (at level 202, x binder, y binder, ps at next level) : mtpattern_scope.
 
 Notation "d '=u>' t" := (mtpbase_eq (m:=mty_of) d ret_ty cs_unify t UniCoq)
@@ -162,7 +162,7 @@ Notation "d '=n>' t" := (mtpbase_eq (m:=mty_of) d ret_ty cs_unify t UniMatchNoRe
 Notation "d '=m>' t" := (mtpbase_eq (m:=mty_of) d ret_ty cs_unify t UniMatch)
     (at level 201) : mtpattern_scope.
 
-Notation "'_' => b " := (mtptele (m:=mty_of) (fun x=> mtpbase_eq (m:=mty_of) x ret_ty cs_unify b%core UniMatch))
+Notation "'_' => b " := (mtptele (M:=mty_of) (fun x=> mtpbase_eq (m:=mty_of) x ret_ty cs_unify b%core UniMatch))
   (at level 201, b at next level) : mtpattern_scope.
 
 
