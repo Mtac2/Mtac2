@@ -1,3 +1,4 @@
+open Constr
 open EConstr
 open Termops
 

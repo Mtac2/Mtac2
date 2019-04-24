@@ -225,7 +225,7 @@ module Exceptions = struct
 
   let mkNotAVar = mkDebugEx "NotAVar"
 
-  let mkNotAForall = mkDebugEx "NotAForall"
+  let _mkNotAForall = mkDebugEx "NotAForall"
 
   let mkNotAnApplication = mkDebugEx "NotAnApplication"
 
@@ -959,19 +959,19 @@ let run_declare_implicits env sigma gr impls =
   (sigma, CoqUnit.mkTT)
 
 
-let rec below_lambdas sigma t f = function
+let rec _below_lambdas sigma t f = function
   | 0 -> f t
   | k when k > 0 ->
       let n, typeT, t = destLambda sigma t in
-      let t = below_lambdas sigma t f (k - 1) in
+      let t = _below_lambdas sigma t f (k - 1) in
       mkLambda (n, typeT, t)
   | _ -> raise (Failure "below_lambdas must not be called with negative values.")
 
-let rec below_prods sigma t f = function
+let rec _below_prods sigma t f = function
   | 0 -> f t
   | k when k > 0 ->
       let n, typeT, t = destProd sigma t in
-      let t = below_prods sigma t f (k-1) in
+      let t = _below_prods sigma t f (k-1) in
       mkProd (n, typeT, t)
   | _ -> raise (Failure "below_lambdas must not be called with negative values.")
 
@@ -997,12 +997,12 @@ let rec mTele_fold_left sigma env f acc t  =
       let acc = f acc (name, typeX) in
       mTele_fold_left sigma env f acc t
 
-let rec mTele_fold_right sigma env f acc t  =
+let rec _mTele_fold_right sigma env f acc t  =
   match CoqMTele.from_coq sigma env t with
   | None -> acc
   | Some ((typeX,contF)) ->
       let (_,_,t') = destLambda sigma contF in
-      f t (mTele_fold_right sigma env f acc t')
+      f t (_mTele_fold_right sigma env f acc t')
 
 (* turns [[tele x .. z]] and [fun x .. z => T] into [forall x .. z, b(T)] *)
 let mTele_to_foralls sigma env tele funs b =
@@ -1046,7 +1046,7 @@ let declare_mind env sigma params sigs mut_constrs =
   let params_rev = params in
   let params = List.rev params in
 
-  let param_env =
+  let _param_env =
     List.fold_left (fun param_env (name, typeX) ->
       Environ.push_rel (Context.Rel.Declaration.LocalAssum (name, EConstr.to_constr sigma typeX)) param_env
     ) env params
@@ -1075,7 +1075,7 @@ let declare_mind env sigma params sigs mut_constrs =
   let ind_env = List.fold_left (fun ind_env (name, _,_, _, ind_arity_full) ->
     Environ.push_rel (Context.Rel.Declaration.LocalAssum (nameR name, EConstr.to_constr sigma ind_arity_full)) ind_env
   ) env inds in
-  let ind_env =
+  let _ind_env =
     List.fold_left (fun param_env (name, typeX) ->
       Environ.push_rel (Context.Rel.Declaration.LocalAssum (name, EConstr.to_constr sigma typeX)) param_env
     ) ind_env params
@@ -1316,7 +1316,7 @@ let rec run' ctxt (vms : vm list) =
         let fail (sigma, c) = (run'[@tailcall]) {ctxt with sigma} (Fail c :: vms) in
 
         (* wrappers for return and fail to conveniently return/fail with EConstrs *)
-        let ereturn ?new_env s fc = return ?new_env:new_env s (of_econstr fc) in
+        let _ereturn ?new_env s fc = return ?new_env:new_env s (of_econstr fc) in
         let efail (sigma, fc) = fail (sigma, of_econstr fc) in
 
         match fterm_of reduced_term with
@@ -2036,7 +2036,7 @@ let run (env0, sigma) t : data =
   let t = multi_subst sigma subs t in
   let t = CClosure.inject (EConstr.Unsafe.to_constr t) in
   let (sigma, renv) = build_hypotheses sigma env in
-  let evars ev = safe_evar_value sigma ev in
+  let _evars ev = safe_evar_value sigma ev in
   match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure.empty_stack} [Code t] with
   | Err (sigma', v, _) ->
       (* let v = Vars.replace_vars vsubs v in *)

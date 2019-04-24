@@ -149,8 +149,8 @@ let num_args_of_mconstr (type a) (mh : a mconstr_head) =
   | Mdeclare_mind -> 3
 
 
-let mkconstr s = lazy (let (_, c) = mkUConstr ("M.M." ^ s) Evd.empty (Global.env ()) in c)
-let isconstr c h = eq_constr_nounivs Evd.empty (Lazy.force c) h
+let _mkconstr s = lazy (let (_, c) = mkUConstr ("M.M." ^ s) Evd.empty (Global.env ()) in c)
+let _isconstr c h = eq_constr_nounivs Evd.empty (Lazy.force c) h
 let isconstant n h = Names.Constant.equal n h
 
 let constant_of_string s = constant_of_string ("M.M." ^ s)
