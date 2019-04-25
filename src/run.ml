@@ -456,9 +456,9 @@ module UnificationStrategy = struct
   open Evarsolve
 
   let funs = [|
-    (fun _-> Munify.unify_evar_conv);
-    Munify.unify_match;
-    Munify.unify_match_nored;
+    (fun _-> Unicoq.Munify.unify_evar_conv);
+    Unicoq.Munify.unify_match;
+    Unicoq.Munify.unify_match_nored;
     (fun _ ts env sigma conv_pb t1 t2->
        try
          match evar_conv_x (default_flags_of ts) env sigma conv_pb t1 t2 with
@@ -1465,7 +1465,7 @@ let rec run' ctxt (vms : vm list) =
                                 begin
                                   let ta = to_econstr ta in
                                   let (_, d, dty, body) = destLetIn sigma c in
-                                  let eqaty = Munify.unify_evar_conv TransparentState.full env sigma CONV ta dty in
+                                  let eqaty = Unicoq.Munify.unify_evar_conv TransparentState.full env sigma CONV ta dty in
                                   let eqtypes = match eqaty with Success _ -> true | _ -> false in
                                   if not eqtypes then
                                     efail (Exceptions.mkNotTheSameType sigma env ta)
@@ -2051,14 +2051,14 @@ let run (env0, sigma) t : data =
 (** set the run function in unicoq *)
 let _ =
   let lift_constr = ref None in
-  Munify.set_lift_constr (fun env sigma ->
+  Unicoq.Munify.set_lift_constr (fun env sigma ->
     match !lift_constr with
     | None ->
         let lc = snd (mkUConstr "Lift.lift" sigma env) in
         lift_constr := Some lc;
         sigma, lc
     | Some lc -> sigma, lc)
-let _ = Munify.set_run (fun env sigma t ->
+let _ = Unicoq.Munify.set_run (fun env sigma t ->
   match run (env, sigma) t with
   | Err _ -> None
   | Val c -> Some c)
