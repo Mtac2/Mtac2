@@ -9,6 +9,20 @@ env:
   matrix:
   - COQ_IMAGE="coqorg/coq:8.9"
 
+# As described on https://bors.tech/documentation/getting-started/ we need a
+# `staging` and a `trying` branch, both of which need to be CI-enabled.
+branches:
+  only:
+    # This is where pull requests from "bors r+" are built.
+    - staging
+    # This is where pull requests from "bors try" are built.
+    - trying
+    # Uncomment this to enable building pull requests.
+    # - master
+    # (Left commented out until we find that it would be useful to enable)
+    # We want to have CI for all master branches that target specific coq versions.
+    - /master-.*/
+
 install: |
   # Run the COQ container and display build metadata
   docker run -d -i --init --name=COQ -v ${TRAVIS_BUILD_DIR}:/home/coq/Mtac2 -w /home/coq/Mtac2 ${COQ_IMAGE}
