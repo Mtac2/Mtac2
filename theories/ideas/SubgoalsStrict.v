@@ -49,7 +49,7 @@ Import Datatypes.
 (** [max_apply t] applies theorem t to the current goal.
     It generates a subgoal for each non-dependent hypothesis in the theorem. *)
 Definition max_apply {T} (c : T) : tactic := fun g=>
-  match g with @Metavar SType gT eg =>
+  match g with Metavar Typeₛ gT eg =>
     (mfix1 go (d : dyn) : M (mlist (unit *m goal _)) :=
       (* let (_, el) := d in *)
       (* mif M.unify_cumul el eg UniCoq then M.ret [m:] else *)
@@ -57,7 +57,7 @@ Definition max_apply {T} (c : T) : tactic := fun g=>
         | [? T1 T2 f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
-          M.ret ((m: tt, AnyMetavar SType e) :m: r)
+          M.ret ((m: tt, AnyMetavar Typeₛ _ e) :m: r)
         | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
@@ -67,7 +67,7 @@ Definition max_apply {T} (c : T) : tactic := fun g=>
           dcase d as ty, el in
           M.raise (T.CantApply ty gT)
         end) (Dyn c)
-  | @Metavar SProp _ _ => M.failwith "It's a prop!"
+  | Metavar Propₛ _ _ => M.failwith "It's a prop!"
   end.
 
 Definition count_nondep_binders (T: Type) : M nat :=

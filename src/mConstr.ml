@@ -1,7 +1,7 @@
 open MtacNames
 open EConstr
 
-type arg = CClosure_copy.fconstr
+type arg = CClosure.fconstr
 
 type arg_any = arg
 type arg_type = arg

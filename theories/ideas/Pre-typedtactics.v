@@ -45,7 +45,7 @@ Local Fixpoint TTele_bind' {X : Prop} (x : X) {t} : (TTele_ty (fun T => msigT (f
   match t with
   | ttbase B => fun '(mexistT _ l f) => mexistT _ (X :m: l) (
                   H <- M.evar X;
-                  ''(goals, R) <- f H;
+                  '(goals, R) <- f H;
                   M.ret ((H,goals), R))
   | tttele F => fun f t =>
                   TTele_bind' x (f t)
@@ -65,7 +65,7 @@ Definition lift_lemma : forall (A : Prop), A ->
               (mtptele (fun B:Prop => mtptele (fun (C:Prop) => (mtpbase ( m:=fun A:Prop => A -> M _)) _ (
               fun (f : B -> C) =>
                 M.nu (FreshFrom A) mNone (fun b : B =>
-                               ''(mexistT _ t X) <- rec C (f b);
+                               '(mexistT _ t X) <- rec C (f b);
                                match t as t return tty t -> M (_) with
                                | tttele _ =>
                                  fun _ =>
@@ -84,7 +84,7 @@ Definition lift_lemma : forall (A : Prop), A ->
              (mtptele (fun B:Type => mtptele (fun (C:B -> Prop) => (mtpbase ( m:=fun A:Prop => A -> M _)) _ (
               fun (f : forall b:B, C b) =>
                 M.nu (FreshFrom A) mNone (fun b : B =>
-                               ''(mexistT _ t X) <- rec _ (f b);
+                               '(mexistT _ t X) <- rec _ (f b);
                                t' <- M.abs_fun b t;
                                X <- M.coerce X;
                                X' <- M.abs_fun (P:=fun b => tty (t' b)) b X;
@@ -116,7 +116,7 @@ match t with
 end.
 
 Definition do_def n {A:Prop} (a:A) :=
-  ''(mexistT _ t f) <- lift_lemma A (a);
+  '(mexistT _ t f) <- lift_lemma A (a);
   (* let f := reduce (RedStrong [rl: RedBeta; RedZeta; RedFix; RedMatch; RedDeltaOnly [rl: Dyn (@M.type_of); Dyn (@TTele_ty)] ]) (f) in *)
   let x := reduce (RedStrong [rl: RedFix; RedMatch; RedBeta; RedDeltaOnly [rl: Dyn (@TTele_app)]]) (TTele_app (fun T PT => let '(mexistT _ l _) := PT in M (l -*> T))
                                                 (fun T PT => let '(mexistT _ l X) := PT in
@@ -145,7 +145,7 @@ Notation "T1 '|m-' G" := (myprod T1 G)
 
 (** composes on the left of the arrow *)
 Definition compl {A} {B} (f: M (A |m- B)) (g : M A) : M B :=
-  ''(a, b) <- f;
+  '(a, b) <- f;
   a' <- g;
   mif unify a a' UniCoq then
     ret b
@@ -158,7 +158,7 @@ Definition compi {A} {B} (g : M A) (h : M B) : M (A * B) :=
 (** Solves goal A provided tactic t *)
 Definition Mby' {A} (t: tactic) : M A :=
   e <- evar A;
-  l <- t (Goal SType e);
+  l <- t (Goal Typeₛ e);
   l' <- T.filter_goals l;
   match l' with mnil => ret e | _ => failwith "couldn't solve" end.
 
@@ -169,14 +169,14 @@ Definition Muse {A} (t: tactic) : M A :=
     of <- unify_univ P A UniMatchNoRed;
     match of with
     | mSome f => e <- M.evar P;
-                 t (Goal SProp e);;
+                 t (Goal Propₛ e);;
                  let e := reduce (RedOneStep [rl: RedBeta]) (f e) in
                  ret e
     | mNone => raise NotAProp
     end
   with | NotAProp =>
     e <- evar A;
-    t (Goal SType e);;
+    t (Goal Typeₛ e);;
     ret e
   end.
 
@@ -195,10 +195,10 @@ Definition dest_pair {T} (x:T) : M (dyn * dyn) :=
 (*     it generates a goal for each unsolved variable in the pair. *)
 Program Definition to_goals : forall {A}, A -> M (mlist (unit *m goal)) :=
   mfix2 to_goals (A: Type) (a: A) : M _ :=
-  mif is_evar a then ret [m: (m: tt, Goal SType a)]
+  mif is_evar a then ret [m: (m: tt, Goal Typeₛ a)]
   else
     mif is_prod A then
-      ''(d1, d2) <- dest_pair a;
+      '(d1, d2) <- dest_pair a;
       dcase d1 as x in
       dcase d2 as y in
       t1s <- to_goals _ x;
@@ -211,7 +211,7 @@ Program Definition to_goals : forall {A}, A -> M (mlist (unit *m goal)) :=
 Definition to_tactic {A B} (f: M (A |m- B)) : tactic := fun g=>
   gT <- goal_type g;
   mif unify gT B UniCoq then
-    ''(a, b) <- f;
+    '(a, b) <- f;
     al <- to_goals a;
     ls <- T.filter_goals al;
     T.exact b g;;

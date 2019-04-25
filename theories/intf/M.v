@@ -15,7 +15,8 @@ Unset Printing Notations.
 
 Module M.
 
-Variant t : Type -> Prop := mkt : forall{a}, t a.
+CoInductive t (a : Type) : Prop := mkt : t a.
+Arguments mkt {_}.
 
 Local Ltac make := refine (mkt) || (intro; make).
 
@@ -262,8 +263,8 @@ Definition set_trace: bool -> t unit.
        unify with the respective given candidate in [u .. w].
  *)
 Definition is_head :
-  forall {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m)
-         (success : MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C))
+  forall {A : Type} {B : A -> Type} {m:MTele} (uni : Unification) (a : A) (C : MTele_ConstT A m)
+         (success : MTele_sort (MTele_ConstMap (si := Typeₛ) Propₛ (T:=A) (fun a => t (B a)) C))
          (failure: t (B a)),
     t (B a).
   make. Qed.
@@ -328,13 +329,13 @@ Definition declare_mind
            (constrs :
               mfold_right
                 (fun '(m: _; ind) acc =>
-                   MTele_val (MTele_In SType (fun a' => MTele_Ty (mprojT1 (a'.(acc_constT) ind))))
+                   MTele_val (MTele_In Typeₛ (fun a' => MTele_Ty (mprojT1 (a'.(acc_constT) ind))))
                    -> acc
-                (* MTele_val (MTele_In SType (fun a => MTele_Ty (mprojT1 (a.(acc_const) ind)))) -> acc *)
+                (* MTele_val (MTele_In Typeₛ (fun a => MTele_Ty (mprojT1 (a.(acc_const) ind)))) -> acc *)
                 )%type
                 (
                   (
-                    MTele_val (MTele_In SType
+                    MTele_val (MTele_In Typeₛ
                                         (fun a =>
                                            mfold_right
                                              (fun '(m: _; ind) acc =>
@@ -368,12 +369,13 @@ Set Universe Minimization ToSet.
 
 Definition sorted_evar (s: Sort) : forall T : s, t T :=
   match s with
-  | SProp => fun T => M.evar T
-  | SType => fun T => M.evar T
+  | Propₛ => fun T:Prop => M.evar T
+  | Typeₛ => fun T:Type => M.evar T
   end.
 
+Set Printing Universes.
 Definition unify@{a} {A : Type@{a}} (x y : A) (U : Unification) : t@{a} (moption@{a} (meq@{a} x y)) :=
-  unify_cnt (B:=fun x => moption@{a} (meq x y)) U x y
+  unify_cnt@{a a} (A:=A) (B:=fun x => moption@{a} (meq x y)) U x y
             (ret@{a} (mSome@{a} (@meq_refl _ y)))
             (ret@{a} mNone@{a}).
 
@@ -381,7 +383,7 @@ Definition unify@{a} {A : Type@{a}} (x y : A) (U : Unification) : t@{a} (moption
 Definition raise {A:Type} (e: Exception): t A :=
   bind get_debug_exceptions (fun b=>
   if b then
-    bind (pretty_print@{Set} e) (fun s=>
+    bind (pretty_print@{Set Set} e) (fun s=>
     bind (print ("raise " ++ s)) (fun _ =>
     raise' e))
   else
@@ -402,8 +404,8 @@ Definition dbg_term {A} (s: string) (x : A) : t unit :=
 
 
 Definition decompose_app'
-           {A : Type} {B : A -> Type} {m} (uni : Unification) (a : A) (C : MTele_ConstT A m)
-           (success : MTele_sort (MTele_ConstMap (si := SType) SProp (T:=A) (fun a => t (B a)) C)) :
+           {A : Type} {B : A -> Type} {m:MTele} (uni : Unification) (a : A) (C : MTele_ConstT A m)
+           (success : MTele_sort (MTele_ConstMap (si := Typeₛ) Propₛ (T:=A) (fun a => t (B a)) C)) :
   t (B a) :=
   is_head uni a C success (raise WrongTerm).
 
@@ -416,9 +418,12 @@ Module monad_notations.
   Notation "r '<-' t1 ';' t2" := (bind t1 (fun r=> t2))
     (at level 20, t1 at level 100, t2 at level 200,
      right associativity, format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
-  Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2) ..))
-    (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200,
-     right associativity, format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
+  Notation "' r '<-' t1 ';' t2" := (bind t1 (fun r=> t2))
+    (at level 20, r pattern, t1 at level 100, t2 at level 200,
+     right associativity, format "'[' ''' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
+  (* Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2) ..)) *)
+  (*   (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200, *)
+  (*    right associativity, format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope. *)
   Notation "` r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (bind t1 (fun rn => t2)) ..))
     (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200,
      right associativity, format "'[' '`' r1  ..  rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : M_scope.
@@ -456,12 +461,12 @@ Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excepti
   | @ptele _ _ _ _ C f => e <- evar C; open_pattern E (f e)
   | psort f =>
     mtry'
-      (open_pattern E (f SProp))
+      (open_pattern E (f Propₛ))
       (fun e =>
-         M.unify_cnt@{Set _} UniMatchNoRed e E (open_pattern E (f SType)) (raise e)
+         M.unify_cnt UniMatchNoRed e E (open_pattern E (f Typeₛ)) (raise e)
          (* oeq <- M.unify e E UniMatchNoRed; *)
          (* match oeq with *)
-         (* | mSome _ => open_pattern E (f SType) *)
+         (* | mSome _ => open_pattern E (f Typeₛ) *)
          (* | mNone => raise e *)
          (* end *)
       )
@@ -634,12 +639,12 @@ Definition fold_left {A B} (f : A -> B -> t A) : mlist B -> A -> t A :=
     end.
 
 Definition index_of {A} (f : A -> t bool) (l : mlist A) : t (moption nat) :=
-  ''(_, r) <- fold_left (fun '(i, r) x =>
+  '(m: _, r) <- fold_left (fun '(m: i, r) x =>
     match r with
-    | mSome _ => ret (i,r)
-    | _ => mif f x then ret (i, mSome i) else ret (S i, mNone)
+    | mSome _ => ret (m: i,r)
+    | _ => mif f x then ret (m: i, mSome i) else ret (m: S i, mNone)
     end
-  ) l (0, mNone);
+  ) l (m: 0, mNone);
   ret r.
 
 Fixpoint nth {A} (n : nat) (l : mlist A) : t A :=
@@ -849,23 +854,22 @@ Definition is_prop_or_type (d : dyn) : t bool :=
   end.
 
 (** [goal_type g] extracts the type of the goal. *)
-Definition goal_type@{g1 g2} (g : goal@{g2 g1} gs_open) : t Type@{g1} :=
-  match g in goal gs return match gs return Type@{g2} with gs_open => t Type@{g1} | _ => IDProp end with
-  | @Metavar s A x =>
-    match s as s return stype_of s -> t Type@{g1} with
-      | SProp => fun A => ret (A:Type@{g1})
-      | SType => fun A => ret A end A
-  | _ => idProp
+Definition goal_type (g : goal gs_open) : t Type :=
+  match g with
+  | Metavar s A x =>
+    match s as s return stype_of s -> t Type with
+      | Propₛ => fun A => ret (A:Type)
+      | Typeₛ => fun A => ret A end A
   end.
 
 (** [goal_prop g] extracts the prop of the goal or raises [CantCoerce] its type
 can't be cast to a Prop. *)
 Definition goal_prop (g : goal gs_open) : t Prop :=
   match g with
-  | @Metavar s A _ =>
+  | Metavar s A _ =>
     match s as s return forall A:stype_of s, t Prop with
-      | SProp => fun A:Prop => ret A
-      | SType => fun A:Type =>
+      | Propₛ => fun A:Prop => ret A
+      | Typeₛ => fun A:Type =>
         gP <- evar Prop;
         mtry
          cumul_or_fail UniMatch gP A;;
@@ -877,13 +881,13 @@ Definition goal_prop (g : goal gs_open) : t Prop :=
 (** Convertion functions from [dyn] to [goal]. *)
 Definition dyn_to_goal (d : dyn) : t (goal gs_open) :=
   mmatch d with
-  | [? (A:Prop) x] @Dyn A x => ret (@Metavar SProp A x)
-  | [? (A:Type) x] @Dyn A x => ret (@Metavar SType A x)
+  | [? (A:Prop) x] @Dyn A x => ret (Metavar Propₛ A x)
+  | [? (A:Type) x] @Dyn A x => ret (Metavar Typeₛ A x)
   end.
 
 Definition goal_to_dyn (g : goal gs_open) : t dyn :=
   match g with
-  | Metavar _ d => ret (Dyn d)
+  | Metavar _ _ d => ret (Dyn d)
   end.
 
 Definition cprint {A} (s : string) (c : A) : t unit :=
@@ -915,7 +919,7 @@ Definition print_goal (g : goal gs_open) : t unit :=
     | S n => repeat (c++s)%string n
     end) ""%string in
   sg <- match g with
-        | @Metavar _ G _ => pretty_print G
+        | Metavar _ G _ => pretty_print G
         end;
   let sep := repeat "="%string 20 in
   print_hyps;;
@@ -928,7 +932,7 @@ Definition print_goal (g : goal gs_open) : t unit :=
     [CantInstantiate] if it fails to find a suitable instantiation. [t] is beta-reduced
     to avoid false dependencies. *)
 Definition instantiate {A} (x y : A) : t unit :=
-  ''(m: h, _) <- decompose x;
+  '(m: h, _) <- decompose x;
   dcase h as e in
     mif is_evar e then
       let t := reduce (RedWhd [rl:RedBeta]) t in
@@ -951,7 +955,7 @@ Definition collect_evars {A} (x: A) :=
     mif M.is_evar e then M.ret [m: d]
     else
       let e := reduce (RedWhd [rl: RedBeta; RedMatch; RedZeta]) e in
-      ''(m: h, l) <- M.decompose e;
+      '(m: h, l) <- M.decompose e;
       if is_empty l then M.ret [m:]
       else
         f h >>= fun d => M.map f l >>= fun ds => M.ret (mapp d (mconcat ds))

@@ -32,37 +32,37 @@ Definition to_goal (A : Type) : M (A *m goal gs_open) :=
     match of with
     | mSome f => a <- M.evar@{Set} P;
                  let a' := reduce (RedOneStep [rl: RedBeta]) (f a) in
-                 ret (m: a', Metavar SProp a)
+                 ret (m: a', Metavar Propₛ _ a)
     | mNone => raise NotAProp (* we backtrack to erase P *)
     end
   with [#] NotAProp | =n>
     a <- evar A;
-    M.ret (m: a, Metavar SType a)
+    M.ret (m: a, Metavar Typeₛ _ a)
   end.
 
 (** [demote] is a [ttac] that proves anything by simply postponing it as a
     goal. *)
 Definition demote {A: Type} : ttac A :=
-  ''(m: a, g) <- to_goal A;
-  let '(Metavar _ g) := g in
-  M.ret (m: a, [m: AnyMetavar _ g]).
+  '(m: a, g) <- to_goal A;
+  let '(Metavar _ _ g) := g in
+  M.ret (m: a, [m: AnyMetavar _ _ g]).
 
 (** [use t] tries to solve the goal with tactic [t] *)
 Definition use {A} (t : tactic) : ttac A :=
-    ''(m: a, g) <- to_goal A;
+    '(m: a, g) <- to_goal A;
     gs <- t g;
     let gs := dreduce (@mmap) (mmap (fun '(m: _, g) => g) gs) in
     M.ret (m: a, gs).
 Arguments use [_] _%tactic.
 
 Definition idtac {A} : ttac A :=
-    ''(m: a, g) <- to_goal A;
-    let '(Metavar _ g) := g in
-    M.ret (m: a, [m: AnyMetavar _ g]).
+    '(m: a, g) <- to_goal A;
+    let '(Metavar _ _ g) := g in
+    M.ret (m: a, [m: AnyMetavar _ _ g]).
 
 (** [by'] is like [use] but it ensures there are no goals left. *)
 Definition by' {A} (t : tactic) : ttac A :=
-  ''(m: a, g) <- to_goal A;
+  '(m: a, g) <- to_goal A;
   gs <- t g;
   gs' <- T.filter_goals gs;
   match gs' with
@@ -81,7 +81,7 @@ Coercion lift : M.t >-> ttac.
 Definition fappgl {A B C} (comb : C -> C -> M C) (f : M ((A -> B) *m C)) (x : M (A *m C)) : M (B *m C) :=
   (f >>=
      (fun '(m: b, cb) =>
-        ''(m: a, ca) <- x;
+        '(m: a, ca) <- x;
         c <- comb cb ca;
         M.ret (m: b a, c)
      )
@@ -157,7 +157,7 @@ Definition vm_change_dep {X} (B : X -> Type) x {y} (f : ttac (B x)) : ttac (B y)
 Definition tintro {A P} (f: forall (x:A), ttac (P x))
   : ttac (forall (x:A), P x) :=
   M.nu (FreshFrom f) mNone (fun x=>
-    ''(m: v, gs) <- f x;
+    '(m: v, gs) <- f x;
     a <- M.abs_fun x v;
     b <- T.close_goals x (mmap (fun g=>(m: tt, g)) gs);
     let b := mmap msnd b in
@@ -168,7 +168,7 @@ Definition tpass {A} := lift (M.evar A).
 Definition texists {A} {Q:A->Prop} : ttac (exists (x:A), Q x) :=
   e <- M.evar A;
   pf <- M.evar (Q e);
-  M.ret (m: ex_intro _ e pf, [m: AnyMetavar SProp pf]).
+  M.ret (m: ex_intro _ e pf, [m: AnyMetavar Propₛ _ pf]).
 
 Definition tassumption {A:Type} : ttac A :=
   lift (M.select _).
@@ -182,24 +182,24 @@ Definition reflexivity {P} {A B : P} : TT.ttac (A = B) :=
 Require Import Strings.String.
 
 Definition ucomp1 {A B} (t: ttac A) (u: ttac B) : ttac A :=
-  ''(m: v1, gls1) <- t;
+  '(m: v1, gls1) <- t;
   match gls1 with
   | [m: gl] =>
-    ''(m: v2, gls) <- u;
+    '(m: v2, gls) <- u;
     open_and_apply (exact v2) gl;;
     M.ret (m: v1, gls)
   | _ => mfail "more than a goal"%string
   end.
 
 Definition lower {A} (t: ttac A) : M A :=
-  ''(m: r, _) <- t;
+  '(m: r, _) <- t;
   ret r.
 
 
 (** [rewrite] allows to rewrite with an equation in a specific part of the goal. *)
 Definition rewrite {X : Type} (C : X -> Type) {a b : X} (H : a = b) :
   ttac (C b) -> ttac (C a) := fun t =>
-  ''(m: x, gs) <- t;
+  '(m: x, gs) <- t;
   M.ret (m:
           match H in _ = z return (C z) -> (C a) with
           | eq_refl => fun x => x
@@ -212,15 +212,15 @@ Definition rewrite {X : Type} (C : X -> Type) {a b : X} (H : a = b) :
  *)
 Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
   match g with
-  | @Metavar S.SProp G g =>
-    ''(m: x, gs) <- F G;
+  | Metavar Propₛ G g =>
+    '(m: x, gs) <- F G;
     M.cumul_or_fail UniCoq x g;;
     M.map (fun g => M.ret (m:tt,g)) gs
-  | @Metavar S.SType G g =>
+  | Metavar Typeₛ G g =>
     gP <- evar Prop;
     mtry
       cumul_or_fail UniMatch gP G;;
-      ''(m: x, gs) <- F gP;
+      '(m: x, gs) <- F gP;
       M.cumul_or_fail UniCoq x g;;
       M.map (fun g => M.ret (m:tt,g)) gs
     with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
@@ -231,19 +231,34 @@ Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
  *)
 Definition with_goal_type (F : forall (T : Type), ttac T) : tactic := fun g =>
   match g with
-  | @Metavar S.SProp G g =>
-    ''(m: x, gs) <- F G;
+  | Metavar Propₛ G g =>
+    '(m: x, gs) <- F G;
     M.cumul_or_fail UniCoq x g;;
     M.map (fun g => M.ret (m:tt,g)) gs
-  | @Metavar S.SType G g =>
+  | Metavar Typeₛ G g =>
     gP <- evar Prop;
     mtry
       cumul_or_fail UniMatch gP G;;
-      ''(m: x, gs) <- F G;
+      '(m: x, gs) <- F G;
       M.cumul_or_fail UniCoq x g;;
       M.map (fun g => M.ret (m:tt,g)) gs
     with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
   end.
+
+
+Definition with_goal_sort (F : forall {s : Sort} (T : s), ttac T) (e : Exception) : tactic :=
+  fun g =>
+    match g with
+    | Metavar s T g =>
+      '(m: t, gs) <- F T;
+      o <- M.unify g t UniMatchNoRed;
+      match o with
+      | mSome _ =>
+        gs <- M.map (fun x => M.ret (mpair tt x)) gs;
+        M.ret gs
+      | mNone => raise e
+      end
+    end.
 
 Module MatchGoalTT.
 Import TacticsBase.T.notations.
@@ -259,14 +274,16 @@ Arguments gtele {C} _.
 Arguments gtele_evar {C} _.
 
 Set Printing Implicit.
-Definition match_goal_context
-    {A} (x: A) (y: Type) (cont: forall (C : A -> Type), ttac (C x)) : tactic :=
-  r <- T.abstract_from_term x y;
-  match r with
-  | mSome r =>
-    cont r >>=
-    to_T
-  | mNone => M.raise DoesNotMatchGoal
+
+(* [with_upcast] is necessary to call the continuation in [gbase_context] on a
+   sorted goal after abstracting from the goal. It avoids a [selem_of] coercion
+   that would otherwise be introduced. *)
+Definition with_upcast {s : Sort} {A} {a : A} :
+  (forall (C : A -> Type), ttac (C a)) ->
+  forall C : (A -> s), ttac (C a) :=
+  match s with
+  | Propₛ => fun t (f : A -> Propₛ) => t f
+  | Typeₛ => fun t (f : A -> Typeₛ) => t f
   end.
 
 Fixpoint match_goal_pattern'@{l+}
@@ -274,12 +291,26 @@ Fixpoint match_goal_pattern'@{l+}
   fix go l1 l2 g :=
   match p, l2 with
   | gbase P t, _ =>
-    gT <- M.goal_type g;
-    mif M.cumul u P gT then (r <- t; to_T r g)
-    else M.raise DoesNotMatchGoal
+    with_goal_sort (
+        fun s G =>
+          o <- M.unify_univ P G u;
+          match o with
+          | mSome f =>
+            '(m: p, gs) <- t;
+            let fp := reduce (RedOneStep [rl:RedBeta]) (f p) in
+            M.ret (m: fp, gs)
+          | mNone => raise DoesNotMatchGoal
+          end
+      ) (DoesNotMatchGoal) g
   | gbase_context x t, _ =>
-    gT <- M.goal_type g;
-    match_goal_context x gT t g
+    with_goal_sort (
+        fun s G =>
+          T.abstract_from_sort_dep s x G
+                                   (fun C => C *m mlist (goal gs_any))
+                                   (* avoid [selem_of] coercions *)
+                                   (with_upcast t)
+                                   (raise DoesNotMatchGoal)
+      ) (DoesNotMatchGoal) g
   | @gtele C f, @ahyp A a d :m: l2' =>
     oeqCA <- M.unify C A u;
     match oeqCA with

@@ -15,7 +15,7 @@ Import M.notations.
 (* abstract _from_sort and _from_term *)
 Goal True->True.
 MProof.
-  opf <- T.abstract_from_sort Sorts.S.SProp 3 (3+3 = 6);
+  opf <- T.abstract_from_sort Propₛ 3 (3+3 = 6);
   match opf with
   | mSome f=> M.print_term f
   | mNone => M.failwith "abstract failed!"

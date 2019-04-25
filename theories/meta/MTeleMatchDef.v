@@ -19,7 +19,7 @@ Arguments mtptele {A M C} _.
 Arguments mtpsort {A M} _.
 
 
-Local Notation MFA T := (MTele_val (MTele_C SType SProp M T)).
+Local Notation MFA T := (MTele_val (MTele_C Typeₛ Propₛ M T)).
 
 Fixpoint open_branch {A} {m} {T : forall x, MTele_Ty (m x)} {y : A} {a : ArgsOf (m y)}
          (p : mtpattern A (fun x => MFA (T x))) : M (apply_sort (T y) a) :=
@@ -29,18 +29,18 @@ Fixpoint open_branch {A} {m} {T : forall x, MTele_Ty (m x)} {y : A} {a : ArgsOf 
     match oeq return M (apply_sort (T y) a) with
     | mSome eq =>
       match eq in meq _ z return forall a : ArgsOf (m z), M (apply_sort (T z) a) with
-      | meq_refl => apply_C SProp f
+      | meq_refl => apply_C Propₛ f
       end a
     | mNone => M.raise DoesNotMatch
     end
   | mtptele f => c <- M.evar _; open_branch (f c)
   | mtpsort f =>
     M.mtry'
-      (open_branch (f SProp))
+      (open_branch (f Propₛ))
       (fun e =>
          oeq <- M.unify e DoesNotMatch UniMatchNoRed;
          match oeq with
-         | mSome _ => open_branch (f SType)
+         | mSome _ => open_branch (f Typeₛ)
          | mNone => M.raise e
          end
       )
@@ -50,7 +50,7 @@ Fixpoint open_branch {A} {m} {T : forall x, MTele_Ty (m x)} {y : A} {a : ArgsOf 
 Definition mtmmatch' A m (T : forall x, MTele_Ty (m x)) (y : A)
            (ps : mlist (mtpattern A (fun x => MFA (T x)))) : selem_of (MFA (T y)) :=
   curry_C
-    SProp
+    Propₛ
     (fun a : ArgsOf (m y) =>
        (fix mmatch' (ps : mlist (mtpattern A (fun x => MFA (T x)))) :=
           match ps with

@@ -177,11 +177,11 @@ Proof. Fail reflexivity. Abort.
 From Mtac2 Require Import Sorts.
 Mtac Do ((fun (T : Type) =>
             mmatch T with [¿ s] [? (T : s)] (T : Type) =u>
-              M.unify_or_fail UniMatchNoRed s S.SProp;; M.ret I
+              M.unify_or_fail UniMatchNoRed s Propₛ;; M.ret I
           end) (True -> True)).
 Mtac Do ((fun (T : Type) =>
             mmatch T with [¿ s] [? (T : s)] (T : Type) =u>
-              M.unify_or_fail UniMatchNoRed s S.SType;; M.ret I
+              M.unify_or_fail UniMatchNoRed s Typeₛ;; M.ret I
           end) (True -> nat)).
 
 
@@ -224,6 +224,15 @@ Mtac Do (
 Mtac Do (
        mmatch (3 + 5) with
        | [#] plus | x y =n> M.unify_or_fail UniMatchNoRed (x,y) (3,5)
+      end
+     ).
+
+
+(* Checking notation levels *)
+Mtac Do (
+       mmatch (3 + 5) with
+       | [#] plus | x y =n> _ <- M.ret tt; M.unify_or_fail UniMatchNoRed (x,y) (3,5)
+       | [#] plus | x y =n> M.ret tt;; M.unify_or_fail UniMatchNoRed (x,y) (3,5)
       end
      ).
 

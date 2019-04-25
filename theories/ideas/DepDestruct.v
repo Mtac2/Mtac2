@@ -263,8 +263,8 @@ Program Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : na
 Definition get_CTele :=
   fun {isort} =>
     match isort as sort return forall {it : ITele sort} nindx {A : sort}, A -> M (CTele it) with
-    | SProp => get_CTele_raw (isort := SProp)
-    | SType => get_CTele_raw (isort := SType)
+    | Propₛ => get_CTele_raw (isort := Propₛ)
+    | Typeₛ => get_CTele_raw (isort := Typeₛ)
     end.
 
 
@@ -292,16 +292,16 @@ end.
 Definition get_NDCTele :=
   fun {isort} =>
     match isort as sort return forall {it : ITele sort} nindx {A : sort}, A -> M (NDCTele it) with
-    | SProp => get_NDCTele_raw (isort := SProp)
-    | SType => get_NDCTele_raw (isort := SType)
+    | Propₛ => get_NDCTele_raw (isort := Propₛ)
+    | Typeₛ => get_NDCTele_raw (isort := Typeₛ)
     end.
 
 
 (** Given a goal, it returns its sorted version *)
 Program Definition sort_goal {T : Type} : T -> M (sigT stype_of) :=
   mtmmatch_prog T as T return T -> M (sigT stype_of) with
-  | Prop =u> fun A_Prop => M.ret (existT stype_of SProp A_Prop)
-  | Type =u> fun A_Type => M.ret (existT stype_of SType A_Type)
+  | Prop =u> fun A_Prop => M.ret (existT stype_of Propₛ A_Prop)
+  | Type =u> fun A_Type => M.ret (existT stype_of Typeₛ A_Type)
   end.
 
 (* Definition sget_ITele (sort : Sort) : forall {T : sort} (ind : T), M (nat * ITele sort) := *)
@@ -333,13 +333,13 @@ Program Definition get_ITele : forall {T : Type} (ind : T), M (nat *m (sigT ITel
         M.ret (m: S n, existT _ sort (iTele f)))
     | Prop =m>
       fun indProp =>
-      M.ret (m: 0, existT _ SProp (iBase (sort := SProp) indProp))
+      M.ret (m: 0, existT _ Propₛ (iBase (sort := Propₛ) indProp))
     | Type =m>
       fun indType =>
-      M.ret (m: 0, existT _ (SType) (iBase (sort := SType) indType))
+      M.ret (m: 0, existT _ (Typeₛ) (iBase (sort := Typeₛ) indType))
     | Set =m>
       fun indType =>
-      M.ret (m: 0, existT _ (SType) (iBase (sort := SType) indType))
+      M.ret (m: 0, existT _ (Typeₛ) (iBase (sort := Typeₛ) indType))
     | T =n> fun _=> M.failwith "Impossible ITele"
     end.
 
@@ -390,7 +390,7 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
                         fun ct =>
                            (selem_of (branch_of_CTele rt ct))
                                        ) cts) in
-          goals <- M.map (fun ty=> r <- M.evar ty; M.ret (Metavar SType r)) sg; (*FIX: SType is not right *)
+          goals <- M.map (fun ty=> r <- M.evar ty; M.ret (Metavar Typeₛ _ r)) sg; (*FIX: Typeₛ is not right *)
           branches <- M.map M.goal_to_dyn goals;
           let tsg := reduce RedHNF (type_of sg) in (*FIX: these reductions should be smarter *)
           let rrf := reduce RedSimpl (RTele_Fun rt) in
@@ -402,9 +402,9 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
                        case_return := Dyn rrf;
                        case_branches := branches
                      |};
-          (let '(Metavar s ge) := g in
+          (let '(Metavar s _ ge) := g in
             M.unify_or_fail UniCoq caseterm (Dyn ge);;
             M.ret tt
           );;
-          let goals' := dreduce (@mmap) (mmap (A:=goal gs_open) (fun '(Metavar _ g) => mpair tt (AnyMetavar _ g)) goals) in
+          let goals' := dreduce (@mmap) (mmap (A:=goal gs_open) (fun '(Metavar _ _ g) => mpair tt (AnyMetavar _ _ g)) goals) in
           M.ret goals'.

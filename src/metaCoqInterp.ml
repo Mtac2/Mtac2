@@ -219,7 +219,6 @@ let interp_mproof_command () =
   else
     begin
       Proof_global.set_proof_mode "MProof";
-      Feedback.msg_info @@ Printer.pr_open_subgoals ~proof;
     end
 
 (** Interpreter of a mtactic *)

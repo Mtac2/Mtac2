@@ -32,8 +32,8 @@ Bind Scope tactic_scope with gtactic.
 Module T.
 Definition with_goal {A} (f : goal gs_open -> M A) := fun g : goal gs_open =>
   match g with
-  | Metavar _ g' =>
-    y <- f g; M.ret [m: (m: y, AnyMetavar _ g')]
+  | Metavar _ _ g' =>
+    y <- f g; M.ret [m: (m: y, AnyMetavar _ _ g')]
   end.
 
 Coercion of_M {A} (x : M A) : gtactic A := with_goal (fun _ => x).
@@ -88,7 +88,7 @@ Definition branch_map {A} {B} (y : A) (g : (goal _)) (b : branch gtactic A B y) 
   | branch_pattern p =>
     branch_pattern (pattern_map g _ p)
   | branch_app_static U ct cont =>
-    let cont := MTele.MTele_constmap_app (si:=SType) SProp (fun _ _ => _) ct cont g in
+    let cont := MTele.MTele_constmap_app (si:=Typeₛ) Propₛ (fun _ _ => _) ct cont g in
     @branch_app_static _ _ _ _ _ U _ cont
   | branch_forallP cont => branch_forallP (fun X Y => cont X Y g)
   | branch_forallT cont => branch_forallT (fun X Y => cont X Y g)
@@ -99,25 +99,25 @@ Definition mmatch' {A P} (E : Exception) (y : A)
     (ps : mlist (branch gtactic A P y)) : gtactic (P y) := fun g =>
   M.mmatch' E y (mmap (branch_map y g) ps).
 
-Definition ret {A} (x : A) : gtactic A := fun '(Metavar _ g) => M.ret [m:(m: x, AnyMetavar _ g)].
+Definition ret {A} (x : A) : gtactic A := fun '(Metavar _ _ g) => M.ret [m:(m: x, AnyMetavar _ _ g)].
 Definition idtac : tactic := ret tt.
 
-Definition try (t : tactic) : tactic := fun '(Metavar _ g' as g)=>
-  mtry t g with _ => M.ret [m:(m: tt, AnyMetavar _ g')] end.
+Definition try (t : tactic) : tactic := fun '(Metavar _ _ g' as g)=>
+  mtry t g with _ => M.ret [m:(m: tt, AnyMetavar _ _ g')] end.
 
 Definition or {A} (t u : gtactic A) : gtactic A := fun g=>
   mtry t g with _ => u g end.
 
-Definition get_binder_name {A} (x : A) : gtactic string := fun '(@Metavar _ _ g) =>
-  s <- M.get_binder_name x; M.ret [m:(m: s,AnyMetavar _ g)].
+Definition get_binder_name {A} (x : A) : gtactic string := fun '(Metavar _ _ g) =>
+  s <- M.get_binder_name x; M.ret [m:(m: s,AnyMetavar _ _ g)].
 
 Definition goal_type : gtactic Type := with_goal M.goal_type.
 Definition goal_prop : gtactic Prop := with_goal M.goal_prop.
 
 Definition ltac (t : string) (args : mlist dyn) : tactic := fun g =>
   match g with
-  | @Metavar s ty el =>
-    ''(m: v, l) <- @M.call_ltac s ty t args;
+  | Metavar s ty el =>
+    '(m: v, l) <- @M.call_ltac s ty t args;
     M.unify_or_fail UniCoq v el;;
     let l' := dreduce (@mmap) (mmap (mpair tt) l) in
     M.ret l'
@@ -125,15 +125,15 @@ Definition ltac (t : string) (args : mlist dyn) : tactic := fun g =>
 
 Definition treduce (r : Reduction) : tactic := fun g=>
   match g with
-  | @Metavar SType T e=>
+  | Metavar Typeₛ T e=>
     let T' := reduce r T in
     e <- M.evar T';
-    mif M.cumul UniEvarconv g (@Metavar SType T e) then M.ret [m:(m: tt, @AnyMetavar SType _ e)]
+    mif M.cumul UniEvarconv g (Metavar Typeₛ T e) then M.ret [m:(m: tt, AnyMetavar Typeₛ _ e)]
     else M.failwith "treduce"
-  | @Metavar SProp T e=>
+  | Metavar Propₛ T e=>
     let T' := reduce r T in
     e <- M.evar T';
-    mif M.cumul UniEvarconv g (@Metavar SProp T e) then M.ret [m:(m: tt, @AnyMetavar SProp _ e)]
+    mif M.cumul UniEvarconv g (Metavar Propₛ T e) then M.ret [m:(m: tt, AnyMetavar Propₛ _ e)]
     else M.failwith "treduce"
   end.
 
@@ -143,39 +143,46 @@ Definition treduce (r : Reduction) : tactic := fun g=>
     it work. *)
 Ltac Mssrpattern p := ssrpattern p.
 
-Definition Backtrack {s:Sort} {A} (x:A) (f: A->s) : Exception. exact exception. Qed.
-Definition abstract_from_sort (s:Sort) {A} (x:A) (B:s) : M (moption (A -> s)) :=
+Definition wrapper {A} (t: A) : Prop. exact False. Qed.
+Definition Backtrack {A} {B} (x:A) (C : A -> B) : Exception.
+  exact exception. Qed.
+Definition abstract_from_term_dep {A} {B} (x:A) (y:B) (D : B -> Type)
+           (ok : forall C : A -> B, M (D (C x))) (fail : M (D y)) : M (D y) :=
   mtry
-    ''(m: _, gs) <- M.call_ltac s (A:=B) "Mssrpattern" [m:Dyn x];
+    '(m: _, gs) <- M.call_ltac Propₛ (A:=wrapper y) "Mssrpattern" [m:Dyn x];
     mmatch gs with
-    | [? y (f:A->s) t] [m: @AnyMetavar s (let z := y in f z) t] =u>
-      M.raise (Backtrack y f) (* nasty HACK: we backtract so as not to get evars
+    | [? y (f:A->B) t] [m: AnyMetavar Propₛ (let z := y in wrapper (f z)) t] =u>
+      M.raise (@Backtrack A B y f) (* nasty HACK: we backtract so as not to get evars
       floating: we only care about the term! (which should be well typed in the
       right sigma) *)
-    | [? y (f:A->SProp) t] [m: @AnyMetavar SProp (let z := y in f z) t] =u>
-      (* sometimes it might cast down a Prop (that was previously casted to Type *)
-      match s as s' return M (moption (A -> s')) with
-      | SProp => M.print_term gs;; M.failwith "abstract_from_sort: mmatch"
-      | SType => M.raise (Backtrack (s:=SType) y (f:A->Prop))
-      end
     | _ => M.print_term gs;; M.failwith "abstract_from_sort: mmatch goal not ground"
     end
-  with [? (f:A-> s)] Backtrack x f => M.ret (mSome f)
+  with
+  | [#] @Backtrack A B x | f =u>
+    o <- M.unify (f x) (y) UniCoq;
+    match o with
+    | mSome eq =>
+      match eq in _ =m= B return M (D B) with
+      | meq_refl => ok f
+      end
+    | mNone => M.failwith "abstract_from_sort: terms not unifiable"
+    end
   | ExceptionNotGround => M.failwith "abstract_from_sort: backtrack"
   | [?s] Failure s => M.raise (Failure s)
-  | [?s] LtacError s => M.ret mNone (* we suppose it's not matched *)
+  | [?s] LtacError s => fail (* we suppose it's not matched *)
   end.
-Definition abstract_from_type {A} := @abstract_from_sort SType A.
 
-Definition wrapper {A} (t: A) : Prop. exact False. Qed.
+Definition abstract_from_sort_dep (s:Sort) {A} (x:A) (B:s) (D : s -> Type)
+           (ok : forall C : A -> s, M (D (C x))) (fail : M (D B)) : M (D B) :=
+  abstract_from_term_dep x B D ok fail.
+
+Definition abstract_from_sort (s:Sort) {A} (x:A) (B:s) : M (moption (A -> s)) :=
+  abstract_from_sort_dep s x B (fun _ => moption (A -> s))
+                         (fun C => M.ret (mSome C)) (M.ret mNone).
+Definition abstract_from_type {A} := @abstract_from_sort Typeₛ A.
 
 Definition abstract_from_term {A} {B} (x:A) (t : B) : M (moption (A -> B)) :=
-  f <- abstract_from_sort SProp x (wrapper t);
-  mmatch f with
-  | [? g] mSome (fun z:A=>wrapper (g z)) => M.ret (mSome g)
-  | mNone => M.ret mNone
-  | [? t] mSome t => M.print_term t;; M.failwith "abstract_from_term"
-  end.
+  abstract_from_term_dep x t (fun _ => _) (fun C => M.ret (mSome C)) (M.ret mNone).
 
 
 (** [close_goals x l] takes the list of goals [l] and appends
@@ -200,7 +207,7 @@ Definition rep_hyp {A B C} (x : A) (e : A =m= B) (l: mlist (C *m goal gs_any)) :
 (** Returns if a goal is open, i.e., a meta-variable. *)
 Definition is_open : forall {gs}, goal gs -> M bool := mfix2 is_open (gs : _) (g : goal gs) : M _ :=
   match g with
-  | Metavar _ e | AnyMetavar _ e => M.is_evar e
+  | Metavar _ _ e | AnyMetavar _ _ e => M.is_evar e
   | @AHyp C f =>
     (* we get the name in order to avoid inserting existing names
       (nu will raise an exception otherwise) *)
@@ -223,7 +230,7 @@ Definition filter_goals {A} : mlist (A *m goal gs_any) -> M (mlist (A *m goal gs
 Definition open_and_apply {A} (t : gtactic A) : goal gs_any -> M (mlist (A *m goal gs_any)) :=
   mfix1 open (g: goal gs_any) : M _ :=
     match g return M _ with
-    | Metavar _ g | AnyMetavar _ g => t (@Metavar _ _ g)
+    | Metavar _ _ g | AnyMetavar _ _ g => t (Metavar _ _ g)
     | @AHyp C f =>
       M.nu (FreshFrom f) mNone (fun x : C =>
         open (f x) >>= close_goals x)
@@ -300,12 +307,12 @@ Fixpoint match_goal_pattern' {B}
     else M.raise DoesNotMatchGoal
   | gbase_context x t, _ =>
     match g with
-    | @Metavar SProp gT _ =>
+    | Metavar Propₛ gT _ =>
       (fun (A : Prop) =>
-      match_goal_context SProp x A t g) gT
-    | @Metavar SType gT _ =>
+      match_goal_context Propₛ x A t g) gT
+    | Metavar Typeₛ gT _ =>
       (fun (A : Type) =>
-      match_goal_context SType x A t g) gT
+      match_goal_context Typeₛ x A t g) gT
     end
   | @gtele _ C f, @ahyp A a d :m: l2' =>
     oeqCA <- M.unify C A u;
@@ -345,21 +352,21 @@ Instance tactic_selector A : Seq A A (selector A) := fun t s g =>
   t g >>= filter_goals >>= s.
 
 Module S.
-  Definition nth {A} (n : nat) (t : gtactic A) : selector A := fun l =>
+  Definition nth {A} (n : nat) (f : A -> gtactic A) : selector A := fun l =>
     let (l1, l2) := dreduce (@nsplit) (nsplit n l) in
     match mhd_error l2 with
     | mNone => M.raise NoGoalsLeft
-    | mSome (m: _, g) =>
-      goals <- open_and_apply t g;
+    | mSome (m: x, g) =>
+      goals <- open_and_apply (f x) g;
       let res := dreduce (@mapp, @mtl) (l1 +m+ goals +m+ mtl l2) in
       filter_goals res
     end.
 
   Definition last {A} (t : gtactic A) : selector A := fun l =>
     let n := dreduce (pred, mlength) (pred (mlength l)) in
-    nth n t l.
+    nth n (fun _=>t) l.
 
-  Definition first {A} (t : gtactic A) : selector A := nth 0 t.
+  Definition first {A} (t : gtactic A) : selector A := nth 0 (fun _=>t).
 
   Definition rev {A} : selector A := fun l =>
     let res := dreduce (@mrev', @mrev_append, @mapp) (mrev' l) in M.ret res.
@@ -376,9 +383,12 @@ Module notations.
   Notation "r '<-' t1 ';' t2" := (bind t1 (fun r => t2%tactic))
     (at level 20, t1 at level 100, t2 at level 200,
      format "'[' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
-  Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2%tactic) ..))
-    (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200,
-     format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
+  (* Notation "' r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (fun rn => t2%tactic) ..)) *)
+  (*   (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200, *)
+  (*    format "'[' ''' r1 .. rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope. *)
+  Notation "' r '<-' t1 ';' t2" := (bind t1 (fun r=> t2%tactic))
+    (at level 20, r pattern, t1 at level 100, t2 at level 200,
+     right associativity, format "'[' ''' r  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
   Notation "` r1 .. rn '<-' t1 ';' t2" := (bind t1 (fun r1 => .. (bind t1 (fun rn => t2%tactic)) ..))
     (at level 20, r1 binder, rn binder, t1 at level 100, t2 at level 200,
      right associativity, format "'[' '`' r1  ..  rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
@@ -495,22 +505,22 @@ Module notations.
     (seq t1 ts) (at level 41, left associativity) : tactic_scope.
 
   Notation "t1 '|1>' t2" :=
-    (t1 &> S.nth 0 t2)
+    (t1 &> S.nth 0 (fun _=>t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|2>' t2" :=
-    (t1 &> S.nth 1 t2)
+    (t1 &> S.nth 1 (fun _=>t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|3>' t2" :=
-    (t1 &> S.nth 2 t2)
+    (t1 &> S.nth 2 (fun _=>t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|4>' t2" :=
-    (t1 &> S.nth 3 t2)
+    (t1 &> S.nth 3 (fun _=>t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|5>' t2" :=
-    (t1 &> S.nth 4 t2)
+    (t1 &> S.nth 4 (fun _=>t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
   Notation "t1 '|6>' t2" :=
-    (t1 &> S.nth 5 t2)
+    (t1 &> S.nth 5 (fun _=>t2))
     (at level 41, left associativity, t2 at level 100) : tactic_scope.
 
   Notation "t1 'l>' t2" :=
