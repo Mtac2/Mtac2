@@ -259,6 +259,28 @@ Definition with_goal_sort (F : forall {s : Sort} (T : s), ttac T) (e : Exception
       | mNone => raise e
       end
     end.
+Definition with_goal_type' (F : forall T, ttac T) (e : Exception) : tactic :=
+  fun g =>
+    match g with
+    | Metavar Propₛ T g =>
+      '(m: t, gs) <- F T;
+      o <- M.unify g t UniMatchNoRed;
+      match o with
+      | mSome _ =>
+        gs <- M.map (fun x => M.ret (mpair tt x)) gs;
+        M.ret gs
+      | mNone => raise e
+      end
+    | Metavar Typeₛ T g =>
+      '(m: t, gs) <- F T;
+      o <- M.unify g t UniMatchNoRed;
+      match o with
+      | mSome _ =>
+        gs <- M.map (fun x => M.ret (mpair tt x)) gs;
+        M.ret gs
+      | mNone => raise e
+      end
+    end.
 
 Module MatchGoalTT.
 Import TacticsBase.T.notations.
@@ -282,8 +304,8 @@ Definition with_upcast {s : Sort} {A} {a : A} :
   (forall (C : A -> Type), ttac (C a)) ->
   forall C : (A -> s), ttac (C a) :=
   match s with
-  | Propₛ => fun t (f : A -> Propₛ) => t f
-  | Typeₛ => fun t (f : A -> Typeₛ) => t f
+  | Propₛ => fun t (f : A -> Prop) => t f
+  | Typeₛ => fun t (f : A -> Type) => t f
   end.
 
 Fixpoint match_goal_pattern'
@@ -291,8 +313,8 @@ Fixpoint match_goal_pattern'
   fix go l1 l2 g :=
   match p, l2 with
   | gbase P t, _ =>
-    with_goal_sort (
-        fun s G =>
+    with_goal_type' (
+        fun G =>
           o <- M.unify_univ P G u;
           match o with
           | mSome f =>
