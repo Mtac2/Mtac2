@@ -140,7 +140,7 @@ Definition generalize {A} (x : A) : tactic := fun g =>
   match g with
   | @Metavar SType P _ =>
      aP <- M.abs_prod_type x P; (* aP = (forall x:A, P) *)
-     e <- M.evar aP;
+     e <- M.remove x (M.evar aP);
      mmatch aP with
      | [? Q : A -> Type] (forall z:A, Q z) =n> [H]
         let e' := reduce (RedWhd [rl:RedMatch]) match H in _ =m= Q return Q with meq_refl _ => e end in
@@ -150,7 +150,7 @@ Definition generalize {A} (x : A) : tactic := fun g =>
      end
   | @Metavar SProp P _ =>
      aP <- M.abs_prod_prop x P; (* aP = (forall x:A, P) *)
-     e <- M.evar aP;
+     e <- M.remove x (M.evar aP);
      mmatch aP with
      | [? Q : A -> Prop] (forall z:A, Q z) =n> [H]
         let e' := reduce (RedWhd [rl:RedMatch]) match H in _ =m= Q return Q with meq_refl _ => e end in
