@@ -19,7 +19,7 @@ install: |
     opam repo list
     opam list
     opam update -y
-    opam install -y coq-unicoq.v1.3+8.9
+    opam install -y coq-unicoq.1.3+8.9
     "
 script:
 - echo -e "${ANSI_YELLOW}Building Mtac2...${ANSI_RESET}" && echo -en 'travis_fold:start:Mtac2.build\\r'
