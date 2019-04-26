@@ -64,3 +64,29 @@ Mtac Do (
                            )
                             (* M.unify_or_fail UniMatchNoRed t (id (fun a : True => a <: True) I) *)
      )%MC.
+
+
+(* Testing the *type* of the goal in [match_goal] for the absence of [S.selem_of] and other unwanted wrappers. *)
+Module SelemOf.
+  Import TT.
+  Definition test_Type := (
+        match_goal with | [[?P |- P]] =>
+          mmatch P return M (P *m _) with
+          | unit =n> TT.idtac : M _
+          | _ => mfail "[P] not forwarded as exactly [P] to [match_goal] branch"
+          end
+        end)%MC%TT.
+  Definition test_Prop := (
+        match_goal with | [[?P : Prop |- P]] =>
+          mmatch P return M (P *m _) with
+          | True =n> TT.idtac : M _
+          | _ => mfail "[P] not forwarded as exactly [P] to [match_goal] branch"
+          end
+        end)%MC%TT.
+  Goal unit.
+    mrun test_Type.
+  Abort.
+  Goal True.
+    mrun test_Prop.
+  Abort.
+End SelemOf.
