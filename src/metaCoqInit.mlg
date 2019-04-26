@@ -2,8 +2,6 @@
 
 (** This module initializes the plugin (parser extension, callbacks, …). *)
 
-open Pcoq  (* required by Camlp5 *)
-
 (**
 
    Since Coq 8.5, the following directive must appear to declare plugins. See:
@@ -97,7 +95,7 @@ let mproof_instr : MetaCoqInstr.mproof_instr Pcoq.Entry.t =
 
 VERNAC { mproof_mode } EXTEND MProofInstr
 | ![proof] [ mproof_instr(_instr) ] =>
-  { let open Vernacexpr in VtProofStep {parallel = `No; proof_block_detection = None}, VtLater } ->
+  { let open Vernacextend in VtProofStep {parallel = `No; proof_block_detection = None}, VtLater } ->
   { fun ~pstate -> Option.map (fun pstate -> MetaCoqInterp.interp_proof_constr ~pstate _instr) pstate }
 END
 
@@ -170,6 +168,6 @@ let _ = Pvernac.register_proof_mode proof_mode_identifier mproof_mode
 
 VERNAC COMMAND EXTEND MProofCommand
 | [ "MProof" ]
-  => { Vernacexpr.(VtProofMode proof_mode_identifier, VtNow) }
+  => { Vernacextend.(VtProofMode proof_mode_identifier, VtNow) }
   -> { MetaCoqInterp.interp_mproof_command () }
 END
