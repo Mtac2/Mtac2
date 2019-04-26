@@ -38,7 +38,7 @@ install: |
     sudo apt install -y m4
     opam pin add coq https://github.com/coq/coq.git#v8.10
     coqc --version
-    opam pin --ignore-constraints-on=coq add coq-unicoq https://github.com/unicoq/unicoq.git#master
+    opam pin --ignore-constraints-on=coq add coq-unicoq https://github.com/unicoq/unicoq.git#da609d64a531cd8069478aa19c29ce88261e3fe5
     opam pin
     opam list
     "
