@@ -37,12 +37,13 @@ TACTIC EXTEND mrun
   | [ "mrun" uconstr(c) ] -> { MetaCoqRun.run_tac_constr (DynamicallyChecked c) }
 END
 
+(* NB this accesses proof state through proof_opt_query, but it can
+   have non-proof side effects so it's not classifiable as query AFAICT*)
 VERNAC COMMAND EXTEND MtacDo CLASSIFIED AS SIDEFF
-  | ![proof] [ "Mtac" "Do" lconstr(c) ] -> {
+  | ![proof_opt_query] [ "Mtac" "Do" lconstr(c) ] -> {
     fun ~pstate ->
     let sigma, env = Option.cata Pfedit.get_current_context
                        (let e = Global.env () in Evd.from_env e, e) pstate in
-    MetaCoqRun.run_cmd env sigma c;
-    pstate
+    MetaCoqRun.run_cmd env sigma c
   }
 END
