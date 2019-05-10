@@ -71,7 +71,7 @@ module MetaCoqRun = struct
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
     if EConstr.eq_constr_nounivs sigma metaCoqType h && List.length args = 1 then
       try
-        let sigma = Evarconv.the_conv_x_leq env concl (List.hd args) sigma in
+        let sigma = Evarconv.unify_leq_delay env sigma concl (List.hd args) in
         (true, sigma)
       with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (str "Different types")
     else
@@ -167,7 +167,7 @@ module MetaCoqRun = struct
         | StaticallyChecked (MonoProgram ty, Globnames.ConstRef c) ->
             begin
               try
-                let sigma = Evarconv.the_conv_x_leq env concl ty sigma in
+                let sigma = Evarconv.unify_leq_delay env sigma concl ty in
                 (false, sigma, EConstr.mkConst c)
               with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (str "Different types")
             end
@@ -177,7 +177,7 @@ module MetaCoqRun = struct
                 let inst, ctx = UnivGen.fresh_instance_from au None in
                 (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
                 let sigma = Evd.merge_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
-                let sigma = Evarconv.the_conv_x_leq env concl ty sigma in
+                let sigma = Evarconv.unify_leq_delay env sigma concl ty in
                 (false, sigma, EConstr.mkConst c)
               with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (str "Different types")
             end
