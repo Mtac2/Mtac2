@@ -872,7 +872,7 @@ let run_declare_def env sigma kind name opaque ty bod =
     | Coercion -> Some (Class.add_coercion_hook ~poly)
     | CanonicalStructure ->
         if opaque then raise CanonicalStructureMayNotBeOpaque else
-          Some (DeclareDef.Hook.make (fun _ _ _ -> Canonical.declare_canonical_structure))
+          Some (DeclareDef.Hook.(make (fun { S.dref; _ } -> Canonical.declare_canonical_structure dref)))
     | SubClass -> Some (Class.add_subclass_hook ~poly)
     (* | Instance -> Lemmas.mk_hook (fun local gr -> *)
     (*   let local = match local with | Global -> false | Local -> true | _ -> raise DischargeLocality in *)
@@ -906,9 +906,10 @@ let run_declare_def env sigma kind name opaque ty bod =
   let name = CoqString.from_coq (env, sigma) name in
   let id = Names.Id.of_string name in
   let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, ctx) in
-  let gr = Globnames.ConstRef kn in
-  let () = DeclareDef.Hook.call ~fix_exn ?hook:(vernac_definition_hook false kind) uctx [] (DeclareDef.Global Declare.ImportDefaultBehavior) gr  in
-  let c = UnivGen.constr_of_monomorphic_global gr in
+  let dref = Globnames.ConstRef kn in
+  let () = DeclareDef.Hook.call ~fix_exn ?hook:(vernac_definition_hook false kind)
+             { DeclareDef.Hook.S.uctx; obls=[]; scope=DeclareDef.Global Declare.ImportDefaultBehavior; dref }  in
+  let c = UnivGen.constr_of_monomorphic_global dref in
   let env = Global.env () in
   (* Feedback.msg_notice *)
   (*   (Termops.print_constr_env env c); *)
