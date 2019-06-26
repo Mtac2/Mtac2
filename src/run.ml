@@ -868,12 +868,12 @@ let run_declare_def env sigma kind name opaque ty bod =
   let open Decl_kinds in
   (* copied from coq 8.6.1 Vernacentries *)
   let fix_exn = Future.fix_exn_of (Future.from_val bod) in
-  let vernac_definition_hook p = function
-    | Coercion -> Some (Class.add_coercion_hook p)
+  let vernac_definition_hook poly = function
+    | Coercion -> Some (Class.add_coercion_hook ~poly)
     | CanonicalStructure ->
         if opaque then raise CanonicalStructureMayNotBeOpaque else
           Some (DeclareDef.Hook.make (fun _ _ _ -> Canonical.declare_canonical_structure))
-    | SubClass -> Some (Class.add_subclass_hook p)
+    | SubClass -> Some (Class.add_subclass_hook ~poly)
     (* | Instance -> Lemmas.mk_hook (fun local gr -> *)
     (*   let local = match local with | Global -> false | Local -> true | _ -> raise DischargeLocality in *)
     (*   let () = Typeclasses.declare_instance None local gr *)
@@ -907,7 +907,7 @@ let run_declare_def env sigma kind name opaque ty bod =
   let id = Names.Id.of_string name in
   let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, ctx) in
   let gr = Globnames.ConstRef kn in
-  let () = DeclareDef.Hook.call ~fix_exn ?hook:(vernac_definition_hook false kind) uctx [] (Global ImportDefaultBehavior) gr  in
+  let () = DeclareDef.Hook.call ~fix_exn ?hook:(vernac_definition_hook false kind) uctx [] (DeclareDef.Global Declare.ImportDefaultBehavior) gr  in
   let c = UnivGen.constr_of_monomorphic_global gr in
   let env = Global.env () in
   (* Feedback.msg_notice *)

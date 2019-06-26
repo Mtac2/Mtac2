@@ -1,4 +1,4 @@
-(coqlib
+(coq.theory
  (name Mtac2)
  (public_name coq-mtac2)
  (modules :standard \ ideas.SumRun ideas.Pre-typedtactics ideas.non_refl_refl)
