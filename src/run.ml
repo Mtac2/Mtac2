@@ -865,7 +865,7 @@ exception UnsupportedDefinitionObjectKind
 exception CanonicalStructureMayNotBeOpaque
 
 let run_declare_def env sigma kind name opaque ty bod =
-  let open Decl_kinds in
+  let open Decls in
   (* copied from coq 8.6.1 Vernacentries *)
   let fix_exn = Future.fix_exn_of (Future.from_val bod) in
   let vernac_definition_hook poly = function
@@ -905,7 +905,8 @@ let run_declare_def env sigma kind name opaque ty bod =
   let kind = kinds.(kind_pos) in
   let name = CoqString.from_coq (env, sigma) name in
   let id = Names.Id.of_string name in
-  let kn = Declare.declare_definition ~opaque:opaque ~kind:kind id ~types:ty (bod, ctx) in
+  let ce = Declare.definition_entry ~opaque ~types:ty ~univs:ctx bod in
+  let kn = Declare.declare_constant ~name:id ~kind:(Decls.IsDefinition kind) (Declare.DefinitionEntry ce) in
   let dref = Globnames.ConstRef kn in
   let () = DeclareDef.Hook.call ~fix_exn ?hook:(vernac_definition_hook false kind)
              { DeclareDef.Hook.S.uctx; obls=[]; scope=DeclareDef.Global Declare.ImportDefaultBehavior; dref }  in
@@ -1709,7 +1710,7 @@ let rec run' ctxt (vms : vm list) =
                         let bod = Unsafe.to_constr bod in
                         (match run_declare_def env sigma kind name (CoqBool.from_coq sigma opaque) ty bod with
                          | (sigma, env, ret) -> ereturn ~new_env:env sigma (of_constr ret)
-                         | exception CErrors.AlreadyDeclared _ ->
+                         | exception Declare.AlreadyDeclared _ ->
                              efail (E.mkAlreadyDeclared sigma env name)
                          | exception Type_errors.TypeError(env, Type_errors.UnboundVar v) ->
                              efail (E.mkTypeErrorUnboundVar sigma env (mkVar v))
