@@ -26,7 +26,7 @@ branches:
 install: |
   # Run the COQ container and display build metadata
   docker run -d -i --init --name=COQ -v ${TRAVIS_BUILD_DIR}:/home/coq/Mtac2 -w /home/coq/Mtac2 ${COQ_IMAGE}
-  docker exec COQ /bin/bash --login -c "
+  travis_wait 30 docker exec COQ /bin/bash --login -c "
     export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
     set -ex
     export OPAMJOBS=4
