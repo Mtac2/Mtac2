@@ -29,6 +29,7 @@ install: |
   docker exec COQ /bin/bash --login -c "
     export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
     set -ex
+    export OPAMJOBS=4
     opam config list
     opam repo list
     opam list
