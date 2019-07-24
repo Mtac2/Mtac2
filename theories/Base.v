@@ -1,12 +1,16 @@
-From Mtac2 Require Import Logic Datatypes Logic List Utils Sorts MTele.
-Import Sorts.
-From Mtac2 Require Export Pattern.
-From Mtac2.intf Require Export Dyn Reduction Unification DeclarationDefs M Lift .
-
 (* Need to load Unicoq to get the module dependency right *)
 Declare ML Module "unicoq".
 (** Load library "MetaCoqPlugin.cma". *)
 Declare ML Module "MetaCoqPlugin".
+
+(* Declare ML Module must work without the Requires to be compatible
+   with async proofs. Running it before them serves as a test
+   (although it doesn't test that it still works without the prelude
+   Requires). *)
+From Mtac2 Require Import Logic Datatypes Logic List Utils Sorts MTele.
+Import Sorts.
+From Mtac2 Require Export Pattern.
+From Mtac2.intf Require Export Dyn Reduction Unification DeclarationDefs M Lift .
 
 Require Import Strings.String.
 Require Import NArith.BinNat.

@@ -291,10 +291,10 @@ module ReductionStrategy = struct
   open CClosure.RedFlags
   open Context
 
-  let reduce_constant = constant_of_string "Reduction.reduce"
-  let isReduce sigma env c = isConstant sigma reduce_constant c
+  let reduce_constant = lazy (constant_of_string "Reduction.reduce")
+  let isReduce sigma env c = isConstant sigma (Lazy.force reduce_constant) c
   let isTReduce sigma env c = isReduce sigma env (EConstr.of_constr c)
-  let isFReduce sigma env c = isFConstant reduce_constant c
+  let isFReduce sigma env c = isFConstant (Lazy.force reduce_constant) c
 
   let has_definition ts env sigma t =
     if isVar sigma t then
@@ -866,8 +866,6 @@ exception CanonicalStructureMayNotBeOpaque
 
 let run_declare_def env sigma kind name opaque ty bod =
   let open Decls in
-  (* copied from coq 8.6.1 Vernacentries *)
-  let fix_exn = Future.fix_exn_of (Future.from_val bod) in
   let vernac_definition_hook poly = function
     | Coercion -> Some (Class.add_coercion_hook ~poly)
     | CanonicalStructure ->
@@ -907,8 +905,8 @@ let run_declare_def env sigma kind name opaque ty bod =
   let id = Names.Id.of_string name in
   let ce = Declare.definition_entry ~opaque ~types:ty ~univs:ctx bod in
   let kn = Declare.declare_constant ~name:id ~kind:(Decls.IsDefinition kind) (Declare.DefinitionEntry ce) in
-  let dref = Globnames.ConstRef kn in
-  let () = DeclareDef.Hook.call ~fix_exn ?hook:(vernac_definition_hook false kind)
+  let dref = GlobRef.ConstRef kn in
+  let () = DeclareDef.Hook.call ?hook:(vernac_definition_hook false kind)
              { DeclareDef.Hook.S.uctx; obls=[]; scope=DeclareDef.Global Declare.ImportDefaultBehavior; dref }  in
   let c = UnivGen.constr_of_monomorphic_global dref in
   let env = Global.env () in
