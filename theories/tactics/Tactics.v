@@ -181,6 +181,36 @@ Definition cclear {A B} (x:A) (cont : gtactic B) : gtactic B := fun g=>
 
 Definition clear {A} (x : A) : tactic := cclear x idtac.
 
+Definition apply_params_to_constructors (ind_applied : dyn) (i : Ind_dyn) : M (mlist dyn) :=
+  let '(mkInd_dyn _ nparams _ l) := i in
+  rev_params <-
+   (mfix3 go (ind_dyn : _) (acc : _) (n : nat) : M (mlist dyn) :=
+      match n with
+      | 0 => M.ret acc
+      | S n =>
+        dcase ind_dyn as ind in
+            M.decompose_app''
+              (S:=fun _ _ => mlist dyn)
+              ind
+              (fun A B f a =>
+                 go (Dyn f) (Dyn a :m: acc) n
+              )
+      end
+   ) ind_applied mnil (N.to_nat nparams);
+  let apply_rev_params := (
+        mfix2 go (params : mlist dyn) (c : _) : M (dyn) :=
+          match params with
+          | [m:] => M.ret c
+          | p :m: params =>
+            dcase p as P, p in
+            mmatch c with
+            | [? C c] @Dyn (forall p:P, C p) c =u> go params (Dyn (c p))
+            end
+          end
+      ) in
+  M.map (apply_rev_params rev_params) l.
+
+
 Definition destruct {A : Type} (n : A) : tactic := fun g =>
   let A := reduce (RedWhd [rl:RedBeta]) A in
   b <- M.is_var n;
@@ -190,13 +220,14 @@ Definition destruct {A : Type} (n : A) : tactic := fun g =>
     P <- M.Cevar (A->s) ctx;
     let Pn := P n in
     M.unify_or_fail UniCoq Pn gT;;
-    l <- M.constrs A;
+    '(mkInd_dyn _ _ _ l as i) <- M.constrs A;
+    l <- apply_params_to_constructors (Dyn A) i;
     l <- M.map (fun d : dyn =>
       (* a constructor c has type (forall x, ... y, A) and we return
          (forall x, ... y, P (c x .. y)) *)
       t' <- copy_ctx P d;
       e <- M.Cevar t' ctx;
-      M.ret (Dyn e)) (msnd l);
+      M.ret (Dyn e)) l;
     let c := {| case_ind := A;
                 case_val := n;
                 case_return := Dyn P;
@@ -635,7 +666,7 @@ Definition apply_one_of (l : mlist dyn) : tactic :=
 
 (** Tries to apply each constructor of the goal type *)
 Definition constructor : tactic :=
-  '(m: _, l) <- M.constrs =<< goal_type;
+  '(mkInd_dyn _ _ _ l) <- M.constrs =<< goal_type;
   apply_one_of l.
 
 Definition apply_in {P Q} (c : P -> Q) (H : P) : tactic :=
@@ -658,8 +689,8 @@ Definition nconstructor (n : nat) : tactic :=
   match n with
   | 0 => M.raise ConstructorsStartsFrom1
   | S n =>
-    l <- M.constrs A;
-    match mnth_error (msnd l) n with
+    '(mkInd_dyn _ _ _ l) <- M.constrs A;
+    match mnth_error l n with
     | mSome d => dcase d as x in apply x
     | mNone => raise CantFindConstructor
     end
@@ -667,24 +698,24 @@ Definition nconstructor (n : nat) : tactic :=
 
 Definition split : tactic :=
   A <- goal_type;
-  l <- M.constrs A;
-  match msnd l with
+  '(mkInd_dyn _ _ _ l) <- M.constrs A;
+  match l with
   | [m:_] => nconstructor 1
   | _ => raise Not1Constructor
   end.
 
 Definition left : tactic :=
   A <- goal_type;
-  l <- M.constrs A;
-  match msnd l with
+  '(mkInd_dyn _ _ _ l) <- M.constrs A;
+  match l with
   | d :m: [m: _ ] => dcase d as x in apply x
   | _ => raise Not2Constructor
   end.
 
 Definition right : tactic :=
   A <- goal_type;
-  l <- M.constrs A;
-  match msnd l with
+  '(mkInd_dyn _ _ _ l) <- M.constrs A;
+  match l with
   | _ :m: [m: d] => dcase d as x in apply x
   | _ => raise Not2Constructor
   end.

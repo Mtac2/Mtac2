@@ -1,5 +1,6 @@
-From Mtac2 Require Import Base List.
+From Mtac2 Require Import Base List Datatypes.
 Import M.notations.
+Import Datatypes.ProdNotations.
 
 
 Set Universe Polymorphism.
@@ -21,6 +22,8 @@ Definition find_in_constrs {C} (c : C)  : mlist dyn -> M (mlist dyn) :=
     match cs with
     | mnil => M.ret mnil
     | mcons c' cs =>
+      '(m: c, _) <- M.decompose c;
+      dcase c as C, c in
       let C := reduce (RedVmCompute) C in
       mmatch c' with
       | @Dyn C c =n> M.ret cs
@@ -33,7 +36,7 @@ Definition check_exhaustiveness {A B y}
            (ps_in : mlist (branch M A B y))
            (ops : moption (mlist (branch M A B y))) :
   M (mlist (branch M A B y)) :=
-  '(mpair _ constrs) <- M.constrs A;
+  '(mkInd_dyn _ _ _ constrs) <- M.constrs A;
   (
     mfix2 f (ps : _) (constrs : _) : M _ :=
       match ps, constrs with

@@ -17,13 +17,9 @@ Fixpoint combine {A B} (l : mlist A) (l' : mlist B) {struct l} : mlist (A *m B) 
   end.
 
 Definition get_ind_cts (A : Type) (offset : nat) : M (nat * {s : Sort & { it : ITele s & mlist (NDCTele it)}}) :=
-  ind <- get_ind A;
-  let (nsortit, constrs) := ind in
-  (* drop first `offset` constructors. *)
+    '(m: nparams, nindx, (existT _ isort it), constrs) <- get_ind A;
   let constrs := mskipn offset constrs in
-  let (nindx, sortit) := nsortit in
-  let (isort, it) := sortit in
-  atele <- get_ind_atele it nindx A;
+  atele <- get_ind_atele it nparams nindx A;
                (* Compute CTeles *)
   cts <- M.map (fun c_dyn : dyn =>
     dcase c_dyn as dtype, delem in

@@ -192,8 +192,9 @@ Abort.
 End ExampleReflect.
 
 Set Unicoq Try Solving Eqn.
+Require Vector.
 Module VectorExample.
-Require Import Vector.
+Import Vector.
 Goal forall n (v : t nat n), n = Coq.Lists.List.length (to_list v).
 Proof.
   pose (it := iTele (fun n => @iBase (Typeₛ) (t nat n))).

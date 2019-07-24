@@ -482,3 +482,19 @@ module CoqSort = struct
 
 
 end
+
+module CoqInd_Dyn = struct
+  open UConstrBuilder
+  let mkInd_dyn = from_string "Mtac2.intf.Case.mkInd_dyn"
+
+  exception NotAmkInd_dyn
+
+  let from_coq sigma env cterm =
+    match from_coq mkInd_dyn (env, sigma) cterm with
+    | None -> raise NotAmkInd_dyn
+    | Some args -> args
+
+  let to_coq sigma env =
+    build_app mkInd_dyn sigma env
+
+end
