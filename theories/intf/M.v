@@ -175,9 +175,14 @@ Definition destcase: forall{A: Type} (a: A), t (Case).
   make. Qed.
 
 (** Given an inductive type A, applied to all its parameters (but not
-    necessarily indices), it returns the type applied to exactly the
-    parameters, and a list of constructors (applied to the parameters). *)
-Definition constrs: forall{A: Type} (a: A), t (mprod dyn (mlist dyn)).
+    necessarily indices), [constrs] returns a [Ind_dyn] value representing the
+    inductive type:
+    - [ind_dyn_ind]: The unapplied inductive type itself as a [dyn]
+    - [ind_dyn_nparams]: The number of parameters
+    - [ind_dyn_nindices]: The number of indices
+    - [ind_dyn_constrs]: the inductie type's constructors as [dyn]s
+. *)
+Definition constrs: forall{A: Type} (a: A), t Ind_dyn.
   make. Qed.
 
 Definition makecase: forall(C: Case), t dyn.

@@ -213,7 +213,7 @@ Program Fixpoint args_of_max (max : nat) : dyn -> M (mlist dyn) :=
       mmatch d with
       | [? T Q (t : T) (f : T -> Q)] Dyn (f t) =>
          r <- args_of_max max (Dyn f);
-         M.ret (mapp r [m:Dyn t])
+         M.ret (Dyn t :m: r)
       | _ =>
         T <- M.evar Type;
         P <- M.evar (T -> Type);
@@ -222,7 +222,7 @@ Program Fixpoint args_of_max (max : nat) : dyn -> M (mlist dyn) :=
         dcase d as el in
         b <- M.cumul UniCoq el (f t);
         if b then
-          r <- args_of_max max (Dyn f); M.ret (mapp r [m: Dyn t])
+          r <- args_of_max max (Dyn f); M.ret (Dyn t :m: r)
         else
           M.raise NotEnoughArguments
       end
@@ -244,28 +244,29 @@ Fixpoint get_ATele {isort} (it : ITele isort) (al : mlist dyn) {struct al} : M (
 
 
 Set Use Unicoq.
-Program Definition get_CTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, A -> M (CTele it) :=
-  fun isort it nindx =>
+Program Definition get_CTele_raw : forall {isort} (it : ITele isort) (nparams nindx : nat) {A : stype_of isort}, A -> M (CTele it) :=
+  fun isort it nparams nindx =>
     mfix rec (A : stype_of isort) : selem_of A -> M (CTele it) :=
     mtmmatch_prog A as A return selem_of A -> M (CTele it) with
     | [? B (F : B -> isort)] ForAll F =u>
         fun f =>
         M.nu (FreshFrom F) mNone (fun b : B =>
-          r <- rec (F b) (App f b);
+          let t := reduce (RedWhd RedAll) (App f b) in
+          r <- rec (F b) t;
           f' <- abs b r;
           M.ret (cProd f'))
     | A =n>
       fun a =>
         let A_red := reduce RedHNF A in (* why the reduction here? *)
-        args <- args_of_max nindx (Dyn A_red);
-        atele <- get_ATele it args;
+        args <- args_of_max (nparams+nindx) (Dyn A_red);
+        atele <- get_ATele it (mrev args);
         a' <- @M.coerce _ (ITele_App atele) a ;
         M.ret (cBase atele a')
     end.
 
 Definition get_CTele :=
   fun {isort} =>
-    match isort as sort return forall {it : ITele sort} nindx {A : sort}, A -> M (CTele it) with
+    match isort as sort return forall {it : ITele sort} nparams nindx {A : sort}, A -> M (CTele it) with
     | Propₛ => get_CTele_raw (isort := Propₛ)
     | Typeₛ => get_CTele_raw (isort := Typeₛ)
     end.
@@ -346,31 +347,125 @@ Program Definition get_ITele : forall {T : Type} (ind : T), M (nat *m (sigT ITel
     | T =n> fun _=> M.failwith "Impossible ITele"
     end.
 
+Fixpoint compute_params (ind : dyn) {s} (i : ITele s) : M (mlist dyn) :=
+  match i with
+  | iBase _ => M.ret mnil
+  | iTele f =>
+    dcase ind as _, ind in
+    '(m: ind, arg) <- M.decompose ind;
+    arg <- M.coerce arg;
+    rec <- compute_params (Dyn ind) (f arg);
+    M.ret (Dyn arg :m: rec)
+  end.
+
+Fixpoint compute_ATele_from_rev_params {s} (i : ITele s) (l : mlist dyn) {struct l} : M (ATele i) :=
+  match i as i, l return M (ATele i) with
+  | iBase _, mnil => M.ret tt
+  | iTele f, arg :m: l =>
+    arg <- M.coerce arg;
+    rec <- compute_ATele_from_rev_params (f arg) l;
+    M.ret (existT _ arg rec)
+  | _, _ => M.failwith "bug"
+  end.
+
+Require Import Mtac2.lib.Specif.
+
+Definition apply_arg {s} (i : ITele s) : forall (a : ATele i), msigT (ATele) :=
+  match i with
+  | iBase s => fun args => mexistT ATele (iBase s) args
+  | iTele f => fun '(existT _ a args) => mexistT ATele (f a) args
+  end.
+
+Fixpoint apply_args {s} (i : ITele s) (a : ATele i) (n : nat) : msigT ATele :=
+  match n with
+  | 0 => mexistT ATele i a
+  | S n => let '(mexistT _ it args) := apply_arg i a in apply_args it args n
+  end.
+
+Definition ITele_App_eq
+{s} {i : ITele s} : forall
+    (a : ATele i),
+    ITele_App a = ITele_App (mprojT2 (apply_arg i a)) :=
+  match i with
+  | iBase _ => fun _ => eq_refl
+  | iTele f => fun '(existT _ _ _) => eq_refl
+  end.
+
+
+Definition apply_param_constr {s} {i : ITele s} :
+  forall (a : ATele i) (c : CTele i),
+    M (CTele (mprojT1 (apply_arg i a))) :=
+  match i as i return
+        forall (a : ATele i) (c : CTele i),
+          M (CTele (mprojT1 (apply_arg i a)))
+  with
+  | iBase _ => fun _ c => M.ret c
+  | iTele f =>
+    fun '(existT _ arg args as at1) =>
+      (fix go first (c : CTele (iTele f)) : M (CTele (f arg)) :=
+         match c , first with
+         | cBase (existT _ arg' args' as at2) app, false =>
+           mmatch arg as arg return M (CTele (f arg)) with
+           | arg' =u>
+                   let app := match eq_sym (ITele_App_eq (i:=iTele f) at2) in _ = x return x with | eq_refl => app end in
+                   M.ret (cBase args' app)
+           end
+         | cBase _ _, true => M.failwith "constructor takes no more arguments."
+         | cProd F, true =>
+           let A := _ in
+           let B := _ in
+           arg <- @M.coerce A B arg;
+           c <- go false (F arg);
+           M.ret c
+         | cProd F, false =>
+           \nu x,
+           c <- go false (F x);
+           c <- M.abs_fun x c;
+           M.ret (cProd c)
+         end) true
+  end.
+
+Fixpoint apply_params_constrs {s} {i : ITele s} (n : nat) :
+  forall (args : ATele i) (cs : mlist (CTele i)),
+    M (mlist (CTele (mprojT1 (apply_args i args n)))) :=
+  let P := (fun i : ITele s => ATele i *m mlist (CTele i)) in
+  match n, i as i return
+        forall (args : ATele i) (cs : mlist (CTele i)),
+          M (mlist (CTele (mprojT1 (apply_args i args n))))
+  with
+  | 0, _ => fun a cs => M.ret cs
+  | S m, iTele f =>
+    fun '(existT _ a args as args') cs =>
+      cs <- M.map (apply_param_constr (i:=iTele f) args') cs;
+      apply_params_constrs m _ cs
+  | S m, iBase _ => fun _ _ => M.failwith "Reached iBase but am supposed to apply more parameters"
+  end
+.
+
+
 Obligation Tactic := idtac.
 Program
 Definition get_ind (A : Type) :
-  M (nat *m sigT (fun s => (ITele s)) *m mlist dyn) :=
-  r <- M.constrs A;
-  let (indP, constrs) := r in
+  M (nat *m nat *m sigT (fun s => (ITele s)) *m mlist dyn) :=
+  '(mkInd_dyn indP nparams nindx constrs) <- M.constrs A;
   dcase indP as el in
   sortit <- get_ITele el : M (nat *m sigT ITele);
-  let nindx : nat := mfst sortit in
   let (isort, it) := msnd sortit in
-  M.ret (m: nindx, existT _ _ it, constrs).
+  M.ret (m: BinNat.N.to_nat nparams, BinNat.N.to_nat nindx, existT _ _ it, constrs).
 
 (* Compute ind type ATele *)
-Definition get_ind_atele {isort} (it : ITele isort) (nindx : nat) (A : Type) : M (ATele it) :=
-  indlist <- args_of_max nindx (Dyn A) : M (mlist dyn);
-  atele <- get_ATele it indlist : M (ATele it);
+Definition get_ind_atele {isort} (it : ITele isort) (nparams nindx : nat) (A : Type) : M (ATele it) :=
+  arglist <- args_of_max (nparams + nindx) (Dyn A) : M (mlist dyn);
+  atele <- get_ATele it (mrev arglist) : M (ATele it);
   M.ret atele.
 
 Import TacticsBase.T.notations.
 Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
-    ind <- get_ind A;
-      let (nsortit, constrs) := ind in
-      let (nindx, sortit) := nsortit in
-      let (isort, it) := sortit in
-      atele <- get_ind_atele it nindx A;
+    '(m: nparams, nindx, (existT _ isort it), constrs) <- get_ind A;
+      (* let (nsortit, constrs) := ind in *)
+      (* let (nindx, sortit) := nsortit in *)
+      (* let (isort, it) := sortit in *)
+      atele <- get_ind_atele it nparams nindx A;
                  (* Compute CTeles *)
         cts <- M.map (fun c_dyn : dyn =>
                        dcase c_dyn as dtype, delem in
@@ -378,12 +473,16 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
                        b <- M.cumul UniCoq ty dtype;
                        if b then
                          el <- M.evar ty;
-                         M.cumul UniCoq el delem;;
-                         get_CTele it nindx ty el
+                         M.cumul_or_fail UniCoq el delem;;
+                         get_CTele it nparams nindx ty el
                        else
                          M.failwith "Couldn't unify the type of the inductive with the type of the constructor"
                     ) constrs;
                      (* Compute return type RTele *)
+        cts <- apply_params_constrs nparams atele cts;
+        let it := mprojT1 (apply_args it atele nparams) in
+        let atele := mprojT2 (apply_args _ atele nparams) in
+
         gt <- M.goal_type g;
         rsG <- sort_goal gt;
         let (rsort, sG) := rsG in

@@ -30,9 +30,8 @@ Definition get_constrs :=
         fill (P x)
       )
     | _ =>
-      l <- M.constrs T;
-      let (_, l') := l in
-      M.ret l'
+      '(mkInd_dyn _ _ _ l) <- M.constrs T;
+      M.ret l
     end%MC.
 
 (** Given a constructor c, it returns its index. *)

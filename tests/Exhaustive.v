@@ -41,20 +41,16 @@ Fail Check (mmatch 1 exhaustively_with
       | [#] O | =n> M.print "O"
       end).
 
-(* Check inductive type with parameter. *)
+(* Check inductive type with parameters. *)
 Check (mmatch cons 1 nil exhaustively_with
       | [#] @nil _ | =n> M.print "nil"
       | [#] @cons _ | a l =n> M.print "cons"
       | _ => M.print "not in constructor normal form"
       end).
 
-(* Type inference works backworks so a syntactically different parameter later
-in the list will be used for elided parameters earlier and thus might throw off
-the exhaustiveness checker. Here, we make the parameter for [cons] [id nat]
-instead of just [nat]. The [_] for the parameter of [nil] will also be [id nat]
-and thus the checker will find neither constructor. *)
-Fail Check (mmatch cons 1 nil exhaustively_with
-      | [#] @nil _ | =n> M.print "nil"
-      | [#] @cons (id nat) | a l =n> M.print "cons"
+(* Check inductive type with parameters which we instantiate with syntactically different but convertible values. *)
+Check (mmatch cons 1 nil exhaustively_with
+      | [#] @nil (id nat) | =n> M.print "nil"
+      | [#] @cons nat | a l =n> M.print "cons"
       | _ => M.print "not in constructor normal form"
       end).
