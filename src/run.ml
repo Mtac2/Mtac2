@@ -936,9 +936,9 @@ let run_declare_implicits env sigma gr impls =
                 (fun item ->
                    let kind_pos = get_constructor_pos sigma item in
                    let ret = CAst.make (if kind_pos > 0 then
-                                Some (Anonymous, impliciteness.(kind_pos))
-                              else
-                                None) in
+                                          Some (Anonymous, impliciteness.(kind_pos))
+                                        else
+                                          None) in
                    (* let ret = match CoqOption.from_coq (env, sigma) item with *)
                    (*   | None -> None *)
                    (*   | Some item -> *)
