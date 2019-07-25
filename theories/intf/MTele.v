@@ -25,7 +25,7 @@ match n with
 | mTele F => ForAll (fun x => MTele_Const T (F x))
 end.
 Definition MTele_ConstP (T : Prop) (n : MTele) : Prop := @MTele_Const Propₛ T n.
-Definition MTele_ConstT@{i+} (T : Type@{i}) (n : MTele@{i}) : Type@{i} := @MTele_Const Typeₛ T n.
+Definition MTele_ConstT (T : Type) (n : MTele) : Type := @MTele_Const Typeₛ T n.
 
 Fixpoint MTele_const {s : Sort} {T : s} {n : MTele} : @MTele_Const s T n -> stype_of s :=
   match n return MTele_Const T n -> _ with
@@ -37,7 +37,7 @@ Definition MTele_constP {T : Prop} {n} : MTele_ConstP T n -> Prop := @MTele_cons
 Definition MTele_constT {T : Type} {n} : MTele_ConstT T n -> Type := @MTele_const Typeₛ T n.
 
 (** MTele_Sort: compute `∀ x .. z, Type` from a given MTele *)
-Definition MTele_Sort@{i j k} (s : Sort) (n : MTele@{i}) : Type@{j} := MTele_ConstT@{j k} (stype_of@{j i} s) n.
+Definition MTele_Sort (s : Sort) (n : MTele) : Type := MTele_ConstT (stype_of s) n.
 Fixpoint MTele_Sort' (s : Sort) (n : MTele) : Type :=
   match n with
   | mBase => stype_of s
@@ -53,8 +53,8 @@ Definition MTele_Ty := (MTele_Sort Typeₛ).
 Definition MTele_Pr := (MTele_Sort Propₛ).
 
 (* Definition MTele_sort {s : Sort} {n : MTele} : MTele_Sort s n -> Type := @MTele_constT _ n. *)
-Fixpoint MTele_sort@{i+} {s : Sort} {n : MTele@{i}} :
-  forall S : MTele_Sort s n, Type@{i} :=
+Fixpoint MTele_sort {s : Sort} {n : MTele} :
+  forall S : MTele_Sort s n, Type :=
   match n return MTele_Sort s n -> _ with
   | mBase => fun S => selem_of S
   | mTele F => fun S => forall x, MTele_sort (S x)
