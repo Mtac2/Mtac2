@@ -58,7 +58,6 @@ MProof.
 Qed.
 
 Ltac injection x := injection x.
-Require Import Coq.Init.Logic.
 
 Goal forall n m,  S n = S m -> n = m.
 MProof.
