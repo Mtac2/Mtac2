@@ -1147,13 +1147,13 @@ let declare_mind env sigma params sigs mut_constrs =
      mind_entry_lc} :: acc
   ) [] (zip (inds, constrs)) in
   let mind_entry_inds = List.rev mind_entry_inds in
-  let _ = ComInductive.declare_mutual_inductive_with_eliminations
+  let _ = DeclareInd.declare_mutual_inductive_with_eliminations
             {mind_entry_record=None;
              mind_entry_finite=Declarations.Finite;
              mind_entry_inds;
              mind_entry_params;
              mind_entry_universes=Evd.univ_entry ~poly:false sigma;
-             mind_entry_variance=None;
+             mind_entry_cumulative=false;
              mind_entry_private=None;
             } UnivNames.empty_binders [] in
   (sigma, CoqUnit.mkTT)
@@ -1206,7 +1206,7 @@ let check_exception exception_sigma mtry_sigma env c =
   let open Id.Set in
   let c = nf_evar exception_sigma c in (* is this necessary? *)
   try
-    let () = Pretyping.check_evars env mtry_sigma exception_sigma c in
+    let () = Pretyping.check_evars env ~initial:mtry_sigma exception_sigma c in
     if subset (collect_vars exception_sigma c) (vars_of_env env) then
       (mtry_sigma, c)
     else
