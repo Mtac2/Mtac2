@@ -192,6 +192,19 @@ module MetaCoqRun = struct
       run env sigma concl evar istactic t
     end
 
+  let run_mtac_do env sigma t =
+    let sigma, t = Constrintern.interp_open_constr env sigma t in
+    let ty = Retyping.get_type_of env sigma t in
+    let sigma, (concl, sort) = Evarutil.new_type_evar env sigma Evd.univ_flexible in
+    let isM, sigma = ifM env sigma concl ty t in
+    if isM then
+      match Run.run (env, sigma) t with
+      | Run.Val _ -> ()
+      | Run.Err (_, e) ->
+          CErrors.user_err (str "Uncaught exception: " ++ Printer.pr_econstr_env env sigma e)
+    else
+      CErrors.user_err (str "Mtac Do expects a term of type [M _].")
+
   let run_cmd env sigma t =
     let sigma, c = Constrintern.interp_open_constr env sigma t in
     match Run.run (env, sigma) c with
