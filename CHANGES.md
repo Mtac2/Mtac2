@@ -13,3 +13,4 @@ Notation:
 Vernacular:
 
 - `Mtac Do` now accepts its argument without parentheses.
+- `Mtac Do` now typechecks its argument and only executes code of type `M _`.

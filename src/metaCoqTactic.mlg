@@ -44,6 +44,6 @@ VERNAC COMMAND EXTEND MtacDo CLASSIFIED AS SIDEFF
     fun ~pstate ->
     let sigma, env = Option.cata Pfedit.get_current_context
                        (let e = Global.env () in Evd.from_env e, e) pstate in
-    MetaCoqRun.run_cmd env sigma c
+    MetaCoqRun.run_mtac_do env sigma c
   }
 END
