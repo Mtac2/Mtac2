@@ -51,75 +51,53 @@ Definition MTele_of : Prop -> M (sigT MTele_Ty) :=
    end
 .
 
-Class MT_OF (T : Prop) := mt_of : sigT MTele_Ty.
-Arguments mt_of _ {_}.
-Hint Extern 0 (MT_OF ?t) => mrun (MTele_of t) : typeclass_instances.
+Class MT_OF (T : Prop) :=
+  {
+    mt_of_tele : MTele;
+    mt_of_type: MTele_Ty mt_of_tele;
+    mt_of_eq : T =m= MFA mt_of_type
+  }.
+(* Arguments mt_of _ {_}. *)
+Definition tc_helper (t : Prop)  :=
+                                '(existT _ m (existT _ mT eq)) <- MTele_of' t;
+                                M.ret (Build_MT_OF _ m mT eq).
+Hint Extern 0 (MT_OF ?t) => mrun (tc_helper t
+                              ) : typeclass_instances.
 
+Definition mfix_tc' {A : Prop} {mt : MT_OF A} :
+  forall (F : (A -> A)),
+    A :=
+  match meq_sym (@mt_of_eq _ mt) in _ =m= R return (R -> R ) -> (R) with
+  | meq_refl => MFixDef.mfix' _
+  end.
 
-Set Use Unicoq.
-
-Structure execV {A} (f : M A) B := ExecV { value : B } .
-
-Monomorphic Canonical Structure the_value {A} (f : M A) v := ExecV _ f (lift f v) v.
-
-Arguments value {A} f {B} {e}.
-
-Notation "'[run'  t ]" :=
-((let H := _ in let _ : value (t) = H := eq_refl in H)).
-
-Definition exec {A} (f : M A) {v:A} : lift f v := v.
-
-Notation "'[ex'  t ']'" := (exec t) (at level 0).
-
-Definition mfix_eq {m : MTele} {T: MTele_Ty m} {A : Prop} : forall {Eq : MFA T =m= A}, (A -> A) -> A :=
-  fun eq => match eq in _ =m= R return (R -> R) -> R with
-            | meq_refl => fun f => mfix' _ f
-            end.
-
-Definition mfix_lift {m : MTele} {A : Prop} {F : (A -> A) -> A}:
-  lift (
-     '(existT _ m' (existT _ mT E)) <-mtry  MTele_of' A
-        with
-    | [?E] E =>
-      M.print_term E;;
-      M.evar _
-      end;
-      M.unify m m' UniCoq;;
-        match meq_sym E in _ =m= R return M ((R -> R) -> R) with
-        | meq_refl => M.ret (mfix' mT)
-        end) (F) := F.
-
-(* Eval cbn in mfix_lift  : ((nat -> M nat) -> (nat -> M nat)) -> nat -> M nat. *)
-(* Definition blubb := mfix_lift (fun f (x : nat) => M.ret x). *)
+Arguments mfix_tc' {_} {_} _.
 
 Notation "'mfix' f x .. y : T := b" :=
   (
-  (*   let mt := mt_of (forall x, .. (forall y, T) ..) in *)
-  (*   match tc_unify ((forall x, .. (forall y, T) .. )) (MTele_ty M (n:=projT1 mt) (projT2 mt)) *)
-  (*         in _ =m= R return ((R -> R) -> R) -> R with *)
-  (*   | meq_refl => fun g => g (fun f => (fun x => ..  (fun y => b) ..)) *)
-  (*   end (mfix' (m:=projT1 mt) (projT2 mt)) *)
-  (* ) (no associativity, *)
-  (*    at level 85, *)
-    ((mfix_lift
-      :
-        (* _ *)
-        (* _ -> _ *)
-        (* (_ -> _) -> _ *)
-        ((forall x, .. (forall y, T) ..)
-         -> (forall x, .. (forall y, T) ..))
-        -> (forall x, .. (forall y, T) ..)
-     )
-       (fun f => (fun x => .. (fun y => b) ..))
-    )
-  ) (only parsing,
-      no associativity,
+    @mfix_tc' (forall x, .. (forall y, T) ..) _ (fun f => fun x  => .. (fun y => b)..)
+  )
+    (only parsing,
+     no associativity,
      at level 85,
      f ident,
      x binder,
      y binder,
-     (* T at level 0, *)
      format "mfix  f  x  ..  y  :  T  :=  b"
     ).
 
-Definition bla := mfix f (x : nat) : True -> M True := fun i => f x i.
+(* The above notation does not work for printing since [T] cannot be derived
+   from an application of `mfix_tc'`. Thus, we define a printing notation that
+   omits [T]. *)
+Notation "'mfix' f x .. y := b" :=
+  (
+    mfix_tc' (fun f => fun x  => .. (fun y => b)..)
+  )
+    (only printing,
+     no associativity,
+     at level 85,
+     f ident,
+     x binder,
+     y binder,
+     format "mfix  f  x  ..  y  :=  b"
+    ).
