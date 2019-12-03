@@ -2221,12 +2221,24 @@ let multi_subst_inv sigma l c =
   in substrec 0 c
 
 
-let run (env0, sigma) t : data =
+let run (env0, sigma) ty t : data =
+
+
   let subs, env = db_to_named sigma env0 in
   let t = multi_subst sigma subs t in
   let t = CClosure.inject (EConstr.Unsafe.to_constr t) in
   let (sigma, renv) = build_hypotheses sigma env in
   let _evars ev = safe_evar_value sigma ev in
+
+  (* ty is of the form [M X] or a term reducible to that. *)
+  (* we only need [X]. *)
+  (* Feedback.msg_info (Printer.pr_econstr_env env sigma ty); *)
+  let ty = EConstr.of_constr (RE.whd_betadeltaiota env sigma (of_econstr ty)) in
+  (* Feedback.msg_info (Printer.pr_econstr_env env sigma ty); *)
+  let _, ty = decompose_app sigma ty in
+  assert (List.length ty == 1);
+  let ty = List.nth ty 0 in
+
   match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure.empty_stack; backtrace=[]} [Code t] with
   | Err (sigma', v, _, backtrace) ->
       (* let v = Vars.replace_vars vsubs v in *)
@@ -2242,7 +2254,8 @@ let run (env0, sigma) t : data =
   | Val (sigma', v, stack, tr) ->
       assert (List.is_empty stack);
       let v = multi_subst_inv sigma' subs (to_econstr v) in
-      let sigma', _ = Typing.type_of env0 sigma' v in
+      let sigma' = Typing.check env sigma' v ty in
+      (* let sigma', _ = Typing.type_of env0 sigma' v in *)
       Val (sigma', v)
 
 (** set the run function in unicoq *)
@@ -2256,6 +2269,7 @@ let _ =
         sigma, lc
     | Some lc -> sigma, lc)
 let _ = Unicoq.Munify.set_run (fun env sigma t ->
-  match run (env, sigma) t with
+  let ty = Retyping.get_type_of env sigma t in
+  match run (env, sigma) ty t with
   | Err _ -> None
   | Val c -> Some c)
