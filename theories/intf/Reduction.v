@@ -37,5 +37,5 @@ Notation rhnf := (reduce RedHNF).
 Notation rcbv := (reduce RedNF).
 Notation "'dreduce' ( l1 , .. , ln )" :=
   (reduce (RedStrong [rl:RedBeta; RedFix; RedMatch;
-           RedDeltaOnly (rlcons (Dyn (@l1)) ( .. (rlcons (Dyn (@ln)) rlnil) ..))]))
+           RedDeltaOnly (rlcons (Dyn l1) ( .. (rlcons (Dyn ln) rlnil) ..))]))
   (at level 0).
