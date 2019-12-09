@@ -900,8 +900,16 @@ let run_declare_def env sigma kind name opaque ty bod =
   ; Instance
   ; Method|]
   in
-  let ctx = Evd.univ_entry ~poly:false sigma in
-  let uctx = Evd.evar_universe_context sigma in
+  let univs = EConstr.universes_of_constr sigma bod in
+  let univs = Univ.LSet.union univs (EConstr.universes_of_constr sigma ty) in
+
+  let ty = Unsafe.to_constr ty in
+  let bod = Unsafe.to_constr bod in
+
+  let sigma' = Evd.restrict_universe_context sigma univs in
+  let uctx = Evd.evar_universe_context sigma' in
+
+  let ctx = Evd.univ_entry ~poly:false sigma' in
   let kind_pos = get_constructor_pos sigma kind in
   let kind = kinds.(kind_pos) in
   let name = CoqString.from_coq (env, sigma) name in
@@ -1707,8 +1715,6 @@ let rec run' ctxt (vms : vm list) =
 
                     | MConstr (Mdeclare, (kind, name, opaque, ty, bod)) ->
                         let kind, name, opaque, ty, bod = to_econstr kind, to_econstr name, to_econstr opaque, to_econstr ty, to_econstr bod in
-                        let ty = Unsafe.to_constr ty in
-                        let bod = Unsafe.to_constr bod in
                         (match run_declare_def env sigma kind name (CoqBool.from_coq sigma opaque) ty bod with
                          | (sigma, env, ret) -> ereturn ~new_env:env sigma (of_constr ret)
                          | exception Declare.AlreadyDeclared _ ->
