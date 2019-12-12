@@ -563,7 +563,7 @@ type traceback_entry =
   | MTry of Names.Constant.t option
   | InternalNu of Names.Id.t
   | InternalException of Pp.t
-  | Anon of Loc.t option
+  (* | Anon of Loc.t option *)
 
 let pr_traceback_entry t =
   let open Pp in
@@ -576,9 +576,9 @@ let pr_traceback_entry t =
       ++ p ++ str ">"
   | InternalNu name ->
       str "<nu: " ++ str (Names.Id.to_string name) ++ str ">"
-  | Anon (Some loc) ->
-      str "??? (" ++ Topfmt.pr_loc loc ++ str ")"
-  | Anon (None) -> Pp.str "???"
+(* | Anon (Some loc) ->
+ *     str "??? (" ++ Topfmt.pr_loc loc ++ str ")"
+ * | Anon (None) -> Pp.str "???" *)
 
 type traceback = traceback_entry list
 
