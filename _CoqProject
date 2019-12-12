@@ -1,4 +1,4 @@
-CAMLC = "ocamlc -c -rectypes -thread -warn-error +a"
+COQMF_WARN = "-warn-error +a-3-23"
 CAMLDEBUG = "-g"
 -arg -bt
 -I src
