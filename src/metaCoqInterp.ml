@@ -73,6 +73,7 @@ module MetaCoqRun = struct
       ++ str "\n" ++ str "Mtac backtrace (last function first):\n"
       ++ Run.pr_traceback tr
       ++ str "End of backtrace\n"
+      ++ str "(Backtraces are only recorded with [Set_Debug_Exceptions].)\n"
     in
     CErrors.user_err ?loc err
 
