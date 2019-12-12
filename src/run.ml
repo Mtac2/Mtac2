@@ -585,7 +585,11 @@ type traceback = traceback_entry list
 
 module Traceback = struct
   let push entry tr =
-    entry :: tr
+    if !debug_ex then
+      entry :: tr
+    else
+      tr
+
   let rec push_mtry mtry_tr =
     match mtry_tr with
     | [] -> push (MTry None)
