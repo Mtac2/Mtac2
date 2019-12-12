@@ -503,6 +503,10 @@ let mconstr_head_of h =
       MHead Mdeclare_mind
   | _ -> raise Not_found
 
+let mconstr_head_opt h =
+  match mconstr_head_of h with
+  | mh -> Some(mh)
+  | exception Not_found -> None
 
 let mconstr_of (type a) args (h : a mconstr_head) =
   match h with
