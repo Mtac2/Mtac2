@@ -1,5 +1,4 @@
 open Constrs
-open Pp
 open Ltac_pretype
 
 type mrun_arg_type =
@@ -66,6 +65,17 @@ module MetaCoqRun = struct
   (** This module run the interpretation of a constr
   *)
 
+  let uncaught ?loc env sigma e tr =
+    let open Pp in
+    let err =
+      str "Uncaught Mtac exception:\n"
+      ++ str "  " ++ hov 2 (Printer.pr_econstr_env env sigma e)
+      ++ str "\n" ++ str "Mtac backtrace (last function first):\n"
+      ++ Run.pr_traceback tr
+      ++ str "End of backtrace\n"
+    in
+    CErrors.user_err ?loc err
+
   let ifM env sigma concl ty c =
     let sigma, metaCoqType = MtacNames.mkT_lazy sigma env in
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
@@ -73,7 +83,7 @@ module MetaCoqRun = struct
       try
         let sigma = Evarconv.unify_leq_delay env sigma concl (List.hd args) in
         (true, sigma)
-      with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (str "Different types")
+      with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (Pp.str "Different types")
     else
       (false, sigma)
 
@@ -90,9 +100,9 @@ module MetaCoqRun = struct
       if b then
         (true, sigma, c)
       else
-        CErrors.user_err (str "Not a Mtactic")
+        CErrors.user_err (Pp.str "Not a Mtactic")
 
-  let run env sigma concl evar istactic t =
+  let run ?loc env sigma concl evar istactic t =
     (* [run] is also the entry point for code that doesn't go through
        [pretypeT] so we have to do the application to the current goal
        for tactics in here instead of [pretypeT].
@@ -118,10 +128,11 @@ module MetaCoqRun = struct
               let goals = List.map (fun e->Proofview_monad.with_empty_state (Option.get e)) goals in
               Unsafe.tclSETGOALS goals
             with CoqList.NotAList e ->
+              let open Pp in
               CErrors.user_err (str "The list of goals is not normalized: " ++ (Printer.pr_econstr_env env sigma e))
           end
-    | Run.Err (_, e) ->
-        CErrors.user_err (str "Uncaught exception: " ++ (Printer.pr_econstr_env env sigma e))
+    | Run.Err ((sigma, e), tr) ->
+        uncaught ?loc env sigma e tr
 
   let evar_of_goal gl =
     let open Proofview.Goal in
@@ -135,13 +146,14 @@ module MetaCoqRun = struct
   let run_tac t =
     let open Proofview.Goal in
     nf_enter begin fun gl ->
+      let loc = Constrexpr_ops.constr_loc t in
       let env = env gl in
       let concl = concl gl in
       let sigma = sigma gl in
       let evar = EConstr.of_constr (evar_of_goal gl) in
       let (sigma, t) = Constrintern.interp_open_constr env sigma t in
       let (istactic, sigma, t) = pretypeT env sigma concl evar t in
-      run env sigma concl evar istactic t
+      run ?loc env sigma concl evar istactic t
     end
 
 
@@ -163,13 +175,13 @@ module MetaCoqRun = struct
       let concl = concl gl in
       let sigma = sigma gl in
       let evar = EConstr.of_constr (evar_of_goal gl) in
-      let (istactic, sigma, t) = match t with
+      let ((istactic, sigma, t), loc) = match t with
         | StaticallyChecked (MonoProgram ty, Globnames.ConstRef c) ->
             begin
               try
                 let sigma = Evarconv.unify_leq_delay env sigma concl ty in
-                (false, sigma, EConstr.mkConst c)
-              with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (str "Different types")
+                ((false, sigma, EConstr.mkConst c), None)
+              with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (Pp.str "Different types")
             end
         | StaticallyChecked (PolyProgram (au, ty), Globnames.ConstRef  c) ->
             begin
@@ -178,21 +190,24 @@ module MetaCoqRun = struct
                 (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
                 let sigma = Evd.merge_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
                 let sigma = Evarconv.unify_leq_delay env sigma concl ty in
-                (false, sigma, EConstr.mkConst c)
-              with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (str "Different types")
+                ((false, sigma, EConstr.mkConst c), None)
+              with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (Pp.str "Different types")
             end
         | StaticallyChecked (GTactic, gr) ->
             let sigma, t = EConstr.fresh_global env sigma gr in
-            (true, sigma, t)
+            ((true, sigma, t), None)
         | DynamicallyChecked t ->
+            let {term=term} = t in
+            let loc = Glob_ops.loc_of_glob_constr term in
             let sigma, t = understand env sigma t in
-            pretypeT env sigma concl evar t
+            pretypeT env sigma concl evar t, loc
         | _ -> assert false
       in
-      run env sigma concl evar istactic t
+      run ?loc env sigma concl evar istactic t
     end
 
   let run_mtac_do env sigma t =
+    let loc = Constrexpr_ops.constr_loc t in
     let sigma, t = Constrintern.interp_open_constr env sigma t in
     let ty = Retyping.get_type_of env sigma t in
     let sigma, (concl, sort) = Evarutil.new_type_evar env sigma Evd.univ_flexible in
@@ -200,17 +215,18 @@ module MetaCoqRun = struct
     if isM then
       match Run.run (env, sigma) t with
       | Run.Val _ -> ()
-      | Run.Err (_, e) ->
-          CErrors.user_err (str "Uncaught exception: " ++ Printer.pr_econstr_env env sigma e)
+      | Run.Err ((_, e), tr) ->
+          uncaught ?loc env sigma e tr
     else
-      CErrors.user_err (str "Mtac Do expects a term of type [M _].")
+      CErrors.user_err (Pp.str "Mtac Do expects a term of type [M _].")
 
   let run_cmd env sigma t =
+    let loc = Constrexpr_ops.constr_loc t in
     let sigma, c = Constrintern.interp_open_constr env sigma t in
     match Run.run (env, sigma) c with
     | Run.Val _ -> ()
-    | Run.Err (_, e) ->
-        CErrors.user_err (str "Uncaught exception: " ++ Printer.pr_econstr_env env sigma e)
+    | Run.Err ((sigma, e), tr) ->
+        uncaught ?loc env sigma e tr
 
 end
 
