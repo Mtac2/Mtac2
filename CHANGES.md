@@ -1,6 +1,13 @@
 Changes from 1.1 to 1.2
 =======================
 
+Debugging:
+
+- `Set_Debug_Exceptions` now enables backtraces for uncaught exceptions. The
+  traces show definitions and some internal events encountered on the way to the
+  uncaught exception.
+
+
 Notation:
 
 - Combining the `.. <- ..; ..` (`M.bind`) notation and Coq's support for patterns (as in
