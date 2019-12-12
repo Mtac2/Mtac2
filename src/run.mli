@@ -3,11 +3,11 @@ open Evd
 open EConstr
 
 
-type traceback
-val pr_traceback : traceback -> Pp.t
+type backtrace
+val pr_backtrace : backtrace -> Pp.t
 
 
-type elem_stack = (Evd.evar_map * CClosure.fconstr * CClosure.stack * traceback)
+type elem_stack = (Evd.evar_map * CClosure.fconstr * CClosure.stack * backtrace)
 
 type elem = (evar_map * constr)
 
@@ -17,7 +17,7 @@ type data_stack =
 
 type data =
   | Val of elem
-  | Err of elem * traceback
+  | Err of elem * backtrace
 
 val make_evar : evar_map -> env -> constr -> evar_map * constr (* used in metaCoqInterp *)
 
@@ -36,15 +36,15 @@ type ctxt = {
   sigma: Evd.evar_map;
   nus: int;
   stack: CClosure.stack;
-  traceback: traceback;
+  backtrace: backtrace;
 }
 
 type vm = Code of CClosure.fconstr
         | Ret of CClosure.fconstr
         | Fail of CClosure.fconstr
-        | Bind of (CClosure.fconstr * traceback)
-        | Try of (Evd.evar_map * CClosure.stack * traceback * CClosure.fconstr)
-        | Nu of (Names.Id.t * Environ.env * CClosure.fconstr * traceback)
+        | Bind of (CClosure.fconstr * backtrace)
+        | Try of (Evd.evar_map * CClosure.stack * backtrace * CClosure.fconstr)
+        | Nu of (Names.Id.t * Environ.env * CClosure.fconstr * backtrace)
         | Rem of (Environ.env * CClosure.fconstr * bool)
 
 (* val run_fix : ctxt -> vm list -> CClosure.fconstr -> CClosure.fconstr array -> CClosure.fconstr -> CClosure.fconstr -> CClosure.fconstr array *)

@@ -558,14 +558,14 @@ module MNames = struct
 end
 
 
-type traceback_entry =
+type backtrace_entry =
   | Constant of Names.Constant.t
   | MTry of Names.Constant.t option
   | InternalNu of Names.Id.t
   | InternalException of Pp.t
   (* | Anon of Loc.t option *)
 
-let pr_traceback_entry t =
+let pr_backtrace_entry t =
   let open Pp in
   match t with
   | Constant n -> Names.KerName.print (Names.Constant.canonical n)
@@ -580,10 +580,10 @@ let pr_traceback_entry t =
  *     str "??? (" ++ Topfmt.pr_loc loc ++ str ")"
  * | Anon (None) -> Pp.str "???" *)
 
-type traceback = traceback_entry list
+type backtrace = backtrace_entry list
 
 
-module Traceback = struct
+module Backtrace = struct
   let push entry tr =
     if !debug_ex then
       entry :: tr
@@ -598,12 +598,12 @@ module Traceback = struct
 end
 
 
-let pr_traceback (tr : traceback) =
+let pr_backtrace (tr : backtrace) =
   let open Pp in
-  prlist (fun t -> str "  " ++ pr_traceback_entry t ++ str "\n") tr
+  prlist (fun t -> str "  " ++ pr_backtrace_entry t ++ str "\n") tr
 
 
-type elem_stack = (evar_map * fconstr * stack * traceback)
+type elem_stack = (evar_map * fconstr * stack * backtrace)
 type elem = (evar_map * constr)
 
 type data_stack =
@@ -612,7 +612,7 @@ type data_stack =
 
 type data =
   | Val of elem
-  | Err of elem * traceback
+  | Err of elem * backtrace
 
 let return s t st tr : data_stack = Val (s, t, st, tr)
 
@@ -1239,15 +1239,15 @@ type ctxt = {
   sigma: Evd.evar_map;
   nus: int;
   stack: CClosure.stack;
-  traceback: traceback;
+  backtrace: backtrace;
 }
 
 type vm = Code of CClosure.fconstr
         | Ret of CClosure.fconstr
         | Fail of CClosure.fconstr
-        | Bind of (CClosure.fconstr * traceback)
-        | Try of (Evd.evar_map * CClosure.stack * traceback * CClosure.fconstr)
-        | Nu of (Names.Id.t * Environ.env * CClosure.fconstr * traceback)
+        | Bind of (CClosure.fconstr * backtrace)
+        | Try of (Evd.evar_map * CClosure.stack * backtrace * CClosure.fconstr)
+        | Nu of (Names.Id.t * Environ.env * CClosure.fconstr * backtrace)
         | Rem of (Environ.env * CClosure.fconstr * bool)
 
 let cut_stack st =
@@ -1379,39 +1379,39 @@ let rec run' ctxt (vms : vm list) =
   let vm = hd vms in
   let vms = tl vms in
   let ctxt_nu1_fail (_, env, renv, _) = {ctxt with env; renv; nus = ctxt.nus-1} in
-  let ctxt_nu1 (_, env, renv, traceback) = {ctxt with traceback; env; renv; nus = ctxt.nus-1} in
+  let ctxt_nu1 (_, env, renv, backtrace) = {ctxt with backtrace; env; renv; nus = ctxt.nus-1} in
   match vm, vms with
-  | Ret c, [] -> return ctxt.sigma c ctxt.stack ctxt.traceback
-  | Ret c, (Bind (b, traceback) :: vms) ->
+  | Ret c, [] -> return ctxt.sigma c ctxt.stack ctxt.backtrace
+  | Ret c, (Bind (b, backtrace) :: vms) ->
       let stack = Zapp [|c|]::ctxt.stack in
-      (run'[@tailcall]) {ctxt with traceback; stack} (Code b :: vms)
+      (run'[@tailcall]) {ctxt with backtrace; stack} (Code b :: vms)
   | Ret c, (Try (_, _, _, b) :: vms) -> (run'[@tailcall]) ctxt (Ret c :: vms)
   | Ret c, Nu (name, _, _, _ as p) :: vms -> (* why the sigma'? *)
       if occur_var ctxt.env ctxt.sigma name (to_econstr c) then
         let (sigma, e) = E.mkVarAppearsInValue ctxt.sigma ctxt.env (mkVar name) in
         let ctxt = ctxt_nu1_fail p in
-        let traceback = Traceback.push (
+        let backtrace = Backtrace.push (
           InternalException (Printer.pr_econstr_env ctxt.env sigma e)
-        ) ctxt.traceback
+        ) ctxt.backtrace
         in
-        (run'[@tailcall]) {ctxt with traceback; sigma} (Fail (of_econstr e) :: vms)
+        (run'[@tailcall]) {ctxt with backtrace; sigma} (Fail (of_econstr e) :: vms)
       else
         (run'[@tailcall]) (ctxt_nu1 p) (Ret c :: vms)
   | Ret c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Ret c :: vms)
 
-  | Fail c, [] -> fail ctxt.sigma c ctxt.stack ctxt.traceback
+  | Fail c, [] -> fail ctxt.sigma c ctxt.stack ctxt.backtrace
   | Fail c, (Bind (_, _) :: vms) ->
       (run'[@tailcall]) ctxt (Fail c :: vms)
-  | Fail c, (Try (sigma, stack, traceback_try, b) :: vms) ->
+  | Fail c, (Try (sigma, stack, backtrace_try, b) :: vms) ->
       let sigma = Evd.set_universe_context sigma (Evd.evar_universe_context ctxt.sigma) in
       let (ground, (sigma, c)) = check_exception ctxt.sigma sigma ctxt.env (to_econstr c) in
-      let traceback = ctxt.traceback in
-      let traceback = if ground then Traceback.push_mtry traceback_try traceback else
-          Traceback.push (
+      let backtrace = ctxt.backtrace in
+      let backtrace = if ground then Backtrace.push_mtry backtrace_try backtrace else
+          Backtrace.push (
             InternalException (Printer.pr_econstr_env ctxt.env (ctxt.sigma) c)
-          ) traceback
+          ) backtrace
       in
-      (run'[@tailcall]) {ctxt with sigma; traceback; stack=Zapp [|of_econstr c|] :: stack} (Code b::vms)
+      (run'[@tailcall]) {ctxt with sigma; backtrace; stack=Zapp [|of_econstr c|] :: stack} (Code b::vms)
   | Fail c, (Nu p :: vms) -> (run'[@tailcall]) (ctxt_nu1_fail p) (Fail c :: vms)
   | Fail c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Fail c :: vms)
 
@@ -1445,12 +1445,12 @@ and eval ctxt (vms : vm list) t =
 
   let fail ?internal:(i=true) (sigma, c) =
     let p = Printer.pr_econstr_env env sigma (to_econstr c) in
-    let traceback =
+    let backtrace =
       if i then
-        Traceback.push (InternalException p) ctxt.traceback
-      else ctxt.traceback
+        Backtrace.push (InternalException p) ctxt.backtrace
+      else ctxt.backtrace
     in
-    (run'[@tailcall]) {ctxt with sigma; traceback} (Fail c :: vms)
+    (run'[@tailcall]) {ctxt with sigma; backtrace} (Fail c :: vms)
   in
   let efail ?internal (sigma, fc) = fail ?internal (sigma, of_econstr fc) in
 
@@ -1518,8 +1518,8 @@ and eval ctxt (vms : vm list) t =
         let o = CClosure.unfold_reference infos tab k in
         match o with
         | Def v ->
-            let traceback = Traceback.push (Constant hc) ctxt.traceback in
-            let ctxt = {ctxt with traceback} in
+            let backtrace = Backtrace.push (Constant hc) ctxt.backtrace in
+            let ctxt = {ctxt with backtrace} in
             (run'[@taillcall]) ctxt (Code v :: vms)
         | _ ->
             efail (E.mkStuckTerm sigma env (to_econstr t))
@@ -1575,12 +1575,12 @@ and primitive ctxt vms mh reduced_term =
   let return ?new_env:(new_env=env) sigma c = (run'[@tailcall]) {ctxt with sigma; env=new_env; stack} (Ret c :: vms) in
   let fail ?internal:(i=true) (sigma, c) =
     let p = Printer.pr_econstr_env env sigma (to_econstr c) in
-    let traceback =
+    let backtrace =
       if i then
-        Traceback.push (InternalException p) ctxt.traceback
-      else ctxt.traceback
+        Backtrace.push (InternalException p) ctxt.backtrace
+      else ctxt.backtrace
     in
-    (run'[@tailcall]) {ctxt with sigma; traceback} (Fail c :: vms)
+    (run'[@tailcall]) {ctxt with sigma; backtrace} (Fail c :: vms)
   in
 
   (* wrappers for return and fail to conveniently return/fail with EConstrs *)
@@ -1600,9 +1600,9 @@ and primitive ctxt vms mh reduced_term =
   match mc with
   | MConstr (Mret, (_, t)) -> return sigma t
   | MConstr (Mbind, (_, _, t, f)) ->
-      (run'[@tailcall]) ctxt (Code t :: Bind (f, ctxt.traceback) :: vms)
+      (run'[@tailcall]) ctxt (Code t :: Bind (f, ctxt.backtrace) :: vms)
   | MConstr (Mmtry', (_, t, f)) ->
-      (run'[@tailcall]) ctxt (Code t :: Try (sigma, stack, ctxt.traceback, f) :: vms)
+      (run'[@tailcall]) ctxt (Code t :: Try (sigma, stack, ctxt.backtrace, f) :: vms)
   | MConstr (Mraise', (_, t)) -> fail ~internal:false (sigma, t)
   | MConstr (Mfix1, ((a), b, f, (x))) ->
       run_fix ctxt vms hf [|a|] b f [|x|]
@@ -1632,15 +1632,15 @@ and primitive ctxt vms mh reduced_term =
               efail (Exceptions.mkNameExists sigma env s)
             else
               begin
-                let nu = Nu (name, ctxt.env, ctxt.renv, ctxt.traceback) in
+                let nu = Nu (name, ctxt.env, ctxt.renv, ctxt.backtrace) in
                 let ot = CoqOption.from_coq sigma env (to_econstr ot) in
                 let env = push_named (Context.Named.Declaration.of_tuple (annotR name, ot, a)) env in
-                let traceback = Traceback.push (InternalNu (name)) ctxt.traceback in
+                let backtrace = Backtrace.push (InternalNu (name)) ctxt.backtrace in
                 let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
                 let renv = of_econstr renv' in
                 let nus = ctxt.nus + 1 in
                 let stack = Zapp [|of_econstr (mkVar name)|] :: stack in
-                (run'[@tailcall]) {ctxt with traceback; env; renv; sigma; nus; stack} (Code f :: nu :: vms)
+                (run'[@tailcall]) {ctxt with backtrace; env; renv; sigma; nus; stack} (Code f :: nu :: vms)
               end
         | StuckName -> efail (Exceptions.mkWrongTerm sigma env s)
         | InvalidName _ -> efail (Exceptions.mkInvalidName sigma env s)
@@ -1666,16 +1666,16 @@ and primitive ctxt vms mh reduced_term =
                 if not eqtypes then
                   efail (Exceptions.mkNotTheSameType sigma env ta)
                 else
-                  let nu = Nu (name, ctxt.env, ctxt.renv, ctxt.traceback) in
+                  let nu = Nu (name, ctxt.env, ctxt.renv, ctxt.backtrace) in
                   let env = push_named (Context.Named.Declaration.of_tuple (annotR name, Some d, dty)) env in
                   let var = mkVar name in
                   let body = Vars.subst1 var body in
-                  let traceback = Traceback.push (InternalNu (name)) ctxt.traceback in
+                  let backtrace = Backtrace.push (InternalNu (name)) ctxt.backtrace in
                   let (sigma, renv) = Hypotheses.cons_hyp dty var (Some d) (to_econstr ctxt.renv) sigma env in
                   let renv = of_econstr renv in
                   let nus = ctxt.nus + 1 in
                   let stack = Zapp [|of_econstr (mkVar name); of_econstr body|] :: stack in
-                  (run'[@tailcall]) {ctxt with traceback; env; renv; sigma; nus; stack} (Code f :: nu :: vms)
+                  (run'[@tailcall]) {ctxt with backtrace; env; renv; sigma; nus; stack} (Code f :: nu :: vms)
               end
         | StuckName -> efail (Exceptions.mkWrongTerm sigma env s)
         | InvalidName _ -> efail (Exceptions.mkInvalidName sigma env s)
@@ -2227,18 +2227,18 @@ let run (env0, sigma) t : data =
   let t = CClosure.inject (EConstr.Unsafe.to_constr t) in
   let (sigma, renv) = build_hypotheses sigma env in
   let _evars ev = safe_evar_value sigma ev in
-  match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure.empty_stack; traceback=[]} [Code t] with
-  | Err (sigma', v, _, traceback) ->
+  match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure.empty_stack; backtrace=[]} [Code t] with
+  | Err (sigma', v, _, backtrace) ->
       (* let v = Vars.replace_vars vsubs v in *)
       let v = multi_subst_inv sigma' subs (to_econstr v) in
       let (ground, (sigma, v)) = check_exception sigma' sigma' env0 v in
       (* No need to log anything if the exception is ground. *)
-      let traceback = if ground then traceback else
-          Traceback.push (
+      let backtrace = if ground then backtrace else
+          Backtrace.push (
             InternalException (Printer.pr_econstr_env env (sigma) v)
-          ) traceback
+          ) backtrace
       in
-      Err ((sigma, v), traceback)
+      Err ((sigma, v), backtrace)
   | Val (sigma', v, stack, tr) ->
       assert (List.is_empty stack);
       let v = multi_subst_inv sigma' subs (to_econstr v) in
