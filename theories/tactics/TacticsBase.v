@@ -120,18 +120,17 @@ Definition mmatch'' {A:Type} {P: A -> Type} (E : Exception) (y : A) (failure : g
   M.mmatch'' E y (failure g) (mmap (branch_map y g) ps).
 
 Module Matcher.
-Canonical Structure T_Predicate {A} {P : A -> Type} {y : A} : Predicate := {| predicate_pred := gtactic (P y) |}.
-Canonical Structure T_Matcher {A} {y} {P} :=
-  {|
-    matcher_pred := @T_Predicate _ _;
-    matcher_ret := gtactic (P y);
-    matcher_match E ps := @mmatch' A P E y ps
-  |}.
-Canonical Structure T_InDepMatcher {B} :=
-  {|
-    idmatcher_return := gtactic B;
-    idmatcher_match A y E ps := @mmatch' A (fun _ => B) E y ps
-  |}.
+  Canonical Structure T_Predicate {A} {P : A -> Type} {y : A} : Predicate :=
+    PREDICATE (gtactic (P y)).
+  Canonical Structure T_Matcher {A} {y} {P} :=
+    MATCHER
+      (@T_Predicate _ _)
+      (gtactic (P y))
+      (fun E ps => @mmatch' A P E y ps).
+  Canonical Structure T_InDepMatcher {B} :=
+    INDEPMATCHER
+      (gtactic B)
+      (fun A y E ps => @mmatch' A (fun _ => B) E y ps).
 End Matcher.
 Export Matcher.
 
