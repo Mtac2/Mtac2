@@ -199,17 +199,18 @@ Notation "'[!Type' ] 'forall' '_' : X , P =n> b" :=
   (branch_forallT (fun X P => b))
     (at level 201) : branch_scope.
 
-Structure Predicate {A : Type} (x : A) :=
+Structure Predicate :=
   {
     predicate_pred : Prop
   }.
 
-Structure Matcher {A : Type} (y : A) :=
+Structure Matcher {A : Type} {y : A} :=
   {
-    matcher_pred: forall y : A, Predicate y;
+    matcher_pred: forall y, Predicate;
     matcher_ret: Prop;
-    matcher_match : forall (E: Exception) (ps : mlist (branch A (fun y => predicate_pred y (matcher_pred y)) y)), matcher_ret
+    matcher_match : forall (E: Exception) (ps : mlist (branch A (fun y => predicate_pred (matcher_pred y)) y)), matcher_ret
   }.
+Arguments Matcher {_} _.
 
 Structure InDepMatcher :=
   {
@@ -227,12 +228,12 @@ Definition idmatcher_match_invert (m : InDepMatcher) (A : Type) (y : A) (R : Pro
 Arguments idmatcher_match _ _ _ _ & _.
 
 Definition matcher_match_invert (A : Type) (y : A) (m : Matcher y) (R : A -> Prop) :
-  (matcher_ret y m =m= R y) ->
-  (fun y => predicate_pred y (matcher_pred _ m y)) =m= R ->
+  (matcher_ret m =m= R y) ->
+  (fun y => predicate_pred (matcher_pred m y)) =m= R ->
   forall (_ : Exception) (_ : mlist (branch A R y)),
     (* R y =m= matcher_return y m -> *)
     R y.
-  intros <- <-. auto using matcher_match. Defined.
+  intros <- <-. eauto using matcher_match. Defined.
 
 Arguments matcher_match_invert _ _ _ _ & _ _ _ _ .
 
