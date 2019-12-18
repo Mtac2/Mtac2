@@ -522,7 +522,7 @@ Definition mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist (
 Definition NotCaught : Exception. constructor. Qed.
 
 Module Matcher.
-Canonical Structure M_Predicate {A} {P : A -> Type} {y : A} : Predicate y := {| predicate_pred := t (P y) |}.
+Canonical Structure M_Predicate {A} {P : A -> Type} {y : A} : Predicate := {| predicate_pred := t (P y) |}.
 Canonical Structure M_Matcher {A} {y} {P} :=
   {|
     matcher_pred := @M_Predicate _ _;
