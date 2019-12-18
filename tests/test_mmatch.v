@@ -50,7 +50,7 @@ Import M.notations.
 
 Definition inlist A (x : A) : forall (l : list A), M (In x l) :=
   mfix1 f (l : list A) : M (In x l) :=
-  mmatch l with
+  mmatch l as l return M (In x l ) with
   | [? l r] l ++ r =>
       M.mtry' (
         il <- f l;
@@ -114,7 +114,7 @@ Definition test_return_in (t : nat) : M (t = t) :=
 (* note that in this case we change the order (it doesn't matter) *)
 Definition inlist_nored A (x : A) : forall (l : list A), M (In x l) :=
   mfix1 f (l : list A) : M (In x l) :=
-  mmatch l with
+  mmatch l as l return M (In x l) with
   | [? s] (x :: s) =n> M.ret (in_eq _ _)
   | [? y s] (y :: s) =n> r <- f s; M.ret (in_cons y _ _ r)
   | [? l r] l ++ r =n>
@@ -147,7 +147,7 @@ Proof. reflexivity. Qed.
    the proof is not the same: *)
 Definition inlist_redcons A (x : A) : forall (l : list A), M (In x l) :=
   mfix1 f (l : list A) : M (In x l) :=
-  mmatch l with
+  mmatch l as l return M (In x l) with
   | [? s] (x :: s) => M.ret (in_eq _ _)
   | [? y s] (y :: s) => r <- f s; M.ret (in_cons y _ _ r)
   | [? l r] l ++ r =n>
@@ -258,7 +258,7 @@ Mtac Do (
      ).
 Mtac Do (
        mmatch (nat -> Type) with
-       | branch_forallT (fun X P => M.unify_or_fail UniMatchNoRed P (fun x => Type))
+       | branch_forallT (fun X P => M.unify_or_fail UniMatchNoRed P (fun x => Type);; M.ret I)
       end
      ).
 
@@ -270,6 +270,6 @@ Mtac Do (
      ).
 Mtac Do (
        mmatch (nat -> Type) with
-       | [!Type] forall _ : X, P =n> M.unify_or_fail UniMatchNoRed P (fun x => Type)
+       | [!Type] forall _ : X, P =n> M.unify_or_fail UniMatchNoRed P (fun x => Type);; M.ret I
       end
      ).
