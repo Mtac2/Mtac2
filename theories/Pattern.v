@@ -200,23 +200,30 @@ Notation "'[!Type' ] 'forall' '_' : X , P =n> b" :=
     (at level 201) : branch_scope.
 
 Structure Predicate :=
-  {
+  PREDICATE {
     predicate_pred : Prop
   }.
 
 Structure Matcher {A : Type} {y : A} :=
-  {
+  MATCHER {
     matcher_pred: forall y, Predicate;
     matcher_ret: Prop;
-    matcher_match : forall (E: Exception) (ps : mlist (branch A (fun y => predicate_pred (matcher_pred y)) y)), matcher_ret
+    _ : forall (E: Exception) (ps : mlist (branch A (fun y => predicate_pred (matcher_pred y)) y)), matcher_ret
   }.
 Arguments Matcher {_} _.
+Arguments MATCHER {_} {_}.
+
+Definition matcher_match {A y} (m : Matcher y) : forall (E: Exception) (ps : mlist (branch A (fun y => predicate_pred (matcher_pred m y)) y)), matcher_ret m :=
+  ltac:(destruct m as [ ? ? x]; refine x).
 
 Structure InDepMatcher :=
-  {
+  INDEPMATCHER {
     idmatcher_return : Prop;
-    idmatcher_match : forall A y (E: Exception) (ps : mlist (branch A (fun _ => idmatcher_return) y)), idmatcher_return;
+    _ : forall A y (E: Exception) (ps : mlist (branch A (fun _ => idmatcher_return) y)), idmatcher_return;
   }.
+
+Definition idmatcher_match (m : InDepMatcher) : forall A y (E: Exception) (ps : mlist (branch A (fun _ => idmatcher_return m) y)), idmatcher_return m :=
+  ltac:(destruct m as [ ? x]; refine x).
 
 Definition idmatcher_match_invert (m : InDepMatcher) (A : Type) (y : A) (R : Prop) :
   R =m= idmatcher_return m ->
