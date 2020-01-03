@@ -334,17 +334,17 @@ Definition declare_mind
            (constrs :
               mfold_right
                 (fun '(m: _; ind) acc =>
-                   MTele_val (MTele_In Typeₛ (fun a' => MTele_Ty (mprojT1 (a'.(acc_constT) ind))))
+                   MTele_val (curry_sort Typeₛ (fun a' => MTele_Ty (mprojT1 (apply_constT ind a'))))
                    -> acc
                 (* MTele_val (MTele_In Typeₛ (fun a => MTele_Ty (mprojT1 (a.(acc_const) ind)))) -> acc *)
                 )%type
                 (
                   (
-                    MTele_val (MTele_In Typeₛ
+                    MTele_val (curry_sort Typeₛ
                                         (fun a =>
                                            mfold_right
                                              (fun '(m: _; ind) acc =>
-                                                mlist (string *m m:{mt_constr & MTele_ConstT (ArgsOf (mprojT1 (a.(acc_constT) ind))) mt_constr}) *m acc
+                                                mlist (string *m m:{mt_constr & MTele_ConstT (ArgsOf (mprojT1 (apply_constT ind a))) mt_constr}) *m acc
                                              )%type
                                              unit
                                              sigs
