@@ -124,7 +124,7 @@ Local Program Example mtmmatch_prog_test (x : (nat : Type)) :=
 end.
 
 Canonical Structure CS_UNIFY_REFl {T} (A : T) : CS_UNIFY T := CS_Unify _ A A meq_refl.
-Arguments cs_unify [_ _].
+Arguments cs_unify {_ _}.
 
 
 Definition mtpbase_eq {A} {m : A -> Prop} (x : A) F (eq : m x =m= F x) : F x -> Unification -> mtpattern A m :=
@@ -143,7 +143,7 @@ Arguments MTt_Of [_] _.
 
 Polymorphic Class RET_TY (A : Type) := Ret_Ty { ret_ty : A }.
 Arguments Ret_Ty [_] _.
-Arguments ret_ty [_ _].
+Arguments ret_ty {_ _}.
 
 Notation "[¿ s .. t ] ps" := (mtpsort (M:=mty_of) (fun s => .. (mtpsort (M:=mty_of) (fun t => ps)) ..))
   (at level 202, s binder, t binder, ps at next level, only parsing) : mtpattern_scope.

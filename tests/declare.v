@@ -17,7 +17,7 @@ Require Mtac2.lib.List.
 Import Mtac2.lib.List.ListNotations.
 Definition cs := c1 <- M.declare dok_CanonicalStructure "bla" false (fun (x : nat) => (fun x => mkS x) x);
                     c2 <- M.declare dok_Definition "bli" true c1;
-                    M.declare_implicits c2 [m: ia_Implicit];;
+                    M.declare_implicits c2 [m: ia_MaximallyImplicit];;
                     M.ret tt.
 
 Compute ltac:(mrun cs).
@@ -34,11 +34,11 @@ Module DeclareTest.
   Fail Compute ltac:(mrun (M.declare_implicits (Nat.add) [m:])).
   Fail Compute ltac:(mrun (M.declare_implicits (Nat.add (n:=1)) [m:])).
   Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m:])).
-  Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: ia_Implicit | ia_Implicit])).
+  Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: ia_MaximallyImplicit | ia_MaximallyImplicit])).
   Definition should_work0 := Nat.add (n:=3) (m :=2).
   Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: ia_Implicit | ia_Explicit])).
   Definition should_work2 := Nat.add (n:=3) 2.
-  Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: ia_Explicit | ia_Implicit])).
+  Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: ia_Explicit | ia_MaximallyImplicit])).
   Definition should_work1 := Nat.add (m :=3) 2.
   Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: ia_Explicit | ia_Explicit])).
   Definition should_work := Nat.add 3 2.
