@@ -163,7 +163,7 @@ Module Mtac_V4.
 
   Program Definition solve_tauto : forall {P:Prop}, ttac P :=
     mfix1 solve_tauto (P : Prop) : M _ :=
-      mmatch P in Prop as P' return M (P' *m _) with
+      mmatch P in Prop as P' return ttac P' with
       | True => apply I
       | [? Q1 Q2] Q1 /\ Q2 =>
         apply (@conj _ _)
@@ -182,7 +182,7 @@ Module Mtac_V4.
         x <- M.evar X;
         q <- apply (@ex_intro _ _ _) <**> solve_tauto (Q x);
         promote_uninst_evar x q
-      | _ => TT.use (T.try T.assumption)
+      | _ => TT.use (A:=P) (T.try T.assumption) (* TODO: remove (A:=P) annotation. *)
       end.
 
  Ltac solve_tauto := mrun solve_tauto.

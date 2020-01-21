@@ -33,9 +33,9 @@ Definition find_in_constrs {C} (c : C)  : mlist dyn -> M (mlist dyn) :=
 
 
 Definition check_exhaustiveness {A B y}
-           (ps_in : mlist (branch M A B y))
-           (ops : moption (mlist (branch M A B y))) :
-  M (mlist (branch M A B y)) :=
+           (ps_in : mlist (branch A B y))
+           (ops : moption (mlist (branch A B y))) :
+  M (mlist (branch A B y)) :=
   '(mkInd_dyn _ _ _ constrs) <- M.constrs A;
   (
     mfix2 f (ps : _) (constrs : _) : M _ :=
