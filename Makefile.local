@@ -4,7 +4,7 @@
 #COQC=coqc
 COQ_SRC_SUBDIRS+=user-contrib/Unicoq
 
-TESTS=$(wildcard tests/*.v)
+TESTS=$(wildcard tests/*.v tests/bugs/*.v)
 TESTRESULTS=$(TESTS:.v=.vo)
 
 EXAMPLES=$(wildcard examples/*.v)
