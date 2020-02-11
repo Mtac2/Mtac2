@@ -57,8 +57,9 @@ let glob_mtac_type ist r =
         (GTactic, Globnames.ConstRef c)
       else
         CErrors.user_err (Pp.str "Not a Mtactic")
-  with Not_found -> Nametab.error_global_not_found r
-
+  with Not_found as exn ->
+    let _, info = Exninfo.capture exn in
+    Nametab.error_global_not_found ~info r
 
 
 module MetaCoqRun = struct
