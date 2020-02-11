@@ -1,8 +1,8 @@
 From Mtac2 Require Import Mtac2.
 
-Definition to_any (g: goal gs_base) : goal gs_any :=
+Definition to_any (g: goal gs_open) : goal gs_any :=
   match g with
-  | Goal s e => GoalOut s e
+  | Metavar _ s e => Metavar' _ _ s e
   end.
 
 (* besides duplicating the same goal (which is not incorrect, just stupid)
