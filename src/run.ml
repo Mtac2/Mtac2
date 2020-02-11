@@ -1464,6 +1464,13 @@ and eval ctxt (vms : vm list) t =
    * let term = zip_term (CClosure.term_of_fconstr reduced_term) stack in
    * Feedback.msg_debug (Printer.pr_constr_env env sigma term); *)
 
+  let is_blocked = function
+    | FFlex (VarKey _) -> true
+    | (FRel i | FFlex (RelKey i))
+      when not (Environ.evaluable_rel i env) -> true
+    | _ -> false
+  in
+
   match ctx_st, fterm_of reduced_term with
   | CBV, FConstruct _ -> failwith ("Invariant invalidated: reduction reached the constructor of M.t.")
   | CBV, FLetIn (_,v,_,bd,e) ->
@@ -1523,6 +1530,17 @@ and eval ctxt (vms : vm list) t =
             (run'[@taillcall]) ctxt (Code v :: vms)
         | _ ->
             efail (E.mkStuckTerm sigma env (to_econstr t))
+      end
+
+  | CBN, (_ as t) when (is_blocked t) ->
+      begin
+        if !debug_ex then
+          (let open Pp in
+           Feedback.msg_debug (
+             Printer.pr_econstr_env env sigma (to_econstr reduced_term) ++ str " is not evaluable. Are you trying to reduce a \\nu variable?"
+           )
+          );
+        efail (E.mkStuckTerm sigma env (to_econstr reduced_term))
       end
 
   | CBN, (_ as t) ->
