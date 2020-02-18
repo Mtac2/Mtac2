@@ -358,6 +358,9 @@ Definition declare_mind
   t unit.
   make. Qed.
 
+Definition existing_instance (name : string) (priority : moption N) (global : bool) : t unit.
+  make. Qed.
+
 Arguments t _%type.
 
 Definition fmap {A:Type} {B:Type} (f : A -> B) (x : t A) : t B :=

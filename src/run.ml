@@ -2112,6 +2112,16 @@ and primitive ctxt vms mh reduced_term =
   | MConstr (Mdeclare_mind, (params, inds, constrs)) ->
       let sigma, types = declare_mind env sigma (to_econstr params) (to_econstr inds) (to_econstr constrs) in
       ereturn sigma types
+  | MConstr (Mexisting_instance, (name, prio, global)) ->
+      let global = CoqBool.from_coq sigma (to_econstr global) in
+      let name = CoqString.from_coq (env, sigma) (to_econstr name) in
+      let path = Libnames.path_of_string name in
+      let qualid = Libnames.qualid_of_path path in
+      let prio = CoqOption.from_coq sigma env (to_econstr prio) in
+      let open Typeclasses in
+      let hint_priority = Option.map (CoqN.from_coq (env, sigma)) prio in
+      Classes.existing_instance global qualid (Some {hint_priority; hint_pattern= None});
+      ereturn sigma (CoqUnit.mkTT)
 (* h is the mfix operator, a is an array of types of the arguments, b is the
    return type of the fixpoint, f is the function
    and x its arguments. *)
