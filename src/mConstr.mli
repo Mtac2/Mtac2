@@ -82,6 +82,7 @@ type 'a mconstr_head =
   | Mkind_of_term : (arg_type * arg_any) mconstr_head
   | Mreplace : (arg_type * arg_type * arg_type * arg_any * arg_any * arg_any) mconstr_head
   | Mdeclare_mind : (arg_any * arg_any * arg_any) mconstr_head
+  | Mexisting_instance : (arg_any * arg_any * arg_bool) mconstr_head
 and mhead = | MHead : 'a mconstr_head -> mhead
 and mconstr = | MConstr : 'a mconstr_head * 'a -> mconstr
 
