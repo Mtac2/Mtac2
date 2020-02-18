@@ -239,3 +239,25 @@ Module M4.
 
 End M4.
 End Inductives.
+
+
+Module ExistingInstance.
+  Module Inner.
+    Class dummy := Dummy { dummy_nat : nat; dummy_extra : string }.
+
+    Definition test_global5 : dummy := Dummy 5 "5".
+    Definition test_global55 : dummy := Dummy 55 "55".
+    Definition test_local1 : dummy := Dummy 1 "1".
+
+    Mtac Do (M.existing_instance "test_global5" (mSome 5%N) true ).
+    Mtac Do (M.existing_instance "test_global55" (mSome 55%N) true ).
+    Mtac Do (M.existing_instance "test_local1" (mSome 1%N) false).
+
+    Mtac Do (M.ret (meq_refl : dummy_nat =m= 1)).
+  End Inner.
+
+  Fail Mtac Do (M.ret (meq_refl : Inner.dummy_nat =m= 1)).
+  Mtac Do (M.ret (meq_refl : Inner.dummy_nat =m= 5)).
+  Fail Mtac Do (M.ret (meq_refl : Inner.dummy_nat =m= 55)).
+
+End ExistingInstance.

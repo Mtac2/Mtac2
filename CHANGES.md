@@ -1,6 +1,13 @@
 Changes from 1.1 to 1.2
 =======================
 
+Primitives:
+
+- Added the `existing_instance` primitive that mirrors Coq's `Existing Instance`
+  vernacular. Together with `declare`, `existing_instance` can be used to
+  declare type class instances.
+
+
 Debugging:
 
 - `Set_Debug_Exceptions` now enables backtraces for uncaught exceptions. The
