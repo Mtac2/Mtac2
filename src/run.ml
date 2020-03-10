@@ -1193,20 +1193,20 @@ let declare_mind env sigma params sigs mut_constrs =
     let mind_entry_consnames, mind_entry_lc = unzip constrs in
     let mind_entry_lc = List.map (EConstr.to_constr sigma) mind_entry_lc in
     let mind_entry_arity = EConstr.to_constr sigma mind_entry_arity in
-    let mind_entry_template = false in
     {mind_entry_typename;
      mind_entry_arity;
-     mind_entry_template;
      mind_entry_consnames;
      mind_entry_lc} :: acc
   ) [] (zip (inds, constrs)) in
   let mind_entry_inds = List.rev mind_entry_inds in
+  let mind_entry_template = false in
   let _ = DeclareInd.declare_mutual_inductive_with_eliminations
             {mind_entry_record=None;
              mind_entry_finite=Declarations.Finite;
              mind_entry_inds;
              mind_entry_params;
              mind_entry_universes=Evd.univ_entry ~poly:false sigma;
+             mind_entry_template;
              mind_entry_cumulative=false;
              mind_entry_private=None;
             } UnivNames.empty_binders [] in
