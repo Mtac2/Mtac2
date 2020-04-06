@@ -138,7 +138,7 @@ module MetaCoqRun = struct
   let evar_of_goal gl =
     let open Proofview.Goal in
     let ids = List.map (fun d->Constr.mkVar (Context.Named.Declaration.get_id d)) (Environ.named_context (env gl)) in
-    Constr.mkEvar (goal gl, Array.of_list ids)
+    Constr.mkEvar (goal gl, ids)
 
   (** Get back the context given a goal, interp the constr_expr to obtain a constr
       Then run the interpretation fo the constr, and returns the tactic value,
