@@ -142,13 +142,13 @@ MProof.
   - exact G.
 Qed.
 
-Definition transitivity := "Coq.Init.Notations.transitivity".
+Definition transitivity := "Coq.Init.Ltac.transitivity".
 
 Lemma test6 : forall (x y z : Prop), x = y -> y = z -> x = z.
 MProof.
   intros x y z H G.
   ltac transitivity [m:Dyn y].
-  ltac "Coq.Init.Notations.revgoals" [m:].
+  ltac "Coq.Init.Ltac.revgoals" [m:].
   exact H.
   exact G.
 Qed.
