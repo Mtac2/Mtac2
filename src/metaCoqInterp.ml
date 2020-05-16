@@ -28,7 +28,7 @@ let glob_mtac_type ist r =
       match
         (Smartlocate.locate_global_with_alias r) (* Maybe put loc back in for error reporting *)
       with
-      | Globnames.ConstRef c -> c
+      | Names.GlobRef.ConstRef c -> c
       | _ -> CErrors.user_err (Pp.str "mrun_static only accepts constants. It does *not* accept variables, inductives, or constructors. ")
     in
     (* Typecheck here. Unification? probably *)
@@ -50,15 +50,16 @@ let glob_mtac_type ist r =
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
     let sigma, metaCoqType = MtacNames.mkT_lazy sigma env in
     if EConstr.eq_constr_nounivs sigma metaCoqType h && List.length args = 1 then
-      (ret (List.hd args), (Globnames.ConstRef c))
+      (ret (List.hd args), (Names.GlobRef.ConstRef c))
     else
       let b, sigma = ifTactic env sigma ty (body.const_body) in
       if b then
-        (GTactic, Globnames.ConstRef c)
+        (GTactic, Names.GlobRef.ConstRef c)
       else
         CErrors.user_err (Pp.str "Not a Mtactic")
-  with Not_found -> Nametab.error_global_not_found r
-
+  with Not_found as exn ->
+    let _, info = Exninfo.capture exn in
+    Nametab.error_global_not_found ~info r
 
 
 module MetaCoqRun = struct
@@ -177,14 +178,14 @@ module MetaCoqRun = struct
       let sigma = sigma gl in
       let evar = EConstr.of_constr (evar_of_goal gl) in
       let ((istactic, sigma, t), loc) = match t with
-        | StaticallyChecked (MonoProgram ty, Globnames.ConstRef c) ->
+        | StaticallyChecked (MonoProgram ty, Names.GlobRef.ConstRef c) ->
             begin
               try
                 let sigma = Evarconv.unify_leq_delay env sigma concl ty in
                 ((false, sigma, EConstr.mkConst c), None)
               with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (Pp.str "Different types")
             end
-        | StaticallyChecked (PolyProgram (au, ty), Globnames.ConstRef  c) ->
+        | StaticallyChecked (PolyProgram (au, ty), Names.GlobRef.ConstRef  c) ->
             begin
               try
                 let inst, ctx = UnivGen.fresh_instance_from au None in
