@@ -1747,6 +1747,67 @@ let rec run' ctxt (vms : vm list) =
                         (* : A B m uni a C cont  *)
                         let (t_head, t_args) = decompose_app sigma (to_econstr t) in
                         let (c_head, c_args) = decompose_app sigma (to_econstr c) in
+                        (* We need to be careful about primitive projections.
+                           In particular, we always need to unify parameters *if* the pattern contains them.
+                           There are several situations to consider that involve primitive projections:
+                           1. [c_head] is a primitive projection but [t_head] isn't
+                           2. [t_head] is a primitive projection but [c_head] isn't
+                           3. Both are primitive projections
+                        *)
+                        let (c_head, c_args), (t_head, t_args) =
+                          match (isProj sigma c_head, isProj sigma t_head) with
+                          | (false, false) ->     (* nothing to do *)
+                              (c_head, c_args), (t_head, t_args)
+                          | (true, false) ->
+                              (* In this case, the record value must be part of the left-hand side
+                                 of the pattern * i.e. [pattern = proj r | ...].
+                                 (Otherwise the pattern could not be a primitive projection.)
+                                 If we know that [t_head] is the folded version of [c_head] we
+                                 can simply unify the record values.
+                                 Otherwise it could be literally anything. In that case, we expand [c_head].
+                              *)
+                              let c_proj, c_rval = destProj sigma c_head in
+                              let c_constant = (Projection.constant c_proj) in
+                              if isConstant sigma c_constant t_head then
+                                let n_params = Recordops.find_projection_nparams (GlobRef.ConstRef c_constant) in
+                                let _t_params, t_args = List.chop n_params t_args in
+                                (t_head, c_rval :: c_args), (t_head, t_args)
+                              else
+                                let c = Retyping.expand_projection env sigma c_proj c_rval c_args in
+                                let c_head, c_args = decompose_app sigma c in
+                                (c_head, c_args), (t_head, t_args)
+                          | (false, true) ->
+                              (* Trying to be clever about this case, too.
+                                 There is a clever version of this case:
+                                 If [c_head] is the folded version of [t_head] and
+                                 [c_args] contains the record value (i.e. [pattern = folded_proj ... r | ])
+                                 we can avoid expanding [t] by dropping [n_params] arguments from [c_args].
+
+                                 However, this breaks the requirement that if the pattern mentions the parameters
+                                 we should unify them. Thus, we always expand in this case.
+                              *)
+                              let t_proj, t_rval = destProj sigma t_head in
+                              (* Code for clever verison:
+                               * let t_constant = (Projection.constant t_proj) in
+                               * let n_params = Recordops.find_projection_nparams (GlobRef.ConstRef t_constant) in
+                               * if isConstant sigma t_constant c_head && List.length c_args > n_params then
+                               *   let _c_params, c_args = List.chop n_params c_args in
+                               *   (\* we use [c_head] on both sides to make sure they are considered equal *\)
+                               *   (c_head, c_args), (c_head, t_args)
+                               * else *)
+                              let t = Retyping.expand_projection env sigma t_proj t_rval t_args in
+                              let t_head, t_args = decompose_app sigma t in
+                              (c_head, c_args), (t_head, t_args)
+                          | (true, true) ->
+                              let (c_proj, c_rval) = destProj sigma c_head in
+                              let (t_proj, t_rval) = destProj sigma t_head in
+                              if Projection.equal c_proj t_proj then
+                                (* we use [c_head] on both sides to make sure they are considered equal *)
+                                (c_head, c_rval :: c_args), (c_head, t_rval :: t_args)
+                              else
+                                (* no way to succeed anyway but we'll leave that to [eq_constr_nounivs] below *)
+                                (c_head, c_args), (t_head, t_args)
+                        in
                         if eq_constr_nounivs sigma t_head c_head then
                           let uni = to_econstr uni in
                           (* We need to capture the initial sigma here, as
