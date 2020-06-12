@@ -1972,11 +1972,12 @@ and primitive ctxt vms mh reduced_term =
         let rec traverse sigma t_args c_args =
           match c_args with
           | [] ->
+              let t_args = List.map of_econstr t_args in
               (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp (Array.of_list t_args) :: stack} (upd cont_success)
           | c_h :: c_args ->
               match t_args with
               | t_h :: t_args ->
-                  let (unires, _) = UnificationStrategy.unify None sigma env uni Reduction.CONV (to_econstr t_h) c_h in
+                  let (unires, _) = UnificationStrategy.unify None sigma env uni Reduction.CONV t_h c_h in
                   begin
                     match unires with
                     | Evarsolve.Success (sigma) -> traverse sigma t_args c_args
@@ -1988,7 +1989,7 @@ and primitive ctxt vms mh reduced_term =
                   (* efail (E.mkWrongTerm sigma env c_head) *)
                   fail ()
         in
-        traverse sigma (List.map of_econstr t_args) c_args
+        traverse sigma t_args c_args
       else
         (* efail (E.mkWrongTerm sigma env c_head) *)
         (run'[@tailcall]) ctxt (upd cont_failure)
