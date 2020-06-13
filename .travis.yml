@@ -39,7 +39,7 @@ install: |
     sudo apt install -y m4
     opam install -y coq.dev
     coqc --version
-    opam pin --ignore-constraints-on=coq add coq-unicoq https://github.com/unicoq/unicoq.git#master
+    opam pin add https://github.com/unicoq/unicoq.git#master -k git
     opam pin
     opam list
     "
