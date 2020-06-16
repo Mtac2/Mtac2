@@ -327,7 +327,7 @@ module CoqAscii = struct
       else (if CoqBool.from_coq sigma args.(n) then 1 else 0) lsl n + from_bits (n+1)
     in
     let n = from_bits 0 in
-    String.make 1 (Char.chr n)
+    Char.chr n
 
   let to_coq c =
     let c = int_of_char c in
@@ -345,23 +345,30 @@ module CoqString = struct
   exception NotAString
 
   let from_coq (env, sigma as ctx) s =
+    let buf = Buffer.create 128 in
     let rec fc s =
       let (h, args) = decompose_appvect sigma s in
-      if equal sigma emptyBuilder h then ""
+      if equal sigma emptyBuilder h then ()
       else if equal sigma stringBuilder h then
-        CoqAscii.from_coq ctx args.(0) ^ fc args.(1)
+        let _ = Buffer.add_char buf (CoqAscii.from_coq ctx args.(0)) in
+        fc args.(1)
       else
         raise NotAString
     in
-    fc (reduce_value env sigma s)
+    fc (reduce_value env sigma s);
+    Buffer.contents buf
 
-  let rec to_coq s =
-    if String.length s = 0 then
-      build emptyBuilder
-    else
-      build_app stringBuilder [|
-        CoqAscii.to_coq s.[0];
-        to_coq (String.sub s 1 (String.length s -1))|]
+  let to_coq s =
+    let rec go i coqstr =
+      if i < 0 then
+        coqstr
+      else
+        go (i - 1) (
+          build_app
+            stringBuilder
+            [|CoqAscii.to_coq s.[i];
+              coqstr|])
+    in go (String.length s - 1) (build emptyBuilder)
 end
 
 module CoqUnit = struct
