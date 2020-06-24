@@ -919,7 +919,7 @@ let run_declare_def env sigma kind name opaque ty bod =
     | Coercion -> Some (ComCoercion.add_coercion_hook ~poly)
     | CanonicalStructure ->
         if opaque then raise CanonicalStructureMayNotBeOpaque else
-          Some (DeclareDef.Hook.(make (fun { S.dref; _ } -> Canonical.declare_canonical_structure dref)))
+          Some (Declare.Hook.(make (fun { S.dref; _ } -> Canonical.declare_canonical_structure dref)))
     | SubClass -> Some (ComCoercion.add_subclass_hook ~poly)
     (* | Instance -> Lemmas.mk_hook (fun local gr -> *)
     (*   let local = match local with | Global -> false | Local -> true | _ -> raise DischargeLocality in *)
@@ -963,8 +963,8 @@ let run_declare_def env sigma kind name opaque ty bod =
   let ce = Declare.definition_entry ~opaque ~types:ty ~univs:ctx bod in
   let kn = Declare.declare_constant ~name:id ~kind:(Decls.IsDefinition kind) (Declare.DefinitionEntry ce) in
   let dref = GlobRef.ConstRef kn in
-  let () = DeclareDef.Hook.call ?hook:(vernac_definition_hook false kind)
-             { DeclareDef.Hook.S.uctx; obls=[]; scope=DeclareDef.Global Declare.ImportDefaultBehavior; dref }  in
+  let () = Declare.Hook.call ?hook:(vernac_definition_hook false kind)
+             { Declare.Hook.S.uctx; obls=[]; scope=Locality.(Global ImportDefaultBehavior); dref }  in
   let c = UnivGen.constr_of_monomorphic_global dref in
   let env = Global.env () in
   (* Feedback.msg_notice *)
@@ -1878,7 +1878,7 @@ and primitive ctxt vms mh reduced_term =
           let args_map = List.fold_left (fun m (k, v)-> Id.Map.add k v m) Id.Map.empty args in
           let ist = { (default_ist ()) with lfun = args_map } in
           let name, poly = Id.of_string "mtac2", false in
-          let (c, sigma) = Pfedit.refine_by_tactic ~name ~poly env sigma concl (Tacinterp.eval_tactic_ist ist to_call) in
+          let (c, sigma) = Proof.refine_by_tactic ~name ~poly env sigma concl (Tacinterp.eval_tactic_ist ist to_call) in
           let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
           let new_undef = Evar.Set.elements new_undef in
           let sigma, goal = Goal.mkgoal ~base:false sigma env in
@@ -1927,7 +1927,7 @@ and primitive ctxt vms mh reduced_term =
       let kind, name, opaque, ty, bod = to_econstr kind, to_econstr name, to_econstr opaque, to_econstr ty, to_econstr bod in
       (match run_declare_def env sigma kind name (CoqBool.from_coq sigma opaque) ty bod with
        | (sigma, env, ret) -> ereturn ~new_env:env sigma (of_constr ret)
-       | exception Declare.AlreadyDeclared _ ->
+       | exception DeclareUniv.AlreadyDeclared _ ->
            efail (E.mkAlreadyDeclared sigma env name)
        | exception Type_errors.TypeError(env, Type_errors.UnboundVar v) ->
            efail (E.mkTypeErrorUnboundVar sigma env (mkVar v))

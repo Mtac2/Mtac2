@@ -42,7 +42,7 @@ END
 VERNAC COMMAND EXTEND MtacDo CLASSIFIED AS SIDEFF
   | ![proof_opt_query] [ "Mtac" "Do" lconstr(c) ] -> {
     fun ~pstate ->
-    let sigma, env = Option.cata Pfedit.get_current_context
+    let sigma, env = Option.cata Declare.Proof.get_current_context
                        (let e = Global.env () in Evd.from_env e, e) pstate in
     MetaCoqRun.run_mtac_do env sigma c
   }
