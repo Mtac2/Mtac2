@@ -1,6 +1,6 @@
 (coq.theory
  (name Mtac2)
- (public_name coq-mtac2)
+ (package coq-mtac2)
  (modules :standard \ ideas.SumRun ideas.Pre-typedtactics ideas.non_refl_refl)
  (libraries unicoq.plugin coq-mtac2.plugin))
 

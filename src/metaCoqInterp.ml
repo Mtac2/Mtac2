@@ -248,7 +248,7 @@ let interp_instr = function
   | MetaCoqInstr.MetaCoq_constr c -> MetaCoqRun.run_tac c
 
 let exec ~pstate f =
-  fst @@ Pfedit.by (f ()) pstate
+  fst @@ Declare.Proof.by (f ()) pstate
 
 (** Interpreter of a constr :
     - Interpretes the constr

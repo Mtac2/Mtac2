@@ -25,8 +25,8 @@ val ifTactic : Environ.env -> Evd.evar_map -> EConstr.types -> 'a -> bool * Evd.
 val glob_mtac_type : 'a -> Libnames.qualid -> mrun_arg_type * Names.GlobRef.t
 
 val interp_proof_constr
-  :  pstate:Proof_global.t
+  :  pstate:Declare.Proof.t
   -> MetaCoqInstr.mproof_instr
-  -> Proof_global.t
+  -> Declare.Proof.t
 
 val interp_mproof_command : unit -> unit
