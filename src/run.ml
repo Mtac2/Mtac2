@@ -221,6 +221,12 @@ module Exceptions = struct
 
   let mkNotAVar = mkDebugEx "NotAVar"
 
+  let mkNotAnEvar sigma env ty t =
+    let sigma, exc = mkUConstr "Exceptions.NotAnEvar" sigma env in
+    let e = mkApp (exc, [|ty; t|]) in
+    debug_exception sigma env exc t;
+    sigma, e
+
   let _mkNotAForall = mkDebugEx "NotAForall"
 
   let mkNotAnApplication = mkDebugEx "NotAnApplication"
@@ -2184,6 +2190,24 @@ and primitive ctxt vms mh reduced_term =
       let hint_priority = Option.map (CoqN.from_coq (env, sigma)) prio in
       Classes.existing_instance global qualid (Some {hint_priority; hint_pattern= None});
       ereturn sigma (CoqUnit.mkTT)
+  | MConstr (Mreplace_evar_type, (a, b, evar, eq_proof)) ->
+      let evar = to_econstr evar in
+      begin
+        match destEvar sigma evar with
+        | exception DestKO ->
+            let a = to_econstr a in
+            efail (E.mkNotAnEvar sigma env a evar)
+        | (evar, x) ->
+            let eq_proof = to_econstr eq_proof in
+            let eq_proof = whd_all env sigma eq_proof in
+            let (eq_proof, _) = decompose_appvect sigma eq_proof in
+            match destConstruct sigma eq_proof with
+            | _ ->  (* no need to look at the constructor - it can only be meq_refl *)
+                let b = to_econstr b in
+                let sigma = Evd.downcast evar b sigma in
+                ereturn sigma (mkEvar (evar, x))
+            | exception DestKO -> efail (E.mkWrongTerm sigma env eq_proof) (* TODO: make new exception *)
+      end
 (* h is the mfix operator, a is an array of types of the arguments, b is the
    return type of the fixpoint, f is the function
    and x its arguments. *)
