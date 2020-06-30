@@ -368,6 +368,9 @@ Definition existing_instance (name : string) (priority : moption N) (global : bo
 Definition replace_evar_type {A B} (evar: A) : A =m= B -> t B.
   make. Qed.
 
+Definition set_evar {A : Type} (evar solution : A) : t unit.
+  make. Qed.
+
 Arguments t _%type.
 
 Definition fmap {A:Type} {B:Type} (f : A -> B) (x : t A) : t B :=

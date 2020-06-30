@@ -87,6 +87,7 @@ type 'a mconstr_head =
   | Mdeclare_mind : (arg_any * arg_any * arg_any) mconstr_head
   | Mexisting_instance : (arg_any * arg_any * arg_bool) mconstr_head
   | Mreplace_evar_type : (arg_type * arg_type * arg_any * arg_any) mconstr_head
+  | Mset_evar : (arg_type * arg_any * arg_any) mconstr_head
 and mhead = | MHead : 'a mconstr_head -> mhead
 and mconstr = | MConstr : 'a mconstr_head * 'a -> mconstr
 
@@ -151,6 +152,7 @@ let num_args_of_mconstr (type a) (mh : a mconstr_head) =
   | Mdeclare_mind -> 3
   | Mexisting_instance -> 3
   | Mreplace_evar_type -> 4
+  | Mset_evar -> 3
 
 
 let _mkconstr s = lazy (let (_, c) = mkUConstr ("M.M." ^ s) Evd.empty (Global.env ()) in c)
@@ -394,6 +396,9 @@ let isexisting_instance = isconstant name_existing_instance
 let name_replace_evar_type = constant_of_string "replace_evar_type"
 let isreplace_evar_type = isconstant name_replace_evar_type
 
+let name_set_evar = constant_of_string "set_evar"
+let isset_evar = isconstant name_set_evar
+
 
 let mconstr_head_of h =
   match h with
@@ -515,6 +520,8 @@ let mconstr_head_of h =
       MHead Mexisting_instance
   | _ when isreplace_evar_type h ->
       MHead Mreplace_evar_type
+  | _ when isset_evar h ->
+      MHead Mset_evar
   | _ -> raise Not_found
 
 let mconstr_head_opt h =
@@ -668,3 +675,5 @@ let mconstr_of (type a) args (h : a mconstr_head) =
       MConstr (Mexisting_instance, (args 0, args 1, args 2))
   | Mreplace_evar_type ->
       MConstr (Mreplace_evar_type, (args 0, args 1, args 2, args 3))
+  | Mset_evar ->
+      MConstr (Mset_evar, (args 0, args 1, args 2))

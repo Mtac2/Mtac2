@@ -2208,6 +2208,20 @@ and primitive ctxt vms mh reduced_term =
                 ereturn sigma (mkEvar (evar, x))
             | exception DestKO -> efail (E.mkWrongTerm sigma env eq_proof) (* TODO: make new exception *)
       end
+  | MConstr (Mset_evar, (evar_type, evar, solution)) ->
+      let evar = to_econstr evar in
+      begin
+        match destEvar sigma evar with
+        | (evar,x) ->
+            let solution = to_econstr solution in
+            if not (Evarutil.occur_evar_upto sigma evar solution) then
+              let sigma = Evd.define evar solution sigma in
+              ereturn sigma CoqUnit.mkTT
+            else efail (Exceptions.mkWrongTerm sigma env (mkEvar (evar, x)))
+        | exception DestKO ->
+            let evar_type = to_econstr evar_type in
+            efail (Exceptions.mkNotAnEvar sigma env evar_type evar)
+      end
 (* h is the mfix operator, a is an array of types of the arguments, b is the
    return type of the fixpoint, f is the function
    and x its arguments. *)

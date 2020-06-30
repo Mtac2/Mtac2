@@ -14,6 +14,10 @@ Primitives:
   convertible type before instantiation (which will unify the type of the evar
   with the type with the solution) can succeed efficiently.
 
+- Added the `set_evar` primitive that allows instantiating evars without calling
+  unification and has the distinct advantage of *not changing the term* at all.
+  In particular, it preserves casts in the solution.
+
 
 Debugging:
 
