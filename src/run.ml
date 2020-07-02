@@ -919,7 +919,8 @@ let run_declare_def env sigma kind name opaque ty bod =
     | Coercion -> Some (ComCoercion.add_coercion_hook ~poly)
     | CanonicalStructure ->
         if opaque then raise CanonicalStructureMayNotBeOpaque else
-          Some (Declare.Hook.(make (fun { S.dref; _ } -> Canonical.declare_canonical_structure dref)))
+          Some (Declare.Hook.(make (fun { S.dref; _ } ->
+            Canonical.declare_canonical_structure dref)))
     | SubClass -> Some (ComCoercion.add_subclass_hook ~poly)
     (* | Instance -> Lemmas.mk_hook (fun local gr -> *)
     (*   let local = match local with | Global -> false | Local -> true | _ -> raise DischargeLocality in *)
