@@ -361,13 +361,6 @@ Definition declare_mind
 Definition existing_instance (name : string) (priority : moption N) (global : bool) : t unit.
   make. Qed.
 
-(** [replace_evar_type e prf] changes the type of [e: A] to [e : B], returning
-    the evar unchanged with its new type. The [prf] argument of type [A =m= B]
-    is a stand-in for convertibility of [A] and [B] and needs to be reducible to
-    [meq_refl]. *)
-Definition replace_evar_type {A B} (evar: A) : A =m= B -> t B.
-  make. Qed.
-
 Arguments t _%type.
 
 Definition fmap {A:Type} {B:Type} (f : A -> B) (x : t A) : t B :=
