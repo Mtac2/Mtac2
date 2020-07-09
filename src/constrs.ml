@@ -327,7 +327,7 @@ module CoqAscii = struct
       else (if CoqBool.from_coq sigma args.(n) then 1 else 0) lsl n + from_bits (n+1)
     in
     let n = from_bits 0 in
-    String.make 1 (Char.chr n)
+    Char.chr n
 
   let to_coq c =
     let c = int_of_char c in
@@ -345,23 +345,30 @@ module CoqString = struct
   exception NotAString
 
   let from_coq (env, sigma as ctx) s =
+    let buf = Buffer.create 128 in
     let rec fc s =
       let (h, args) = decompose_appvect sigma s in
-      if equal sigma emptyBuilder h then ""
+      if equal sigma emptyBuilder h then ()
       else if equal sigma stringBuilder h then
-        CoqAscii.from_coq ctx args.(0) ^ fc args.(1)
+        let _ = Buffer.add_char buf (CoqAscii.from_coq ctx args.(0)) in
+        fc args.(1)
       else
         raise NotAString
     in
-    fc (reduce_value env sigma s)
+    fc (reduce_value env sigma s);
+    Buffer.contents buf
 
-  let rec to_coq s =
-    if String.length s = 0 then
-      build emptyBuilder
-    else
-      build_app stringBuilder [|
-        CoqAscii.to_coq s.[0];
-        to_coq (String.sub s 1 (String.length s -1))|]
+  let to_coq s =
+    let rec go i coqstr =
+      if i < 0 then
+        coqstr
+      else
+        go (i - 1) (
+          build_app
+            stringBuilder
+            [|CoqAscii.to_coq s.[i];
+              coqstr|])
+    in go (String.length s - 1) (build emptyBuilder)
 end
 
 module CoqUnit = struct
@@ -400,28 +407,6 @@ module CoqPair = struct
     match from_coq pairBuilder ctx cterm with
     | None -> raise NotAPair
     | Some args -> (args.(2), args.(3))
-end
-
-module CoqPTele = struct
-  open UConstrBuilder
-
-  let pBaseBuilder = from_string "Mtac2.intf.MTele.pBase"
-  let pTeleBuilder = from_string "Mtac2.intf.MTele.pTele"
-
-  (* let mkType env sigma tele = build_app pTeleBuilder sigma env [|tele|] *)
-  let mkPBase env sigma tele = build_app pBaseBuilder sigma env [|tele|]
-  let mkPTele env sigma ty telefun tyval ptele = build_app pTeleBuilder sigma env [|ty; telefun; tyval; ptele|]
-
-  exception NotAPTele
-
-  let from_coq sigma env cterm =
-    match from_coq pTeleBuilder (env, sigma) cterm with
-    | None ->
-        begin match from_coq pBaseBuilder (env, sigma) cterm with
-        | None -> raise NotAPTele
-        | Some _ -> None
-        end
-    | Some args -> Some (args.(2), args.(3))
 end
 
 module CoqMTele = struct

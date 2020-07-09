@@ -1,9 +1,9 @@
 (library
  (name MetaCoqPlugin)
  (public_name coq-mtac2.plugin)
- (flags :standard -rectypes -w -9-27 -warn-error -3)
+ (flags :standard -rectypes -w -9-27-23 -warn-error -3)
  (modules_without_implementation metaCoqInstr)
- (modules :standard \ machine)
+ (modules :standard)
  (libraries coq.plugins.ltac unicoq.plugin))
 
 (rule

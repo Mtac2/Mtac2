@@ -73,8 +73,12 @@ Definition fix4 {A1} {A2 : A1 -> Type} {A3 : forall a1 : A1, A2 a1 -> Type}
     forall (x1 : A1) (x2 : A2 x1) (x3 : A3 x1 x2) (x4 : A4 x1 x2 x3), gtactic (B x1 x2 x3 x4) :=
   @M.fix5 A1 A2 A3 A4 (fun _ _ _ _ => (goal _)) (fun x y z z' _ => mlist (B x y z z' *m (goal _))).
 
+
+Local Notation Tpattern A P y := (pattern A (fun y => gtactic (P y)) y).
+Local Notation Tbranch A P y := (branch A (fun y => gtactic (P y)) y).
+
 Fixpoint pattern_map {A} {B : A -> Type} (g : (goal _)) (y : A)
-    (p : pattern gtactic A B y) : pattern M A (fun y => mlist (B y *m (goal _))) y :=
+    (p : Tpattern A B y) : pattern A (fun y => M (mlist (B y *m (goal _)))) y :=
   match p with
   | pany b => pany (b g)
   | pbase x f r => pbase x (fun Heq => f Heq g) r
@@ -82,22 +86,53 @@ Fixpoint pattern_map {A} {B : A -> Type} (g : (goal _)) (y : A)
   | psort f => psort (fun s => pattern_map g y (f s))
   end.
 
-Definition branch_map {A} {B} (y : A) (g : (goal _)) (b : branch gtactic A B y) :
-  branch M A (fun y => mlist (B y *m (goal _))) y :=
-  match b in branch _ A' _ y' return branch _ A' _ y' with
-  | branch_pattern p =>
-    branch_pattern (pattern_map g _ p)
+Definition branch_map {A} {B} (y : A) (g : (goal _)) (b : branch A (fun a => gtactic (B a)) y) :
+  branch A (fun y => M (mlist (B y *m (goal _)))) y :=
+  match b in branch A' P' y' return
+        forall B : A' -> Type,
+        forall P_eq : P' =m= fun a => gtactic (B a),
+        branch A' (fun y => M (mlist (B y *m (goal _)))) y'
+  with
+  | @branch_pattern _ _ y p =>
+    fun B P_eq =>
+      let op p := branch_pattern (pattern_map g y p) in
+      ltac:(rewrite P_eq in p; refine (op p))
   | branch_app_static U ct cont =>
-    let cont := MTele.MTele_constmap_app (si:=Typeₛ) Propₛ (fun _ _ => _) ct cont g in
-    @branch_app_static _ _ _ _ _ U _ cont
-  | branch_forallP cont => branch_forallP (fun X Y => cont X Y g)
-  | branch_forallT cont => branch_forallT (fun X Y => cont X Y g)
-  end.
-
+    fun _ P_eq =>
+      let cont := ltac:(rewrite P_eq in cont; refine cont) in
+      let cont := MTele.MTele_constmap_app (si:=Typeₛ) Propₛ (fun _ _ => _) ct cont g in
+      @branch_app_static _ _ _ _ U _ cont
+  | branch_forallP cont =>
+    fun _ P_eq =>
+      let cont := ltac:(rewrite P_eq in cont; refine cont) in
+      branch_forallP (fun x y => cont x y g)
+  | branch_forallT cont =>
+    fun _ P_eq =>
+      let cont := ltac:(rewrite P_eq in cont; refine cont) in
+      branch_forallT (fun x y => cont x y g)
+  end B meq_refl.
 
 Definition mmatch' {A P} (E : Exception) (y : A)
-    (ps : mlist (branch gtactic A P y)) : gtactic (P y) := fun g =>
+    (ps : mlist (Tbranch A P y)) : gtactic (P y) := fun g =>
   M.mmatch' E y (mmap (branch_map y g) ps).
+
+Definition mmatch'' {A:Type} {P: A -> Type} (E : Exception) (y : A) (failure : gtactic (P y)) (ps : mlist (Tbranch A P y)) : gtactic (P y) := fun g =>
+  M.mmatch'' E y (failure g) (mmap (branch_map y g) ps).
+
+Module Matcher.
+  Canonical Structure T_Predicate {A} {P : A -> Type} {y : A} : Predicate :=
+    PREDICATE (gtactic (P y)).
+  Canonical Structure T_Matcher {A} {y} {P} :=
+    MATCHER
+      (@T_Predicate _ _)
+      (gtactic (P y))
+      (fun E ps => @mmatch' A P E y ps).
+  Canonical Structure T_InDepMatcher {B} :=
+    INDEPMATCHER
+      (gtactic B)
+      (fun A y E ps => @mmatch' A (fun _ => B) E y ps).
+End Matcher.
+Export Matcher.
 
 Definition ret {A} (x : A) : gtactic A := fun '(Metavar _ _ g) => M.ret [m:(m: x, AnyMetavar _ _ g)].
 Definition idtac : tactic := ret tt.
@@ -432,20 +467,9 @@ Module notations.
     (at level 200, f ident, x binder, y binder, format
     "'[v  ' 'mfix4'  f  x  ..  y  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
 
-  Notation "'mmatch' x ls" :=
-    (@mmatch' _ (fun _ => _) DoesNotMatch x ls%with_pattern)
-    (at level 200, ls at level 91) : tactic_scope.
-  Notation "'mmatch' x 'return' 'gtactic' p ls" :=
-    (@mmatch' _ (fun x => p%type) DoesNotMatch x ls%with_pattern)
-    (at level 200, ls at level 91) : tactic_scope.
-  Notation "'mmatch' x 'as' y 'return' 'gtactic' p ls" :=
-    (@mmatch' _ (fun y => p%type) DoesNotMatch x ls%with_pattern)
-    (at level 200, ls at level 91) : tactic_scope.
-
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
-      (@mmatch' _ (fun _ => _) M.NotCaught e
-                   (mapp ls%with_pattern [m:branch_pattern (pany (raise e))%pattern]))))
+      (@mmatch'' _ (fun _ => _) M.NotCaught e (T.raise e) ls%with_pattern)))
       (at level 200, a at level 100, ls at level 91, only parsing) : tactic_scope.
 
   Notation "t || u" := (or t u) : tactic_scope.
@@ -539,4 +563,7 @@ Module notations.
 End notations.
 
 End T.
+Export T.Matcher.
+
+
 Coercion T.of_M : M >-> gtactic.

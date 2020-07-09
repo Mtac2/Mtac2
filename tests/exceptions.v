@@ -4,6 +4,12 @@ Require Import Mtac2.Mtac2.
 Axiom block : M nat.
 
 Fail Definition block_fails := ltac:(mrun block).
+Fail Definition block_fails2 := ltac:(mrun (id block)).
+Fail Definition block_fails3 := ltac:((mrun (match 0+0 with 0 => block | _ => M.ret 0 end))).
+Fail Definition block_fails4 :=
+  ltac:(mrun (
+            mtry id (M.raise exception;; M.ret 0) with | exception => id id block end
+       )%MC).
 
 Definition block_raises_failure :=
   ltac:(mrun (mtry block with StuckTerm => M.ret 0 end)%MC).

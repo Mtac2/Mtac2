@@ -243,11 +243,10 @@ Fixpoint get_ATele {isort} (it : ITele isort) (al : mlist dyn) {struct al} : M (
     end.
 
 
-Set Use Unicoq.
-Program Definition get_CTele_raw : forall {isort} (it : ITele isort) (nparams nindx : nat) {A : stype_of isort}, A -> M (CTele it) :=
+Definition get_CTele_raw : forall {isort} (it : ITele isort) (nparams nindx : nat) {A : stype_of isort}, A -> M (CTele it) :=
   fun isort it nparams nindx =>
     mfix rec (A : stype_of isort) : selem_of A -> M (CTele it) :=
-    mtmmatch_prog A as A return selem_of A -> M (CTele it) with
+    mtmmatch A as A return selem_of A -> M (CTele it) with
     | [? B (F : B -> isort)] ForAll F =u>
         fun f =>
         M.nu (FreshFrom F) mNone (fun b : B =>
@@ -272,10 +271,10 @@ Definition get_CTele :=
     end.
 
 
-Program Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (NDCTele it) :=
+Definition get_NDCTele_raw : forall {isort} (it : ITele isort) (nindx : nat) {A : stype_of isort}, selem_of A -> M (NDCTele it) :=
   fun isort it nindx =>
     mfix rec (A : isort) : A -> M (NDCTele it) :=
-    mtmmatch_prog A as A return selem_of A -> M (NDCTele it) with
+    mtmmatch A as A return selem_of A -> M (NDCTele it) with
     | [? B (F : B -> isort)] ForAll F =u>
         fun f =>
         M.nu (FreshFrom F) mNone (fun b : B =>
@@ -303,7 +302,7 @@ Definition get_NDCTele :=
 
 (** Given a goal, it returns its sorted version *)
 Program Definition sort_goal {T : Type} : T -> M (sigT stype_of) :=
-  mtmmatch_prog T as T return T -> M (sigT stype_of) with
+  mtmmatch T as T return T -> M (sigT stype_of) with
   | Prop =u> fun A_Prop => M.ret (existT stype_of Propₛ A_Prop)
   | Type =u> fun A_Type => M.ret (existT stype_of Typeₛ A_Type)
   end.
@@ -324,9 +323,9 @@ Program Definition sort_goal {T : Type} : T -> M (sigT stype_of) :=
 (*         M.ret (0, iBase (sort := sort) indProp) *)
 (*     end. *)
 
-Program Definition get_ITele : forall {T : Type} (ind : T), M (nat *m (sigT ITele)) :=
+Definition get_ITele : forall {T : Type} (ind : T), M (nat *m (sigT ITele)) :=
   mfix f (T : _) : T -> M (nat *m sigT ITele)%type :=
-    mtmmatch_prog T as T return T -> M (nat *m sigT ITele)%type with
+    mtmmatch T as T return T -> M (nat *m sigT ITele)%type with
     | [? (A : Type) (F : A -> Type)] forall a, F a =m>
       fun indFun =>
       M.nu (FreshFrom T) mNone (fun a : A =>

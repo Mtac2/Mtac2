@@ -22,6 +22,8 @@
 
 # Coq compilation unit
 *.vo
+*.vos
+*.vok
 
 *.annot
 *.cmo

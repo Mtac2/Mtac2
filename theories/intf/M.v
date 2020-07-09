@@ -334,17 +334,17 @@ Definition declare_mind
            (constrs :
               mfold_right
                 (fun '(m: _; ind) acc =>
-                   MTele_val (MTele_In Typeₛ (fun a' => MTele_Ty (mprojT1 (a'.(acc_constT) ind))))
+                   MTele_val (curry_sort Typeₛ (fun a' => MTele_Ty (mprojT1 (apply_constT ind a'))))
                    -> acc
                 (* MTele_val (MTele_In Typeₛ (fun a => MTele_Ty (mprojT1 (a.(acc_const) ind)))) -> acc *)
                 )%type
                 (
                   (
-                    MTele_val (MTele_In Typeₛ
+                    MTele_val (curry_sort Typeₛ
                                         (fun a =>
                                            mfold_right
                                              (fun '(m: _; ind) acc =>
-                                                mlist (string *m m:{mt_constr & MTele_ConstT (ArgsOf (mprojT1 (a.(acc_constT) ind))) mt_constr}) *m acc
+                                                mlist (string *m m:{mt_constr & MTele_ConstT (ArgsOf (mprojT1 (apply_constT ind a))) mt_constr}) *m acc
                                              )%type
                                              unit
                                              sigs
@@ -356,6 +356,9 @@ Definition declare_mind
            ) :
   (* t (mfold_right (fun '(m: _; _; mexistT _ mt_ind T) acc => MTele_val T *m acc)%type unit sigs). *)
   t unit.
+  make. Qed.
+
+Definition existing_instance (name : string) (priority : moption N) (global : bool) : t unit.
   make. Qed.
 
 Arguments t _%type.
@@ -448,7 +451,10 @@ End monad_notations.
 
 Import monad_notations.
 
-Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Exception) (p : pattern t A P y) : t (P y) :=
+Local Notation Mpattern A P y := (pattern A (fun y => t (P y)) y).
+Local Notation Mbranch A P y := (branch A (fun y => t (P y)) y).
+
+Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Exception) (p : Mpattern A P y) : t (P y) :=
   match p with
   | pany b => b
   | pbase x f u =>
@@ -463,7 +469,7 @@ Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excepti
       let b := (* reduce (RedWhd [rl:RedBeta]) *) (f h) in b
     | mNone => raise E
     end
-  | @ptele _ _ _ _ C f => e <- evar C; open_pattern E (f e)
+  | ptele f => e <- evar _; open_pattern E (f e)
   | psort f =>
     mtry'
       (open_pattern E (f Propₛ))
@@ -477,29 +483,34 @@ Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excepti
       )
   end.
 
-Definition open_branch {A P y} (E : Exception) (b : branch t A P y) : t (P y) :=
-  match b in branch _ A' P y' return forall z: A', z =m= y' -> t (P y') with
-  | @branch_pattern _ A P _ p =>
-    fun z eq =>
-      let op := @open_pattern _ P z E in
-      ltac:(rewrite eq in op; exact op) p
-  | @branch_app_static _ A B y m U _ cont =>
-    fun z eq =>
-      let op := is_head (B:=B) U z _ cont (raise E) in
-      ltac:(rewrite eq in op; exact op)
+(* We need to be extra careful here to use the provided [y] instead of that
+   provided by the dependent pattern matching (which may be more reduced or
+   otherwise mangled). *)
+Definition open_branch {A P y} (E : Exception) (b : branch A (fun a => t (P a)) y) : t (P y) :=
+  match b in branch A' P' y' return
+        forall (z: A') (P_old : A' -> Type), z =m= y' -> P' =m= (fun a => t (P_old a)) -> t (P_old y')
+  with
+  | @branch_pattern A P _ p =>
+    fun z P_old eq Peq =>
+      let op := @open_pattern _ P_old z E in
+      ltac:(rewrite eq in op; rewrite Peq in p; refine (op p))
+  | @branch_app_static A B y m U _ cont =>
+    fun z P_old eq Peq =>
+      let op := is_head (B:=P_old) U z _ in
+      ltac:(rewrite eq in op; rewrite Peq in cont; refine (op cont (raise E)))
   | branch_forallT cont =>
-    fun z eq =>
-      let op := decompose_forallT z cont (raise E) in
-      ltac:(rewrite eq in op; exact op)
+    fun z P_old eq Peq =>
+      let op := decompose_forallT z in
+      ltac:(rewrite eq in op; rewrite Peq in cont; refine (op cont (raise E)))
   | branch_forallP cont =>
-    fun z eq =>
-      let op := decompose_forallP z cont (raise E) in
-      ltac:(rewrite eq in op; exact op)
+    fun z P_old eq Peq =>
+      let op := decompose_forallP z in
+      ltac:(rewrite eq in op; rewrite Peq in cont; refine (op cont (raise E)))
   (* | _ => fun _ _ => M.failwith "not implemented" *)
-  end y meq_refl.
+  end y P meq_refl meq_refl.
 
 (* The first universe of the [branch] could be shared with [A] but somehow that makes our iris case study slower in a reproducible way.  *)
-Fixpoint mmatch''@{a p+} {A:Type@{a}} {P: A -> Type@{p}} (E : Exception) (y : A) (failure : t (P y)) (ps : mlist@{Set} (branch t A P y)) : t (P y) :=
+Fixpoint mmatch''@{a p+} {A:Type@{a}} {P: A -> Type@{p}} (E : Exception) (y : A) (failure : t (P y)) (ps : mlist@{Set} (Mbranch A P y)) : t (P y) :=
   match ps with
   | [m:] => failure
   | p :m: ps' =>
@@ -508,10 +519,27 @@ Fixpoint mmatch''@{a p+} {A:Type@{a}} {P: A -> Type@{p}} (E : Exception) (y : A)
           (* TODO: don't abuse is_head for this. *)
   end.
 
-Definition mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist (branch t A P y)) : t (P y) :=
+Definition mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist (Mbranch A P y)) : t (P y) :=
   mmatch'' E y (raise NoPatternMatches) ps.
 
 Definition NotCaught : Exception. constructor. Qed.
+
+Module Matcher.
+  Canonical Structure M_Predicate {A} {P : A -> Type} {y : A} : Predicate :=
+    PREDICATE (t (P y)).
+  Canonical Structure M_Matcher {A} {y} {P} :=
+    MATCHER
+      (@M_Predicate _ _)
+      (t (P y))
+      (fun E ps => @mmatch' A P E y ps).
+
+  Canonical Structure M_InDepMatcher {B} :=
+    INDEPMATCHER
+      (t B)
+      (fun A y E ps => @mmatch' A (fun _ => B) E y ps).
+End Matcher.
+Export Matcher.
+
 
 Module notations_pre.
   Export monad_notations.
@@ -554,19 +582,6 @@ Module notations_pre.
     (fix5 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b) ..))
     (at level 200, f ident, x binder, y binder, format
     "'[v  ' 'mfix5'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
-
-  Notation "'mmatch' x ls" :=
-    (@mmatch' _ (fun _ => _) DoesNotMatch x ls%with_pattern)
-    (at level 200, ls at level 91) : M_scope.
-  Notation "'mmatch' x 'return' 'M' p ls" :=
-    (@mmatch' _ (fun _ => p%type) DoesNotMatch x ls%with_pattern)
-    (at level 200, ls at level 91) : M_scope.
-  Notation "'mmatch' x 'as' y 'return' 'M' p ls" :=
-    (@mmatch' _ (fun y => p%type) DoesNotMatch x ls%with_pattern)
-    (at level 200, ls at level 91) : M_scope.
-  Notation "'mmatch' x 'in' T 'as' y 'return' 'M' p ls" :=
-    (@mmatch' _ (fun y : T => p%type) DoesNotMatch x ls%with_pattern)
-    (at level 200, ls at level 91) : M_scope.
 
   Notation "'mtry' a ls" :=
     (mtry' a (fun e =>
@@ -1042,5 +1057,7 @@ Definition bunify {A} (x y: A) (u: Unification) : t bool :=
   mif unify x y u then ret true else ret false.
 
 End M.
+Export M.Matcher.
+
 
 Notation M := M.t.
