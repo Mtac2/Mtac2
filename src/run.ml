@@ -1546,9 +1546,12 @@ and eval ctxt (vms : vm list) t =
   | CBN, (_ as t) ->
       let cbv, cbn, r = cut_stack stack in
       let infos = CClosure.infos_with_reds infos (CClosure.all) in
-      let t, stack = reduce_noshare infos tab (CClosure.mk_red t) (List.append cbv cbn) in
-      let stack = List.append stack r in
-      (run'[@tailcall]) {ctxt with stack} (Code t :: vms)
+      let t', stack = reduce_noshare infos tab (CClosure.mk_red t) (List.append cbv cbn) in
+      if Constr.equal (CClosure.term_of_fconstr (mk_red t)) (CClosure.term_of_fconstr t') then
+        efail (E.mkStuckTerm sigma env (to_econstr t'))
+      else
+        let stack = List.append stack r in
+        (run'[@tailcall]) {ctxt with stack} (Code t' :: vms)
 
   | _ ->
       efail (E.mkStuckTerm sigma env (to_econstr reduced_term))
