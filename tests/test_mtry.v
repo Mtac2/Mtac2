@@ -9,7 +9,7 @@ Qed.
 
 Goal True.
 MProof.
-  mtry raise exception with _ => ret I end.
+  mtry raise exception with _ as _catchall => ret I end.
 Qed.
 
 Definition one : Exception. exact exception. Qed.

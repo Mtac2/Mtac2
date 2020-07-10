@@ -4,7 +4,7 @@ Goal forall x:nat, True.
 MProof.
   intro x.
   (aP <- M.abs_prod_type x (x <= 0:Type);
-   mmatch aP with (forall y, y <= 0:Type) =c> M.ret _ | _ => M.failwith "Didn't work" end)%MC.
+   mmatch aP with (forall y, y <= 0:Type) =c> M.ret _ | _ as _catchall => M.failwith "Didn't work" end)%MC.
 Abort.
 
 Import M.

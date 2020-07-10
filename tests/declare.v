@@ -85,7 +85,7 @@ Fail Compute fun x y =>
           ltac:(mrun (
                     mtry
                       M.declare dok_Definition "lenS" true (Le.le_n_S x y);; M.ret tt
-                      with | UnboundVar => M.failwith "This must fail" | _ => M.ret tt end
+                      with | UnboundVar => M.failwith "This must fail" | _ as _catchall => M.ret tt end
                )).
 
 (* This used to fail because of weird universe issues. *)

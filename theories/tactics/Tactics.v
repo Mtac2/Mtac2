@@ -1,7 +1,7 @@
 Require Import Strings.String.
 Require Import ssrmatching.ssrmatching.
 From Mtac2 Require Export Base.
-From Mtac2 Require Import Logic Datatypes List Utils Logic Sorts.
+From Mtac2 Require Import Logic Datatypes List Utils Logic Sorts MTeleMatch.
 From Mtac2.tactics Require Export TacticsBase.
 Import Sorts.S.
 Import M.notations.
@@ -73,9 +73,9 @@ Definition intro_base {A B} (var : name) (t : A -> gtactic B) : gtactic B := fun
 
   | [? (s:Sort) B (P:_->s) e] Metavar s (ForAll (fun x:A => P x)) e =u>
     mtry M.unify_or_fail UniCoq A B;; M.failwith "intros: impossible"
-    with _ => M.raise IntroDifferentType end
+    with _ as _catchall => M.raise IntroDifferentType end
 
-  | _ => M.raise NotAProduct
+  | _ as _catchall => M.raise NotAProduct
   end.
 
 Definition intro_cont {A B} (t : A -> gtactic B) : gtactic B := fun g=>
@@ -131,7 +131,7 @@ Definition copy_ctx {A} (B : A -> Type) : dyn -> M Type :=
       M.nu (FreshFrom c) mNone (fun y=>
         r <- rec (Dyn (c y));
         M.abs_prod_type y r)
-    | _ => M.print_term A;; M.raise (SomethingNotRight d)
+    | _ as _catchall => M.print_term A;; M.raise (SomethingNotRight d)
     end.
 
 (** Generalizes a goal given a certain hypothesis [x]. It does not
@@ -141,23 +141,23 @@ Definition generalize {A} (x : A) : tactic := fun g =>
   | Metavar Typeₛ P _ =>
      aP <- M.abs_prod_type x P; (* aP = (forall x:A, P) *)
      e <- M.remove x (M.evar aP);
-     mmatch aP with
-     | [? Q : A -> Type] (forall z:A, Q z) =n> [H]
+     (mtmmatch aP as aP' return aP =m= aP' -> M _ with
+     | [? Q : A -> Type] (forall z:A, Q z) =n> fun H =>
         let e' := reduce (RedWhd [rl:RedMatch]) match H in _ =m= Q return Q with meq_refl _ => e end in
         exact (e' x) g;;
         M.ret [m:(m: tt, AnyMetavar Typeₛ _ e)]
-     | _ => M.failwith "generalize"
-     end
+     | aP =n> fun _ => M.failwith "generalize"
+     end) meq_refl
   | Metavar Propₛ P _ =>
      aP <- M.abs_prod_prop x P; (* aP = (forall x:A, P) *)
      e <- M.remove x (M.evar aP);
-     mmatch aP with
-     | [? Q : A -> Prop] (forall z:A, Q z) =n> [H]
+     (mtmmatch aP as aP' return aP =m= aP' -> M _ with
+     | [? Q : A -> Prop] (forall z:A, Q z) =n> fun H =>
         let e' := reduce (RedWhd [rl:RedMatch]) match H in _ =m= Q return Q with meq_refl _ => e end in
         exact (e' x) g;;
         M.ret [m:(m: tt, AnyMetavar Propₛ _ e)]
-     | _ => M.failwith "generalize"
-     end
+     | aP =n> fun H => M.failwith "generalize"
+     end) meq_refl
   end.
 
 (** Clear hypothesis [x] and continues the execution on [cont] *)
@@ -270,7 +270,7 @@ Definition apply {T} (c : T) : tactic := fun g=>
           e <- M.evar T1;
           r <- go (Dyn (f e));
           M.ret r
-        | _ =>
+        | _ as _catchall =>
           gT <- M.goal_type g;
           M.raise (CantApply T gT)
         end) (Dyn c)
@@ -306,7 +306,7 @@ Definition typed_intro (T : Type) : tactic := fun g =>
   mmatch U with
   | [? P:T->Type] forall x:T, P x =>
     intro_simpl (FreshFrom U) g
-  | _ => M.raise NotThatType
+  | _ as _catchall => M.raise NotThatType
   end.
 
 Definition typed_intros (T : Type) : tactic := fun g =>
@@ -481,7 +481,7 @@ Definition n_etas (n : nat) {A} (f : A) : M A :=
          M.nu (FreshFrom ty) mNone (fun x:B =>
            loop n' (Dynr (f x)) >>= M.abs_fun x
          )
-       | _ => M.raise NotAProduct
+       | _ as _catchall => M.raise NotAProduct
        end
     end) n (Dynr f).
 
@@ -513,7 +513,7 @@ Definition progress {A} (t : gtactic A) : gtactic A := fun '(Metavar _ _ g) =>
   | [m:(m: x,g')] =>
     mmatch AnyMetavar _ _ g with
     | g' => M.raise NoProgress
-    | _ => M.ret [m:(m: x,g')]
+    | _ as _catchall => M.ret [m:(m: x,g')]
     end
   | _ => M.ret r
   end.
@@ -528,7 +528,7 @@ Definition repeat (t : tactic) : tactic :=
     | [m:(m: _,g')] =>
       mmatch AnyMetavar _ _ g with
       | g' => M.ret [m:(m: tt,AnyMetavar _ _ g)] (* the goal is the exact same, return *)
-      | _ => open_and_apply rec g'
+      | _ as _catchall => open_and_apply rec g'
       end
     | [m:] => M.ret r
     | l => (* got several goals, recurse on each *)

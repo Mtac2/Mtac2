@@ -451,30 +451,30 @@ End monad_notations.
 
 Import monad_notations.
 
-Local Notation Mpattern A P y := (pattern A (fun y => t (P y)) y).
-Local Notation Mbranch A P y := (branch A (fun y => t (P y)) y).
+Local Notation Mpattern A P := (pattern A (fun y => t (P y))).
+Local Notation Mbranch A P := (branch A (fun y => t (P y))).
 
-Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Exception) (p : Mpattern A P y) : t (P y) :=
+Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} (y : A) (E : Exception) (p : Mpattern A P) : t (P y) :=
   match p with
-  | pany b => b
+  | pany f => f y
   | pbase x f u =>
     oeq <- unify x y u;
     match oeq return t (P y) with
     | mSome eq =>
       (* eq has type x =m= t, but for the pattern we need t = x. *)
     (*      we still want to provide eq_refl though, so we reduce it *)
-      let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
+      (* let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in *)
       let 'meq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
-      let b := (* reduce (RedWhd [rl:RedBeta]) *) (f h) in b
+      let b := (* reduce (RedWhd [rl:RedBeta]) *) (f) in b
     | mNone => raise E
     end
-  | ptele f => e <- evar _; open_pattern E (f e)
+  | ptele f => e <- evar _; open_pattern y E (f e)
   | psort f =>
     mtry'
-      (open_pattern E (f Propₛ))
+      (open_pattern y E (f Propₛ))
       (fun e =>
-         M.unify_cnt UniMatchNoRed e E (open_pattern E (f Typeₛ)) (raise e)
+         M.unify_cnt (B:=fun _ => (P y)) UniMatchNoRed e E (open_pattern y E (f Typeₛ)) (raise e)
          (* oeq <- M.unify e E UniMatchNoRed; *)
          (* match oeq with *)
          (* | mSome _ => open_pattern E (f Typeₛ) *)
@@ -486,40 +486,40 @@ Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excepti
 (* We need to be extra careful here to use the provided [y] instead of that
    provided by the dependent pattern matching (which may be more reduced or
    otherwise mangled). *)
-Definition open_branch {A P y} (E : Exception) (b : branch A (fun a => t (P a)) y) : t (P y) :=
-  match b in branch A' P' y' return
-        forall (z: A') (P_old : A' -> Type), z =m= y' -> P' =m= (fun a => t (P_old a)) -> t (P_old y')
+Definition open_branch {A P} (E : Exception) (b : branch A (fun a => t (P a))) : forall y, t (P y) :=
+  match b in branch A' P' return
+        forall (P_old : A' -> Type), P' =m= (fun a => t (P_old a)) -> forall y, t (P_old y)
   with
-  | @branch_pattern A P _ p =>
-    fun z P_old eq Peq =>
+  | @branch_pattern A P p =>
+    fun P_old Peq z =>
       let op := @open_pattern _ P_old z E in
-      ltac:(rewrite eq in op; rewrite Peq in p; refine (op p))
-  | @branch_app_static A B y m U _ cont =>
-    fun z P_old eq Peq =>
+      ltac:(rewrite Peq in p; refine (op p))
+  | @branch_app_static A B m U _ cont =>
+    fun P_old Peq z =>
       let op := is_head (B:=P_old) U z _ in
-      ltac:(rewrite eq in op; rewrite Peq in cont; refine (op cont (raise E)))
+      ltac:(rewrite Peq in cont; refine (op cont (raise E)))
   | branch_forallT cont =>
-    fun z P_old eq Peq =>
+    fun P_old Peq z =>
       let op := decompose_forallT z in
-      ltac:(rewrite eq in op; rewrite Peq in cont; refine (op cont (raise E)))
+       ltac:(rewrite Peq in cont; refine (op cont (raise E)))
   | branch_forallP cont =>
-    fun z P_old eq Peq =>
+    fun P_old Peq z =>
       let op := decompose_forallP z in
-      ltac:(rewrite eq in op; rewrite Peq in cont; refine (op cont (raise E)))
+      ltac:(rewrite Peq in cont; refine (op cont (raise E)))
   (* | _ => fun _ _ => M.failwith "not implemented" *)
-  end y P meq_refl meq_refl.
+  end P meq_refl.
 
 (* The first universe of the [branch] could be shared with [A] but somehow that makes our iris case study slower in a reproducible way.  *)
-Fixpoint mmatch''@{a p+} {A:Type@{a}} {P: A -> Type@{p}} (E : Exception) (y : A) (failure : t (P y)) (ps : mlist@{Set} (Mbranch A P y)) : t (P y) :=
+Fixpoint mmatch''@{a p+} {A:Type@{a}} {P: A -> Type@{p}} (E : Exception) (y : A) (failure : t (P y)) (ps : mlist@{Set} (Mbranch A P)) : t (P y) :=
   match ps with
   | [m:] => failure
   | p :m: ps' =>
-    mtry' (open_branch (y:=y) E p) (fun e =>
+    mtry' (open_branch E p y) (fun e =>
       is_head (B:=fun e => P y) (m := mBase) UniMatchNoRed E e (mmatch'' E y failure ps') (raise e))
           (* TODO: don't abuse is_head for this. *)
   end.
 
-Definition mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist (Mbranch A P y)) : t (P y) :=
+Definition mmatch' {A:Type} {P: A -> Type} (E : Exception) (ps : mlist (Mbranch A P)) (y : A) : t (P y) :=
   mmatch'' E y (raise NoPatternMatches) ps.
 
 Definition NotCaught : Exception. constructor. Qed.
@@ -528,15 +528,15 @@ Module Matcher.
   Canonical Structure M_Predicate {A} {P : A -> Type} {y : A} : Predicate :=
     PREDICATE (t (P y)).
   Canonical Structure M_Matcher {A} {y} {P} :=
-    MATCHER
+    @MATCHER A
       (@M_Predicate _ _)
       (t (P y))
-      (fun E ps => @mmatch' A P E y ps).
+      (fun E ps => @mmatch' A P E ps y).
 
   Canonical Structure M_InDepMatcher {B} :=
     INDEPMATCHER
       (t B)
-      (fun A y E ps => @mmatch' A (fun _ => B) E y ps).
+      (fun A y E ps => @mmatch' A (fun _ => B) E ps y).
 End Matcher.
 Export Matcher.
 
@@ -681,10 +681,11 @@ Definition iterate {A} (f : A -> t unit) : mlist A -> t unit :=
     end.
 
 (** More utilitie *)
+Unset Printing Universes.
 Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
   (mfix1 app (d : dyn) : M _ :=
     dcase d as ty, el in
-    mmatch d with
+    mmatch d return t dyn with
     | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
       let ty := reduce (RedWhd [rl:RedBeta]) ty in
       binder <- get_binder_name ty;
@@ -699,7 +700,7 @@ Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
       else
         e <- evar T1;
         app (Dyn (f e))
-    | _ => raise (NameNotFound n)
+    | _ as _catchall => raise (NameNotFound n)
     end
   ) (Dyn c).
 
@@ -739,14 +740,14 @@ Definition hyps_except {A} (x : A) : t (mlist Hyp) :=
   filter (fun y =>
     mmatch y with
     | [? b] ahyp x b => M.ret false
-    | _ => ret true
+    | _ as _catchall => ret true
     end) =<< M.hyps.
 
 Definition find_hyp_index {A} (x : A) : t (moption nat) :=
   index_of (fun y =>
     mmatch y with
     | [? b] ahyp x b => M.ret true
-    | _ => ret false
+    | _ as _catchall => ret false
     end) =<< M.hyps.
 
 Definition find_hyp {A:Type} : mlist Hyp -> t A :=
@@ -800,7 +801,7 @@ Definition fail_strs (l : mlist dyn) : M.t string :=
     | [? s] @Dyn string s =>
       (* let r := reduce (RedVmCompute) (string_rev s) in *)
       go l (s :m: acc)
-    | _ =>
+    | _ as _catchall =>
       dcase D as t in
       s <- M.pretty_print t;
       (* let r := reduce (RedVmCompute) (string_rev s) in *)
@@ -869,7 +870,7 @@ Definition is_prop_or_type (d : dyn) : t bool :=
   mmatch d with
   | Dyn Prop => ret true
   | Dyn Type => ret true
-  | _ => ret false
+  | _ as _catchall => ret false
   end.
 
 (** [goal_type g] extracts the type of the goal. *)
@@ -893,7 +894,7 @@ Definition goal_prop (g : goal gs_open) : t Prop :=
         mtry
          cumul_or_fail UniMatch gP A;;
          ret gP
-        with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
+        with _ as _catchall => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
     end A
   end.
 

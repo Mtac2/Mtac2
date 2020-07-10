@@ -6,7 +6,7 @@ Require Import Strings.String.
 Require Import Lists.List.
 Import ListNotations.
 
-Definition assert_eq {A} (a b : A) : M True := mmatch b with a => M.ret I | _ => M.raise exception end.
+Definition assert_eq {A} (a b : A) : M True := mmatch b with a => M.ret I | _ as _catchall => M.raise exception end.
 
 (* Abstracting an index works *)
 Goal True.

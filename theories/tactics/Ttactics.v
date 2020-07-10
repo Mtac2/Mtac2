@@ -108,7 +108,7 @@ Definition apply_ {A} : ttac A :=
   by' apply_.
 
 Definition try {A} (t : ttac A) : ttac A :=
-  mtry t with _ => demote : M _ end.
+  mtry t with _ as _catchall => demote : M _ end.
 
 Mtac Do New Exception TTchange_Exception.
 Definition change A {B} (f : ttac A) : ttac B :=
@@ -174,7 +174,7 @@ Definition tassumption {A:Type} : ttac A :=
   lift (M.select _).
 
 Definition tor {A:Type} (t u : ttac A) : ttac A :=
-  mtry r <- t; M.ret r with _ => r <- u; M.ret r end.
+  mtry r <- t; M.ret r with _ as _catchall => r <- u; M.ret r end.
 
 Definition reflexivity {P} {A B : P} : TT.ttac (A = B) :=
   r <- M.coerce (eq_refl A); M.ret (m: r, [m:]).
@@ -223,7 +223,7 @@ Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
       '(m: x, gs) <- F gP;
       M.cumul_or_fail UniCoq x g;;
       M.map (fun g => M.ret (m:tt,g)) gs
-    with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
+    with _ as _catchall => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
   end.
 
 (** with_goal_type is an easy way of focusing on the current goal to go from
@@ -242,7 +242,7 @@ Definition with_goal_type (F : forall (T : Type), ttac T) : tactic := fun g =>
       '(m: x, gs) <- F G;
       M.cumul_or_fail UniCoq x g;;
       M.map (fun g => M.ret (m:tt,g)) gs
-    with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
+    with _ as _catchall => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
   end.
 
 

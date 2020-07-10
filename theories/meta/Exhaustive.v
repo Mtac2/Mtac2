@@ -27,15 +27,15 @@ Definition find_in_constrs {C} (c : C)  : mlist dyn -> M (mlist dyn) :=
       let C := reduce (RedVmCompute) C in
       mmatch c' with
       | @Dyn C c =n> M.ret cs
-      | _ => l <- f cs; M.ret (c' :m: l)
+      | _ as _catchall => l <- f cs; M.ret (c' :m: l)
       end
     end.
 
 
-Definition check_exhaustiveness {A B y}
-           (ps_in : mlist (branch A B y))
-           (ops : moption (mlist (branch A B y))) :
-  M (mlist (branch A B y)) :=
+Definition check_exhaustiveness {A B}
+           (ps_in : mlist (branch A B))
+           (ops : moption (mlist (branch A B))) :
+  M (mlist (branch A B)) :=
   '(mkInd_dyn _ _ _ constrs) <- M.constrs A;
   (
     mfix2 f (ps : _) (constrs : _) : M _ :=

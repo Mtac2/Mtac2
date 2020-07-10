@@ -63,7 +63,7 @@ Definition max_apply {T} (c : T) : tactic := fun g=>
           r <- go (Dyn (f e));
           M.ret r
         | Dyn eg =u> M.ret [m:]
-        | _ =>
+        | _ as _catchall =>
           dcase d as ty, el in
           M.raise (T.CantApply ty gT)
         end) (Dyn c)
@@ -78,7 +78,7 @@ Definition count_nondep_binders (T: Type) : M nat :=
       M.ret (S r)
     | [? T1 T2] (forall x:T1, T2 x) =>
       nu (FreshFromStr "name") mNone (fun e:T1=>go (T2 e))
-    | _ => M.ret 0
+    | _ as _catchall => M.ret 0
     end) T.
 
 Definition napply {T} {e: runner (count_nondep_binders T)} (c : T) : ntactic unit (@eval _ _ e) := fun g=>

@@ -12,7 +12,7 @@ Definition reduce_nu :=
           (fun k =>
              mtry k with
              | StuckTerm => M.ret tt
-             | _ => M.failwith "expected StuckTerm"
+             | _ as _catchall => M.failwith "expected StuckTerm"
              end
           )
       )

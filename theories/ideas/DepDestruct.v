@@ -214,7 +214,7 @@ Program Fixpoint args_of_max (max : nat) : dyn -> M (mlist dyn) :=
       | [? T Q (t : T) (f : T -> Q)] Dyn (f t) =>
          r <- args_of_max max (Dyn f);
          M.ret (Dyn t :m: r)
-      | _ =>
+      | _ as _catchall =>
         T <- M.evar Type;
         P <- M.evar (T -> Type);
         f <- M.evar (forall x:T, P x);

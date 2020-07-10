@@ -29,7 +29,7 @@ Definition get_constrs :=
       M.nu (FreshFrom T) mNone (fun x=>
         fill (P x)
       )
-    | _ =>
+    | _ as _catchall =>
       '(mkInd_dyn _ _ _ l) <- M.constrs T;
       M.ret l
     end%MC.

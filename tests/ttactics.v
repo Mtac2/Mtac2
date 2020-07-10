@@ -73,14 +73,14 @@ Module SelemOf.
         match_goal with | [[?P |- P]] =>
           mmatch P return M (P *m _) with
           | unit =n> TT.idtac : M _
-          | _ => mfail "[P] not forwarded as exactly [P] to [match_goal] branch"
+          | _ as _catchall => mfail "[P] not forwarded as exactly [P] to [match_goal] branch"
           end
         end)%MC%TT.
   Definition test_Prop := (
         match_goal with | [[?P : Prop |- P]] =>
           mmatch P return M (P *m _) with
           | True =n> TT.idtac : M _
-          | _ => mfail "[P] not forwarded as exactly [P] to [match_goal] branch"
+          | _ as _catchall => mfail "[P] not forwarded as exactly [P] to [match_goal] branch"
           end
         end)%MC%TT.
   Goal unit.

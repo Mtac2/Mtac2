@@ -536,7 +536,7 @@ Module Mtac2Mmatch.
             =n> M.ret (Some v)
           | [? x v xs] (var_context.cons x v xs)
             =n> find_in_ctx xs
-          | _ => M.ret None
+          | _ as _catchall => M.ret None
            end)) ctx.
 
    Definition reify_helper {var : Type} (term : nat) (ctx : @var_context.var_context var) : M (@expr var)
@@ -598,7 +598,7 @@ Module MTac2.
        | var_context.cons term' v xs =>
          mmatch term' with
          | [#] term | =n> M.ret (Some v)
-         | _ => M.ret None
+         | _ as _catchall => M.ret None
          end
        | _ => M.ret None
        end.

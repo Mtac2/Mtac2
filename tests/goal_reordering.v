@@ -18,7 +18,7 @@ Definition ThrowANat (n : nat) : Exception. exact exception. Qed.
 Definition test n : M nat :=
   mmatch n with
   | [? n'] S n' => M.raise (ThrowANat n')
-  | _ => M.ret 0
+  | _ as _catchall => M.ret 0
   end.
 
 Goal True.

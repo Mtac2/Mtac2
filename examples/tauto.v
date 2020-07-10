@@ -24,7 +24,7 @@ Module Mtac_V1.
   performance reasons. *)
   Fixpoint lookup (P : Prop) (l : list dyn) : M P :=
     match l with
-    | D :: l => mmatch D with | [? (p : P)] Dyn p =u> ret p | _ => lookup P l end
+    | D :: l => mmatch D with | [? (p : P)] Dyn p =u> ret p | _ as _catchall => lookup P l end
     |     [] => raise NotFound
     end.
 
@@ -32,6 +32,7 @@ Module Mtac_V1.
   list of hypothesis, and if it fails in tries to break it down into pieces and
   recurse over each part. *)
   Mtac Do New Exception TautoFail.
+  Arguments mcons _ & _ _.      (* TODO: figure out if we should have this everywhere *)
   Definition solve_tauto : forall (l : list dyn) {P : Prop}, M P :=
     mfix2 f (l : list dyn) (P : Prop) : M P :=
       mtry
@@ -61,7 +62,7 @@ Module Mtac_V1.
             raise TautoFail
           else
             ret (ex_intro Q x q)
-        | _ => raise TautoFail
+        | _ as _catchall => raise TautoFail
         end
       end.
 

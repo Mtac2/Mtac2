@@ -61,7 +61,7 @@ Definition inlist A (x : A) : forall (l : list A), M (In x l) :=
       end)
   | [? s] (x :: s) => M.ret (in_eq _ _)
   | [? y s] (y :: s) => r <- f s; M.ret (in_cons y _ _ r)
-  | _ => M.raise NotFound
+  | _ as _catchall => M.raise NotFound
   end.
 Import ListNotations.
 
@@ -125,7 +125,7 @@ Definition inlist_nored A (x : A) : forall (l : list A), M (In x l) :=
       ir <- f r;
       M.ret (in_or_app l r x (or_intror ir))
     end
-  | _ => M.raise NotFound
+  | _ as _catchall => M.raise NotFound
   end.
 
 Example with_red : In 0 ([1;2]++[0;4]).
@@ -158,7 +158,7 @@ Definition inlist_redcons A (x : A) : forall (l : list A), M (In x l) :=
       ir <- f r;
       M.ret (in_or_app l r x (or_intror ir))
     end
-  | _ => M.raise NotFound
+  | _ as _catchall => M.raise NotFound
   end.
 
 Example with_redcons : In 0 ([1;2]++[0;4]).
