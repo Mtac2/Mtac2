@@ -146,7 +146,7 @@ Definition generalize {A} (x : A) : tactic := fun g =>
         let e' := reduce (RedWhd [rl:RedMatch]) match H in _ =m= Q return Q with meq_refl _ => e end in
         exact (e' x) g;;
         M.ret [m:(m: tt, AnyMetavar Typeₛ _ e)]
-     | aP =n> fun _ => M.failwith "generalize"
+     | _ as _catchall => fun _ => M.failwith "generalize"
      end) meq_refl
   | Metavar Propₛ P _ =>
      aP <- M.abs_prod_prop x P; (* aP = (forall x:A, P) *)
@@ -156,7 +156,7 @@ Definition generalize {A} (x : A) : tactic := fun g =>
         let e' := reduce (RedWhd [rl:RedMatch]) match H in _ =m= Q return Q with meq_refl _ => e end in
         exact (e' x) g;;
         M.ret [m:(m: tt, AnyMetavar Propₛ _ e)]
-     | aP =n> fun H => M.failwith "generalize"
+     | _ as _catchall => fun H => M.failwith "generalize"
      end) meq_refl
   end.
 
