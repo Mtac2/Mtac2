@@ -1253,11 +1253,12 @@ type vm = Code of CClosure.fconstr
         | Nu of (Names.Id.t * Environ.env * CClosure.fconstr * backtrace)
         | Rem of (Environ.env * CClosure.fconstr * bool)
 
+(* Partition stack st into [cbv] ++ [cbn] such that [cbn] is the longest suffix
+   of matches and projections *)
 let cut_stack st =
   let rec f st acc_cbv acc_cbn =
     match st with
     | ((
-      (* Zfix _ | *)
       Zproj _
     | ZcaseT _
     ) as z) :: st ->
@@ -1270,15 +1271,15 @@ let cut_stack st =
   List.rev acc_cbv_rev, List.rev acc_cbn_rev, r
 
 type context =
-  | CBV
-  | CBN
+  | Monadic
+  | Pure
 
 let rec context_of_stack = function
-  | [] -> CBV
+  | [] -> Monadic
   | ((
     (* Zfix _ | *)
     Zproj _
-  | ZcaseT _)) :: st -> CBN
+  | ZcaseT _)) :: st -> Pure
   | z :: st -> context_of_stack st
 
 let _zip_term m stk =
@@ -1423,7 +1424,7 @@ let rec run' ctxt (vms : vm list) =
 
   | Code t, _ -> (eval[@tailcall]) ctxt vms t
 
-and eval ctxt (vms : vm list) t =
+and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
   let sigma, env, stack = ctxt.sigma, ctxt.env, ctxt.stack in
 
   let upd c = (Code c :: vms) in
@@ -1444,7 +1445,7 @@ and eval ctxt (vms : vm list) t =
 
   (* Feedback.msg_debug (Pp.int (List.length stack)); *)
 
-  let ctxt = {ctxt with stack=stack} in
+  let ctxt = {ctxt with stack} in
 
   let fail ?internal:(i=true) (sigma, c) =
     let p = Printer.pr_econstr_env env sigma (to_econstr c) in
@@ -1460,8 +1461,8 @@ and eval ctxt (vms : vm list) t =
   let ctx_st = context_of_stack stack in
 
   (* (match ctx_st with
-   * | CBV -> Feedback.msg_debug (Pp.str "cbv")
-   * | CBN -> Feedback.msg_debug (Pp.str "cbn")
+   * | Monadic -> Feedback.msg_debug (Pp.str "monadic")
+   * | Pure -> Feedback.msg_debug (Pp.str "pure")
    * );
    *
    * let term = zip_term (CClosure.term_of_fconstr reduced_term) stack in
@@ -1475,8 +1476,8 @@ and eval ctxt (vms : vm list) t =
   in
 
   match ctx_st, fterm_of reduced_term with
-  | CBV, FConstruct _ -> failwith ("Invariant invalidated: reduction reached the constructor of M.t.")
-  | CBV, FLetIn (_,v,_,bd,e) ->
+  | Monadic, FConstruct _ -> failwith ("Invariant invalidated: reduction reached the constructor of M.t.")
+  | Monadic, FLetIn (_,v,_,bd,e) ->
       let open ReductionStrategy in
       let (is_reduce, num_args, args_clos) = (
         match fterm_of v with
@@ -1509,7 +1510,11 @@ and eval ctxt (vms : vm list) t =
         let e = (Esubst.subs_cons ([|v|], e)) in
         (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
 
-  | CBV, FFlex (ConstKey (hc, _))
+  | Pure, FLetIn (_,v,_,bd,e) ->
+      let e = (Esubst.subs_cons ([|v|], e)) in
+      (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
+
+  | Monadic, FFlex (ConstKey (hc, _))
     when (Option.has_some (MConstr.mconstr_head_opt hc)) ->
       begin
         match MConstr.mconstr_head_of hc with
@@ -1521,7 +1526,7 @@ and eval ctxt (vms : vm list) t =
             (primitive[@tailcall]) ctxt vms mh reduced_term
       end
 
-  | CBV, FFlex((ConstKey (hc, _)) as k) ->
+  | Monadic, FFlex((ConstKey (hc, _)) as k) ->
       begin
         let redflags = (CClosure.RedFlags.fCONST hc) in
         let infos = CClosure.infos_with_reds infos (CClosure.RedFlags.mkflags [redflags]) in
@@ -1535,7 +1540,7 @@ and eval ctxt (vms : vm list) t =
             efail (E.mkStuckTerm sigma env (to_econstr t))
       end
 
-  | CBN, (_ as t) when (is_blocked t) ->
+  | Pure, (_ as t) when (is_blocked t) ->
       begin
         if !debug_ex then
           (let open Pp in
@@ -1546,15 +1551,13 @@ and eval ctxt (vms : vm list) t =
         efail (E.mkStuckTerm sigma env (to_econstr reduced_term))
       end
 
-  | CBN, (_ as t) ->
+  | Pure, (_ as t) when not reduced_to_let ->
       let cbv, cbn, r = cut_stack stack in
-      let infos = CClosure.infos_with_reds infos (CClosure.all) in
+      let infos = CClosure.infos_with_reds infos (CClosure.allnolet) in
       let t', stack = reduce_noshare infos tab (CClosure.mk_red t) (List.append cbv cbn) in
-      if Constr.equal (CClosure.term_of_fconstr (mk_red t)) (CClosure.term_of_fconstr t') then
-        efail (E.mkStuckTerm sigma env (to_econstr t'))
-      else
-        let stack = List.append stack r in
-        (run'[@tailcall]) {ctxt with stack} (Code t' :: vms)
+      let stack = List.append stack r in
+      (* signal that we have advanced reduced everything down to lets *)
+      (eval[@tailcall]) {ctxt with stack} vms ?reduced_to_let:(Some true) t'
 
   | _ ->
       efail (E.mkStuckTerm sigma env (to_econstr reduced_term))
