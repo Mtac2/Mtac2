@@ -37,7 +37,7 @@ Import ProdNotations.
 
 Definition exact {A} (x:A) : tactic := fun g =>
   match g with
-  | Metavar _ _ g => M.cumul_or_fail UniCoq x g;; M.ret [m:]
+  | Metavar _ _ g => M.inst_cumul_or_fail UniCoq x g;; M.ret [m:]
   end.
 
 Definition eexact {A} (x:A) : tactic := fun g =>
