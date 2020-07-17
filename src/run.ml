@@ -1251,22 +1251,34 @@ type vm = Code of CClosure.fconstr
         | Rem of (Environ.env * CClosure.fconstr * bool)
         | Rep of (Environ.env * CClosure.fconstr)
 
-(* Partition stack st into [cbv] ++ [cbn] such that [cbn] is the longest suffix
-   of matches and projections *)
+(* Partition stack [st] into [careless ++ careful] such that if [careful] is [x :: careful'] then
+   [x] is the lowest match or projection on the stack.
+   This is useful to have because we know that
+   a) matching on monadic terms is not part of monadic programs, thus [careless] only contains non-monadic terms
+   b) only monadic programs contain let-reduce terms
+   c) thus, we can freely reduce let bindings in the stack [careless] (i.e. above [x])
+*)
 let cut_stack st =
-  let rec f st acc_cbv acc_cbn =
+  let rec f st careless_rev careful_rev =
     match st with
     | ((
-      Zproj _
+      Zfix _
+    | Zproj _
     | ZcaseT _
-    ) as z) :: st ->
-        f st acc_cbv (z :: acc_cbn)
-    | z :: st when List.is_empty acc_cbn ->
-        f st (z :: acc_cbv) acc_cbn
-    | r -> acc_cbv, acc_cbn, r
+    ) as z) :: st->
+        if List.is_empty careful_rev then
+          f st careless_rev (z :: careful_rev)
+        else
+          f st (List.append careful_rev careless_rev) [z]
+    | z :: st ->
+        if List.is_empty careful_rev then
+          f st (z :: careless_rev) careful_rev
+        else
+          f st careless_rev (z :: careful_rev)
+    | r -> careless_rev, careful_rev
   in
-  let acc_cbv_rev, acc_cbn_rev, r = f st [] [] in
-  List.rev acc_cbv_rev, List.rev acc_cbn_rev, r
+  let careless_rev, careful_rev = f st [] [] in
+  List.rev careless_rev, List.rev careful_rev
 
 type context =
   | Monadic
@@ -1454,13 +1466,17 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
 
   let ctx_st = context_of_stack stack in
 
-  (* (match ctx_st with
-   * | Monadic -> Feedback.msg_debug (Pp.str "monadic")
-   * | Pure -> Feedback.msg_debug (Pp.str "pure")
-   * );
+  (* (if !trace then (
+   *    (let open Pp in match ctx_st with
+   *     | Monadic -> Feedback.msg_debug (str "monadic " ++ bool reduced_to_let)
+   *     | Pure -> Feedback.msg_debug (str "pure " ++ bool reduced_to_let)
+   *    );
    *
-   * let term = zip_term (CClosure.term_of_fconstr reduced_term) stack in
-   * Feedback.msg_debug (Printer.pr_constr_env env sigma term); *)
+   *    let term = _zip_term (CClosure.term_of_fconstr reduced_term) stack in
+   *    Feedback.msg_debug (Printer.pr_constr_env env sigma term)
+   *  )
+   *  else ()
+   * ); *)
 
   let is_blocked = function
     | FFlex (VarKey _) -> true
@@ -1502,11 +1518,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
             efail (E.mkReductionFailure sigma env l)
       else
         let e = (Esubst.subs_cons ([|v|], e)) in
-        (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
-
-  | Pure, FLetIn (_,v,_,bd,e) ->
-      let e = (Esubst.subs_cons ([|v|], e)) in
-      (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
+        (eval[@tailcall]) ctxt vms (mk_red (FCLOS (bd, e)))
 
   | Monadic, FFlex (ConstKey (hc, _))
     when (Option.has_some (MConstr.mconstr_head_opt hc)) ->
@@ -1546,10 +1558,16 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
       end
 
   | Pure, (_ as t) when not reduced_to_let ->
-      let cbv, cbn, r = cut_stack stack in
+      let careless, careful = cut_stack stack in
+      let infos = CClosure.infos_with_reds infos (CClosure.all) in
+      (* let term_to_reduce = _zip_term (CClosure.term_of_fconstr reduced_term) careless in
+       * Feedback.msg_debug (Printer.pr_constr_env env sigma term_to_reduce); *)
+      let t', stack = reduce_noshare infos tab (CClosure.mk_red t) careless in
+
+      let stack = List.append stack careful in
+      (* carefully reduce further without touching lets *)
       let infos = CClosure.infos_with_reds infos (CClosure.allnolet) in
-      let t', stack = reduce_noshare infos tab (CClosure.mk_red t) (List.append cbv cbn) in
-      let stack = List.append stack r in
+      let t', stack = reduce_noshare infos tab t' stack in
       (* signal that we have advanced reduced everything down to lets *)
       (eval[@tailcall]) {ctxt with stack} vms ?reduced_to_let:(Some true) t'
 
