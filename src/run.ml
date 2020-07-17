@@ -247,6 +247,13 @@ module Exceptions = struct
 
   let mkVarAppearsInValue = mkDebugEx "VarAppearsInValue"
 
+  let mkNotAnEvar sigma env ty t =
+    let sigma, exc = mkUConstr "Exceptions.NotAnEvar" sigma env in
+    let e = mkApp (exc, [|ty; t|]) in
+    debug_exception sigma env exc t;
+    sigma, e
+
+
   let mkNotAReference sigma env ty t =
     let sigma, exc = (mkUConstr "Exceptions.NotAReference" sigma env) in
     let e = mkApp (exc, [|ty; t|]) in
@@ -2208,6 +2215,24 @@ and primitive ctxt vms mh reduced_term =
       let hint_priority = Option.map (CoqN.from_coq (env, sigma)) prio in
       Classes.existing_instance global qualid (Some {hint_priority; hint_pattern= None});
       ereturn sigma (CoqUnit.mkTT)
+  | MConstr (Minstantiate_evar, (ty, _, evar, solution, succ, fail)) ->
+      let evar = to_econstr evar in
+      begin
+        match destEvar sigma evar with
+        | exception DestKO ->
+            let ty = to_econstr ty in
+            efail (E.mkNotAnEvar sigma env ty evar)
+        | (evar, x) ->
+            let solution = to_econstr solution in
+            let open Unicoq.Munify in
+            let options = current_options () in
+            let options = ref { options with inst_unify_types = false } in
+            match Unicoq.Munify.instantiate ~options env ((evar, x), []) solution sigma with
+            | Evarsolve.Success sigma ->
+                (run'[@tailcall]) {ctxt with sigma = sigma} (Code succ :: vms)
+            | Evarsolve.UnifFailure _ ->
+                (run'[@tailcall]) {ctxt with sigma = sigma} (Code fail :: vms)
+      end
 (* h is the mfix operator, a is an array of types of the arguments, b is the
    return type of the fixpoint, f is the function
    and x its arguments. *)
