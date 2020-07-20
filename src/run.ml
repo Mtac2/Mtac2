@@ -1210,7 +1210,7 @@ let declare_mind env sigma params sigs mut_constrs =
              mind_entry_params;
              mind_entry_universes=Evd.univ_entry ~poly:false sigma;
              mind_entry_template;
-             mind_entry_cumulative=false;
+             mind_entry_variance=None;
              mind_entry_private=None;
             } UnivNames.empty_binders [] in
   (sigma, CoqUnit.mkTT)
