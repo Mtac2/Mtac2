@@ -484,17 +484,19 @@ module UnificationStrategy = struct
       was one of the Match. *)
   exception NotAUnifStrategy of EConstr.t
   let unify oevars sigma env strategy conv_pb t1 t2 =
-    try
-      let ts = get_ts env in
-      let pos = get_constructor_pos sigma strategy in
-      let evars =
-        match oevars with
-        | Some e -> e
-        | _ -> Evar.Map.domain (Evd.undefined_map sigma) in
-      (funs.(pos) evars ts env sigma conv_pb t1 t2,
-       pos > unicoq_pos && pos < evarconv_pos)
-    with Constr.DestKO ->
-      raise (NotAUnifStrategy strategy)
+    let pos = try
+        let pos = get_constructor_pos sigma strategy in
+        pos
+      with Constr.DestKO ->
+        raise (NotAUnifStrategy strategy)
+    in
+    let ts = get_ts env in
+    let evars =
+      match oevars with
+      | Some e -> e
+      | _ -> Evar.Map.domain (Evd.undefined_map sigma) in
+    (funs.(pos) evars ts env sigma conv_pb t1 t2,
+     pos > unicoq_pos && pos < evarconv_pos)
 
 end
 
