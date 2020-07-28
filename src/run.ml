@@ -1653,15 +1653,15 @@ and primitive ctxt vms mh reduced_term =
       (run'[@tailcall]) ctxt (Code t :: Try (sigma, stack, ctxt.backtrace, f) :: vms)
   | MConstr (Mraise', (_, t)) -> fail ~internal:false (sigma, t)
   | MConstr (Mfix1, ((a), b, f, (x))) ->
-      run_fix ctxt vms hf [|a|] b f [|x|]
+      (run_fix[@tailcall]) ctxt vms hf [|a|] b f [|x|]
   | MConstr (Mfix2, ((a1, a2), b, f, (x1, x2))) ->
-      run_fix ctxt vms hf [|a1; a2|] b f [|x1; x2|]
+      (run_fix[@tailcall]) ctxt vms hf [|a1; a2|] b f [|x1; x2|]
   | MConstr (Mfix3, ((a1, a2, a3), b, f, (x1, x2, x3))) ->
-      run_fix ctxt vms hf [|a1; a2; a3|] b f [|x1; x2; x3|]
+      (run_fix[@tailcall]) ctxt vms hf [|a1; a2; a3|] b f [|x1; x2; x3|]
   | MConstr (Mfix4, ((a1, a2, a3, a4), b, f, (x1, x2, x3, x4))) ->
-      run_fix ctxt vms hf [|a1; a2; a3; a4|] b f [|x1; x2; x3; x4|]
+      (run_fix[@tailcall]) ctxt vms hf [|a1; a2; a3; a4|] b f [|x1; x2; x3; x4|]
   | MConstr (Mfix5, ((a1, a2, a3, a4, a5), b, f, (x1, x2, x3, x4, x5))) ->
-      run_fix ctxt vms hf [|a1; a2; a3; a4; a5|] b f [|x1; x2; x3; x4; x5|]
+      (run_fix[@tailcall]) ctxt vms hf [|a1; a2; a3; a4; a5|] b f [|x1; x2; x3; x4; x5|]
   | MConstr (Mis_var, (_, e)) ->
       if isVar sigma (to_econstr e) then
         ereturn sigma CoqBool.mkTrue
@@ -1905,25 +1905,25 @@ and primitive ctxt vms mh reduced_term =
       let args_var = List.map (fun (n, _) -> Reference (Locus.ArgVar (CAst.make n))) args in
       let to_call = TacArg (CAst.make (TacCall (CAst.make (Locus.ArgArg (tag tac_name), args_var)))) in
       begin
-        try
-          let undef = Evar.Map.domain (Evd.undefined_map sigma) in
-          let args_map = List.fold_left (fun m (k, v)-> Id.Map.add k v m) Id.Map.empty args in
-          let ist = { (default_ist ()) with lfun = args_map } in
-          let name, poly = Id.of_string "mtac2", false in
-          let (c, sigma) = Proof.refine_by_tactic ~name ~poly env sigma concl (Tacinterp.eval_tactic_ist ist to_call) in
-          let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
-          let new_undef = Evar.Set.elements new_undef in
-          let sigma, goal = Goal.mkgoal ~base:false sigma env in
-          let sigma, listg = CoqList.mkType sigma env goal in
-          let sigma, goals = CoqList.pto_coq env goal (fun e sigma->Goal.goal_of_evar ~base:false env sigma e) new_undef sigma in
-          let sigma, pair = CoqPair.mkPair sigma env concl listg (of_constr c) goals in
-          ereturn sigma pair
-        with CErrors.UserError(s,ppm) ->
-          let expl = string_of_ppcmds ppm in
-          let s = Option.default "" s in
-          efail (Exceptions.mkLtacError sigma env (s ^ ": " ^ expl))
-           | e ->
-               efail (Exceptions.mkLtacError sigma env (Printexc.to_string  e))
+        let undef = Evar.Map.domain (Evd.undefined_map sigma) in
+        let args_map = List.fold_left (fun m (k, v)-> Id.Map.add k v m) Id.Map.empty args in
+        let ist = { (default_ist ()) with lfun = args_map } in
+        let name, poly = Id.of_string "mtac2", false in
+        match Proof.refine_by_tactic ~name ~poly env sigma concl (Tacinterp.eval_tactic_ist ist to_call) with
+        | (c, sigma) ->
+            let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
+            let new_undef = Evar.Set.elements new_undef in
+            let sigma, goal = Goal.mkgoal ~base:false sigma env in
+            let sigma, listg = CoqList.mkType sigma env goal in
+            let sigma, goals = CoqList.pto_coq env goal (fun e sigma->Goal.goal_of_evar ~base:false env sigma e) new_undef sigma in
+            let sigma, pair = CoqPair.mkPair sigma env concl listg (of_constr c) goals in
+            (ereturn[@tailcall]) sigma pair
+        | exception CErrors.UserError(s,ppm) ->
+            let expl = string_of_ppcmds ppm in
+            let s = Option.default "" s in
+            efail (Exceptions.mkLtacError sigma env (s ^ ": " ^ expl))
+        | exception e ->
+            efail (Exceptions.mkLtacError sigma env (Printexc.to_string  e))
       end
 
   | MConstr (Mlist_ltac, _) ->
@@ -2082,7 +2082,7 @@ and primitive ctxt vms mh reduced_term =
                   (* efail (E.mkWrongTerm sigma env c_head) *)
                   fail ()
         in
-        traverse sigma t_args c_args
+        (traverse[@tailcall]) sigma t_args c_args
       else
         (* efail (E.mkWrongTerm sigma env c_head) *)
         (run'[@tailcall]) ctxt (upd cont_failure)
