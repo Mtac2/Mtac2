@@ -596,14 +596,14 @@ type backtrace = backtrace_entry list
 module Backtrace = struct
   let push entry tr =
     if !debug_ex then
-      entry :: tr
+      entry () :: tr
     else
       tr
 
   let rec push_mtry mtry_tr =
     match mtry_tr with
-    | [] -> push (MTry None)
-    | Constant n :: _ -> push (MTry (Some n))
+    | [] -> push (fun () -> MTry None)
+    | Constant n :: _ -> push (fun () -> MTry (Some n))
     | _ :: mtry_tr -> push_mtry mtry_tr
 end
 
@@ -1408,7 +1408,7 @@ let rec run' ctxt (vms : vm list) =
         let (sigma, e) = E.mkVarAppearsInValue ctxt.sigma ctxt.env (mkVar name) in
         let ctxt = ctxt_nu1_fail p in
         let backtrace = Backtrace.push (
-          InternalException (Printer.pr_econstr_env ctxt.env sigma e)
+          fun () -> InternalException (Printer.pr_econstr_env ctxt.env sigma e)
         ) ctxt.backtrace
         in
         (run'[@tailcall]) {ctxt with backtrace; sigma} (Fail (of_econstr e) :: vms)
@@ -1426,7 +1426,7 @@ let rec run' ctxt (vms : vm list) =
       let backtrace = ctxt.backtrace in
       let backtrace = if ground then Backtrace.push_mtry backtrace_try backtrace else
           Backtrace.push (
-            InternalException (Printer.pr_econstr_env ctxt.env (ctxt.sigma) c)
+            fun () -> InternalException (Printer.pr_econstr_env ctxt.env (ctxt.sigma) c)
           ) backtrace
       in
       (run'[@tailcall]) {ctxt with sigma; backtrace; stack=Zapp [|of_econstr c|] :: stack} (Code b::vms)
@@ -1463,10 +1463,10 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
   let ctxt = {ctxt with stack} in
 
   let fail ?internal:(i=true) (sigma, c) =
-    let p = Printer.pr_econstr_env env sigma (to_econstr c) in
     let backtrace =
       if i then
-        Backtrace.push (InternalException p) ctxt.backtrace
+        let p () = InternalException (Printer.pr_econstr_env env sigma (to_econstr c)) in
+        Backtrace.push (p) ctxt.backtrace
       else ctxt.backtrace
     in
     (run'[@tailcall]) {ctxt with sigma; backtrace} (Fail c :: vms)
@@ -1548,7 +1548,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
         let o = CClosure.unfold_reference infos tab k in
         match o with
         | Def v ->
-            let backtrace = Backtrace.push (Constant hc) ctxt.backtrace in
+            let backtrace = Backtrace.push (fun () -> Constant hc) ctxt.backtrace in
             let ctxt = {ctxt with backtrace} in
             (run'[@taillcall]) ctxt (Code v :: vms)
         | _ ->
@@ -1622,10 +1622,10 @@ and primitive ctxt vms mh reduced_term =
   (* Re-do the wrappers so they use the new stack *)
   let return ?new_env:(new_env=env) sigma c = (run'[@tailcall]) {ctxt with sigma; env=new_env; stack} (Ret c :: vms) in
   let fail ?internal:(i=true) (sigma, c) =
-    let p = Printer.pr_econstr_env env sigma (to_econstr c) in
     let backtrace =
       if i then
-        Backtrace.push (InternalException p) ctxt.backtrace
+        let p () = InternalException (Printer.pr_econstr_env env sigma (to_econstr c)) in
+        Backtrace.push (p) ctxt.backtrace
       else ctxt.backtrace
     in
     (run'[@tailcall]) {ctxt with sigma; backtrace} (Fail c :: vms)
@@ -1685,7 +1685,7 @@ and primitive ctxt vms mh reduced_term =
                 | ot ->
                     let nu = Nu (name, ctxt.env, ctxt.renv, ctxt.backtrace) in
                     let env = push_named (Context.Named.Declaration.of_tuple (annotR name, ot, a)) env in
-                    let backtrace = Backtrace.push (InternalNu (name)) ctxt.backtrace in
+                    let backtrace = Backtrace.push (fun () -> InternalNu (name)) ctxt.backtrace in
                     let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
                     let renv = of_econstr renv' in
                     let nus = ctxt.nus + 1 in
@@ -1720,7 +1720,7 @@ and primitive ctxt vms mh reduced_term =
                   let env = push_named (Context.Named.Declaration.of_tuple (annotR name, Some d, dty)) env in
                   let var = mkVar name in
                   let body = Vars.subst1 var body in
-                  let backtrace = Backtrace.push (InternalNu (name)) ctxt.backtrace in
+                  let backtrace = Backtrace.push (fun () -> InternalNu (name)) ctxt.backtrace in
                   let (sigma, renv) = Hypotheses.cons_hyp dty var (Some d) (to_econstr ctxt.renv) sigma env in
                   let renv = of_econstr renv in
                   let nus = ctxt.nus + 1 in
@@ -2384,7 +2384,7 @@ let run (env0, sigma) t : data =
       (* No need to log anything if the exception is ground. *)
       let backtrace = if ground then backtrace else
           Backtrace.push (
-            InternalException (Printer.pr_econstr_env env (sigma) v)
+            fun () -> InternalException (Printer.pr_econstr_env env (sigma) v)
           ) backtrace
       in
       Err ((sigma, v), backtrace)
