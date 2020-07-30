@@ -1994,8 +1994,45 @@ and primitive ctxt vms mh reduced_term =
 
   | MConstr (Mdecompose_app', (_, _, _, uni, t, c, cont_success, cont_failure)) ->
       (* : A B m uni a C cont  *)
-      let (t_head, t_args) = decompose_app sigma (to_econstr t) in
-      let (c_head, c_args) = decompose_app sigma (to_econstr c) in
+
+      (* we eta-reduce both [c] and [t]. Since Coq will happily eta-expand
+         things more or less randomly, it makes sense to undo this before we
+         attempt a syntactic pattern matching. *)
+
+      let eta_red t =
+        let binders, b = decompose_lam sigma t in
+        let h, args = decompose_appvect sigma b in
+        let h, binders =
+          if List.length binders > Array.length args then
+            let diff = List.length binders - Array.length args in
+            (* push diff many binders from the back back onto h *)
+            let binders, push = List.chop (List.length binders - diff) binders in
+            compose_lam binders h, binders
+          else
+            h, binders
+        in
+        let push = Array.sub args 0 (Array.length args - List.length binders) in
+        let h = mkApp (h, push) in
+        let args = (Array.sub args (Array.length args - List.length binders) (List.length binders)) in
+        let args = Array.to_list args in
+
+        let rec pop_simul n (binders : (Names.Name.t Context.binder_annot * EConstr.t) list) (args : EConstr.t list) =
+          match binders, args with
+          | ((b, ty) :: binders as ob), (a :: args as oa) ->
+              if isRelN sigma n a then
+                pop_simul (n-1) binders args
+              else
+                compose_lam ob (applist (h, oa))
+          | binders, args -> compose_lam binders (applist (h, args))
+        in
+        pop_simul (List.length binders) binders args
+      in
+
+      let t = eta_red (to_econstr t) in
+      let c = eta_red (to_econstr c) in
+
+      let (t_head, t_args) = decompose_app sigma t in
+      let (c_head, c_args) = decompose_app sigma c in
       (* We need to be careful about primitive projections.
          In particular, we always need to unify parameters *if* the pattern contains them.
          There are several situations to consider that involve primitive projections:
