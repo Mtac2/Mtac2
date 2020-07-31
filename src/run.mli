@@ -21,7 +21,7 @@ type data =
 
 val make_evar : evar_map -> env -> constr -> evar_map * constr (* used in metaCoqInterp *)
 
-val run : (env * evar_map) -> constr -> data
+val run : (env * evar_map) -> constr -> etypes -> data
 
 module Goal : sig
   val mkTheGoal : ?base:bool -> types -> constr -> Evd.evar_map -> Environ.env -> (Evd.evar_map * constr)
