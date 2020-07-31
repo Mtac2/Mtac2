@@ -93,18 +93,19 @@ module MetaCoqRun = struct
       - [M concl]: then it returns [c]
       - [tactic]: then it returns [c (Goal concl evar)] *)
   let pretypeT env sigma concl evar c =
+    (* let sigma, ty = Typing.type_of ~refresh:true env sigma c in *)
     let ty = Retyping.get_type_of env sigma c in
     let b, sigma = ifM env sigma concl ty c in
     if b then
-      (false, sigma, c)
+      (false, sigma, ty, c)
     else
       let b, sigma = ifTactic env sigma ty c in
       if b then
-        (true, sigma, c)
+        (true, sigma, ty, c)
       else
         CErrors.user_err (Pp.str "Not a Mtactic")
 
-  let run ?loc env sigma concl evar istactic t =
+  let run ?loc env sigma concl evar istactic (oty) t =
     (* [run] is also the entry point for code that doesn't go through
        [pretypeT] so we have to do the application to the current goal
        for tactics in here instead of [pretypeT].
@@ -114,7 +115,12 @@ module MetaCoqRun = struct
         (sigma, EConstr.mkApp(t, [|goal|]))
       else sigma, t
     in
-    match Run.run (env, sigma) t with
+    let sigma, ty =
+      match oty with
+      | Some ty -> sigma, ty
+      | None -> Typing.type_of env sigma t
+    in
+    match Run.run (env, sigma) ty t with
     | Run.Val (sigma, v) ->
         let open Proofview in let open Proofview.Notations in
         Unsafe.tclEVARS sigma >>= fun _->
@@ -154,8 +160,9 @@ module MetaCoqRun = struct
       let sigma = sigma gl in
       let evar = EConstr.of_constr (evar_of_goal gl) in
       let (sigma, t) = Constrintern.interp_open_constr env sigma t in
-      let (istactic, sigma, t) = pretypeT env sigma concl evar t in
-      run ?loc env sigma concl evar istactic t
+      let (istactic, sigma, ty, t) = pretypeT env sigma concl evar t in
+      (* We could be smarter here with the optional type argument to [run] but I cannot get it to work. *)
+      run ?loc env sigma concl evar istactic (None) t
     end
 
 
@@ -177,12 +184,12 @@ module MetaCoqRun = struct
       let concl = concl gl in
       let sigma = sigma gl in
       let evar = EConstr.of_constr (evar_of_goal gl) in
-      let ((istactic, sigma, t), loc) = match t with
+      let ((istactic, sigma, ty, t), loc) = match t with
         | StaticallyChecked (MonoProgram ty, Names.GlobRef.ConstRef c) ->
             begin
               try
                 let sigma = Evarconv.unify_leq_delay env sigma concl ty in
-                ((false, sigma, EConstr.mkConst c), None)
+                ((false, sigma, ty, EConstr.mkConst c), None)
               with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (Pp.str "Different types")
             end
         | StaticallyChecked (PolyProgram (au, ty), Names.GlobRef.ConstRef  c) ->
@@ -192,12 +199,13 @@ module MetaCoqRun = struct
                 (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
                 let sigma = Evd.merge_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
                 let sigma = Evarconv.unify_leq_delay env sigma concl ty in
-                ((false, sigma, EConstr.mkConst c), None)
+                ((false, sigma, ty, EConstr.mkConst c), None)
               with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (Pp.str "Different types")
             end
         | StaticallyChecked (GTactic, gr) ->
             let sigma, t = EConstr.fresh_global env sigma gr in
-            ((true, sigma, t), None)
+            let ty = Retyping.get_type_of env sigma t in
+            ((true, sigma, ty, t), None)
         | DynamicallyChecked t ->
             let {term=term} = t in
             let loc = Glob_ops.loc_of_glob_constr term in
@@ -205,27 +213,27 @@ module MetaCoqRun = struct
             pretypeT env sigma concl evar t, loc
         | _ -> assert false
       in
-      run ?loc env sigma concl evar istactic t
+      run ?loc env sigma concl evar istactic None t
     end
 
   let run_mtac_do env sigma t =
     let loc = Constrexpr_ops.constr_loc t in
     let sigma, t = Constrintern.interp_open_constr env sigma t in
-    let ty = Retyping.get_type_of env sigma t in
+    let sigma, ty = Typing.type_of env sigma t in
     let sigma, (concl, sort) = Evarutil.new_type_evar env sigma Evd.univ_flexible in
     let isM, sigma = ifM env sigma concl ty t in
     if isM then
-      match Run.run (env, sigma) t with
+      match Run.run (env, sigma) ty t with
       | Run.Val _ -> ()
       | Run.Err ((_, e), tr) ->
           uncaught ?loc env sigma e tr
     else
       CErrors.user_err (Pp.str "Mtac Do expects a term of type [M _].")
 
-  let run_cmd env sigma t =
+  let run_cmd env sigma ty t =
     let loc = Constrexpr_ops.constr_loc t in
     let sigma, c = Constrintern.interp_open_constr env sigma t in
-    match Run.run (env, sigma) c with
+    match Run.run (env, sigma) ty c with
     | Run.Val _ -> ()
     | Run.Err ((sigma, e), tr) ->
         uncaught ?loc env sigma e tr
