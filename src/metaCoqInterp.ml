@@ -112,7 +112,9 @@ module MetaCoqRun = struct
     *)
     let sigma, t = if istactic then
         let sigma, goal = Run.Goal.mkTheGoal concl evar sigma env in
-        (sigma, EConstr.mkApp(t, [|goal|]))
+        let t = EConstr.mkApp(t, [|goal|]) in
+        let sigma, _ = Typing.type_of env sigma t in
+        (sigma, t)
       else sigma, t
     in
     let sigma, ty =
