@@ -2264,9 +2264,10 @@ and primitive ctxt vms mh reduced_term =
             let solution = to_econstr solution in
             let open Unicoq.Munify in
             let options = current_options () in
-            let options = ref { options with inst_unify_types = false } in
+            let options = ref { options with inst_unify_types = true; inst_beta_reduce_type = false; } in
             match Unicoq.Munify.instantiate ~options env ((evar, x), []) solution sigma with
             | Evarsolve.Success sigma ->
+                let sigma = Typing.check env sigma solution (to_econstr ty) in
                 (run'[@tailcall]) {ctxt with sigma = sigma} (Code succ :: vms)
             | Evarsolve.UnifFailure _ ->
                 (run'[@tailcall]) {ctxt with sigma = sigma} (Code fail :: vms)
