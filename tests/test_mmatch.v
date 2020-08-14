@@ -250,6 +250,69 @@ Mtac Do (
       end
      ).
 
+(* Non-primitive projections *)
+Record R1 := { f1 : nat }.
+Mtac Do (
+       mmatch f1 {| f1 := 1 |} with
+       | [#] f1 | r =u> M.unify_or_fail UniMatchNoRed (r) ({|f1 := 1|});; M.ret I
+      end
+     ).
+
+Set Primitive Projections.
+Record R2 := { f2 : nat }.
+Mtac Do (
+       mmatch f2 {| f2 := 1 |} with
+       | [#] f2 | r =u> M.unify_or_fail UniMatchNoRed (r) ({|f2 := 1|});; M.ret I
+      end
+     ).
+Mtac Do (
+       mmatch f2 {| f2 := 1 |} with
+       | [#] f2 {| f2 := 2 |} | =u> mfail "primitive projection error: record values were not unified at all"
+       | [#] f2 {| f2 := (0+1) |} | =n> mfail "primitive projection error: record values were unified but shouldn't have been"
+       | [#] f2 {| f2 := (0+1) |} | =u> M.ret I
+      end
+     ).
+Mtac Do (
+       mmatch {| f2 := 1 |}.(f2) with
+       | [#] @f2 {| f2 := 2 |} | =u> mfail "primitive projection error: record values were not unified at all"
+       | [#] @f2 {| f2 := (0+1) |} | =n> mfail "primitive projection error: record values were unified but shouldn't have been"
+       | [#] @f2 {| f2 := (0+1) |} | =u> M.ret I
+      end
+     ).
+
+(* Primitive records with parameters *)
+Record R3 {p : nat} := { f3 : bool }.
+(* Primitive target, non-primitive branches *)
+Definition R3_test1 :=
+       mmatch f3 (Build_R3 1 true) return M True with
+       | [#] @f3 2 | r =u> mfail "primitive projection error: record parameters should not match"
+       | [#] @f3 (0+1) | r =n> mfail "primitive projection error: record parameters were unified but shouldn't have been"
+       | [#] @f3 (0+1) | r =u> M.unify_or_fail UniMatchNoRed (r) (Build_R3 1 true);; M.ret I
+      end.
+Mtac Do (R3_test1).
+
+Definition R3_test2 :=
+       mmatch f3 (Build_R3 1 true) return M True with
+       | [#] f3 (Build_R3 1 true) | =n> M.ret I
+      end.
+Mtac Do (R3_test2).
+
+Definition R3_test3 :=
+  (* Only way to enter non-primitive projections for primitive records *)
+  ltac:(let p := constr:(@f3 (0+1)) in
+        exact(
+            (* Unfortunately, once the match is executed the projection is unfolded already. *)
+            mmatch p (Build_R3 1 true) return M True with
+            | [#] f3 (Build_R3 1 true) | =n> mfail "primitive projection error: record parameters were unified but shouldn't have been"
+            | [#] f3 (Build_R3 2 true) | =n> mfail "primitive projection error: record values were unified but shouldn't have been"
+            | [#] f3 (Build_R3 (0+1) true) | =n> M.ret I
+          end
+      )
+    ).
+(* There is nothing we can do about this with the way the compatability constants are unfolded automatically. *)
+Fail Mtac Do (R3_test3).
+
+
 (* [decompose_forall[P|T]] *)
 Mtac Do (
        mmatch (forall x : nat, x = x) with

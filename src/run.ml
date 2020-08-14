@@ -1250,11 +1250,12 @@ type vm = Code of CClosure.fconstr
         | Nu of (Names.Id.t * Environ.env * CClosure.fconstr * backtrace)
         | Rem of (Environ.env * CClosure.fconstr * bool)
 
+(* Partition stack st into [cbv] ++ [cbn] such that [cbn] is the longest suffix
+   of matches and projections *)
 let cut_stack st =
   let rec f st acc_cbv acc_cbn =
     match st with
     | ((
-      (* Zfix _ | *)
       Zproj _
     | ZcaseT _
     ) as z) :: st ->
@@ -1267,15 +1268,15 @@ let cut_stack st =
   List.rev acc_cbv_rev, List.rev acc_cbn_rev, r
 
 type context =
-  | CBV
-  | CBN
+  | Monadic
+  | Pure
 
 let rec context_of_stack = function
-  | [] -> CBV
+  | [] -> Monadic
   | ((
     (* Zfix _ | *)
     Zproj _
-  | ZcaseT _)) :: st -> CBN
+  | ZcaseT _)) :: st -> Pure
   | z :: st -> context_of_stack st
 
 let _zip_term m stk =
@@ -1420,7 +1421,7 @@ let rec run' ctxt (vms : vm list) =
 
   | Code t, _ -> (eval[@tailcall]) ctxt vms t
 
-and eval ctxt (vms : vm list) t =
+and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
   let sigma, env, stack = ctxt.sigma, ctxt.env, ctxt.stack in
 
   let upd c = (Code c :: vms) in
@@ -1441,7 +1442,7 @@ and eval ctxt (vms : vm list) t =
 
   (* Feedback.msg_debug (Pp.int (List.length stack)); *)
 
-  let ctxt = {ctxt with stack=stack} in
+  let ctxt = {ctxt with stack} in
 
   let fail ?internal:(i=true) (sigma, c) =
     let p = Printer.pr_econstr_env env sigma (to_econstr c) in
@@ -1457,8 +1458,8 @@ and eval ctxt (vms : vm list) t =
   let ctx_st = context_of_stack stack in
 
   (* (match ctx_st with
-   * | CBV -> Feedback.msg_debug (Pp.str "cbv")
-   * | CBN -> Feedback.msg_debug (Pp.str "cbn")
+   * | Monadic -> Feedback.msg_debug (Pp.str "monadic")
+   * | Pure -> Feedback.msg_debug (Pp.str "pure")
    * );
    *
    * let term = zip_term (CClosure.term_of_fconstr reduced_term) stack in
@@ -1472,8 +1473,8 @@ and eval ctxt (vms : vm list) t =
   in
 
   match ctx_st, fterm_of reduced_term with
-  | CBV, FConstruct _ -> failwith ("Invariant invalidated: reduction reached the constructor of M.t.")
-  | CBV, FLetIn (_,v,_,bd,e) ->
+  | Monadic, FConstruct _ -> failwith ("Invariant invalidated: reduction reached the constructor of M.t.")
+  | Monadic, FLetIn (_,v,_,bd,e) ->
       let open ReductionStrategy in
       let (is_reduce, num_args, args_clos) = (
         match fterm_of v with
@@ -1506,7 +1507,11 @@ and eval ctxt (vms : vm list) t =
         let e = (Esubst.subs_cons ([|v|], e)) in
         (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
 
-  | CBV, FFlex (ConstKey (hc, _))
+  | Pure, FLetIn (_,v,_,bd,e) ->
+      let e = (Esubst.subs_cons ([|v|], e)) in
+      (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
+
+  | Monadic, FFlex (ConstKey (hc, _))
     when (Option.has_some (MConstr.mconstr_head_opt hc)) ->
       begin
         match MConstr.mconstr_head_of hc with
@@ -1518,7 +1523,7 @@ and eval ctxt (vms : vm list) t =
             (primitive[@tailcall]) ctxt vms mh reduced_term
       end
 
-  | CBV, FFlex((ConstKey (hc, _)) as k) ->
+  | Monadic, FFlex((ConstKey (hc, _)) as k) ->
       begin
         let redflags = (CClosure.RedFlags.fCONST hc) in
         let infos = CClosure.infos_with_reds infos (CClosure.RedFlags.mkflags [redflags]) in
@@ -1532,7 +1537,7 @@ and eval ctxt (vms : vm list) t =
             efail (E.mkStuckTerm sigma env (to_econstr t))
       end
 
-  | CBN, (_ as t) when (is_blocked t) ->
+  | Pure, (_ as t) when (is_blocked t) ->
       begin
         if !debug_ex then
           (let open Pp in
@@ -1543,12 +1548,13 @@ and eval ctxt (vms : vm list) t =
         efail (E.mkStuckTerm sigma env (to_econstr reduced_term))
       end
 
-  | CBN, (_ as t) ->
+  | Pure, (_ as t) when not reduced_to_let ->
       let cbv, cbn, r = cut_stack stack in
-      let infos = CClosure.infos_with_reds infos (CClosure.all) in
-      let t, stack = reduce_noshare infos tab (CClosure.mk_red t) (List.append cbv cbn) in
+      let infos = CClosure.infos_with_reds infos (CClosure.allnolet) in
+      let t', stack = reduce_noshare infos tab (CClosure.mk_red t) (List.append cbv cbn) in
       let stack = List.append stack r in
-      (run'[@tailcall]) {ctxt with stack} (Code t :: vms)
+      (* signal that we have advanced reduced everything down to lets *)
+      (eval[@tailcall]) {ctxt with stack} vms ?reduced_to_let:(Some true) t'
 
   | _ ->
       efail (E.mkStuckTerm sigma env (to_econstr reduced_term))
@@ -1963,6 +1969,67 @@ and primitive ctxt vms mh reduced_term =
       (* : A B m uni a C cont  *)
       let (t_head, t_args) = decompose_app sigma (to_econstr t) in
       let (c_head, c_args) = decompose_app sigma (to_econstr c) in
+      (* We need to be careful about primitive projections.
+         In particular, we always need to unify parameters *if* the pattern contains them.
+         There are several situations to consider that involve primitive projections:
+         1. [c_head] is a primitive projection but [t_head] isn't
+         2. [t_head] is a primitive projection but [c_head] isn't
+         3. Both are primitive projections
+      *)
+      let (c_head, c_args), (t_head, t_args) =
+        match (isProj sigma c_head, isProj sigma t_head) with
+        | (false, false) ->     (* nothing to do *)
+            (c_head, c_args), (t_head, t_args)
+        | (true, false) ->
+            (* In this case, the record value must be part of the left-hand side
+               of the pattern * i.e. [pattern = proj r | ...].
+               (Otherwise the pattern could not be a primitive projection.)
+               If we know that [t_head] is the folded version of [c_head] we
+               can simply unify the record values.
+               Otherwise it could be literally anything. In that case, we expand [c_head].
+            *)
+            let c_proj, c_rval = destProj sigma c_head in
+            let c_constant = (Projection.constant c_proj) in
+            if isConstant sigma c_constant t_head then
+              let n_params = Recordops.find_projection_nparams (GlobRef.ConstRef c_constant) in
+              let _t_params, t_args = List.chop n_params t_args in
+              (t_head, c_rval :: c_args), (t_head, t_args)
+            else
+              let c = Retyping.expand_projection env sigma c_proj c_rval c_args in
+              let c_head, c_args = decompose_app sigma c in
+              (c_head, c_args), (t_head, t_args)
+        | (false, true) ->
+            (* Trying to be clever about this case, too.
+               There is a clever version of this case:
+               If [c_head] is the folded version of [t_head] and
+               [c_args] contains the record value (i.e. [pattern = folded_proj ... r | ])
+               we can avoid expanding [t] by dropping [n_params] arguments from [c_args].
+
+               However, this breaks the requirement that if the pattern mentions the parameters
+               we should unify them. Thus, we always expand in this case.
+            *)
+            let t_proj, t_rval = destProj sigma t_head in
+            (* Code for clever verison:
+             * let t_constant = (Projection.constant t_proj) in
+             * let n_params = Recordops.find_projection_nparams (GlobRef.ConstRef t_constant) in
+             * if isConstant sigma t_constant c_head && List.length c_args > n_params then
+             *   let _c_params, c_args = List.chop n_params c_args in
+             *   (\* we use [c_head] on both sides to make sure they are considered equal *\)
+             *   (c_head, c_args), (c_head, t_args)
+             * else *)
+            let t = Retyping.expand_projection env sigma t_proj t_rval t_args in
+            let t_head, t_args = decompose_app sigma t in
+            (c_head, c_args), (t_head, t_args)
+        | (true, true) ->
+            let (c_proj, c_rval) = destProj sigma c_head in
+            let (t_proj, t_rval) = destProj sigma t_head in
+            if Projection.equal c_proj t_proj then
+              (* we use [c_head] on both sides to make sure they are considered equal *)
+              (c_head, c_rval :: c_args), (c_head, t_rval :: t_args)
+            else
+              (* no way to succeed anyway but we'll leave that to [eq_constr_nounivs] below *)
+              (c_head, c_args), (t_head, t_args)
+      in
       if eq_constr_nounivs sigma t_head c_head then
         let uni = to_econstr uni in
         (* We need to capture the initial sigma here, as
@@ -1972,11 +2039,12 @@ and primitive ctxt vms mh reduced_term =
         let rec traverse sigma t_args c_args =
           match c_args with
           | [] ->
+              let t_args = List.map of_econstr t_args in
               (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp (Array.of_list t_args) :: stack} (upd cont_success)
           | c_h :: c_args ->
               match t_args with
               | t_h :: t_args ->
-                  let (unires, _) = UnificationStrategy.unify None sigma env uni Reduction.CONV (to_econstr t_h) c_h in
+                  let (unires, _) = UnificationStrategy.unify None sigma env uni Reduction.CONV t_h c_h in
                   begin
                     match unires with
                     | Evarsolve.Success (sigma) -> traverse sigma t_args c_args
@@ -1988,7 +2056,7 @@ and primitive ctxt vms mh reduced_term =
                   (* efail (E.mkWrongTerm sigma env c_head) *)
                   fail ()
         in
-        traverse sigma (List.map of_econstr t_args) c_args
+        traverse sigma t_args c_args
       else
         (* efail (E.mkWrongTerm sigma env c_head) *)
         (run'[@tailcall]) ctxt (upd cont_failure)
