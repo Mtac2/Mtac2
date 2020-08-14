@@ -35,11 +35,12 @@ install: |
     opam list
     opam repo add coq-released https://coq.inria.fr/opam/released
     opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
+    opam repo add mtac2-dev https://github.com/Mtac2/opam.git
     opam repo list
     sudo apt install -y m4
-    opam install -y coq.dev
+    opam pin add coq https://github.com/coq/coq.git#v8.12
     coqc --version
-    opam pin add https://github.com/unicoq/unicoq.git#master -k git
+    opam install coq-unicoq.dev.8.12
     opam pin
     opam list
     "
