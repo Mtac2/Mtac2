@@ -1,3 +1,8 @@
+Changes from 1.2 to 1.3
+=======================
+
+- Bugfixes and performance improvements.
+
 Changes from 1.1 to 1.2
 =======================
 
