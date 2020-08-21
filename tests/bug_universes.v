@@ -25,8 +25,7 @@ Qed.
 Lemma testMTacApply@{i j} : Type@{i} -> Type@{max(i,j)}.
 MProof.
 T.apply (@id).
-Fail Qed.
-Abort.
+Qed.
 
 (* but ltac's 8.8  doesn't do that *)
 Lemma testLApply@{i j} : Type@{i} -> Type@{max(i,j)}.
