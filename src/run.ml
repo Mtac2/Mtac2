@@ -2267,7 +2267,7 @@ and primitive ctxt vms mh reduced_term =
             let options = ref { options with inst_unify_types = true; inst_beta_reduce_type = false; } in
             match Unicoq.Munify.instantiate ~options env ((evar, x), []) solution sigma with
             | Evarsolve.Success sigma ->
-                let sigma = Typing.check env sigma solution (to_econstr ty) in
+                (* let sigma = Typing.check env sigma solution (to_econstr ty) in *)
                 (run'[@tailcall]) {ctxt with sigma = sigma} (Code succ :: vms)
             | Evarsolve.UnifFailure _ ->
                 (run'[@tailcall]) {ctxt with sigma = sigma} (Code fail :: vms)
@@ -2424,7 +2424,7 @@ let run (env0, sigma) ty t : data =
   (* Feedback.msg_info (Printer.pr_econstr_env env sigma ty); *)
   let _, ty = decompose_app sigma ty in
   assert (List.length ty == 1);
-  let ty = List.nth ty 0 in
+  let _ty = List.nth ty 0 in
 
   match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure.empty_stack; backtrace=[]} [Code t] with
   | Err (sigma', v, _, backtrace) ->
@@ -2441,7 +2441,7 @@ let run (env0, sigma) ty t : data =
   | Val (sigma', v, stack, tr) ->
       assert (List.is_empty stack);
       let v = multi_subst_inv sigma' subs (to_econstr v) in
-      let sigma' = Typing.check env sigma' v ty in
+      (* let sigma' = Typing.check env sigma' v ty in *)
       (* let sigma', _ = Typing.type_of env0 sigma' v in *)
       Val (sigma', v)
 
