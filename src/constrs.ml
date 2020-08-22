@@ -348,10 +348,10 @@ module CoqString = struct
     let buf = Buffer.create 128 in
     let rec fc s =
       let (h, args) = decompose_appvect sigma s in
-      if equal sigma emptyBuilder h then ()
-      else if equal sigma stringBuilder h then
+      if equal sigma stringBuilder h then
         let _ = Buffer.add_char buf (CoqAscii.from_coq ctx args.(0)) in
         fc args.(1)
+      else if equal sigma emptyBuilder h then ()
       else
         raise NotAString
     in
