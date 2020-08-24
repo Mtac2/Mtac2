@@ -359,15 +359,16 @@ module CoqString = struct
     Buffer.contents buf
 
   let to_coq s =
+    let str_cons = build_app stringBuilder [||] in
     let rec go i coqstr =
       if i < 0 then
         coqstr
       else
         go (i - 1) (
-          build_app
-            stringBuilder
-            [|CoqAscii.to_coq s.[i];
-              coqstr|])
+          mkApp
+            (str_cons,
+             [|CoqAscii.to_coq s.[i];
+               coqstr|]))
     in go (String.length s - 1) (build emptyBuilder)
 end
 
