@@ -1,5 +1,6 @@
 (** * Tutorial for Mtac2 *)
 (** Author: Beta Ziliani *)
+(** with fixes from Michael Soegtrop *)
 
 (** * Introduction
 
@@ -230,6 +231,7 @@ For instance, the code below shows a function that searches for an
 element in a list. *)
 
 Mtac Do New Exception NotFound.
+(** (This is just a handy way of declaring an exception without parameters.) *)
 
 Definition inlist A (x : A) :=
   mfix1 f (s : list A) : M (In x s) :=
@@ -335,8 +337,12 @@ put third in the match, then the list [(x :: nil) ++ (z :: nil)] will
 be matched against the pattern [(x :: s')], by reducing it to [(x :: z
 :: nil)]. *)
 
-(** One problem with [Program] is that it generates big proof terms.
-Let's look at the proof terms generated in the obligations and plug
+(** One problem with [Program] is that it tends to generate
+unnecessarily big proof terms. *)
+
+Print inlist'.
+
+(** Let's look at the proof terms generated in the obligations and plug
 those terms into the holes. *)
 
 Print inlist'_obligation_1.
@@ -459,7 +465,6 @@ but keying on the [prop] projector of the record. We have to prepend [Program]
 because it calls a more agressive typechecker, otherwise it fails to notice
 that the element in the body of the first case should return a [P]. *)
 
-Program
 Definition search (P : Prop) :=
   mfix1 f (s:list dyn) : M P :=
     mmatch s with
@@ -506,8 +511,9 @@ Definition prop_auto' :=
 [ret (fun x:p1 => f (Dyn x :: c) p2)]
 
 since this code has type [M (p1 -> M p2)] which is not what we
-want. Instead, we use two new operators: [nu] and [abs]. The first one
-is analogous to the nu operator in [[3]] and [[4]], but a bit more low-level. Its type is the follwing: *)
+want. Instead, we use two new operators: [nu] and [abs_fun]. The first one
+is analogous to the nu operator in [[3]] and [[4]], but a bit more low-level.
+Its type is the following: *)
 
 About nu.
 
@@ -652,13 +658,9 @@ the Mtactic in order to get arguments from the goal, and that we
 must use it with care, as the proof term generated is bigger than with
 [mrun]. This said, [eval] is particularly useful when rewriting
 procedures returning equalities. Here is an example using boolean
-equality of natural numbers. Notice how we use the [[H]] notation
-after the right arrow in the pattern. The name [H] will be
-instantiated with a proof of equality of the scrutinee with the
-pattern. *)
+equality of natural numbers. *)
 
-Program
-Definition eq_nats  :=
+Program Definition eq_nats  :=
   mfix2 f (x : nat) (y : nat) : M (x == y = true) :=
     mmatch (x, y)  with
     | (x, x) => [H] ret _
@@ -675,13 +677,27 @@ Next Obligation.
   rewrite beq_nat_true_iff.
   apply plus_comm.
 Qed.
+(** Notice how we use the [[H]] notation after the right arrow in the
+pattern. The name [H] will be instantiated with a proof of equality of
+the scrutinee with the pattern, which we use to apply [inverstion] on
+it. Of course, we could (should!) avoid [Program] and write the proof
+term directly, but that's unnecessary for illustrating the use of
+[eval] with [rewrite], the purpose of the section. *)
 
-
+(** We call the Mtactic with [eval]: *)
 Example plus_S n m : n + m == m + n = true /\ m == m = true /\ n == n = true.
 Proof.
-  rewrite !(eval (eq_nats _ _)).
+  rewrite !(eval (eq_nats _ _)). (** Notice how at each rewrite it picks the right terms. *)
   auto.
 Qed.
+
+(** * Where now? *)
+
+(** After seeing the basics of the Mtac2 infrastructure, and until
+newer documentation comes, you are invited to see the examples in the
+same directory as this tutorial, and the theory files. Mtac2 comes
+with a lot of different useful tools. And feel free to ask any
+question in the Zulip channel! [[6]] *)
 
 
 (** * References *)
@@ -702,4 +718,7 @@ Proceedings of the 7th international conference on Typed Lambda
 Calculi and Applications, TLCA'05, pages 339-353, Berlin, Heidelberg,
 2005. Springer-Verlag.
 
-[[5]] http://www.msr-inria.inria.fr/Projects/math-components *)
+[[5]] https://math-comp.github.io/mcb/
+
+[[6]] https://coq.zulipchat.com/#narrow/stream/254619-Mtac2
+*)
