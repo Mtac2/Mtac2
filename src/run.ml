@@ -1655,15 +1655,17 @@ and primitive ctxt vms mh reduced_term =
               efail (Exceptions.mkNameExists sigma env s)
             else
               begin
-                let nu = Nu (name, ctxt.env, ctxt.renv, ctxt.backtrace) in
-                let ot = CoqOption.from_coq sigma env (to_econstr ot) in
-                let env = push_named (Context.Named.Declaration.of_tuple (annotR name, ot, a)) env in
-                let backtrace = Backtrace.push (InternalNu (name)) ctxt.backtrace in
-                let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
-                let renv = of_econstr renv' in
-                let nus = ctxt.nus + 1 in
-                let stack = Zapp [|of_econstr (mkVar name)|] :: stack in
-                (run'[@tailcall]) {ctxt with backtrace; env; renv; sigma; nus; stack} (Code f :: nu :: vms)
+                match CoqOption.from_coq sigma env (to_econstr ot) with
+                | exception CoqOption.NotAnOption -> efail (Exceptions.mkStuckTerm sigma env s)
+                | ot ->
+                    let nu = Nu (name, ctxt.env, ctxt.renv, ctxt.backtrace) in
+                    let env = push_named (Context.Named.Declaration.of_tuple (annotR name, ot, a)) env in
+                    let backtrace = Backtrace.push (InternalNu (name)) ctxt.backtrace in
+                    let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
+                    let renv = of_econstr renv' in
+                    let nus = ctxt.nus + 1 in
+                    let stack = Zapp [|of_econstr (mkVar name)|] :: stack in
+                    (run'[@tailcall]) {ctxt with backtrace; env; renv; sigma; nus; stack} (Code f :: nu :: vms)
               end
         | StuckName -> efail (Exceptions.mkWrongTerm sigma env s)
         | InvalidName _ -> efail (Exceptions.mkInvalidName sigma env s)
