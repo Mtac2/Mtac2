@@ -36,7 +36,7 @@ install: |
     opam repo add coq-released https://coq.inria.fr/opam/released
     opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
     opam repo list
-    sudo apt install -y m4
+    sudo apt install -y m4 libgmp-dev
     opam install -y coq.dev
     coqc --version
     opam pin add https://github.com/unicoq/unicoq.git#master -k git
