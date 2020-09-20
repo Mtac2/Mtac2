@@ -19,4 +19,4 @@ Polymorphic Definition test : M tFalse :=
   | [? f] omg_false f => print_term f;; ret f
   end.
 
-Mtac Do test.
+Fail Mtac Do test.
