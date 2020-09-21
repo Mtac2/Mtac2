@@ -46,6 +46,7 @@ type vm = Code of CClosure.fconstr
         | Try of (Evd.evar_map * CClosure.stack * backtrace * CClosure.fconstr)
         | Nu of (Names.Id.t * Environ.env * CClosure.fconstr * backtrace)
         | Rem of (Environ.env * CClosure.fconstr * bool)
+        | Rep of (Environ.env * CClosure.fconstr)
 
 (* val run_fix : ctxt -> vm list -> CClosure.fconstr -> CClosure.fconstr array -> CClosure.fconstr -> CClosure.fconstr -> CClosure.fconstr array *)
 
