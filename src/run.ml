@@ -1248,6 +1248,7 @@ type vm = Code of CClosure.fconstr
         | Try of (Evd.evar_map * CClosure.stack * backtrace * CClosure.fconstr)
         | Nu of (Names.Id.t * Environ.env * CClosure.fconstr * backtrace)
         | Rem of (Environ.env * CClosure.fconstr * bool)
+        | Rep of (Environ.env * CClosure.fconstr)
 
 (* Partition stack st into [cbv] ++ [cbn] such that [cbn] is the longest suffix
    of matches and projections *)
@@ -1398,6 +1399,7 @@ let rec run' ctxt (vms : vm list) =
       else
         (run'[@tailcall]) (ctxt_nu1 p) (Ret c :: vms)
   | Ret c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Ret c :: vms)
+  | Ret c, Rep (env, renv) :: vms -> (run'[@tailcall]) {ctxt with env; renv} (Ret c :: vms)
 
   | Fail c, [] -> fail ctxt.sigma c ctxt.stack ctxt.backtrace
   | Fail c, (Bind (_, _) :: vms) ->
@@ -1414,8 +1416,9 @@ let rec run' ctxt (vms : vm list) =
       (run'[@tailcall]) {ctxt with sigma; backtrace; stack=Zapp [|of_econstr c|] :: stack} (Code b::vms)
   | Fail c, (Nu p :: vms) -> (run'[@tailcall]) (ctxt_nu1_fail p) (Fail c :: vms)
   | Fail c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Fail c :: vms)
+  | Fail c, Rep (env, renv) :: vms -> (run'[@tailcall]) {ctxt with env; renv} (Fail c :: vms)
 
-  | (Bind _ | Fail _ | Nu _ | Try _ | Rem _), _ -> failwith "ouch1"
+  | (Bind _ | Fail _ | Nu _ | Try _ | Rem _ | Rep _), _ -> failwith "ouch1"
   | Ret _, (Code _ :: _ | Ret _ :: _ | Fail _ :: _) -> failwith "ouch2"
 
   | Code t, _ -> (eval[@tailcall]) ctxt vms t
@@ -1757,7 +1760,7 @@ and primitive ctxt vms mh reduced_term =
       let x = to_econstr x in
       if isVar sigma x then
         let env', (sigma, renv') = env_replacing sigma env ctxt.renv x tyB in
-        (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma} (Code t :: vms)
+        (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma} (Code t :: Rep (env, ctxt.renv) :: vms)
       else
         efail (E.mkNotAVar sigma env x)
 
