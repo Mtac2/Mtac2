@@ -612,6 +612,10 @@ Abort.
     back at the beginning of the goal.  The [generalize dependent]
     tactic does this. *)
 
+
+(* We will use this tactic twice, so we abstract it *)
+Local Definition tac := destructn 0 &> [i:~~| \n'] &> intro eq.
+
 Theorem double_injective_take2 : forall n m,
      double n = double m ->
      n = m.
@@ -619,8 +623,6 @@ MProof.
   intros n m.
   (* [n] and [m] are both in the context *)
   move_back n.
-  (* We will use this tactic twice, so we abstract it *)
-  pose (tac := destructn 0 &> [i:~~| \n'] &> intro eq).
   (* Now [n] is back in the goal and we can do induction on
      [m] and get a sufficiently general IH. *)
   elim m &> [i:~~| \m' IHm'].
