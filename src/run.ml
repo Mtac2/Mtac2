@@ -2227,8 +2227,8 @@ and abs vms case ctxt a p x y n t : data_stack =
       let y' = Vars.subst_vars [name] y in
       let run t = (run'[@tailcall]) ctxt (Ret (of_econstr t) :: vms) in
       match case with
-      | AbsProd -> run (mkProd (nameR name, a, y'))
-      | AbsFun -> run (mkLambda (nameR name, a, y'))
+      | AbsProd -> (run[@tailcall]) (mkProd (nameR name, a, y'))
+      | AbsFun -> (run[@tailcall]) (mkLambda (nameR name, a, y'))
       | AbsLet ->
           begin
             let letin = mkLetIn (nameR name, t, a, y') in
@@ -2236,12 +2236,12 @@ and abs vms case ctxt a p x y n t : data_stack =
             | None -> run letin
             | Some d ->
                 if is_conv env sigma (of_constr d) t then
-                  run letin
+                  (run[@tailcall]) letin
                 else
                   let (sigma, e) = E.mkAbsLetNotConvertible sigma env t in
                   (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
           end
-      | AbsFix -> run (mkFix (([|n-1|], 0), ([|nameR name|], [|a|], [|y'|])))
+      | AbsFix -> (run[@tailcall]) (mkFix (([|n-1|], 0), ([|nameR name|], [|a|], [|y'|])))
     else
       let (sigma, e) = E.mkAbsDependencyError sigma env (mkApp(x,[|y;p|])) in
       (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
