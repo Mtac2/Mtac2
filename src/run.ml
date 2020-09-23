@@ -227,6 +227,7 @@ module Exceptions = struct
 
   let mkAbsDependencyError = mkDebugEx "AbsDependencyError"
   let mkAbsVariableIsADefinition = mkDebugEx "AbsVariableIsADefinition"
+  let mkAbsLetNotConvertible = mkDebugEx "AbsLetNotConvertible"
 
   let mkNotALetIn = mkDebugEx "NotALetIn"
   let mkNotTheSameType = mkDebugEx "NotTheSameType"
@@ -2203,7 +2204,7 @@ and run_fix ctxt (vms: vm list) (h: fconstr) (a: fconstr array) (b: fconstr) (f:
   (run'[@tailcall]) {ctxt with stack=Zapp (Array.append [|mk_red (FApp (h, Array.append a [|b;f|]))|] x)::ctxt.stack} (Code f :: vms)
 
 (* abs case env a p x y n abstract variable x from term y according to the case.
-   if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
+   if variables depending on x appear in y or the type p, it fails. n is for fixpoint and t for a let-binder. *)
 and abs vms case ctxt a p x y n t : data_stack =
   let sigma, env = ctxt.sigma, ctxt.env in
   let a, p, x, y = to_econstr a, to_econstr p, to_econstr x, to_econstr y in
@@ -2211,27 +2212,36 @@ and abs vms case ctxt a p x y n t : data_stack =
   let p = nf_evar sigma p in
   let x = nf_evar sigma x in
   let y = nf_evar sigma y in
-  let has_definition var =
-    let n = Environ.lookup_named var env in
-    Option.has_some (Context.Named.Declaration.get_value n) in
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
   if isVar sigma x then
     let name = destVar sigma x in
-    if case <> AbsLet && has_definition name then
+    let odef =
+      let n = Environ.lookup_named name env in
+      Context.Named.Declaration.get_value n in
+    if case <> AbsLet && odef <> None then
       let (sigma, e) = E.mkAbsVariableIsADefinition sigma env x in
       (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
     else if check_abs_deps env sigma x y p then
       let y' = Vars.subst_vars [name] y in
-      let t =
-        match case with
-        | AbsProd -> mkProd (nameR name, a, y')
-        | AbsFun -> mkLambda (nameR name, a, y')
-        | AbsLet -> mkLetIn (nameR name, t, a, y')
-        | AbsFix -> mkFix (([|n-1|], 0), ([|nameR name|], [|a|], [|y'|]))
-      in
-      (run'[@tailcall]) ctxt (Ret (of_econstr t) :: vms)
+      let run t = (run'[@tailcall]) ctxt (Ret (of_econstr t) :: vms) in
+      match case with
+      | AbsProd -> run (mkProd (nameR name, a, y'))
+      | AbsFun -> run (mkLambda (nameR name, a, y'))
+      | AbsLet ->
+          begin
+            let letin = mkLetIn (nameR name, t, a, y') in
+            match odef with
+            | None -> run letin
+            | Some d ->
+                if is_conv env sigma (of_constr d) t then
+                  run letin
+                else
+                  let (sigma, e) = E.mkAbsLetNotConvertible sigma env t in
+                  (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
+          end
+      | AbsFix -> run (mkFix (([|n-1|], 0), ([|nameR name|], [|a|], [|y'|])))
     else
       let (sigma, e) = E.mkAbsDependencyError sigma env (mkApp(x,[|y;p|])) in
       (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
