@@ -35,7 +35,6 @@ install: |
     opam list
     opam repo add coq-released https://coq.inria.fr/opam/released
     opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
-    opam update
     opam repo list
     sudo apt install -y m4 libgmp-dev
     opam install -y coq.dev
