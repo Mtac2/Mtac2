@@ -51,7 +51,7 @@ script:
   docker exec COQ /bin/bash --login -c "
     export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
     set -ex
-    sudo chown -R opam:opam /home/coq/Mtac2
+#    sudo chown -R opam:opam /home/coq/Mtac2
     ./configure.sh
     make
     make test
