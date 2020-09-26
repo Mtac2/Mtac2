@@ -7,7 +7,7 @@ services:
 
 env:
   matrix:
-  - COQ_IMAGE="coqorg/base:bare"
+  - COQ_IMAGE="coqorg/base:latest"
 
 # As described on https://bors.tech/documentation/getting-started/ we need a
 # `staging` and a `trying` branch, both of which need to be CI-enabled.
