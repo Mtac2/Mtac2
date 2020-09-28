@@ -1322,17 +1322,11 @@ let _zip_term m stk =
 (*   | Rem _ -> "Rem" *)
 
 let check_exception exception_sigma mtry_sigma env c =
-  let open Id.Set in
-  let c = nf_evar exception_sigma c in (* is this necessary? *)
+  let c = nf_evar exception_sigma c in (* avoids false dependencies *)
   try
-    let () = Pretyping.check_evars env ~initial:mtry_sigma exception_sigma c in
-    if subset (collect_vars exception_sigma c) (vars_of_env env) then
-      (true, (mtry_sigma, c))
-    else
-      (false, E.mkExceptionNotGround mtry_sigma env c)
-  with
-  | Pretype_errors.PretypeError _ ->
-      (false, E.mkExceptionNotGround mtry_sigma env c)
+    let (ev, _) = Typing.type_of env mtry_sigma c in
+    (true, (ev, c))
+  with _ -> (false, E.mkExceptionNotGround mtry_sigma env c)
 
 let timers = Hashtbl.create 128
 
