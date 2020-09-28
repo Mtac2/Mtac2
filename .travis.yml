@@ -26,31 +26,32 @@ branches:
 install: |
   # Run the COQ container and display build metadata
   docker run -d -i --init --name=COQ -v ${TRAVIS_BUILD_DIR}:/home/coq/Mtac2 -w /home/coq/Mtac2 ${COQ_IMAGE}
-  travis_wait docker exec COQ /bin/bash --login -c "
-    export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
-    export OPAMJOBS="2"
-    set -ex
-    opam config list
-    opam repo list
-    opam list
-    opam update default
-    opam repo add coq-released https://coq.inria.fr/opam/released
-    opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
-    opam repo list
-    sudo apt install -y m4 libgmp-dev
-    opam pin add zarith 1.10
-    opam install -y coq.dev
-    coqc --version
-    opam pin add https://github.com/unicoq/unicoq.git#master -k git -y
-    opam pin
-    opam list
-    "
+#  travis_wait docker exec COQ /bin/bash --login -c "
+#    export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
+#    export OPAMJOBS="2"
+#    set -ex
+#    opam config list
+#    opam repo list
+#    opam list
+#    opam update default
+#    opam repo add coq-released https://coq.inria.fr/opam/released
+#    opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
+#    opam repo list
+#    sudo apt install -y m4 libgmp-dev
+#    opam pin add zarith 1.10
+#    opam install -y coq.dev
+#    coqc --version
+#    opam pin add https://github.com/unicoq/unicoq.git#master -k git -y
+#    opam pin
+#    opam list
+#    "
 script:
 - echo -e "${ANSI_YELLOW}Building Mtac2...${ANSI_RESET}" && echo -en 'travis_fold:start:Mtac2.build\\r'
 - |
   docker exec COQ /bin/bash --login -c "
     export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
     set -ex
+    whoami
     ./configure.sh
     make
     make test
