@@ -22,10 +22,16 @@ Polymorphic Definition test : M unit :=
      | [m: h] =>
        mmatch h with
        | [#] @ahyp | a' b' o =n>
-         op <- unify tFalse a' UniMatchNoRed;
-         match op with
-         | mSome _ => failwith "b's type was not rolled back"
-         | mNone => print "all good"
+         mmatch a' with
+         | [#] tFalse | =n>
+           mif is_evar a then
+             failwith "a is still an evar, but b has its type"
+           else print "all good"
+         | _ =>
+           mif is_evar a then
+             failwith "a is still an evar, but b has its type"
+           else
+             dbg_term "a' is " a';; failwith "No idea of what happened!"
          end
        end
      | _ => failwith "more than one hypothesis?"
