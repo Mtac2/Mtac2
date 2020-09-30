@@ -6,7 +6,7 @@ Copyright (c) 2020 Jan-Oliver Kaiser <janno@mpi-sws.org>
                    Beta Ziliani <beta@mpi-sws.org>
 
 Distributed under the terms of the MIT License, see LICENSE for details. Accepted contributions will be
-held under scrutinee to ensure they do not incur in a copyright infringement.
+held under scrutiny to ensure they do not incur in a copyright infringement.
 
 This repository contains a plugin for Coq with the tactic language
 described in the paper
