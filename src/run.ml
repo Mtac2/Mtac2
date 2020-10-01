@@ -154,7 +154,7 @@ module Goal = struct
     let open Context.Named in
     let open Declaration in
     let evinfo = Evd.find_undefined sigma ev in
-    let evenv = named_context_of_val (evar_hyps evinfo) in
+    let evenv = named_context_of_val (Evd.evar_filtered_hyps evinfo) in
     let env_list = named_context env in
     let rec compute sigma accu = function
       | nd :: evenv ->
