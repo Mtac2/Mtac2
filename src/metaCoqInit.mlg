@@ -95,7 +95,7 @@ let mproof_instr : MetaCoqInstr.mproof_instr Pcoq.Entry.t =
 
 VERNAC { mproof_mode } EXTEND MProofInstr
 | ![proof] [ mproof_instr(_instr) ] =>
-  { let open Vernacextend in VtProofStep { proof_block_detection = None } } ->
+  { Vernacextend.classify_as_proofstep } ->
   { fun ~pstate -> MetaCoqInterp.interp_proof_constr ~pstate _instr }
 END
 
