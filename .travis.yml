@@ -17,8 +17,8 @@ branches:
     - staging
     # This is where pull requests from "bors try" are built.
     - trying
-    # Uncomment this to enable building pull requests.
-    - master
+    # Uncomment this to enable building pull requests. But bors will not see that travis already built it, so it's kinda useless
+    # - master
     # (Left commented out until we find that it would be useful to enable)
     # We want to have CI for all master branches that target specific coq versions.
     - /master-.*/
