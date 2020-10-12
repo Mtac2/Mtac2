@@ -91,12 +91,12 @@ From Mtac2 Require Import Mtac2 ConstrSelector.
 Import T.
 Import T.notations.
 
-Definition stepNdo {A} (l : A) :=
+Polymorphic Definition stepNdo {A} (l : A) :=
   (apply stepsn |1> apply l |1> constructor) &> simpl.
 
-Definition stepInIf := stepNdo Ife.
+Polymorphic Definition stepInIf := stepNdo Ife.
 
-Definition stepIfTrue :=
+Polymorphic Definition stepIfTrue :=
   (stepNdo IfT) &> try (discriminate || T.assumption).
 
 Definition UnsoledGoals : Exception. constructor. Qed.

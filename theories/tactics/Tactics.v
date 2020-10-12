@@ -258,15 +258,23 @@ Definition apply {T} (c : T) : tactic := fun g=>
       let ty := dreduce (@S.selem_of) (S.selem_of t) in
       mif @M.cumul _ ty UniCoq el eg then M.ret [m:] else
         mmatch d return M (mlist (unit *m goal gs_any)) with
-        | [? (T1 : Prop) T2 f] @Dyn (T1 -> T2) f =>
+        | [? (T1 T2 : Prop) f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
           M.ret ((m: tt, AnyMetavar Propₛ _ e) :m: r)
-        | [? T1 T2 f] @Dyn (T1 -> T2) f =>
+        | [? (T1 : Prop) (T2 : Type) f] @Dyn (T1 -> T2) f =>
+          e <- M.evar T1;
+          r <- go (Dyn (f e));
+          M.ret ((m: tt, AnyMetavar Propₛ _ e) :m: r)
+        | [? (T1 T2 : Type) f] @Dyn (T1 -> T2) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
           M.ret ((m: tt, AnyMetavar Typeₛ _ e) :m: r)
-        | [? T1 T2 f] @Dyn (forall x:T1, T2 x) f =>
+        | [? (T1 : Type) (T2: T1 -> Prop) f] @Dyn (forall x:T1, T2 x) f =>
+          e <- M.evar T1;
+          r <- go (Dyn (f e));
+          M.ret r
+        | [? (T1 : Type) (T2: T1 -> Type) f] @Dyn (forall x:T1, T2 x) f =>
           e <- M.evar T1;
           r <- go (Dyn (f e));
           M.ret r
