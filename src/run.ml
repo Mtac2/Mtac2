@@ -1555,6 +1555,13 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
             efail (E.mkStuckTerm sigma env (to_econstr t))
       end
 
+  (* [whd_stack] considers unfolded primitive projections fully reduced. That will not do. *)
+  | Monadic, FProj (proj, t) ->
+      let stack = Zproj (Projection.repr proj) :: stack in
+      let ctxt = {ctxt with stack} in
+      (eval[@tailcall]) ctxt vms t
+
+
   | Pure, (_ as t) when (is_blocked t) ->
       begin
         if !debug_ex then
@@ -1581,6 +1588,12 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
       (eval[@tailcall]) {ctxt with stack} vms ?reduced_to_let:(Some true) t'
 
   | _ ->
+      if !debug_ex then
+        (let open Pp in
+         Feedback.msg_debug (
+           Printer.pr_econstr_env env sigma (to_econstr reduced_term) ++ str " is not evaluable. Context: " ++ (match ctx_st with | Pure -> str "Pure" | Monadic -> str "Monadic") ++ str ". " ++ if reduced_to_let then str "Reduced to let-in." else str "Not reduced to let-in."
+         )
+        );
       efail (E.mkStuckTerm sigma env (to_econstr reduced_term))
 
 and primitive ctxt vms mh reduced_term =
