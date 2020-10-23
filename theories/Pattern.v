@@ -21,18 +21,20 @@ Arguments pbase {A B y} _ _ _.
 Arguments ptele {A B y C} _.
 Arguments psort {A B y} _.
 
-Inductive branch : forall {A : Type} {B : A -> Prop} {y : A}, Prop :=
-| branch_pattern {A : Type} {B : A -> Prop} {y}: pattern A B y -> @branch A B y
-| branch_app_static {A : Type} {B : A -> Prop} {y}:
-    forall {m:MTele} (uni : Unification) (C : selem_of (MTele_Const (s:=Typeₛ) A m)),
-      MTele_sort (MTele_ConstMap (si := Typeₛ) Propₛ (fun a : A => B a) C) ->
+(* Set Printing Universes. *)
+(* Set Printing Implicit. *)
+Inductive branch@{a elem_a x+} : forall {A : Type@{a}} {B : A -> Prop} {y : A}, Prop :=
+| branch_pattern {A : Type@{a}} {B : A -> Prop} {y : A}: pattern A B y -> @branch A B y
+| branch_app_static {A : Type@{a}} {B : A -> Prop} {y : A}:
+    forall {m:MTele@{elem_a}} (uni : Unification) (C : selem_of (MTele_Const@{_ _} (s:=Typeₛ) A m)),
+      MTele_sort@{elem_a _ _ a elem_a} (MTele_ConstMap (si := Typeₛ) Propₛ (fun a : A => B a) C) ->
       @branch A B y
-| branch_forallP {B : Prop -> Prop} {y}:
-    (forall (X : Type) (Y : X -> Prop), B (forall x : X, Y x)) ->
+| branch_forallP {B : Prop -> Prop} {y : Prop}:
+    (forall (X : Type@{x}) (Y : X -> Prop), B (forall x : X, Y x)) ->
     @branch Prop B y
-| branch_forallT {B : Type -> Prop} {y : Type}:
-    (forall (X : Type) (Y : X -> Type), B (forall x : X, Y x)) ->
-    @branch Type B y.
+| branch_forallT {B : Type@{elem_a} -> Prop} {y : Type@{elem_a}}:
+    (forall (X : Type@{elem_a}) (Y : X -> Type@{elem_a}), B (forall x : X, Y x)) ->
+    @branch Type@{elem_a} B y.
 Arguments branch _ _ _ : clear implicits.
 
 
