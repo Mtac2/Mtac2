@@ -2011,37 +2011,8 @@ and primitive ctxt vms mh reduced_term =
          things more or less randomly, it makes sense to undo this before we
          attempt a syntactic pattern matching. *)
 
-      let eta_red t =
-        let binders, b = decompose_lam sigma t in
-        let h, args = decompose_appvect sigma b in
-        let h, binders =
-          if List.length binders > Array.length args then
-            let diff = List.length binders - Array.length args in
-            (* push diff many binders from the back back onto h *)
-            let binders, push = List.chop (List.length binders - diff) binders in
-            compose_lam binders h, binders
-          else
-            h, binders
-        in
-        let push = Array.sub args 0 (Array.length args - List.length binders) in
-        let h = mkApp (h, push) in
-        let args = (Array.sub args (Array.length args - List.length binders) (List.length binders)) in
-        let args = Array.to_list args in
-
-        let rec pop_simul n (binders : (Names.Name.t Context.binder_annot * EConstr.t) list) (args : EConstr.t list) =
-          match binders, args with
-          | ((b, ty) :: binders as ob), (a :: args as oa) ->
-              if isRelN sigma n a then
-                pop_simul (n-1) binders args
-              else
-                compose_lam ob (applist (h, oa))
-          | binders, args -> compose_lam binders (applist (h, args))
-        in
-        pop_simul (List.length binders) binders args
-      in
-
-      let t = eta_red (to_econstr t) in
-      let c = eta_red (to_econstr c) in
+      let t = Termops.eta_reduce_head sigma (to_econstr t) in
+      let c = Termops.eta_reduce_head sigma (to_econstr c) in
 
       let (t_head, t_args) = decompose_app sigma t in
       let (c_head, c_args) = decompose_app sigma c in
@@ -2106,36 +2077,32 @@ and primitive ctxt vms mh reduced_term =
               (* no way to succeed anyway but we'll leave that to [eq_constr_nounivs] below *)
               (c_head, c_args), (t_head, t_args)
       in
+
+      let fail () = (run'[@tailcall]) ctxt (upd cont_failure) in
       if eq_constr_nounivs sigma t_head c_head then
         let uni = to_econstr uni in
-        (* We need to capture the initial sigma here, as
-           unification of initial arguments will yield new
-           sigmas *)
-        let fail () = (run'[@tailcall]) ctxt (upd cont_failure) in
-        let rec traverse sigma t_args c_args =
-          match c_args with
+        let t_args_uni, t_args_rem = List.chop (List.length c_args) t_args in
+
+        let to_unify = List.combine (c_head :: c_args) (t_head :: t_args_uni) in
+
+        let rec uni_and_go = function
           | [] ->
-              let t_args = List.map of_econstr t_args in
-              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp (Array.of_list t_args) :: stack} (upd cont_success)
-          | c_h :: c_args ->
-              match t_args with
-              | t_h :: t_args ->
-                  let (unires, _) = UnificationStrategy.unify None sigma env uni Reduction.CONV t_h c_h in
-                  begin
-                    match unires with
-                    | Evarsolve.Success (sigma) -> traverse sigma t_args c_args
-                    | Evarsolve.UnifFailure _ ->
-                        (* efail (E.mkWrongTerm sigma env c_head) *)
-                        fail ()
-                  end
-              | _ ->
+              let t_args_rem = List.map of_econstr t_args_rem in
+              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp (Array.of_list t_args_rem) :: stack} (upd cont_success)
+          | ((c,t)::ls) ->
+
+              let (unires, _) = UnificationStrategy.unify None sigma env uni (Reduction.CONV) c t
+              in
+              match unires with
+              | Evarsolve.Success (sigma) ->
+                  (uni_and_go[@tailcall]) ls
+              | Evarsolve.UnifFailure _ ->
                   (* efail (E.mkWrongTerm sigma env c_head) *)
-                  fail ()
+                  (fail[@tailcall]) ()
         in
-        (traverse[@tailcall]) sigma t_args c_args
+        (uni_and_go[@tailcall]) to_unify
       else
-        (* efail (E.mkWrongTerm sigma env c_head) *)
-        (run'[@tailcall]) ctxt (upd cont_failure)
+        (fail[@tailcall]) ()
 
   | MConstr (Mdecompose_forallT, (_, t, cont_success, cont_failure)) ->
       let t = to_econstr t in

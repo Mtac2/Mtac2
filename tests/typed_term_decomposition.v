@@ -16,15 +16,15 @@ Check ltac:(mrun (
                   (fun x y => M.ret (x,y)))
            ).
 
-(* This test will fail because the evar `_` given to `@plus` will not be unified
-with 3 as requested by specifying `UniMatchNoRed`. *)
+(* This test will fail because [3] and [2+1] not be unified
+as requested by specifying `UniMatchNoRed`. *)
 Fail Check ltac:(mrun (
                 M.decompose_app'
                   (B := fun _ => nat)
                   (m := [tele _])
                   UniMatchNoRed
                   (3+5)
-                  (@plus _)
+                  (@plus (2+1))
                   (fun y => M.ret (y)))
            ).
 (* Once we allow unification of evars the test succeeds *)
