@@ -425,22 +425,27 @@ module ReductionStrategy = struct
     (CClosure.whd_val infos tabs c)
 
   let redfuns = [|
-    (fun _ _ _ c -> c);
-    (fun _ env sigma c -> Tacred.simpl env sigma (nf_evar sigma c));
-    (fun fs env sigma ->one_step (get_flags (env, sigma) fs.(0)) env sigma);
+    (fun _ _ sigma c -> sigma, c);
+    (fun _ env sigma c -> sigma, Tacred.simpl env sigma (nf_evar sigma c));
+    (fun fs env sigma c -> sigma, one_step (get_flags (env, sigma) fs.(0)) env sigma c);
     (fun fs env sigma c ->
-       EConstr.of_constr (whdfun (get_flags (env, sigma) fs.(0)) env sigma (of_econstr c)));
-    (fun fs env sigma->
-       clos_norm_flags (get_flags (env, sigma) fs.(0)) env sigma);
-    (fun _ -> Redexpr.cbv_vm) (* vm_compute *)
+       sigma, EConstr.of_constr (whdfun (get_flags (env, sigma) fs.(0)) env sigma (of_econstr c)));
+    (fun fs env sigma c->
+       sigma, clos_norm_flags (get_flags (env, sigma) fs.(0)) env sigma c);
+    (fun _ env sigma c -> sigma, Redexpr.cbv_vm env sigma c); (* vm_compute *)
+    (fun fs env sigma c ->
+       let red, _ = Redexpr.reduction_of_red_expr env (Genredexpr.ExtraRedExpr (CoqString.from_coq (env,sigma) fs.(0)))
+       in
+       red env sigma c)
   |]
 
-  type reduction_result = ReductionValue of constr | ReductionStuck | ReductionFailure
+  type reduction_result = ReductionValue of evar_map * constr | ReductionStuck | ReductionFailure
   let reduce sigma env strategy c =
     try
       (* note that [args] can be an empty array, or an array with one element: the flags *)
       let strategy, args = decompose_appvect sigma strategy in
-      ReductionValue (redfuns.(get_constructor_pos sigma strategy) args env sigma c)
+      let sigma, c = redfuns.(get_constructor_pos sigma strategy) args env sigma c in
+      ReductionValue (sigma, c)
     with RedList.NotAList _ -> ReductionStuck
        | _ -> ReductionFailure
 
@@ -1515,8 +1520,9 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
         (* print_constr sigma env term; *)
         let ob = reduce sigma env (to_econstr red) (to_econstr term) in
         match ob with
-        | ReductionValue b ->
+        | ReductionValue (sigma, b) ->
             let e = (Esubst.subs_cons ([|of_econstr b|], e)) in
+            let ctxt = {ctxt with sigma} in
             (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
         | ReductionStuck ->
             let l = to_econstr (Array.get args' 0) in
