@@ -125,7 +125,7 @@ module MetaCoqRun = struct
     match Run.run (env, sigma) ty t with
     | Run.Val (sigma, v) ->
         let open Proofview in let open Proofview.Notations in
-        Unsafe.tclEVARS sigma >>= fun _->
+        Unsafe.tclEVARSADVANCE sigma >>= fun _->
         if not istactic then
           Refine.refine ~typecheck:false begin fun evd -> evd, v end
         else
@@ -231,14 +231,6 @@ module MetaCoqRun = struct
           uncaught ?loc env sigma e tr
     else
       CErrors.user_err (Pp.str "Mtac Do expects a term of type [M _].")
-
-  let run_cmd env sigma ty t =
-    let loc = Constrexpr_ops.constr_loc t in
-    let sigma, c = Constrintern.interp_open_constr env sigma t in
-    match Run.run (env, sigma) ty c with
-    | Run.Val _ -> ()
-    | Run.Err ((sigma, e), tr) ->
-        uncaught ?loc env sigma e tr
 
 end
 
