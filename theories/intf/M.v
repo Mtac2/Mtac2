@@ -466,23 +466,23 @@ Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excepti
   match p with
   | pany b => b
   | pbase x f u =>
-    oeq <- unify x y u;
+    bind@{a _} (unify x y u) (fun oeq =>
     match oeq return t (P y) with
     | mSome eq =>
       (* eq has type x =m= t, but for the pattern we need t = x. *)
     (*      we still want to provide eq_refl though, so we reduce it *)
-      let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
+      let h := reduce@{Set} (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
       let 'meq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
       let b := (* reduce (RedWhd [rl:RedBeta]) *) (f h) in b
     | mNone => raise E
-    end
-  | ptele f => e <- evar _; open_pattern E (f e)
+    end)
+  | ptele f => e <- evar@{_ a} _; open_pattern E (f e)
   | psort f =>
     mtry'
       (open_pattern E (f Propₛ))
       (fun e =>
-         M.unify_cnt UniMatchNoRed e E (open_pattern E (f Typeₛ)) (raise e)
+         M.unify_cnt@{Set _} UniMatchNoRed e E (open_pattern E (f Typeₛ)) (raise e)
          (* oeq <- M.unify e E UniMatchNoRed; *)
          (* match oeq with *)
          (* | mSome _ => open_pattern E (f Typeₛ) *)
