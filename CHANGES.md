@@ -1,3 +1,8 @@
+Changes from 1.3 to 1.4
+=======================
+
+- Bugfixes, in particular #294, #299, #304 concerning various unsoundnesses uncovered by the *power of formalization*!
+
 Changes from 1.2 to 1.3
 =======================
 
