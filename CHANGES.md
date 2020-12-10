@@ -3,6 +3,24 @@ Changes from 1.3 to 1.4
 
 - Bugfixes, in particular #294, #299, #304 concerning various unsoundnesses uncovered by the *power of formalization*!
 
+- New fast `instantiate_evar` primitive which doesn't check types
+  prior to instantiate the evar. This is sound because the type of the
+  evar and of its definition are expected to be unifiable.
+
+- Added `RedReduction` reduction constructor that, given a string,
+  reduces the term according to the name of the reduction scheme, as
+  in:
+
+```coq
+  Local Declare Reduction test := lazy beta delta [id].
+
+  ... let t := reduce (RedReduction "test") (id (1+1)) in ...
+```
+
+- Eta-reduction for `[#]` patterns.
+
+- Several bugfixes and performance improvements (see commits for details).
+
 Changes from 1.2 to 1.3
 =======================
 
