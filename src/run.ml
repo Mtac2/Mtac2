@@ -1492,7 +1492,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
         let ob = reduce sigma env (to_econstr red) (to_econstr term) in
         match ob with
         | ReductionValue b ->
-            let e = (Esubst.subs_cons ([|of_econstr b|], e)) in
+            let e = (Esubst.subs_cons (of_econstr b) e) in
             (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
         | ReductionStuck ->
             let l = to_econstr (Array.get args' 0) in
@@ -1501,11 +1501,11 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
             let l = to_econstr (Array.get args' 0) in
             efail (E.mkReductionFailure sigma env l)
       else
-        let e = (Esubst.subs_cons ([|v|], e)) in
+        let e = (Esubst.subs_cons v e) in
         (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
 
   | Pure, FLetIn (_,v,_,bd,e) ->
-      let e = (Esubst.subs_cons ([|v|], e)) in
+      let e = (Esubst.subs_cons v e) in
       (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
 
   | Monadic, FFlex (ConstKey (hc, _))
