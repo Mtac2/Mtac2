@@ -336,3 +336,29 @@ Mtac Do (
        | [!Type] forall _ : X, P =n> M.unify_or_fail UniMatchNoRed P (fun x => Type);; M.ret I
       end
      ).
+
+
+(* [#] patterns with eta expanded terms *)
+Mtac Do (
+       mmatch (3 + 5) with
+       | [#] fun x y => plus x y | x y =n> M.unify_or_fail UniMatchNoRed (x,y) (3,5);; M.ret I
+      end
+     ).
+
+Mtac Do (
+       mmatch Nat.add 3 with
+       | [#] fun x => plus x | x =n> M.unify_or_fail UniMatchNoRed (x) (3);; M.ret I
+      end
+     ).
+
+Mtac Do (
+       mmatch fun y => Nat.add 3 y with
+       | [#] fun x => plus x | x =n> M.unify_or_fail UniMatchNoRed (x) (3);; M.ret I
+      end
+     ).
+
+Mtac Do (
+       mmatch fun y => Nat.add 3 y with
+       | [#] plus | x =n> M.unify_or_fail UniMatchNoRed (x) (3);; M.ret I
+      end
+     ).

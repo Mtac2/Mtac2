@@ -214,14 +214,14 @@ Definition with_goal_prop (F : forall (P : Prop), ttac P) : tactic := fun g =>
   match g with
   | Metavar Propₛ G g =>
     '(m: x, gs) <- F G;
-    M.cumul_or_fail UniCoq x g;;
+    M.inst_cumul_or_fail UniCoq x g;;
     M.map (fun g => M.ret (m:tt,g)) gs
   | Metavar Typeₛ G g =>
     gP <- evar Prop;
     mtry
-      cumul_or_fail UniMatch gP G;;
+      inst_cumul_or_fail UniMatch gP G;;
       '(m: x, gs) <- F gP;
-      M.cumul_or_fail UniCoq x g;;
+      M.inst_cumul_or_fail UniCoq x g;;
       M.map (fun g => M.ret (m:tt,g)) gs
     with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
   end.
@@ -233,14 +233,14 @@ Definition with_goal_type (F : forall (T : Type), ttac T) : tactic := fun g =>
   match g with
   | Metavar Propₛ G g =>
     '(m: x, gs) <- F G;
-    M.cumul_or_fail UniCoq x g;;
+    M.inst_cumul_or_fail UniCoq x g;;
     M.map (fun g => M.ret (m:tt,g)) gs
   | Metavar Typeₛ G g =>
     gP <- evar Prop;
     mtry
-      cumul_or_fail UniMatch gP G;;
+      inst_cumul_or_fail UniMatch gP G;;
       '(m: x, gs) <- F G;
-      M.cumul_or_fail UniCoq x g;;
+      M.inst_cumul_or_fail UniCoq x g;;
       M.map (fun g => M.ret (m:tt,g)) gs
     with _ => raise CantCoerce end (* its better to raise CantCoerce than NotCumul *)
   end.
@@ -251,7 +251,7 @@ Definition with_goal_sort (F : forall {s : Sort} (T : s), ttac T) (e : Exception
     match g with
     | Metavar s T g =>
       '(m: t, gs) <- F T;
-      o <- M.unify g t UniMatchNoRed;
+      o <- M.inst_evar g t;
       match o with
       | mSome _ =>
         gs <- M.map (fun x => M.ret (mpair tt x)) gs;
@@ -264,7 +264,7 @@ Definition with_goal_type' (F : forall T, ttac T) (e : Exception) : tactic :=
     match g with
     | Metavar Propₛ T g =>
       '(m: t, gs) <- F T;
-      o <- M.unify g t UniMatchNoRed;
+      o <- M.inst_evar g t;
       match o with
       | mSome _ =>
         gs <- M.map (fun x => M.ret (mpair tt x)) gs;
@@ -273,7 +273,7 @@ Definition with_goal_type' (F : forall T, ttac T) (e : Exception) : tactic :=
       end
     | Metavar Typeₛ T g =>
       '(m: t, gs) <- F T;
-      o <- M.unify g t UniMatchNoRed;
+      o <- M.inst_evar g t;
       match o with
       | mSome _ =>
         gs <- M.map (fun x => M.ret (mpair tt x)) gs;

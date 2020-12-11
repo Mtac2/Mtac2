@@ -16,11 +16,7 @@ module MetaCoqRun : sig
 
   val run_mtac_do :
     Environ.env -> Evd.evar_map -> Constrexpr.constr_expr -> unit
-
-  val run_cmd : Environ.env -> Evd.evar_map -> Constrexpr.constr_expr -> unit
 end
-
-val ifTactic : Environ.env -> Evd.evar_map -> EConstr.types -> 'a -> bool * Evd.evar_map
 
 val glob_mtac_type : 'a -> Libnames.qualid -> mrun_arg_type * Names.GlobRef.t
 

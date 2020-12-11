@@ -361,6 +361,14 @@ Definition declare_mind
 Definition existing_instance (name : string) (priority : moption N) (global : bool) : t unit.
   make. Qed.
 
+
+(* [instantiate_evar e x succ fail] is a specialized variant of [unify] which
+   assumes that [e] is an evar and attempts to instantiate it with [x].
+   If successful, it runs [succ]. Otherwise it runs [fail].
+ *)
+Definition instantiate_evar {A : Type} {P : A -> Type} (e x : A) (succ : t (P x)) (fail : t (P e)) : t (P e).
+  make. Qed.
+
 Arguments t _%type.
 
 Definition fmap {A:Type} {B:Type} (f : A -> B) (x : t A) : t B :=
@@ -458,23 +466,23 @@ Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excepti
   match p with
   | pany b => b
   | pbase x f u =>
-    oeq <- unify x y u;
+    bind@{a _} (unify x y u) (fun oeq =>
     match oeq return t (P y) with
     | mSome eq =>
       (* eq has type x =m= t, but for the pattern we need t = x. *)
     (*      we still want to provide eq_refl though, so we reduce it *)
-      let h := reduce (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
+      let h := reduce@{Set} (RedWhd [rl:RedBeta;RedDelta;RedMatch]) (meq_sym eq) in
       let 'meq_refl := eq in
       (* For some reason, we need to return the beta-reduction of the pattern, or some tactic fails *)
       let b := (* reduce (RedWhd [rl:RedBeta]) *) (f h) in b
     | mNone => raise E
-    end
-  | ptele f => e <- evar _; open_pattern E (f e)
+    end)
+  | ptele f => e <- evar@{_ a} _; open_pattern E (f e)
   | psort f =>
     mtry'
       (open_pattern E (f Propₛ))
       (fun e =>
-         M.unify_cnt UniMatchNoRed e E (open_pattern E (f Typeₛ)) (raise e)
+         M.unify_cnt@{Set _} UniMatchNoRed e E (open_pattern E (f Typeₛ)) (raise e)
          (* oeq <- M.unify e E UniMatchNoRed; *)
          (* match oeq with *)
          (* | mSome _ => open_pattern E (f Typeₛ) *)
@@ -716,6 +724,16 @@ Definition cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
   | mNone => ret false
   end.
 
+(* [y] is the evar *)
+Definition inst_cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
+  of <- unify_univ A B u;
+  match of with
+  | mSome f =>
+    let fx := reduce (RedOneStep [rl:RedBeta]) (f x) in
+    instantiate_evar y fx (M.ret true) (M.ret false)
+  | mNone => ret false
+  end.
+
 (** Unifies [x] with [y] and raises [NotUnifiable] if it they
     are not unifiable. *)
 Definition unify_or_fail {A} (u : Unification) (x y : A) : t (x =m= y) :=
@@ -729,6 +747,9 @@ Definition unify_or_fail {A} (u : Unification) (x y : A) : t (x =m= y) :=
     are not unifiable. *)
 Definition cumul_or_fail {A B} (u : Unification) (x: A) (y: B) : t unit :=
   mif cumul u x y then ret tt else raise (NotCumul x y).
+
+Definition inst_cumul_or_fail {A B} (u : Unification) (x: A) (y: B) : t unit :=
+  mif inst_cumul u x y then ret tt else raise (NotCumul x y).
 
 Definition names_of_hyp : t (mlist string) :=
   env <- hyps;
@@ -946,6 +967,10 @@ Definition print_goal (g : goal gs_open) : t unit :=
   print sg;;
   ret tt.
 
+
+Definition inst_evar {A} (x y : A) : t (moption (x =m= y)) :=
+  instantiate_evar (P:=fun t => moption (t =m= y)) x y (M.ret (mSome meq_refl)) (M.ret mNone).
+
 (** [instantiate x t] tries to instantiate meta-variable [x] with [t].
     It fails with [NotAnEvar] if [x] is not a meta-variable (applied to a spine), or
     [CantInstantiate] if it fails to find a suitable instantiation. [t] is beta-reduced
@@ -955,7 +980,7 @@ Definition instantiate {A} (x y : A) : t unit :=
   dcase h as e in
     mif is_evar e then
       let t := reduce (RedWhd [rl:RedBeta]) t in
-      r <- unify x y UniEvarconv;
+      r <- inst_evar x y;
       match r with
       | mSome _ => M.ret tt
       | _ => raise (CantInstantiate x y)

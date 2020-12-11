@@ -154,7 +154,7 @@ module Goal = struct
     let open Context.Named in
     let open Declaration in
     let evinfo = Evd.find_undefined sigma ev in
-    let evenv = named_context_of_val (evar_hyps evinfo) in
+    let evenv = named_context_of_val (Evd.evar_filtered_hyps evinfo) in
     let env_list = named_context env in
     let rec compute sigma accu = function
       | nd :: evenv ->
@@ -246,6 +246,13 @@ module Exceptions = struct
   let mkNotAnInductive = mkDebugEx "NotAnInductive"
 
   let mkVarAppearsInValue = mkDebugEx "VarAppearsInValue"
+
+  let mkNotAnEvar sigma env ty t =
+    let sigma, exc = mkUConstr "Exceptions.NotAnEvar" sigma env in
+    let e = mkApp (exc, [|ty; t|]) in
+    debug_exception sigma env exc t;
+    sigma, e
+
 
   let mkNotAReference sigma env ty t =
     let sigma, exc = (mkUConstr "Exceptions.NotAReference" sigma env) in
@@ -418,22 +425,27 @@ module ReductionStrategy = struct
     (CClosure.whd_val infos tabs c)
 
   let redfuns = [|
-    (fun _ _ _ c -> c);
-    (fun _ env sigma c -> Tacred.simpl env sigma (nf_evar sigma c));
-    (fun fs env sigma ->one_step (get_flags (env, sigma) fs.(0)) env sigma);
+    (fun _ _ sigma c -> sigma, c);
+    (fun _ env sigma c -> sigma, Tacred.simpl env sigma (nf_evar sigma c));
+    (fun fs env sigma c -> sigma, one_step (get_flags (env, sigma) fs.(0)) env sigma c);
     (fun fs env sigma c ->
-       EConstr.of_constr (whdfun (get_flags (env, sigma) fs.(0)) env sigma (of_econstr c)));
-    (fun fs env sigma->
-       clos_norm_flags (get_flags (env, sigma) fs.(0)) env sigma);
-    (fun _ -> Redexpr.cbv_vm) (* vm_compute *)
+       sigma, EConstr.of_constr (whdfun (get_flags (env, sigma) fs.(0)) env sigma (of_econstr c)));
+    (fun fs env sigma c->
+       sigma, clos_norm_flags (get_flags (env, sigma) fs.(0)) env sigma c);
+    (fun _ env sigma c -> sigma, Redexpr.cbv_vm env sigma c); (* vm_compute *)
+    (fun fs env sigma c ->
+       let red, _ = Redexpr.reduction_of_red_expr env (Genredexpr.ExtraRedExpr (CoqString.from_coq (env,sigma) fs.(0)))
+       in
+       red env sigma c)
   |]
 
-  type reduction_result = ReductionValue of constr | ReductionStuck | ReductionFailure
+  type reduction_result = ReductionValue of evar_map * constr | ReductionStuck | ReductionFailure
   let reduce sigma env strategy c =
     try
       (* note that [args] can be an empty array, or an array with one element: the flags *)
       let strategy, args = decompose_appvect sigma strategy in
-      ReductionValue (redfuns.(get_constructor_pos sigma strategy) args env sigma c)
+      let sigma, c = redfuns.(get_constructor_pos sigma strategy) args env sigma c in
+      ReductionValue (sigma, c)
     with RedList.NotAList _ -> ReductionStuck
        | _ -> ReductionFailure
 
@@ -477,17 +489,19 @@ module UnificationStrategy = struct
       was one of the Match. *)
   exception NotAUnifStrategy of EConstr.t
   let unify oevars sigma env strategy conv_pb t1 t2 =
-    try
-      let ts = get_ts env in
-      let pos = get_constructor_pos sigma strategy in
-      let evars =
-        match oevars with
-        | Some e -> e
-        | _ -> Evar.Map.domain (Evd.undefined_map sigma) in
-      (funs.(pos) evars ts env sigma conv_pb t1 t2,
-       pos > unicoq_pos && pos < evarconv_pos)
-    with Constr.DestKO ->
-      raise (NotAUnifStrategy strategy)
+    let pos = try
+        let pos = get_constructor_pos sigma strategy in
+        pos
+      with Constr.DestKO ->
+        raise (NotAUnifStrategy strategy)
+    in
+    let ts = get_ts env in
+    let evars =
+      match oevars with
+      | Some e -> e
+      | _ -> Evar.Map.domain (Evd.undefined_map sigma) in
+    (funs.(pos) evars ts env sigma conv_pb t1 t2,
+     pos > unicoq_pos && pos < evarconv_pos)
 
 end
 
@@ -586,14 +600,14 @@ type backtrace = backtrace_entry list
 module Backtrace = struct
   let push entry tr =
     if !debug_ex then
-      entry :: tr
+      entry () :: tr
     else
       tr
 
   let rec push_mtry mtry_tr =
     match mtry_tr with
-    | [] -> push (MTry None)
-    | Constant n :: _ -> push (MTry (Some n))
+    | [] -> push (fun () -> MTry None)
+    | Constant n :: _ -> push (fun () -> MTry (Some n))
     | _ :: mtry_tr -> push_mtry mtry_tr
 end
 
@@ -833,12 +847,8 @@ let new_env (env, sigma) hyps =
   in subs, env
 
 let make_evar sigma env ty =
-  if isSort sigma ty && ty <> mkProp then
-    let sigma, (evar, _) = Evarutil.new_type_evar env sigma (Evd.UnivFlexible false) in
-    sigma, evar
-  else
-    let sigma, evar = Evarutil.new_evar env sigma ty in
-    sigma, evar
+  let sigma, evar = Evarutil.new_evar env sigma ty in
+  sigma, evar
 
 
 (* return the reflected hash of a term *)
@@ -1250,22 +1260,34 @@ type vm = Code of CClosure.fconstr
         | Nu of (Names.Id.t * Environ.env * CClosure.fconstr * backtrace)
         | Rem of (Environ.env * CClosure.fconstr * bool)
 
-(* Partition stack st into [cbv] ++ [cbn] such that [cbn] is the longest suffix
-   of matches and projections *)
+(* Partition stack [st] into [careless ++ careful] such that if [careful] is [x :: careful'] then
+   [x] is the lowest match or projection on the stack.
+   This is useful to have because we know that
+   a) matching on monadic terms is not part of monadic programs, thus [careless] only contains non-monadic terms
+   b) only monadic programs contain let-reduce terms
+   c) thus, we can freely reduce let bindings in the stack [careless] (i.e. above [x])
+*)
 let cut_stack st =
-  let rec f st acc_cbv acc_cbn =
+  let rec f st careless_rev careful_rev =
     match st with
     | ((
-      Zproj _
+      Zfix _
+    | Zproj _
     | ZcaseT _
-    ) as z) :: st ->
-        f st acc_cbv (z :: acc_cbn)
-    | z :: st when List.is_empty acc_cbn ->
-        f st (z :: acc_cbv) acc_cbn
-    | r -> acc_cbv, acc_cbn, r
+    ) as z) :: st->
+        if List.is_empty careful_rev then
+          f st careless_rev (z :: careful_rev)
+        else
+          f st (List.append careful_rev careless_rev) [z]
+    | z :: st ->
+        if List.is_empty careful_rev then
+          f st (z :: careless_rev) careful_rev
+        else
+          f st careless_rev (z :: careful_rev)
+    | r -> careless_rev, careful_rev
   in
-  let acc_cbv_rev, acc_cbn_rev, r = f st [] [] in
-  List.rev acc_cbv_rev, List.rev acc_cbn_rev, r
+  let careless_rev, careful_rev = f st [] [] in
+  List.rev careless_rev, List.rev careful_rev
 
 type context =
   | Monadic
@@ -1392,7 +1414,7 @@ let rec run' ctxt (vms : vm list) =
         let (sigma, e) = E.mkVarAppearsInValue ctxt.sigma ctxt.env (mkVar name) in
         let ctxt = ctxt_nu1_fail p in
         let backtrace = Backtrace.push (
-          InternalException (Printer.pr_econstr_env ctxt.env sigma e)
+          fun () -> InternalException (Printer.pr_econstr_env ctxt.env sigma e)
         ) ctxt.backtrace
         in
         (run'[@tailcall]) {ctxt with backtrace; sigma} (Fail (of_econstr e) :: vms)
@@ -1409,7 +1431,7 @@ let rec run' ctxt (vms : vm list) =
       let backtrace = ctxt.backtrace in
       let backtrace = if ground then Backtrace.push_mtry backtrace_try backtrace else
           Backtrace.push (
-            InternalException (Printer.pr_econstr_env ctxt.env (ctxt.sigma) c)
+            fun () -> InternalException (Printer.pr_econstr_env ctxt.env (ctxt.sigma) c)
           ) backtrace
       in
       (run'[@tailcall]) {ctxt with sigma; backtrace; stack=Zapp [|of_econstr c|] :: stack} (Code b::vms)
@@ -1445,10 +1467,10 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
   let ctxt = {ctxt with stack} in
 
   let fail ?internal:(i=true) (sigma, c) =
-    let p = Printer.pr_econstr_env env sigma (to_econstr c) in
     let backtrace =
       if i then
-        Backtrace.push (InternalException p) ctxt.backtrace
+        let p () = InternalException (Printer.pr_econstr_env env sigma (to_econstr c)) in
+        Backtrace.push (p) ctxt.backtrace
       else ctxt.backtrace
     in
     (run'[@tailcall]) {ctxt with sigma; backtrace} (Fail c :: vms)
@@ -1457,13 +1479,17 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
 
   let ctx_st = context_of_stack stack in
 
-  (* (match ctx_st with
-   * | Monadic -> Feedback.msg_debug (Pp.str "monadic")
-   * | Pure -> Feedback.msg_debug (Pp.str "pure")
-   * );
+  (* (if !trace then (
+   *    (let open Pp in match ctx_st with
+   *     | Monadic -> Feedback.msg_debug (str "monadic " ++ bool reduced_to_let)
+   *     | Pure -> Feedback.msg_debug (str "pure " ++ bool reduced_to_let)
+   *    );
    *
-   * let term = zip_term (CClosure.term_of_fconstr reduced_term) stack in
-   * Feedback.msg_debug (Printer.pr_constr_env env sigma term); *)
+   *    let term = _zip_term (CClosure.term_of_fconstr reduced_term) stack in
+   *    Feedback.msg_debug (Printer.pr_constr_env env sigma term)
+   *  )
+   *  else ()
+   * ); *)
 
   let is_blocked = function
     | FFlex (VarKey _) -> true
@@ -1494,8 +1520,9 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
         (* print_constr sigma env term; *)
         let ob = reduce sigma env (to_econstr red) (to_econstr term) in
         match ob with
-        | ReductionValue b ->
+        | ReductionValue (sigma, b) ->
             let e = (Esubst.subs_cons ([|of_econstr b|], e)) in
+            let ctxt = {ctxt with sigma} in
             (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
         | ReductionStuck ->
             let l = to_econstr (Array.get args' 0) in
@@ -1505,11 +1532,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
             efail (E.mkReductionFailure sigma env l)
       else
         let e = (Esubst.subs_cons ([|v|], e)) in
-        (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
-
-  | Pure, FLetIn (_,v,_,bd,e) ->
-      let e = (Esubst.subs_cons ([|v|], e)) in
-      (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
+        (eval[@tailcall]) ctxt vms (mk_red (FCLOS (bd, e)))
 
   | Monadic, FFlex (ConstKey (hc, _))
     when (Option.has_some (MConstr.mconstr_head_opt hc)) ->
@@ -1530,12 +1553,19 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
         let o = CClosure.unfold_reference infos tab k in
         match o with
         | Def v ->
-            let backtrace = Backtrace.push (Constant hc) ctxt.backtrace in
+            let backtrace = Backtrace.push (fun () -> Constant hc) ctxt.backtrace in
             let ctxt = {ctxt with backtrace} in
             (run'[@taillcall]) ctxt (Code v :: vms)
         | _ ->
             efail (E.mkStuckTerm sigma env (to_econstr t))
       end
+
+  (* [whd_stack] considers unfolded primitive projections fully reduced. That will not do. *)
+  | Monadic, FProj (proj, t) ->
+      let stack = Zproj (Projection.repr proj) :: stack in
+      let ctxt = {ctxt with stack} in
+      (eval[@tailcall]) ctxt vms t
+
 
   | Pure, (_ as t) when (is_blocked t) ->
       begin
@@ -1549,14 +1579,26 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
       end
 
   | Pure, (_ as t) when not reduced_to_let ->
-      let cbv, cbn, r = cut_stack stack in
+      let careless, careful = cut_stack stack in
+      let infos = CClosure.infos_with_reds infos (CClosure.all) in
+      (* let term_to_reduce = _zip_term (CClosure.term_of_fconstr reduced_term) careless in
+       * Feedback.msg_debug (Printer.pr_constr_env env sigma term_to_reduce); *)
+      let t', stack = reduce_noshare infos tab (CClosure.mk_red t) careless in
+
+      let stack = List.append stack careful in
+      (* carefully reduce further without touching lets *)
       let infos = CClosure.infos_with_reds infos (CClosure.allnolet) in
-      let t', stack = reduce_noshare infos tab (CClosure.mk_red t) (List.append cbv cbn) in
-      let stack = List.append stack r in
+      let t', stack = reduce_noshare infos tab t' stack in
       (* signal that we have advanced reduced everything down to lets *)
       (eval[@tailcall]) {ctxt with stack} vms ?reduced_to_let:(Some true) t'
 
   | _ ->
+      if !debug_ex then
+        (let open Pp in
+         Feedback.msg_debug (
+           Printer.pr_econstr_env env sigma (to_econstr reduced_term) ++ str " is not evaluable. Context: " ++ (match ctx_st with | Pure -> str "Pure" | Monadic -> str "Monadic") ++ str ". " ++ if reduced_to_let then str "Reduced to let-in." else str "Not reduced to let-in."
+         )
+        );
       efail (E.mkStuckTerm sigma env (to_econstr reduced_term))
 
 and primitive ctxt vms mh reduced_term =
@@ -1598,10 +1640,10 @@ and primitive ctxt vms mh reduced_term =
   (* Re-do the wrappers so they use the new stack *)
   let return ?new_env:(new_env=env) sigma c = (run'[@tailcall]) {ctxt with sigma; env=new_env; stack} (Ret c :: vms) in
   let fail ?internal:(i=true) (sigma, c) =
-    let p = Printer.pr_econstr_env env sigma (to_econstr c) in
     let backtrace =
       if i then
-        Backtrace.push (InternalException p) ctxt.backtrace
+        let p () = InternalException (Printer.pr_econstr_env env sigma (to_econstr c)) in
+        Backtrace.push (p) ctxt.backtrace
       else ctxt.backtrace
     in
     (run'[@tailcall]) {ctxt with sigma; backtrace} (Fail c :: vms)
@@ -1629,15 +1671,15 @@ and primitive ctxt vms mh reduced_term =
       (run'[@tailcall]) ctxt (Code t :: Try (sigma, stack, ctxt.backtrace, f) :: vms)
   | MConstr (Mraise', (_, t)) -> fail ~internal:false (sigma, t)
   | MConstr (Mfix1, ((a), b, f, (x))) ->
-      run_fix ctxt vms hf [|a|] b f [|x|]
+      (run_fix[@tailcall]) ctxt vms hf [|a|] b f [|x|]
   | MConstr (Mfix2, ((a1, a2), b, f, (x1, x2))) ->
-      run_fix ctxt vms hf [|a1; a2|] b f [|x1; x2|]
+      (run_fix[@tailcall]) ctxt vms hf [|a1; a2|] b f [|x1; x2|]
   | MConstr (Mfix3, ((a1, a2, a3), b, f, (x1, x2, x3))) ->
-      run_fix ctxt vms hf [|a1; a2; a3|] b f [|x1; x2; x3|]
+      (run_fix[@tailcall]) ctxt vms hf [|a1; a2; a3|] b f [|x1; x2; x3|]
   | MConstr (Mfix4, ((a1, a2, a3, a4), b, f, (x1, x2, x3, x4))) ->
-      run_fix ctxt vms hf [|a1; a2; a3; a4|] b f [|x1; x2; x3; x4|]
+      (run_fix[@tailcall]) ctxt vms hf [|a1; a2; a3; a4|] b f [|x1; x2; x3; x4|]
   | MConstr (Mfix5, ((a1, a2, a3, a4, a5), b, f, (x1, x2, x3, x4, x5))) ->
-      run_fix ctxt vms hf [|a1; a2; a3; a4; a5|] b f [|x1; x2; x3; x4; x5|]
+      (run_fix[@tailcall]) ctxt vms hf [|a1; a2; a3; a4; a5|] b f [|x1; x2; x3; x4; x5|]
   | MConstr (Mis_var, (_, e)) ->
       if isVar sigma (to_econstr e) then
         ereturn sigma CoqBool.mkTrue
@@ -1659,7 +1701,7 @@ and primitive ctxt vms mh reduced_term =
                 let nu = Nu (name, ctxt.env, ctxt.renv, ctxt.backtrace) in
                 let ot = CoqOption.from_coq sigma env (to_econstr ot) in
                 let env = push_named (Context.Named.Declaration.of_tuple (annotR name, ot, a)) env in
-                let backtrace = Backtrace.push (InternalNu (name)) ctxt.backtrace in
+                let backtrace = Backtrace.push (fun () -> InternalNu (name)) ctxt.backtrace in
                 let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
                 let renv = of_econstr renv' in
                 let nus = ctxt.nus + 1 in
@@ -1694,7 +1736,7 @@ and primitive ctxt vms mh reduced_term =
                   let env = push_named (Context.Named.Declaration.of_tuple (annotR name, Some d, dty)) env in
                   let var = mkVar name in
                   let body = Vars.subst1 var body in
-                  let backtrace = Backtrace.push (InternalNu (name)) ctxt.backtrace in
+                  let backtrace = Backtrace.push (fun () -> InternalNu (name)) ctxt.backtrace in
                   let (sigma, renv) = Hypotheses.cons_hyp dty var (Some d) (to_econstr ctxt.renv) sigma env in
                   let renv = of_econstr renv in
                   let nus = ctxt.nus + 1 in
@@ -1879,25 +1921,25 @@ and primitive ctxt vms mh reduced_term =
       let args_var = List.map (fun (n, _) -> Reference (Locus.ArgVar (CAst.make n))) args in
       let to_call = TacArg (CAst.make (TacCall (CAst.make (Locus.ArgArg (tag tac_name), args_var)))) in
       begin
-        try
-          let undef = Evar.Map.domain (Evd.undefined_map sigma) in
-          let args_map = List.fold_left (fun m (k, v)-> Id.Map.add k v m) Id.Map.empty args in
-          let ist = { (default_ist ()) with lfun = args_map } in
-          let name, poly = Id.of_string "mtac2", false in
-          let (c, sigma) = Pfedit.refine_by_tactic ~name ~poly env sigma concl (Tacinterp.eval_tactic_ist ist to_call) in
-          let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
-          let new_undef = Evar.Set.elements new_undef in
-          let sigma, goal = Goal.mkgoal ~base:false sigma env in
-          let sigma, listg = CoqList.mkType sigma env goal in
-          let sigma, goals = CoqList.pto_coq env goal (fun e sigma->Goal.goal_of_evar ~base:false env sigma e) new_undef sigma in
-          let sigma, pair = CoqPair.mkPair sigma env concl listg (of_constr c) goals in
-          ereturn sigma pair
-        with CErrors.UserError(s,ppm) ->
-          let expl = string_of_ppcmds ppm in
-          let s = Option.default "" s in
-          efail (Exceptions.mkLtacError sigma env (s ^ ": " ^ expl))
-           | e ->
-               efail (Exceptions.mkLtacError sigma env (Printexc.to_string  e))
+        let undef = Evar.Map.domain (Evd.undefined_map sigma) in
+        let args_map = List.fold_left (fun m (k, v)-> Id.Map.add k v m) Id.Map.empty args in
+        let ist = { (default_ist ()) with lfun = args_map } in
+        let name, poly = Id.of_string "mtac2", false in
+        match Pfedit.refine_by_tactic ~name ~poly env sigma concl (Tacinterp.eval_tactic_ist ist to_call) with
+        | (c, sigma) ->
+            let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
+            let new_undef = Evar.Set.elements new_undef in
+            let sigma, goal = Goal.mkgoal ~base:false sigma env in
+            let sigma, listg = CoqList.mkType sigma env goal in
+            let sigma, goals = CoqList.pto_coq env goal (fun e sigma->Goal.goal_of_evar ~base:false env sigma e) new_undef sigma in
+            let sigma, pair = CoqPair.mkPair sigma env concl listg (of_constr c) goals in
+            (ereturn[@tailcall]) sigma pair
+        | exception CErrors.UserError(s,ppm) ->
+            let expl = string_of_ppcmds ppm in
+            let s = Option.default "" s in
+            efail (Exceptions.mkLtacError sigma env (s ^ ": " ^ expl))
+        | exception e ->
+            efail (Exceptions.mkLtacError sigma env (Printexc.to_string  e))
       end
 
   | MConstr (Mlist_ltac, _) ->
@@ -1967,8 +2009,16 @@ and primitive ctxt vms mh reduced_term =
 
   | MConstr (Mdecompose_app', (_, _, _, uni, t, c, cont_success, cont_failure)) ->
       (* : A B m uni a C cont  *)
-      let (t_head, t_args) = decompose_app sigma (to_econstr t) in
-      let (c_head, c_args) = decompose_app sigma (to_econstr c) in
+
+      (* we eta-reduce both [c] and [t]. Since Coq will happily eta-expand
+         things more or less randomly, it makes sense to undo this before we
+         attempt a syntactic pattern matching. *)
+
+      let t = Termops.eta_reduce_head sigma (to_econstr t) in
+      let c = Termops.eta_reduce_head sigma (to_econstr c) in
+
+      let (t_head, t_args) = decompose_app sigma t in
+      let (c_head, c_args) = decompose_app sigma c in
       (* We need to be careful about primitive projections.
          In particular, we always need to unify parameters *if* the pattern contains them.
          There are several situations to consider that involve primitive projections:
@@ -2030,36 +2080,32 @@ and primitive ctxt vms mh reduced_term =
               (* no way to succeed anyway but we'll leave that to [eq_constr_nounivs] below *)
               (c_head, c_args), (t_head, t_args)
       in
+
+      let fail () = (run'[@tailcall]) ctxt (upd cont_failure) in
       if eq_constr_nounivs sigma t_head c_head then
         let uni = to_econstr uni in
-        (* We need to capture the initial sigma here, as
-           unification of initial arguments will yield new
-           sigmas *)
-        let fail () = (run'[@tailcall]) ctxt (upd cont_failure) in
-        let rec traverse sigma t_args c_args =
-          match c_args with
+        let t_args_uni, t_args_rem = List.chop (List.length c_args) t_args in
+
+        let to_unify = List.combine (c_head :: c_args) (t_head :: t_args_uni) in
+
+        let rec uni_and_go = function
           | [] ->
-              let t_args = List.map of_econstr t_args in
-              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp (Array.of_list t_args) :: stack} (upd cont_success)
-          | c_h :: c_args ->
-              match t_args with
-              | t_h :: t_args ->
-                  let (unires, _) = UnificationStrategy.unify None sigma env uni Reduction.CONV t_h c_h in
-                  begin
-                    match unires with
-                    | Evarsolve.Success (sigma) -> traverse sigma t_args c_args
-                    | Evarsolve.UnifFailure _ ->
-                        (* efail (E.mkWrongTerm sigma env c_head) *)
-                        fail ()
-                  end
-              | _ ->
+              let t_args_rem = List.map of_econstr t_args_rem in
+              (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp (Array.of_list t_args_rem) :: stack} (upd cont_success)
+          | ((c,t)::ls) ->
+
+              let (unires, _) = UnificationStrategy.unify None sigma env uni (Reduction.CONV) c t
+              in
+              match unires with
+              | Evarsolve.Success (sigma) ->
+                  (uni_and_go[@tailcall]) ls
+              | Evarsolve.UnifFailure _ ->
                   (* efail (E.mkWrongTerm sigma env c_head) *)
-                  fail ()
+                  (fail[@tailcall]) ()
         in
-        traverse sigma t_args c_args
+        (uni_and_go[@tailcall]) to_unify
       else
-        (* efail (E.mkWrongTerm sigma env c_head) *)
-        (run'[@tailcall]) ctxt (upd cont_failure)
+        (fail[@tailcall]) ()
 
   | MConstr (Mdecompose_forallT, (_, t, cont_success, cont_failure)) ->
       let t = to_econstr t in
@@ -2190,6 +2236,25 @@ and primitive ctxt vms mh reduced_term =
       let hint_priority = Option.map (CoqN.from_coq (env, sigma)) prio in
       Classes.existing_instance global qualid (Some {hint_priority; hint_pattern= None});
       ereturn sigma (CoqUnit.mkTT)
+  | MConstr (Minstantiate_evar, (ty, _, evar, solution, succ, fail)) ->
+      let evar = to_econstr evar in
+      begin
+        match destEvar sigma evar with
+        | exception DestKO ->
+            let ty = to_econstr ty in
+            efail (E.mkNotAnEvar sigma env ty evar)
+        | (evar, x) ->
+            let solution = to_econstr solution in
+            let open Unicoq.Munify in
+            let options = current_options () in
+            let options = ref { options with inst_unify_types = false; inst_beta_reduce_type = false; } in
+            match Unicoq.Munify.instantiate ~options env ((evar, x), []) solution sigma with
+            | Evarsolve.Success sigma ->
+                (* let sigma = Typing.check env sigma solution (to_econstr ty) in *)
+                (run'[@tailcall]) {ctxt with sigma = sigma} (Code succ :: vms)
+            | Evarsolve.UnifFailure _ ->
+                (run'[@tailcall]) {ctxt with sigma = sigma} (Code fail :: vms)
+      end
 (* h is the mfix operator, a is an array of types of the arguments, b is the
    return type of the fixpoint, f is the function
    and x its arguments. *)
@@ -2317,12 +2382,24 @@ let multi_subst_inv sigma l c =
   in substrec 0 c
 
 
-let run (env0, sigma) t : data =
+let run (env0, sigma) ty t : data =
+
+
   let subs, env = db_to_named sigma env0 in
   let t = multi_subst sigma subs t in
   let t = CClosure.inject (EConstr.Unsafe.to_constr t) in
   let (sigma, renv) = build_hypotheses sigma env in
   let _evars ev = safe_evar_value sigma ev in
+
+  (* ty is of the form [M X] or a term reducible to that. *)
+  (* we only need [X]. *)
+  (* Feedback.msg_info (Printer.pr_econstr_env env sigma ty); *)
+  let ty = EConstr.of_constr (RE.whd_betadeltaiota env sigma (of_econstr ty)) in
+  (* Feedback.msg_info (Printer.pr_econstr_env env sigma ty); *)
+  let _, ty = decompose_app sigma ty in
+  assert (List.length ty == 1);
+  let _ty = List.nth ty 0 in
+
   match run' {env; renv=of_econstr renv; sigma; nus=0; stack=CClosure.empty_stack; backtrace=[]} [Code t] with
   | Err (sigma', v, _, backtrace) ->
       (* let v = Vars.replace_vars vsubs v in *)
@@ -2331,14 +2408,15 @@ let run (env0, sigma) t : data =
       (* No need to log anything if the exception is ground. *)
       let backtrace = if ground then backtrace else
           Backtrace.push (
-            InternalException (Printer.pr_econstr_env env (sigma) v)
+            fun () -> InternalException (Printer.pr_econstr_env env (sigma) v)
           ) backtrace
       in
       Err ((sigma, v), backtrace)
   | Val (sigma', v, stack, tr) ->
       assert (List.is_empty stack);
       let v = multi_subst_inv sigma' subs (to_econstr v) in
-      let sigma', _ = Typing.type_of env0 sigma' v in
+      (* let sigma' = Typing.check env sigma' v ty in *)
+      (* let sigma', _ = Typing.type_of env0 sigma' v in *)
       Val (sigma', v)
 
 (** set the run function in unicoq *)
@@ -2352,6 +2430,7 @@ let _ =
         sigma, lc
     | Some lc -> sigma, lc)
 let _ = Unicoq.Munify.set_run (fun env sigma t ->
-  match run (env, sigma) t with
+  let ty = Retyping.get_type_of env sigma t in
+  match run (env, sigma) ty t with
   | Err _ -> None
   | Val c -> Some c)
