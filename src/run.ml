@@ -645,7 +645,7 @@ let name_occurn_env env n =
 let dest_Case (env, sigma) t =
   let sigma, dyn = mkdyn sigma env in
   try
-    let (info, return_type, iv, discriminant, branches) = destCase sigma t in
+    let (info, return_type, iv, discriminant, branches) = EConstr.expand_case env sigma (destCase sigma t) in
     let sigma, branch_dyns = Array.fold_right (
       fun t (sigma,l) ->
         let dyn_type = Retyping.get_type_of env sigma t in
@@ -677,11 +677,11 @@ let make_Case (env, sigma) case =
     | Ind ((mind, ind_i), _) ->
         let rci = Sorts.Relevant in
         let case_info = Inductiveops.make_case_info env (mind, ind_i) rci LetPatternStyle in
-        let match_term = EConstr.mkCase (case_info,
+        let match_term = EConstr.mkCase (EConstr.contract_case env sigma (case_info,
                                          repr_return,
                                          NoInvert (* TODO handle case inversion *),
                                          repr_val,
-                                         (Array.of_list repr_branches)) in
+                                         (Array.of_list repr_branches))) in
         let match_type = Retyping.get_type_of env sigma match_term in
         mkDyn match_type match_term sigma env
     | _ -> assert false
@@ -1314,11 +1314,14 @@ let _zip_term m stk =
     | [] -> m
     | Zapp args :: s ->
         zip_term zfun (mkApp(m, Array.map zfun args)) s
-    | ZcaseT(ci,p,br,e)::s ->
+    | ZcaseT(ci,u,pms,p,br,e)::s ->
+    (* FIXME
         let t = mkCase(ci, zfun (mk_clos e p), NoInvert, m,
                        Array.map (fun b -> zfun (mk_clos e b)) br)
         in
         zip_term zfun t s
+    *)
+      assert false
     | Zproj p::s ->
         let t = mkProj (Projection.make p true, m) in
         zip_term zfun t s
