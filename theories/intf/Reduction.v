@@ -1,3 +1,4 @@
+From Coq Require Import String.
 From Mtac2.intf Require Import Dyn.
 
 Set Universe Polymorphism.
@@ -23,7 +24,8 @@ Monomorphic Inductive Reduction : Set :=
 | RedOneStep : redlist RedFlags -> Reduction
 | RedWhd : redlist RedFlags -> Reduction
 | RedStrong : redlist RedFlags -> Reduction
-| RedVmCompute.
+| RedVmCompute
+| RedReduction : string -> Reduction.
 
 (* Reduction primitive. It throws [NotAList] if the list of flags is not a list.  *)
 Definition reduce (r : Reduction) {A:Type} (x : A) := x.

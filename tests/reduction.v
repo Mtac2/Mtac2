@@ -187,3 +187,13 @@ MProof.
     let x := reduce r 0 in M.failwith "Shouldn't be here"
   with ReductionFailure => M.ret tt end)%MC.
 Qed.
+
+
+Local Declare Reduction mtac2_test_reduction := lazy beta delta [id].
+Example declare_reduction_test : unit.
+MProof.
+  let t := reduce (RedReduction "mtac2_test_reduction") (id (1+1)) in
+  mmatch t with
+  | 1+1 =n> M.ret tt
+  end.
+Qed.
