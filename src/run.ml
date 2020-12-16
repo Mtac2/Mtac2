@@ -1461,8 +1461,6 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
   let tab = CClosure.create_tab () in
   let reduced_term, stack = reduce_noshare infos tab t stack in
 
-  let stack = List.filter (function | Zupdate _ -> false | _ -> true) stack in
-
   (* Feedback.msg_debug (Pp.int (List.length stack)); *)
 
   let ctxt = {ctxt with stack} in
@@ -1535,30 +1533,23 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
         let e = (Esubst.subs_cons v e) in
         (eval[@tailcall]) ctxt vms (mk_red (FCLOS (bd, e)))
 
-  | Monadic, FFlex (ConstKey (hc, _))
-    when (Option.has_some (MConstr.mconstr_head_opt hc)) ->
+  | Monadic, FFlex (ConstKey (hc, _) as k) ->
       begin
-        match MConstr.mconstr_head_of hc with
-        | exception Not_found ->
-            (* let h = EConstr.mkConst hc in
-             * efail (E.mkStuckTerm sigma env h) *)
-            assert false
-        | mh ->
+        match MConstr.mconstr_head_opt hc with
+        | Some mh ->
+            (* We have reached a primitive *)
             (primitive[@tailcall]) ctxt vms mh reduced_term
-      end
-
-  | Monadic, FFlex((ConstKey (hc, _)) as k) ->
-      begin
-        let redflags = (CClosure.RedFlags.fCONST hc) in
-        let infos = CClosure.infos_with_reds infos (CClosure.RedFlags.mkflags [redflags]) in
-        let o = CClosure.unfold_reference infos tab k in
-        match o with
-        | Def v ->
-            let backtrace = Backtrace.push (fun () -> Constant hc) ctxt.backtrace in
-            let ctxt = {ctxt with backtrace} in
-            (run'[@taillcall]) ctxt (Code v :: vms)
-        | _ ->
-            efail (E.mkStuckTerm sigma env (to_econstr t))
+        | None ->
+            let redflags = (CClosure.RedFlags.fCONST hc) in
+            let infos = CClosure.infos_with_reds infos (CClosure.RedFlags.mkflags [redflags]) in
+            let o = CClosure.unfold_reference infos tab k in
+            match o with
+            | Def v ->
+                let backtrace = Backtrace.push (fun () -> Constant hc) ctxt.backtrace in
+                let ctxt = {ctxt with backtrace} in
+                (run'[@taillcall]) ctxt (Code v :: vms)
+            | _ ->
+                efail (E.mkStuckTerm sigma env (to_econstr t))
       end
 
   (* [whd_stack] considers unfolded primitive projections fully reduced. That will not do. *)
@@ -1607,8 +1598,6 @@ and primitive ctxt vms mh reduced_term =
   let open MConstr in
 
   let upd c = (Code c :: vms) in
-
-  (* filter out Zupdate nodes in stack because PMP said so :) *)
 
   (* let (h, args) = decompose_appvect sigma reduced_term in *)
 
