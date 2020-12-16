@@ -1460,8 +1460,6 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
   let tab = CClosure.create_tab () in
   let reduced_term, stack = reduce_noshare infos tab t stack in
 
-  let stack = List.filter (function | Zupdate _ -> false | _ -> true) stack in
-
   (* Feedback.msg_debug (Pp.int (List.length stack)); *)
 
   let ctxt = {ctxt with stack} in
@@ -1606,8 +1604,6 @@ and primitive ctxt vms mh reduced_term =
   let open MConstr in
 
   let upd c = (Code c :: vms) in
-
-  (* filter out Zupdate nodes in stack because PMP said so :) *)
 
   (* let (h, args) = decompose_appvect sigma reduced_term in *)
 
