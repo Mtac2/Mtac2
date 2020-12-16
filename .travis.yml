@@ -7,7 +7,7 @@ services:
 
 env:
   matrix:
-  - COQ_IMAGE="ocaml/opam2:4.05"
+  - COQ_IMAGE="coqorg/coq:8.12.2"
 
 # As described on https://bors.tech/documentation/getting-started/ we need a
 # `staging` and a `trying` branch, both of which need to be CI-enabled.
@@ -37,8 +37,6 @@ install: |
     opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
     opam repo add mtac2-dev https://github.com/Mtac2/opam.git
     opam repo list
-    sudo apt install -y m4
-    opam pin add coq https://github.com/coq/coq.git#v8.12
     coqc --version
     opam install coq-unicoq.dev.8.12
     opam pin
