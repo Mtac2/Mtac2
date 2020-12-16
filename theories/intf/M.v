@@ -462,7 +462,9 @@ Import monad_notations.
 Local Notation Mpattern A P y := (pattern A (fun y => t (P y)) y).
 Local Notation Mbranch A P y := (branch A (fun y => t (P y)) y).
 
-Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Exception) (p : Mpattern A P y) : t (P y) :=
+Definition open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Exception) :=
+  Eval lazy beta iota match zeta delta [meq_sym] in
+  fix open_pattern (p : Mpattern A P y) : t (P y) :=
   match p with
   | pany b => b
   | pbase x f u =>
@@ -477,12 +479,12 @@ Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excepti
       let b := (* reduce (RedWhd [rl:RedBeta]) *) (f h) in b
     | mNone => raise E
     end)
-  | ptele f => e <- evar@{_ a} _; open_pattern E (f e)
+  | ptele f => e <- evar@{_ a} _; open_pattern (f e)
   | psort f =>
     mtry'
-      (open_pattern E (f Propₛ))
+      (open_pattern (f Propₛ))
       (fun e =>
-         M.unify_cnt@{Set _} UniMatchNoRed e E (open_pattern E (f Typeₛ)) (raise e)
+         M.unify_cnt@{Set _} UniMatchNoRed e E (open_pattern (f Typeₛ)) (raise e)
          (* oeq <- M.unify e E UniMatchNoRed; *)
          (* match oeq with *)
          (* | mSome _ => open_pattern E (f Typeₛ) *)
@@ -495,6 +497,7 @@ Fixpoint open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excepti
    provided by the dependent pattern matching (which may be more reduced or
    otherwise mangled). *)
 Definition open_branch {A P y} (E : Exception) (b : branch A (fun a => t (P a)) y) : t (P y) :=
+  Eval lazy beta zeta iota delta [internal_meq_rew open_pattern] in
   match b in branch A' P' y' return
         forall (z: A') (P_old : A' -> Type), z =m= y' -> P' =m= (fun a => t (P_old a)) -> t (P_old y')
   with
@@ -518,16 +521,19 @@ Definition open_branch {A P y} (E : Exception) (b : branch A (fun a => t (P a)) 
   end y P meq_refl meq_refl.
 
 (* The first universe of the [branch] could be shared with [A] but somehow that makes our iris case study slower in a reproducible way.  *)
-Fixpoint mmatch''@{a p+} {A:Type@{a}} {P: A -> Type@{p}} (E : Exception) (y : A) (failure : t (P y)) (ps : mlist@{Set} (Mbranch A P y)) : t (P y) :=
+Definition mmatch''@{a p+} {A:Type@{a}} {P: A -> Type@{p}} (E : Exception) (y : A) (failure : t (P y)) :=
+  Eval lazy beta zeta iota delta [open_branch] in
+  fix mmatch'' (ps : mlist@{Set} (Mbranch A P y)) : t (P y) :=
   match ps with
   | [m:] => failure
   | p :m: ps' =>
     mtry' (open_branch (y:=y) E p) (fun e =>
-      is_head (B:=fun e => P y) (m := mBase) UniMatchNoRed E e (mmatch'' E y failure ps') (raise e))
+      is_head (B:=fun e => P y) (m := mBase) UniMatchNoRed E e (mmatch'' ps') (raise e))
           (* TODO: don't abuse is_head for this. *)
   end.
 
 Definition mmatch' {A:Type} {P: A -> Type} (E : Exception) (y : A) (ps : mlist (Mbranch A P y)) : t (P y) :=
+  Eval lazy beta zeta iota delta [mmatch''] in
   mmatch'' E y (raise NoPatternMatches) ps.
 
 Definition NotCaught : Exception. constructor. Qed.
