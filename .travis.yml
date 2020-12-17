@@ -30,17 +30,9 @@ install: |
     export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
     export OPAMJOBS="2"
     set -ex
-    opam config list
-    opam repo list
     opam list
-    opam repo add coq-released https://coq.inria.fr/opam/released
-    opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
-    opam repo add mtac2-dev https://github.com/Mtac2/opam.git
-    opam repo list
     coqc --version
-    opam install coq-unicoq.dev.8.12
-    opam pin
-    opam list
+    opam pin add https://github.com/unicoq/unicoq.git#master-8.12 -k git
     "
 script:
 - echo -e "${ANSI_YELLOW}Building Mtac2...${ANSI_RESET}" && echo -en 'travis_fold:start:Mtac2.build\\r'
