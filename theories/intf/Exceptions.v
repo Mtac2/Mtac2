@@ -42,6 +42,7 @@ Definition RefNotFound (x : string) : Exception. exact exception. Qed.
 
 Definition AbsDependencyError : Exception. exact exception. Qed.
 Definition AbsVariableIsADefinition : Exception. exact exception. Qed.
+Definition AbsLetNotConvertible : Exception. exact exception. Qed.
 
 Definition VarAppearsInValue : Exception. exact exception. Qed.
 

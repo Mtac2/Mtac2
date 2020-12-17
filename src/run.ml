@@ -227,6 +227,7 @@ module Exceptions = struct
 
   let mkAbsDependencyError = mkDebugEx "AbsDependencyError"
   let mkAbsVariableIsADefinition = mkDebugEx "AbsVariableIsADefinition"
+  let mkAbsLetNotConvertible = mkDebugEx "AbsLetNotConvertible"
 
   let mkNotALetIn = mkDebugEx "NotALetIn"
   let mkNotTheSameType = mkDebugEx "NotTheSameType"
@@ -1259,6 +1260,7 @@ type vm = Code of CClosure.fconstr
         | Try of (Evd.evar_map * CClosure.stack * backtrace * CClosure.fconstr)
         | Nu of (Names.Id.t * Environ.env * CClosure.fconstr * backtrace)
         | Rem of (Environ.env * CClosure.fconstr * bool)
+        | Rep of (Environ.env * CClosure.fconstr)
 
 (* Partition stack [st] into [careless ++ careful] such that if [careful] is [x :: careful'] then
    [x] is the lowest match or projection on the stack.
@@ -1344,17 +1346,11 @@ let _zip_term m stk =
 (*   | Rem _ -> "Rem" *)
 
 let check_exception exception_sigma mtry_sigma env c =
-  let open Id.Set in
-  let c = nf_evar exception_sigma c in (* is this necessary? *)
+  let c = nf_evar exception_sigma c in (* avoids false dependencies *)
   try
-    let () = Pretyping.check_evars env ~initial:mtry_sigma exception_sigma c in
-    if subset (collect_vars exception_sigma c) (vars_of_env env) then
-      (true, (mtry_sigma, c))
-    else
-      (false, E.mkExceptionNotGround mtry_sigma env c)
-  with
-  | Pretype_errors.PretypeError _ ->
-      (false, E.mkExceptionNotGround mtry_sigma env c)
+    let (ev, _) = Typing.type_of env mtry_sigma c in
+    (true, (ev, c))
+  with _ -> (false, E.mkExceptionNotGround mtry_sigma env c)
 
 let timers = Hashtbl.create 128
 
@@ -1421,6 +1417,7 @@ let rec run' ctxt (vms : vm list) =
       else
         (run'[@tailcall]) (ctxt_nu1 p) (Ret c :: vms)
   | Ret c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Ret c :: vms)
+  | Ret c, Rep (env, renv) :: vms -> (run'[@tailcall]) {ctxt with env; renv} (Ret c :: vms)
 
   | Fail c, [] -> fail ctxt.sigma c ctxt.stack ctxt.backtrace
   | Fail c, (Bind (_, _) :: vms) ->
@@ -1437,8 +1434,9 @@ let rec run' ctxt (vms : vm list) =
       (run'[@tailcall]) {ctxt with sigma; backtrace; stack=Zapp [|of_econstr c|] :: stack} (Code b::vms)
   | Fail c, (Nu p :: vms) -> (run'[@tailcall]) (ctxt_nu1_fail p) (Fail c :: vms)
   | Fail c, Rem (env, renv, was_nu) :: vms -> (run'[@tailcall]) {ctxt with env; renv; nus = if was_nu then ctxt.nus+1 else ctxt.nus} (Fail c :: vms)
+  | Fail c, Rep (env, renv) :: vms -> (run'[@tailcall]) {ctxt with env; renv} (Fail c :: vms)
 
-  | (Bind _ | Fail _ | Nu _ | Try _ | Rem _), _ -> failwith "ouch1"
+  | (Bind _ | Fail _ | Nu _ | Try _ | Rem _ | Rep _), _ -> failwith "ouch1"
   | Ret _, (Code _ :: _ | Ret _ :: _ | Fail _ :: _) -> failwith "ouch2"
 
   | Code t, _ -> (eval[@tailcall]) ctxt vms t
@@ -1687,15 +1685,17 @@ and primitive ctxt vms mh reduced_term =
               efail (Exceptions.mkNameExists sigma env s)
             else
               begin
-                let nu = Nu (name, ctxt.env, ctxt.renv, ctxt.backtrace) in
-                let ot = CoqOption.from_coq sigma env (to_econstr ot) in
-                let env = push_named (Context.Named.Declaration.of_tuple (annotR name, ot, a)) env in
-                let backtrace = Backtrace.push (fun () -> InternalNu (name)) ctxt.backtrace in
-                let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
-                let renv = of_econstr renv' in
-                let nus = ctxt.nus + 1 in
-                let stack = Zapp [|of_econstr (mkVar name)|] :: stack in
-                (run'[@tailcall]) {ctxt with backtrace; env; renv; sigma; nus; stack} (Code f :: nu :: vms)
+                match CoqOption.from_coq sigma env (to_econstr ot) with
+                | exception CoqOption.NotAnOption -> efail (Exceptions.mkStuckTerm sigma env s)
+                | ot ->
+                    let nu = Nu (name, ctxt.env, ctxt.renv, ctxt.backtrace) in
+                    let env = push_named (Context.Named.Declaration.of_tuple (annotR name, ot, a)) env in
+                    let backtrace = Backtrace.push (fun () -> InternalNu (name)) ctxt.backtrace in
+                    let (sigma, renv') = Hypotheses.cons_hyp a (mkVar name) ot (to_econstr ctxt.renv) sigma env in
+                    let renv = of_econstr renv' in
+                    let nus = ctxt.nus + 1 in
+                    let stack = Zapp [|of_econstr (mkVar name)|] :: stack in
+                    (run'[@tailcall]) {ctxt with backtrace; env; renv; sigma; nus; stack} (Code f :: nu :: vms)
               end
         | StuckName -> efail (Exceptions.mkWrongTerm sigma env s)
         | InvalidName _ -> efail (Exceptions.mkInvalidName sigma env s)
@@ -1787,7 +1787,7 @@ and primitive ctxt vms mh reduced_term =
       let x = to_econstr x in
       if isVar sigma x then
         let env', (sigma, renv') = env_replacing sigma env ctxt.renv x tyB in
-        (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma} (Code t :: vms)
+        (run'[@tailcall]) {ctxt with env=env'; renv=of_econstr renv'; sigma} (Code t :: Rep (env, ctxt.renv) :: vms)
       else
         efail (E.mkNotAVar sigma env x)
 
@@ -2253,7 +2253,7 @@ and run_fix ctxt (vms: vm list) (h: fconstr) (a: fconstr array) (b: fconstr) (f:
   (run'[@tailcall]) {ctxt with stack=Zapp (Array.append [|mk_red (FApp (h, Array.append a [|b;f|]))|] x)::ctxt.stack} (Code f :: vms)
 
 (* abs case env a p x y n abstract variable x from term y according to the case.
-   if variables depending on x appear in y or the type p, it fails. n is for fixpoint. *)
+   if variables depending on x appear in y or the type p, it fails. n is for fixpoint and t for a let-binder. *)
 and abs vms case ctxt a p x y n t : data_stack =
   let sigma, env = ctxt.sigma, ctxt.env in
   let a, p, x, y = to_econstr a, to_econstr p, to_econstr x, to_econstr y in
@@ -2261,27 +2261,36 @@ and abs vms case ctxt a p x y n t : data_stack =
   let p = nf_evar sigma p in
   let x = nf_evar sigma x in
   let y = nf_evar sigma y in
-  let has_definition var =
-    let n = Environ.lookup_named var env in
-    Option.has_some (Context.Named.Declaration.get_value n) in
   (* check if the type p does not depend of x, and that no variable
      created after x depends on it.  otherwise, we will have to
      substitute the context, which is impossible *)
   if isVar sigma x then
     let name = destVar sigma x in
-    if case <> AbsLet && has_definition name then
+    let odef =
+      let n = Environ.lookup_named name env in
+      Context.Named.Declaration.get_value n in
+    if case <> AbsLet && odef <> None then
       let (sigma, e) = E.mkAbsVariableIsADefinition sigma env x in
       (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
     else if check_abs_deps env sigma x y p then
       let y' = Vars.subst_vars [name] y in
-      let t =
-        match case with
-        | AbsProd -> mkProd (nameR name, a, y')
-        | AbsFun -> mkLambda (nameR name, a, y')
-        | AbsLet -> mkLetIn (nameR name, t, a, y')
-        | AbsFix -> mkFix (([|n-1|], 0), ([|nameR name|], [|a|], [|y'|]))
-      in
-      (run'[@tailcall]) ctxt (Ret (of_econstr t) :: vms)
+      let run t = (run'[@tailcall]) ctxt (Ret (of_econstr t) :: vms) in
+      match case with
+      | AbsProd -> (run[@tailcall]) (mkProd (nameR name, a, y'))
+      | AbsFun -> (run[@tailcall]) (mkLambda (nameR name, a, y'))
+      | AbsLet ->
+          begin
+            let letin = mkLetIn (nameR name, t, a, y') in
+            match odef with
+            | None -> run letin
+            | Some d ->
+                if is_conv env sigma (of_constr d) t then
+                  (run[@tailcall]) letin
+                else
+                  let (sigma, e) = E.mkAbsLetNotConvertible sigma env t in
+                  (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
+          end
+      | AbsFix -> (run[@tailcall]) (mkFix (([|n-1|], 0), ([|nameR name|], [|a|], [|y'|])))
     else
       let (sigma, e) = E.mkAbsDependencyError sigma env (mkApp(x,[|y;p|])) in
       (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
