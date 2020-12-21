@@ -35,7 +35,7 @@ install: |
     opam list
     opam update default
     coqc --version
-    opam pin add https://github.com/unicoq/unicoq.git#master -k git -y
+    opam pin add https://github.com/unicoq/unicoq.git#master-8.13 -k git -y
     opam pin
     opam list
     "
