@@ -664,6 +664,20 @@ let dest_Case (env, sigma) t =
   | _ ->
       Exceptions.block "Something not so specific went wrong."
 
+let contract_return_clause sigma (mib, mip) p =
+  let open Context.Rel.Declaration in
+  let (arity, p) = EConstr.decompose_lam_n_decls sigma (mip.mind_nrealdecls + 1) p in
+  match arity with
+  | LocalAssum (_, ty) :: _ ->
+    let (ind, args) = decompose_appvect sigma ty in
+    let (_, u) = destInd sigma ind in
+    let pms = Array.sub args 0 mib.mind_nparams in
+    let dummy = List.make mip.mind_nrealdecls mkProp in
+    let pms = Array.map (fun c -> Vars.substl dummy c) pms in
+    let nas = Array.of_list (List.rev_map get_annot arity) in
+    (u, pms, (nas, p))
+  | _ -> assert false
+
 let make_Case (env, sigma) case =
   let (_, args) = decompose_appvect sigma case in
   let repr_ind = args.(0) in
@@ -676,12 +690,26 @@ let make_Case (env, sigma) case =
     match kind sigma t_type with
     | Ind ((mind, ind_i), _) ->
         let rci = Sorts.Relevant in
+        let mib = Environ.lookup_mind mind env in
+        let mip = mib.Declarations.mind_packets.(ind_i) in
         let case_info = Inductiveops.make_case_info env (mind, ind_i) rci LetPatternStyle in
-        let match_term = EConstr.mkCase (EConstr.contract_case env sigma (case_info,
+        let (u, pms, repr_return) = contract_return_clause sigma (mib, mip) repr_return in
+        let expand_branch i br =
+          let open Context.Rel.Declaration in
+          let ctx, _ = mip.mind_nf_lc.(i) in
+          let ctx, _ = List.chop mip.mind_consnrealdecls.(i) ctx in
+          let nas = Array.of_list (List.rev_map get_annot ctx) in
+          let args = Context.Rel.to_extended_vect mkRel 0 ctx in
+          nas, (mkApp (Vars.lift (Array.length nas) br, args))
+        in
+        let repr_branches = List.mapi expand_branch repr_branches in
+        let match_term = EConstr.mkCase (case_info,
+                                         u,
+                                         pms,
                                          repr_return,
                                          NoInvert (* TODO handle case inversion *),
                                          repr_val,
-                                         (Array.of_list repr_branches))) in
+                                         (Array.of_list repr_branches)) in
         let match_type = Retyping.get_type_of env sigma match_term in
         mkDyn match_type match_term sigma env
     | _ -> assert false
