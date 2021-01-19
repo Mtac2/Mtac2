@@ -95,12 +95,12 @@ MProof.
   apply le_n.
 Qed.
 
-Require Import Coq.omega.Omega.
-Definition omega := ltac "Coq.omega.Omega.omega" [m:].
+Require Import Lia.
+Definition lia := ltac "Coq.micromega.Lia.lia" [m:].
 
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.
-  cintro H {- apply H;; left;; omega -}.
+  cintro H {- apply H;; left;; lia -}.
 Qed.
 
 Lemma test1 : forall P, P -> P.
@@ -191,8 +191,8 @@ MProof.
   intros b.
   Fail testmg. (* FIX why? *)
   destruct b.
-  - simpl. omega.
-  - intros n';; simpl;; omega.
+  - simpl. lia.
+  - intros n';; simpl;; lia.
 Qed.
 
 Goal forall a b : nat, S b > 0.
@@ -200,8 +200,8 @@ MProof.
   intros a b.
   Fail testmg. (* FIX why? *)
   destruct b.
-  - simpl;; omega.
-  - intros n';; simpl;; omega.
+  - simpl;; lia.
+  - intros n';; simpl;; lia.
 Qed.
 
 Goal forall a b c : nat, S b > 0.
@@ -209,8 +209,8 @@ MProof.
   intros a b c.
   Fail testmg.
   destruct b.
-  - simpl;; omega.
-  - intros n';; simpl;; omega.
+  - simpl;; lia.
+  - intros n';; simpl;; lia.
 Qed.
 
 Goal forall P Q : Prop, P -> P.
