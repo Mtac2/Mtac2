@@ -7,9 +7,9 @@ Require Import Vector.
 
 Import Fin.
 
-Require Import Omega.
+Require Import Lia.
 
-Lemma lt_0_S n : 0 < S n. Proof. omega. Qed.
+Lemma lt_0_S n : 0 < S n. Proof. lia. Qed.
 
 Fixpoint prove_leq n m : M (n < m) :=
   match n, m with
