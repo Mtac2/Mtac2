@@ -19,14 +19,13 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-    container: ghcr.io/mtac2/mtac2-ci:master
+    container:
+      image: ghcr.io/mtac2/mtac2-ci:master
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    - name: Install Unicoq master
-
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@v2
+    - name: checkout
+      uses: actions/checkout@v2
       
     - name: Build Mtac2
       run: |
