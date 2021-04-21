@@ -1,5 +1,5 @@
 status = [
-  "continuous-integration/travis-ci/push"
+  "Build"
 ]
 # Uncomment this to use a two hour timeout.
 # The default is one hour.
