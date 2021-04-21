@@ -60,9 +60,8 @@ Definition testdef : Type -> Type := fun x=>x.
 Lemma testret : Type -> Type.
 MProof.
 M.ret (fun x=>x).
-Fail Qed. (* fails, I think it is not inferring the right universes? *)
-Abort.
-Fail Print testret.
+Qed. (* If this fails we likely swapped LHS & RHS of the cumulative unification in [ifM] *)
+Print testret.
 
 Lemma testexact : Type -> Type.
 MProof.
