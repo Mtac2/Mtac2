@@ -24,28 +24,28 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     - name: Install Unicoq master
-        run: |
-          export OPAMJOBS="2"
-          set -ex
-          opam config list
-          opam repo list
-          opam list
-          opam update default
-          coqc --version
-          opam pin add https://github.com/unicoq/unicoq.git#master -k git -y
-          opam pin
-          opam list
+      run: |
+        export OPAMJOBS="2"
+        set -ex
+        opam config list
+        opam repo list
+        opam list
+        opam update default
+        coqc --version
+        opam pin add https://github.com/unicoq/unicoq.git#master -k git -y
+        opam pin
+        opam list
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
       
-      - name: Build Mtac2
-        run: |
-          docker exec COQ /bin/bash --login -c "
-          export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
-          set -ex
-          cd "$GITHUB_WORKSPACE"
-          sudo chown -R coq:coq .
-          ./configure.sh
-          make
-          make test
+    - name: Build Mtac2
+      run: |
+        docker exec COQ /bin/bash --login -c "
+        export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
+        set -ex
+        cd "$GITHUB_WORKSPACE"
+        sudo chown -R coq:coq .
+        ./configure.sh
+        make
+        make test
