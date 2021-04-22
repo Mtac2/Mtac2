@@ -52,9 +52,9 @@ jobs:
     - name: Build Mtac2
       run: |
         set -ex
-        cd "$GITHUB_WORKSPACE/Mtac2"
         eval $(opam env)
         export OPAMJOBS="${{ steps.cpu-cores.outputs.count }}"
+        cd "$GITHUB_WORKSPACE"
         eval $(opam env)
         ./configure.sh
         make
