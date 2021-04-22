@@ -26,16 +26,13 @@ jobs:
     steps:
     - name: cpu-cores
       uses: SimenB/github-actions-cpu-cores@v1
-    
-    - name: debug
-      run: |
-        echo ${{ steps.cpu-cores.outputs.count }}
+
       
     - name: unicoq
       run: |
         set -ex
         eval $(opam env)
-        export OPAMJOBS=${{ steps.cpu-cores.outputs.count }}
+        export OPAMJOBS=2
         opam config list
         opam repo list
         opam list
@@ -57,7 +54,7 @@ jobs:
       run: |
         set -ex
         eval $(opam env)
-        export OPAMJOBS=${{ steps.cpu-cores.outputs.count }}
+        export OPAMJOBS=2
         cd "$GITHUB_WORKSPACE"
         eval $(opam env)
         ./configure.sh
