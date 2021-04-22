@@ -40,11 +40,8 @@ jobs:
       
     - name: Build Mtac2
       run: |
-        docker exec COQ /bin/bash --login -c "
-        export PS4='+ \e[33;1m(\$0 @ line \$LINENO) \$\e[0m '
         set -ex
         cd "$GITHUB_WORKSPACE"
-        sudo chown -R coq:coq .
         ./configure.sh
         make
         make test
