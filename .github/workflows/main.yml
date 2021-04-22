@@ -15,12 +15,23 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
+  # get user id to avoid permission errors when mapping the github workspace into the docker container.
+  # See https://github.com/actions/runner/issues/691
+  configure:
+    runs-on: ubuntu-latest
+    outputs:
+      uid_gid: ${{ steps.get-user.outputs.uid_gid }}
+    steps:
+      - id: get-user
+        run: echo "::set-output name=uid_gid::$(id -u):$(id -g)"
+        
   build:
+    needs: configure
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/mtac2/mtac2-ci:master
+      image: ghcr.io/mtac2/mtac2-ci:master      
+      options: --user ${{ needs.configure.outputs.uid_gid }}
 
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
