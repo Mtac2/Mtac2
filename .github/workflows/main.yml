@@ -22,12 +22,15 @@ jobs:
       image: coqorg/coq:dev
       env:
         OPAMROOT: "/home/coq/.opam"
-        OPAMJOBS: "$NJOBS"
-      
+        
     steps:
+    - name: Get number of CPU cores
+      uses: SimenB/github-actions-cpu-cores@v1
+      
     - name: unicoq
       run: |
         set -ex
+        export OPAMJOBS="${{ steps.cpu-cores.outputs.count }}"
         opam config list
         opam repo list
         opam list
@@ -44,6 +47,7 @@ jobs:
     - name: Build Mtac2
       run: |
         set -ex
+        export OPAMJOBS="${{ steps.cpu-cores.outputs.count }}"
         eval $(opam env)
         cd "$GITHUB_WORKSPACE"
         sudo chown -R coq:coq .
