@@ -15,18 +15,7 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # get user id to avoid permission errors when mapping the github workspace into the docker container.
-  # See https://github.com/actions/runner/issues/691
-  configure:
-    runs-on: ubuntu-latest
-    outputs:
-      uid_gid: ${{ steps.get-user.outputs.uid_gid }}
-    steps:
-      - id: get-user
-        run: echo "::set-output name=uid_gid::$(id -u):$(id -g)"
-        
   build:
-    needs: configure
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     container:
@@ -36,10 +25,8 @@ jobs:
     steps:
     - name: unicoq
       run: |
-        whoami
-        env
-        ls -al /home/coq/
-        export OPAMJOBS="2"
+        export OPAMROOT=/home/coq/.opam/
+        export OPAMJOBS="$NJOBS"
         set -ex
         opam config list
         opam repo list
