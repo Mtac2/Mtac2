@@ -36,6 +36,7 @@ jobs:
     steps:
     - name: unicoq
       run: |
+        whoami
         export OPAMJOBS="2"
         set -ex
         opam config list
