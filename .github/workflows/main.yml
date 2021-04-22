@@ -24,8 +24,12 @@ jobs:
         OPAMROOT: "/home/coq/.opam"
         
     steps:
-    - name: Get number of CPU cores
+    - name: cpu-cores
       uses: SimenB/github-actions-cpu-cores@v1
+    
+    - name: debug
+      run: |
+        echo ${{ steps.cpu-cores.outputs.count }}
       
     - name: unicoq
       run: |
