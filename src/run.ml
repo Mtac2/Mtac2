@@ -2257,6 +2257,7 @@ and primitive ctxt vms mh reduced_term =
       let prio = CoqOption.from_coq sigma env (to_econstr prio) in
       let open Typeclasses in
       let hint_priority = Option.map (CoqN.from_coq (env, sigma)) prio in
+      let global = if global then Goptions.OptGlobal else Goptions.OptLocal in
       Classes.existing_instance global qualid (Some {hint_priority; hint_pattern= None});
       ereturn sigma (CoqUnit.mkTT)
   | MConstr (Minstantiate_evar, (ty, _, evar, solution, succ, fail)) ->
