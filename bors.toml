@@ -1,5 +1,5 @@
 status = [
-  "Build"
+  "build"
 ]
 # Uncomment this to use a two hour timeout.
 # The default is one hour.
