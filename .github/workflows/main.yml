@@ -41,6 +41,10 @@ jobs:
         opam pin
         opam list
         
+    - name: fix-permissions
+      run: |
+        sudo chown -R coq:coq "$GITHUB_WORKSPACE"
+        
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - name: checkout
       uses: actions/checkout@v2
@@ -48,11 +52,10 @@ jobs:
     - name: Build Mtac2
       run: |
         set -ex
+        cd "$GITHUB_WORKSPACE/Mtac2"
         eval $(opam env)
         export OPAMJOBS="${{ steps.cpu-cores.outputs.count }}"
         eval $(opam env)
-        cd "$GITHUB_WORKSPACE"
-        sudo chown -R coq:coq .
         ./configure.sh
         make
         make test
