@@ -41,6 +41,7 @@ jobs:
     - name: Build Mtac2
       run: |
         set -ex
+        eval $(opam env)
         cd "$GITHUB_WORKSPACE"
         ./configure.sh
         make
