@@ -19,14 +19,14 @@ jobs:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     container:
-      image: coqorg/coq:dev    
+      image: coqorg/coq:dev
+      env:
+        OPAMROOT: "/home/coq/.opam"
+        OPAMJOBS: "$NJOBS"
       
-    
     steps:
     - name: unicoq
       run: |
-        export OPAMROOT=/home/coq/.opam/
-        export OPAMJOBS="$NJOBS"
         set -ex
         opam config list
         opam repo list
