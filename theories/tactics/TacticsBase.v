@@ -467,7 +467,7 @@ Module notations.
     (at level 200, f ident, x binder, y binder, format
     "'[v  ' 'mfix4'  f  x  ..  y  ':'  'gtactic'  T  ':=' '/  ' b ']'") : tactic_scope.
 
-  Notation "'mtry' a ls" :=
+  Notation "'mtry' a 'with' ls 'end'" :=
     (mtry' a (fun e =>
       (@mmatch'' _ (fun _ => _) M.NotCaught e (T.raise e) ls)))
       (at level 200, a at level 100, ls custom Mtac2_with_branch at level 91, only parsing) : tactic_scope.

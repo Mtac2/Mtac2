@@ -597,7 +597,7 @@ Module notations_pre.
     (at level 200, f ident, x binder, y binder, format
     "'[v  ' 'mfix5'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
 
-  Notation "'mtry' a ls" :=
+  Notation "'mtry' a 'with' ls 'end'" :=
     (mtry' a (fun e =>
       (@mmatch'' _ (fun _ => _) NotCaught e (raise e) ls)))
       (at level 200, a at level 100, ls custom Mtac2_with_branch at level 91, only parsing) : M_scope.
