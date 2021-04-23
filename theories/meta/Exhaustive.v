@@ -32,10 +32,10 @@ Definition find_in_constrs {C} (c : C)  : mlist dyn -> M (mlist dyn) :=
     end.
 
 
-Definition check_exhaustiveness {A B y}
-           (ps_in : mlist (branch A B y))
-           (ops : moption (mlist (branch A B y))) :
-  M (mlist (branch A B y)) :=
+Definition check_exhaustiveness {A B}
+           (ps_in : mlist (branch A B))
+           (ops : moption (mlist (branch A B))) :
+  M (mlist (branch A B)) :=
   '(mkInd_dyn _ _ _ constrs) <- M.constrs A;
   (
     mfix2 f (ps : _) (constrs : _) : M _ :=
@@ -59,7 +59,7 @@ Definition check_exhaustiveness {A B y}
 .
 
 Notation "'exhaustively_with' | p1 | .. | pn 'end'" :=
-  (let ps' := mcons p1%branch .. (mcons pn%branch mnil%branch) .. in
+  (let ps' := mcons p1 .. (mcons pn mnil) .. in
            ltac:(mrun (check_exhaustiveness ps' (mNone)))
   )
-    (at level 91, p1 at level 210, pn at level 210) : with_pattern_scope.
+    (in custom Mtac2_with_branch at level 91, p1 custom Mtac2_branch at level 210, pn custom Mtac2_branch at level 210).
