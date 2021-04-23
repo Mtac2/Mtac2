@@ -132,6 +132,10 @@ Definition mtpbase_eq {A} {m : A -> Prop} (x : A) F (eq : m x =m= F x) : F x -> 
   | meq_refl => mtpbase x
   end.
 
+Definition mtpany_eq {A} {m : A -> Prop} F (eq : m =m= F) : (forall x, F x) -> mtpattern A m :=
+  match eq in _ =m= R return (forall x, R x) -> _ with
+  | meq_refl => fun f => mtpany f
+  end.
 
 Declare Scope mtpattern_scope.
 Bind Scope mtpattern_scope with mtpattern.
@@ -162,8 +166,8 @@ Notation "d '=n>' t" := (mtpbase_eq (m:=mty_of) d ret_ty cs_unify t UniMatchNoRe
 Notation "d '=m>' t" := (mtpbase_eq (m:=mty_of) d ret_ty cs_unify t UniMatch)
     (at level 201) : mtpattern_scope.
 
-Notation "'_' => b " := (mtptele (M:=mty_of) (fun x=> mtpbase_eq (m:=mty_of) x ret_ty cs_unify b%core UniMatch))
-  (at level 201, b at next level) : mtpattern_scope.
+Notation "'_' 'as' _catchall => b " := (mtpany_eq (m:=mty_of) ret_ty cs_unify (fun _catchall => b%core))
+  (at level 201) : mtpattern_scope.
 
 
 Declare Scope with_mtpattern_scope.
@@ -183,3 +187,9 @@ Notation "'mtmmatch' x 'as' y 'return' T p" :=
     let mt : MTY_OF := MTt_Of (fun _z => MTele_ty M (n:=mprojT1 (mt1 _z)) (mprojT2 (mt1 _z))) in
     mtmmatch' _ (fun y => mprojT1 (mt1 y)) (fun y => mprojT2 (mt1 y)) x p%with_mtpattern
   ) (at level 90, p at level 91).
+
+Local Example test_mtmmatch (n : nat) :=
+  mtmmatch n as n' return n = n' -> M (n = 1) with
+  | 1 =n> fun H => M.ret H
+  | _ as _catchall => fun H : n = _catchall => M.failwith "test"
+  end.

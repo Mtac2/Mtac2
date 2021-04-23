@@ -9,11 +9,13 @@ Unset Universe Minimization ToSet.
 
 
 Inductive mtpattern A (M : A -> Prop)  : Prop :=
+| mtpany : (forall x : A, M x) -> mtpattern A M
 | mtpbase : forall x : A, M x -> Unification -> mtpattern A M
 | mtptele : forall {C}, (forall x : C, mtpattern A M) -> mtpattern A M
 | mtpsort : (Sort -> mtpattern A M) -> mtpattern A M.
 
 
+Arguments mtpany {A M} _.
 Arguments mtpbase {A M} _ _.
 Arguments mtptele {A M C} _.
 Arguments mtpsort {A M} _.
@@ -24,6 +26,7 @@ Local Notation MFA T := (MTele_val (MTele_C Typeₛ Propₛ M T)).
 Fixpoint open_branch {A} {m} {T : forall x, MTele_Ty (m x)} {y : A} {a : ArgsOf (m y)}
          (p : mtpattern A (fun x => MFA (T x))) : M (apply_sort (T y) a) :=
   match p return M _ with
+  | mtpany f => apply_C Propₛ (f y) a
   | mtpbase x f u =>
     oeq <- M.unify x y u;
     match oeq return M (apply_sort (T y) a) with

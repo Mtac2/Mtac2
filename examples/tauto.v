@@ -154,11 +154,11 @@ Module Mtac_V4.
   Import M.notations.
   Import ProdNotations.
 
-  Definition promote_uninst_evar {X} {A} (x : X) (a : A *m mlist (goal _)) : ttac (A) :=
+  Polymorphic Definition promote_uninst_evar {X} {A} (x : X) (a : A *m mlist (goal _)) : ttac (A) :=
     let '(m: a, gs) := a in
     mif is_evar x then ret (m: a, AnyMetavar Typeₛ _ x :m: gs) else ret (m: a, gs).
 
-  Definition has_open_subgoals {A} (a : A *m mlist (goal gs_any)) : M bool :=
+  Polymorphic Definition has_open_subgoals {A} (a : A *m mlist (goal gs_any)) : M bool :=
     ret (match msnd a with [m:] => true | _ => false end).
 
   Program Definition solve_tauto : forall {P:Prop}, ttac P :=
@@ -182,7 +182,7 @@ Module Mtac_V4.
         x <- M.evar X;
         q <- apply (@ex_intro _ _ _) <**> solve_tauto (Q x);
         promote_uninst_evar x q
-      | _ => TT.use (A:=P) (T.try T.assumption) (* TODO: remove (A:=P) annotation. *)
+      | _ => TT.use (T.try T.assumption) (* TODO: remove (A:=P) annotation. *)
       end.
 
  Ltac solve_tauto := mrun solve_tauto.
