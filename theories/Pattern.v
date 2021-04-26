@@ -16,10 +16,10 @@ Inductive pattern@{a} (A : Type@{a}) (B : A -> Prop) : Prop :=
   | psort : (Sort -> pattern A B) -> pattern A B.
 
 
-Arguments pany {A B} _.
-Arguments pbase {A B} _ _ _.
-Arguments ptele {A B C} _.
-Arguments psort {A B} _.
+Arguments pany  {A B}   & _.
+Arguments pbase {A B}   & _ _ _.
+Arguments ptele {A B C} & _.
+Arguments psort {A B}   & _.
 
 (* Set Printing Universes. *)
 (* Set Printing Implicit. *)
@@ -36,6 +36,7 @@ Inductive branch@{a elem_a x+} : forall {A : Type@{a}} {B : A -> Prop}, Prop :=
     (forall (X : Type@{elem_a}) (Y : X -> Type@{elem_a}), B (forall x : X, Y x)) ->
     @branch Type@{elem_a} B.
 Arguments branch _ _ : clear implicits.
+Arguments branch_pattern _ _ &.
 
 
 (* | branch_app_dynamic {A} {B : forall A, A -> Type} {y}: *)

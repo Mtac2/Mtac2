@@ -151,12 +151,12 @@ Definition generalize {A} (x : A) : tactic := fun g =>
   | Metavar Propₛ P _ =>
      aP <- M.abs_prod_prop x P; (* aP = (forall x:A, P) *)
      e <- M.remove x (M.evar aP);
-     (mtmmatch aP as aP' return aP =m= aP' -> M _ with
-     | [? Q : A -> Prop] (forall z:A, Q z) =n> fun H =>
+     (mtmmatch aP as aP' return @meq Prop aP aP' -> M _ with
+     | [? Q : A -> Prop] (forall z:A, Q z) =n> fun H : @meq Prop _ (forall z:A, Q z) =>
         let e' := reduce (RedWhd [rl:RedMatch]) match H in _ =m= Q return Q with meq_refl _ => e end in
         exact (e' x) g;;
         M.ret [m:(m: tt, AnyMetavar Propₛ _ e)]
-     | _ as _catchall => fun H => M.failwith "generalize"
+     | _ as _catchall => fun (H : aP =m= _catchall) => M.failwith "generalize"
      end) meq_refl
   end.
 
