@@ -50,22 +50,33 @@ Notation "[¿  s .. t ]  ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
 Notation "'[S?'  s .. t ] ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
   (in custom Mtac2_pattern at level 202, s binder, t binder, ps custom Mtac2_pattern).
 
-Notation "[?  x .. y ]  ps" :=
+Notation "[? x .. y ] ps" :=
   (ptele (fun x => .. (ptele (fun y => ps)).. ))
     (in custom Mtac2_pattern at level 202, x binder, y binder, ps custom Mtac2_pattern at next level,
-     format "'[' [?  x .. y ]  ps ']'"
+     only parsing
     ).
-Notation "p => b" := (pbase p%core b%core UniMatch)
-  (no associativity, in custom Mtac2_pattern at level 201, p constr, b constr).
 
-Notation "p  '=n>'  b" := (pbase p%core b%core UniMatchNoRed)
-  (no associativity, in custom Mtac2_pattern at level 201, p constr, b constr).
 
-Notation "p  '=u>'  b" := (pbase p%core b%core UniCoq)
-  (no associativity, in custom Mtac2_pattern at level 201, p constr, b constr).
+Declare Custom Entry Mtac2_unification.
+Notation "=m>" := (UniMatch) (in custom Mtac2_unification, only parsing).
+Notation "=>" := (UniMatch) (in custom Mtac2_unification).
+Notation "=n>" := (UniMatchNoRed) (in custom Mtac2_unification).
+Notation "=c>" := (UniEvarconv) (in custom Mtac2_unification).
+Notation "=u>" := (UniCoq) (in custom Mtac2_unification).
 
-Notation "p  '=c>'  b" := (pbase p%core b%core UniEvarconv)
-  (no associativity, in custom Mtac2_pattern at level 201, p constr, b constr).
+Notation "p u b" := (pbase p%core b%core u)
+  (no associativity, in custom Mtac2_pattern at level 201, p constr, b constr, u custom Mtac2_unification).
+
+
+(* To get perfect indentation we declare a printing only rule that incorporates
+   both evars and base of the pattern *)
+Notation "[? x .. y ] p u b" :=
+  (ptele (fun x => .. (ptele (fun y => pbase p%core b%core u)).. ))
+    (in custom Mtac2_pattern at level 202, x binder, y binder, p constr, b constr, u custom Mtac2_unification,
+     only printing,
+     format "'[' [?  x  ..  y ]  p  u  '/' '['  b ']' ']'"
+    ).
+
 
 Notation "'_'  =>  b " := (pany (fun _ => b%core))
   (in custom Mtac2_pattern at level 201, b constr).
