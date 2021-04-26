@@ -50,8 +50,11 @@ Notation "[¿  s .. t ]  ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
 Notation "'[S?'  s .. t ] ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
   (in custom Mtac2_pattern at level 202, s binder, t binder, ps custom Mtac2_pattern).
 
-Notation "[?  x .. y ]  ps" := (ptele (fun x => .. (ptele (fun y => ps)).. ))
-  (in custom Mtac2_pattern at level 202, x binder, y binder, ps custom Mtac2_pattern at next level).
+Notation "[?  x .. y ]  ps" :=
+  (ptele (fun x => .. (ptele (fun y => ps)).. ))
+    (in custom Mtac2_pattern at level 202, x binder, y binder, ps custom Mtac2_pattern at next level,
+     format "'[' [?  x .. y ]  ps ']'"
+    ).
 Notation "p => b" := (pbase p%core b%core UniMatch)
   (no associativity, in custom Mtac2_pattern at level 201, p constr, b constr).
 
@@ -198,20 +201,32 @@ Declare Custom Entry Mtac2_with_branch.
 
 Notation "| p1 | .. | pn" :=
   ((@mcons (branch _ _) p1 (.. (@mcons (branch _ _) pn [m:]) ..)))
-  (in custom Mtac2_with_branch at level 91, p1 custom Mtac2_branch at level 210, pn custom Mtac2_branch at level 210).
+  (in custom Mtac2_with_branch at level 91,
+   p1 custom Mtac2_branch at level 210,
+   pn custom Mtac2_branch at level 210,
+   only parsing
+  ).
 Notation "p1 | .. | pn" :=
   ((@mcons (branch _ _) p1 (.. (@mcons (branch _ _) pn [m:]) ..)))
-  (in custom Mtac2_with_branch at level 91, p1 custom Mtac2_branch at level 210, pn custom Mtac2_branch at level 210).
+  (in custom Mtac2_with_branch at level 91,
+   p1 custom Mtac2_branch at level 210,
+   pn custom Mtac2_branch at level 210,
+   format "p1 '//' |  .. '//' |  pn"
+  ).
 
 Notation "'mmatch' x 'with' ls 'end'" :=
   (idmatcher_match _ _ x DoesNotMatch ls)
-  (at level 200, ls custom Mtac2_with_branch at level 91).
+  (at level 200, ls custom Mtac2_with_branch at level 91,
+  format "'mmatch'  x  'with'  '/' ls '/'  'end'").
 Notation "'mmatch' x 'return' p 'with' ls 'end'" :=
   (idmatcher_match_invert _ _ x p meq_refl DoesNotMatch ls)
-  (at level 200, ls custom Mtac2_with_branch at level 91).
+  (at level 200, ls custom Mtac2_with_branch at level 91,
+  format "'mmatch'  x  'return'  p  'with'  '/' ls '/'  'end'").
 Notation "'mmatch' x 'as' y 'return' p 'with' ls 'end'" :=
   (matcher_match_invert _ x _ (fun y => p%type) meq_refl meq_refl DoesNotMatch ls)
-  (at level 200, ls custom Mtac2_with_branch at level 91, y binder).
+  (at level 200, ls custom Mtac2_with_branch at level 91, y binder,
+  format "'mmatch'  x  'as'  y  'return'  p  'with'  '/' ls '/'  'end'").
 Notation "'mmatch' x 'in' T 'as' y 'return' p 'with' ls 'end'" :=
   (matcher_match_invert T%type x _ (fun y => p%type) meq_refl meq_refl DoesNotMatch ls)
-  (at level 200, ls custom Mtac2_with_branch at level 91, y binder).
+  (at level 200, ls custom Mtac2_with_branch at level 91, y binder,
+  format "'mmatch'  x  'in'  T  'as'  y  'return'  p  'with'  '/' ls '/'  'end'").
