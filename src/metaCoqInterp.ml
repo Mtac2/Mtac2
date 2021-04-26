@@ -83,7 +83,7 @@ module MetaCoqRun = struct
     let (h, args) = Reductionops.whd_all_stack env sigma ty in
     if EConstr.eq_constr_nounivs sigma metaCoqType h && List.length args = 1 then
       try
-        let sigma = Evarconv.unify_leq_delay env sigma concl (List.hd args) in
+        let sigma = Evarconv.unify_leq_delay env sigma (List.hd args) concl in
         (true, sigma)
       with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (Pp.str "Different types")
     else
