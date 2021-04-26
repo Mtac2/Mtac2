@@ -58,8 +58,8 @@ Definition check_exhaustiveness {A B}
   ) ps_in constrs
 .
 
-Notation "'exhaustively_with' | p1 | .. | pn 'end'" :=
-  (let ps' := mcons p1 .. (mcons pn mnil) .. in
-           ltac:(mrun (check_exhaustiveness ps' (mNone)))
+Notation "'exhaustively' ls" :=
+  (
+    ltac:(mrun (check_exhaustiveness ls (mNone)))
   )
-    (in custom Mtac2_with_branch at level 91, p1 custom Mtac2_branch at level 210, pn custom Mtac2_branch at level 210).
+    (in custom Mtac2_with_branch at level 91, ls custom Mtac2_with_branch).
