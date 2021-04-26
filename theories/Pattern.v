@@ -83,7 +83,7 @@ Notation "'_'  =>  b " := (pany (fun _ => b%core))
 Notation "'_' 'as' catchall => b " := (pany (fun catchall => b%core))
   (in custom Mtac2_pattern at level 201, b constr, catchall binder).
 
-Notation "'[debug_Mtac2_pattern'  p ]" := (p) (p custom Mtac2_pattern at level 1000).
+Notation "'[debug_Mtac2_pattern'  p ]" := (p) (p custom Mtac2_pattern at level 1000, only parsing).
 Check [debug_Mtac2_pattern [? x : nat] true =u> _].
 
 
