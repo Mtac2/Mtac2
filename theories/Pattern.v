@@ -204,14 +204,14 @@ Notation "| p1 | .. | pn" :=
   (in custom Mtac2_with_branch at level 91,
    p1 custom Mtac2_branch at level 210,
    pn custom Mtac2_branch at level 210,
-   only parsing
+   format "|  p1 '//' |  .. '//' |  pn"
   ).
 Notation "p1 | .. | pn" :=
   ((@mcons (branch _ _) p1 (.. (@mcons (branch _ _) pn [m:]) ..)))
   (in custom Mtac2_with_branch at level 91,
    p1 custom Mtac2_branch at level 210,
    pn custom Mtac2_branch at level 210,
-   format "p1 '//' |  .. '//' |  pn"
+   only parsing
   ).
 
 Notation "'mmatch' x 'with' ls 'end'" :=

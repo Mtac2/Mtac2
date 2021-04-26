@@ -454,7 +454,10 @@ Module monad_notations.
   Infix "<*>" := fapp (at level 61, left associativity) : M_scope.
 
   Notation "'mif' b 'then' t 'else' u" :=
-    (cond <- b; if cond then t else u) (at level 200) : M_scope.
+    (cond <- b; if cond then t else u)
+      (at level 200,
+       format "'[hv' 'mif'  '/  ' '[' b ']'  '/' 'then'  '/  ' '[' t ']'  '/' 'else'  '/  ' '[' u ']' ']'"
+      ) : M_scope.
 End monad_notations.
 
 Import monad_notations.
@@ -573,33 +576,35 @@ Module notations_pre.
 
   Notation "'mfix1' f x .. y : 'M' T := b" :=
     (fix1 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b) ..))
-    (at level 200, f ident, x binder, y binder, format
-    "'[v  ' 'mfix1'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
+    (at level 200, f ident, x binder, y binder, b at level 200, format
+    "'[v  ' 'mfix1'  f  x  ..  y  ':'  'M'  T  ':=' '/' '[' b ']' ']'") : M_scope.
 
   Notation "'mfix2' f x .. y : 'M' T := b" :=
     (fix2 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b) ..))
     (at level 200, f ident, x binder, y binder, format
-    "'[v  ' 'mfix2'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
+    "'[v  ' 'mfix2'  f  x  ..  y  ':'  'M'  T  ':=' '/' '[' b ']' ']'") : M_scope.
 
   Notation "'mfix3' f x .. y : 'M' T := b" :=
     (fix3 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b) ..))
     (at level 200, f ident, x binder, y binder, format
-    "'[v  ' 'mfix3'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
+    "'[v  ' 'mfix3'  f  x  ..  y  ':'  'M'  T  ':=' '/' '[' b ']' ']'") : M_scope.
 
   Notation "'mfix4' f x .. y : 'M' T := b" :=
     (fix4 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b) ..))
     (at level 200, f ident, x binder, y binder, format
-    "'[v  ' 'mfix4'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
+    "'[v  ' 'mfix4'  f  x  ..  y  ':'  'M'  T  ':=' '/' '[' b ']' ']'") : M_scope.
 
   Notation "'mfix5' f x .. y : 'M' T := b" :=
     (fix5 (fun x => .. (fun y => T%type) ..) (fun f x => .. (fun y => b) ..))
     (at level 200, f ident, x binder, y binder, format
-    "'[v  ' 'mfix5'  f  x  ..  y  ':'  'M'  T  ':=' '/  ' b ']'") : M_scope.
+    "'[v  ' 'mfix5'  f  x  ..  y  ':'  'M'  T  ':=' '/' '[' b ']' ']'") : M_scope.
 
   Notation "'mtry' a 'with' ls 'end'" :=
     (mtry' a (fun e =>
       (@mmatch'' _ (fun _ => _) NotCaught e (raise e) ls)))
-      (at level 200, a at level 100, ls custom Mtac2_with_branch at level 91, only parsing) : M_scope.
+      (at level 200, a at level 100, ls custom Mtac2_with_branch at level 91,
+       format "'[hv' 'mtry'  '/  ' '[' a ']'  '/' 'with' '/' ls  '/' 'end' ']'"
+      ) : M_scope.
 
   Import TeleNotation.
   Notation "'dcase' v 'with' A 'as' x 'in' t" :=
