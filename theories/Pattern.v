@@ -74,7 +74,7 @@ Notation "[? x .. y ] p u b" :=
   (ptele (fun x => .. (ptele (fun y => pbase p%core b%core u)).. ))
     (in custom Mtac2_pattern at level 202, x binder, y binder, p constr, b constr, u custom Mtac2_unification,
      only printing,
-     format "'[' [?  x  ..  y ]  p  u  '/' '['  b ']' ']'"
+     format "'[' [?  x  ..  y ]  p  u '/' '['  b ']' ']'"
     ).
 
 
