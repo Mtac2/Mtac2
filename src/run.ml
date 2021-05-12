@@ -1942,7 +1942,7 @@ and primitive ctxt vms mh reduced_term =
       let arg_name = "lx_" in
       let args = List.mapi (fun i a->(Id.of_string (arg_name ^ string_of_int i), Value.of_constr a)) args in
       let args_var = List.map (fun (n, _) -> Reference (Locus.ArgVar (CAst.make n))) args in
-      let to_call = TacArg (CAst.make (TacCall (CAst.make (Locus.ArgArg (tag tac_name), args_var)))) in
+      let to_call = CAst.make (TacArg (TacCall (CAst.make (Locus.ArgArg (tag tac_name), args_var)))) in
       begin
         let undef = Evar.Map.domain (Evd.undefined_map sigma) in
         let args_map = List.fold_left (fun m (k, v)-> Id.Map.add k v m) Id.Map.empty args in
