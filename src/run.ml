@@ -418,10 +418,7 @@ module ReductionStrategy = struct
   let whdfun flags env sigma c =
     (* let open Machine in * let state = (c, Stack.empty) in * let (s, _) =
        whd_state_gen flags env sigma state in * Stack.zip sigma s *)
-    let evars ev = safe_evar_value sigma ev in
-    (* let infos = CClosure.create_clos_infos ~evars flags env in (CClosure.whd_val
-       infos (CClosure.create_tab ()) c) *)
-    let infos = create_clos_infos ~evars flags env in
+    let infos = Evarutil.create_clos_infos env sigma flags in
     let tabs = CClosure.create_tab () in
     (CClosure.whd_val infos tabs c)
 
@@ -1389,9 +1386,9 @@ let check_exception exception_sigma mtry_sigma env c =
 let timers = Hashtbl.create 128
 
 
-let create_clos_infos ?(evars=fun _ -> None) flgs env =
+let create_clos_infos env sigma flgs =
   let env = set_typing_flags ({(Environ.typing_flags env) with share_reduction = false}) env in
-  CClosure.create_clos_infos ~evars:evars flgs env
+  Evarutil.create_clos_infos env sigma flgs
 
 let reduce_noshare infos t stack =
   let r = CClosure.whd_stack infos t stack in
@@ -1487,8 +1484,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
 
   let reds = CClosure.allnolet in
   let reds = CClosure.RedFlags.red_add_transparent reds TransparentState.var_full in
-  let evars ev = safe_evar_value sigma ev in
-  let infos = create_clos_infos ~evars reds env in
+  let infos = create_clos_infos env sigma reds in
   let tab = CClosure.create_tab () in
   let reduced_term, stack = reduce_noshare infos tab t stack in
 
@@ -2422,7 +2418,6 @@ let run (env0, sigma) ty t : data =
   let t = multi_subst sigma subs t in
   let t = CClosure.inject (EConstr.Unsafe.to_constr t) in
   let (sigma, renv) = build_hypotheses sigma env in
-  let _evars ev = safe_evar_value sigma ev in
 
   (* ty is of the form [M X] or a term reducible to that. *)
   (* we only need [X]. *)
