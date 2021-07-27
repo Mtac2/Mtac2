@@ -229,16 +229,16 @@ Notation "p1 | .. | pn" :=
 Notation "'mmatch' x 'with' ls 'end'" :=
   (idmatcher_match _ _ x DoesNotMatch ls)
   (at level 200, ls custom Mtac2_with_branch at level 91,
-  format "'mmatch'  x  'with'  '/' ls '/'  'end'").
+  format "'[hv' 'mmatch'  x  'with'  '/' ls  '/' 'end' ']'").
 Notation "'mmatch' x 'return' p 'with' ls 'end'" :=
   (idmatcher_match_invert _ _ x p meq_refl DoesNotMatch ls)
   (at level 200, ls custom Mtac2_with_branch at level 91,
-  format "'mmatch'  x  'return'  p  'with'  '/' ls '/'  'end'").
+  format "'[hv' 'mmatch'  x  'return'  p  'with'  '/' ls  '/' 'end' ']'").
 Notation "'mmatch' x 'as' y 'return' p 'with' ls 'end'" :=
   (matcher_match_invert _ x _ (fun y => p%type) meq_refl meq_refl DoesNotMatch ls)
   (at level 200, ls custom Mtac2_with_branch at level 91, y binder,
-  format "'mmatch'  x  'as'  y  'return'  p  'with'  '/' ls '/'  'end'").
+  format "'[hv' 'mmatch'  x  'as'  y  'return'  p  'with'  '/' ls  '/' 'end' ']'").
 Notation "'mmatch' x 'in' T 'as' y 'return' p 'with' ls 'end'" :=
   (matcher_match_invert T%type x _ (fun y => p%type) meq_refl meq_refl DoesNotMatch ls)
   (at level 200, ls custom Mtac2_with_branch at level 91, y binder,
-  format "'mmatch'  x  'in'  T  'as'  y  'return'  p  'with'  '/' ls '/'  'end'").
+  format "'[hv' 'mmatch'  x  'in'  T  'as'  y  'return'  p  'with'  '/' ls  '/' 'end' ']'").
