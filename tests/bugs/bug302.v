@@ -5,7 +5,7 @@ Import M.
 Inductive tFalse : Set.
 Definition omg_false (f:tFalse) : Exception. constructor. Qed.
 
-Polymorphic Program Definition test : M unit :=
+Polymorphic Definition test : M unit :=
   a <- evar Type;
   \nu b : a,
   mtry' (
