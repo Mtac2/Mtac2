@@ -381,12 +381,14 @@ module ReductionStrategy = struct
     List.fold_right (fun f reds->
       if isConstruct sigma f then
         let ci = get_constructor_pos sigma f in
-        if ci < Array.length redflags then
+        if ci = 1 (* special handling: RedDelta := fDELTA + full transparency *) then
+          red_add_transparent (red_add reds fDELTA) TransparentState.full
+        else if ci < Array.length redflags then
           red_add reds redflags.(ci)
         else if ci = posDeltaC then
-          red_add_transparent reds TransparentState.cst_full
+          red_add_transparent (red_add reds fDELTA) TransparentState.cst_full
         else if ci = posDeltaX then
-          red_add_transparent reds TransparentState.var_full
+          red_add_transparent (red_add reds fDELTA) TransparentState.var_full
         else
           failwith "Unknown flag"
       else if isApp sigma f then
@@ -397,7 +399,7 @@ module ReductionStrategy = struct
               red_add_transparent (red_add reds fDELTA) TransparentState.empty,
               red_add
             else (* must be posDeltaBut *)
-              red_add_transparent reds
+              red_add_transparent (red_add reds fDELTA)
                 (Conv_oracle.get_transp_state (Environ.oracle env)),
               red_sub in
           let (sigma, ids) = RedList.from_coq_conv sigma env (fun sigma x -> sigma, get_elem sigma x) args.(0) in
@@ -1568,8 +1570,9 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
             (primitive[@tailcall]) ctxt vms mh reduced_term
         | None ->
             let redflags = (CClosure.RedFlags.fCONST hc) in
-            let infos = CClosure.infos_with_reds infos (CClosure.RedFlags.mkflags [redflags]) in
-            let o = CClosure.unfold_reference infos tab k in
+            let env = info_env infos in
+            let flags = RedFlags.red_transparent (CClosure.RedFlags.mkflags [redflags]) in
+            let o = CClosure.unfold_reference env flags tab k in
             match o with
             | Def v ->
                 let backtrace = Backtrace.push (fun () -> Constant hc) ctxt.backtrace in
