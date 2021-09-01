@@ -103,7 +103,7 @@ END
 GRAMMAR EXTEND Gram
 GLOBAL: mproof_instr;
   mproof_instr :
-    [[ c=Pcoq.Constr.operconstr ; "." -> { MetaCoqInstr.MetaCoq_constr c } ]];
+    [[ c=Pcoq.Constr.term ; "." -> { MetaCoqInstr.MetaCoq_constr c } ]];
 END
 
 {
