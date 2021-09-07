@@ -1570,7 +1570,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
             (primitive[@tailcall]) ctxt vms mh reduced_term
         | None ->
             let redflags = (CClosure.RedFlags.fCONST hc) in
-            let env = info_env infos in
+            let tab = CClosure.create_tab () in
             let flags = RedFlags.red_transparent (CClosure.RedFlags.mkflags [redflags]) in
             let o = CClosure.unfold_reference env flags tab k in
             match o with
@@ -1605,11 +1605,13 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
       let infos = CClosure.infos_with_reds infos (CClosure.all) in
       (* let term_to_reduce = _zip_term (CClosure.term_of_fconstr reduced_term) careless in
        * Feedback.msg_debug (Printer.pr_constr_env env sigma term_to_reduce); *)
+      let tab = CClosure.create_tab () in
       let t', stack = reduce_noshare infos tab (CClosure.mk_red t) careless in
 
       let stack = List.append stack careful in
       (* carefully reduce further without touching lets *)
       let infos = CClosure.infos_with_reds infos (CClosure.allnolet) in
+      let tab = CClosure.create_tab () in
       let t', stack = reduce_noshare infos tab t' stack in
       (* signal that we have advanced reduced everything down to lets *)
       (eval[@tailcall]) {ctxt with stack} vms ?reduced_to_let:(Some true) t'
