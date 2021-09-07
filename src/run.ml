@@ -668,13 +668,13 @@ let contract_return_clause sigma (mib, mip) p =
   let (arity, p) = EConstr.decompose_lam_n_decls sigma (mip.mind_nrealdecls + 1) p in
   match arity with
   | LocalAssum (_, ty) :: _ ->
-    let (ind, args) = decompose_appvect sigma ty in
-    let (_, u) = destInd sigma ind in
-    let pms = Array.sub args 0 mib.mind_nparams in
-    let dummy = List.make mip.mind_nrealdecls mkProp in
-    let pms = Array.map (fun c -> Vars.substl dummy c) pms in
-    let nas = Array.of_list (List.rev_map get_annot arity) in
-    (u, pms, (nas, p))
+      let (ind, args) = decompose_appvect sigma ty in
+      let (_, u) = destInd sigma ind in
+      let pms = Array.sub args 0 mib.mind_nparams in
+      let dummy = List.make mip.mind_nrealdecls mkProp in
+      let pms = Array.map (fun c -> Vars.substl dummy c) pms in
+      let nas = Array.of_list (List.rev_map get_annot arity) in
+      (u, pms, (nas, p))
   | _ -> assert false
 
 let make_Case (env, sigma) case =
@@ -1342,13 +1342,13 @@ let _zip_term m stk =
     | Zapp args :: s ->
         zip_term zfun (mkApp(m, Array.map zfun args)) s
     | ZcaseT(ci,u,pms,p,br,e)::s ->
-    (* FIXME
-        let t = mkCase(ci, zfun (mk_clos e p), NoInvert, m,
-                       Array.map (fun b -> zfun (mk_clos e b)) br)
-        in
-        zip_term zfun t s
-    *)
-      assert false
+        (* FIXME
+           let t = mkCase(ci, zfun (mk_clos e p), NoInvert, m,
+           Array.map (fun b -> zfun (mk_clos e b)) br)
+           in
+           zip_term zfun t s
+        *)
+        assert false
     | Zproj p::s ->
         let t = mkProj (Projection.make p true, m) in
         zip_term zfun t s
@@ -1570,7 +1570,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
             (primitive[@tailcall]) ctxt vms mh reduced_term
         | None ->
             let redflags = (CClosure.RedFlags.fCONST hc) in
-            let env = info_env infos in
+            let tab = CClosure.create_tab () in
             let flags = RedFlags.red_transparent (CClosure.RedFlags.mkflags [redflags]) in
             let o = CClosure.unfold_reference env flags tab k in
             match o with
@@ -1605,11 +1605,13 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
       let infos = CClosure.infos_with_reds infos (CClosure.all) in
       (* let term_to_reduce = _zip_term (CClosure.term_of_fconstr reduced_term) careless in
        * Feedback.msg_debug (Printer.pr_constr_env env sigma term_to_reduce); *)
+      let tab = CClosure.create_tab () in
       let t', stack = reduce_noshare infos tab (CClosure.mk_red t) careless in
 
       let stack = List.append stack careful in
       (* carefully reduce further without touching lets *)
       let infos = CClosure.infos_with_reds infos (CClosure.allnolet) in
+      let tab = CClosure.create_tab () in
       let t', stack = reduce_noshare infos tab t' stack in
       (* signal that we have advanced reduced everything down to lets *)
       (eval[@tailcall]) {ctxt with stack} vms ?reduced_to_let:(Some true) t'
