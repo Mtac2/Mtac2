@@ -668,13 +668,13 @@ let contract_return_clause sigma (mib, mip) p =
   let (arity, p) = EConstr.decompose_lam_n_decls sigma (mip.mind_nrealdecls + 1) p in
   match arity with
   | LocalAssum (_, ty) :: _ ->
-    let (ind, args) = decompose_appvect sigma ty in
-    let (_, u) = destInd sigma ind in
-    let pms = Array.sub args 0 mib.mind_nparams in
-    let dummy = List.make mip.mind_nrealdecls mkProp in
-    let pms = Array.map (fun c -> Vars.substl dummy c) pms in
-    let nas = Array.of_list (List.rev_map get_annot arity) in
-    (u, pms, (nas, p))
+      let (ind, args) = decompose_appvect sigma ty in
+      let (_, u) = destInd sigma ind in
+      let pms = Array.sub args 0 mib.mind_nparams in
+      let dummy = List.make mip.mind_nrealdecls mkProp in
+      let pms = Array.map (fun c -> Vars.substl dummy c) pms in
+      let nas = Array.of_list (List.rev_map get_annot arity) in
+      (u, pms, (nas, p))
   | _ -> assert false
 
 let make_Case (env, sigma) case =
@@ -1342,13 +1342,13 @@ let _zip_term m stk =
     | Zapp args :: s ->
         zip_term zfun (mkApp(m, Array.map zfun args)) s
     | ZcaseT(ci,u,pms,p,br,e)::s ->
-    (* FIXME
-        let t = mkCase(ci, zfun (mk_clos e p), NoInvert, m,
-                       Array.map (fun b -> zfun (mk_clos e b)) br)
-        in
-        zip_term zfun t s
-    *)
-      assert false
+        (* FIXME
+           let t = mkCase(ci, zfun (mk_clos e p), NoInvert, m,
+           Array.map (fun b -> zfun (mk_clos e b)) br)
+           in
+           zip_term zfun t s
+        *)
+        assert false
     | Zproj p::s ->
         let t = mkProj (Projection.make p true, m) in
         zip_term zfun t s
