@@ -1246,7 +1246,7 @@ let declare_mind env sigma params sigs mut_constrs =
              mind_entry_finite=Declarations.Finite;
              mind_entry_inds;
              mind_entry_params;
-             mind_entry_universes=Evd.univ_entry ~poly:false sigma;
+             mind_entry_universes=fst(Evd.univ_entry ~poly:false sigma);
              mind_entry_template;
              mind_entry_variance=None;
              mind_entry_private=None;
