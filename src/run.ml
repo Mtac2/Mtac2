@@ -1240,17 +1240,22 @@ let declare_mind env sigma params sigs mut_constrs =
      mind_entry_lc} :: acc
   ) [] (zip (inds, constrs)) in
   let mind_entry_inds = List.rev mind_entry_inds in
-  let mind_entry_template = false in
+  let univs, ubinders = Evd.univ_entry ~poly:false sigma in
+  let uctx = match univs with
+  | UState.Monomorphic_entry ctx ->
+    let () = DeclareUctx.declare_universe_context ~poly:false ctx in
+    Entries.Monomorphic_ind_entry
+  | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
+  in
   let _ = DeclareInd.declare_mutual_inductive_with_eliminations
             {mind_entry_record=None;
              mind_entry_finite=Declarations.Finite;
              mind_entry_inds;
              mind_entry_params;
-             mind_entry_universes=fst(Evd.univ_entry ~poly:false sigma);
-             mind_entry_template;
+             mind_entry_universes=uctx;
              mind_entry_variance=None;
              mind_entry_private=None;
-            } UnivNames.empty_binders [] in
+            } (univs, UnivNames.empty_binders) [] in
   (sigma, CoqUnit.mkTT)
 
 
