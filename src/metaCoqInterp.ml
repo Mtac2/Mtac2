@@ -37,7 +37,7 @@ let glob_mtac_type ist r =
     let body = Global.lookup_constant c in
     let ty = body.const_type in
     let sigma, ty, ret = match body.const_universes with
-      | Declarations.Monomorphic _ ->
+      | Declarations.Monomorphic ->
           sigma, ty, (fun ty -> MonoProgram ty) (* constraints already registered *)
       | Declarations.Polymorphic au ->
           (* need to instantiate and register the abstract universes a *)
