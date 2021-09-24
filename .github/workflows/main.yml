@@ -19,7 +19,7 @@ jobs:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     container:
-      image: coqorg/coq:dev
+      image: coqorg/coq:8.14
       env:
         OPAMROOT: "/home/coq/.opam"
         
@@ -38,7 +38,7 @@ jobs:
         opam list
         opam update default
         coqc --version
-        opam pin add https://github.com/unicoq/unicoq.git#master -k git -y
+        opam pin add https://github.com/unicoq/unicoq.git#master-8.14 -k git -y
         opam pin
         opam list
         
