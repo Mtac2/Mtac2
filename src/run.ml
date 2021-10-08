@@ -568,7 +568,7 @@ module MNames = struct
       | _ ->
           StuckName
     with Constr.DestKO -> StuckName
-       | CErrors.UserError (_, pp) -> InvalidName (Pp.string_of_ppcmds pp)
+       | CErrors.UserError pp -> InvalidName (Pp.string_of_ppcmds pp)
 end
 
 
@@ -1963,10 +1963,9 @@ and primitive ctxt vms mh reduced_term =
             let sigma, goals = CoqList.pto_coq env goal (fun e sigma->Goal.goal_of_evar ~base:false env sigma e) new_undef sigma in
             let sigma, pair = CoqPair.mkPair sigma env concl listg (of_constr c) goals in
             (ereturn[@tailcall]) sigma pair
-        | exception CErrors.UserError(s,ppm) ->
+        | exception CErrors.UserError ppm ->
             let expl = string_of_ppcmds ppm in
-            let s = Option.default "" s in
-            efail (Exceptions.mkLtacError sigma env (s ^ ": " ^ expl))
+            efail (Exceptions.mkLtacError sigma env expl)
         | exception e ->
             efail (Exceptions.mkLtacError sigma env (Printexc.to_string  e))
       end
