@@ -20,7 +20,7 @@ module Constrs = struct
   let mkConstr_of_global gr =
     let gr = Lazy.force gr in
     try of_constr @@
-      UnivGen.constr_of_monomorphic_global gr
+      UnivGen.constr_of_monomorphic_global (Global.env ()) gr
     with Not_found -> raise (Constr_not_found (glob_to_string gr))
        | Invalid_argument _ -> raise (Constr_poly (glob_to_string gr))
 

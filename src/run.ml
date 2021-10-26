@@ -1006,7 +1006,7 @@ let run_declare_def env sigma kind name opaque ty bod =
   let dref = GlobRef.ConstRef kn in
   let () = Declare.Hook.call ?hook:(vernac_definition_hook false kind)
              { Declare.Hook.S.uctx; obls=[]; scope=Locality.(Global ImportDefaultBehavior); dref }  in
-  let c = UnivGen.constr_of_monomorphic_global dref in
+  let c = UnivGen.constr_of_monomorphic_global (Global.env ()) dref in
   let env = Global.env () in
   (* Feedback.msg_notice *)
   (*   (Termops.print_constr_env env c); *)
