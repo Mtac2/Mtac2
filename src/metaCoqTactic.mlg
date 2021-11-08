@@ -14,7 +14,7 @@ DECLARE PLUGIN "MetaCoqPlugin"
 let print_mtac_type _ _ _ _ = Pp.mt ()
 
 (* (reference, global_reference located or_var, global_reference) *)
-let interp_mtac_type ist gl r = (gl.Evd.sigma, r)
+let interp_mtac_type ist _ _ r = r
 
 let subst_mtac_type subst r =
   let ty, r = r in
