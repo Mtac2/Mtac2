@@ -1,7 +1,4 @@
-(* Need to load Unicoq to get the module dependency right *)
-Declare ML Module "unicoq".
-(** Load library "MetaCoqPlugin.cma". *)
-Declare ML Module "MetaCoqPlugin".
+Declare ML Module "coq-mtac2.plugin".
 
 (* Declare ML Module must work without the Requires to be compatible
    with async proofs. Running it before them serves as a test
