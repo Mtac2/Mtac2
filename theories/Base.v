@@ -1,4 +1,5 @@
-Declare ML Module "coq-mtac2.plugin".
+Declare ML Module "coq-unicoq.plugin".
+Declare ML Module "MetaCoqPlugin:coq-mtac2.plugin".
 
 (* Declare ML Module must work without the Requires to be compatible
    with async proofs. Running it before them serves as a test
