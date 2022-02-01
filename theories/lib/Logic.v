@@ -55,9 +55,9 @@ Notation "x =m= y" := (x =m= y :>_) : type_scope.
 Arguments meq {A} x _.
 Arguments meq_refl {A x} , [A] x.
 
-Arguments meq_ind [A] x P _ y _.
-Arguments meq_rec [A] x P _ y _.
-Arguments meq_rect [A] x P _ y _.
+Arguments meq_ind [A] x P _ y _ : rename.
+Arguments meq_rec [A] x P _ y _ : rename.
+Arguments meq_rect [A] x P _ y _ : rename.
 
 
 (* Section Logic_lemmas. *)
