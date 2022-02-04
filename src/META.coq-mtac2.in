@@ -1,0 +1,10 @@
+package "plugin" (
+  directory = "."
+  description = "Coq Mtac2"
+  requires = "coq-core.plugins.ltac coq-unicoq.plugin"
+  archive(byte) = "MetaCoqPlugin.cma"
+  archive(native) = "MetaCoqPlugin.cmxa"
+  plugin(byte) = "MetaCoqPlugin.cma"
+  plugin(native) = "MetaCoqPlugin.cmxs"
+)
+directory = "."

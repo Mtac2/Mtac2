@@ -3,7 +3,7 @@
 #NC='\033[0m' # No Color
 #COQC=coqc
 COQ_SRC_SUBDIRS+=user-contrib/Unicoq
-
+CAMLPKGS+= -package coq-unicoq.plugin
 TESTS=$(wildcard tests/*.v tests/bugs/*.v)
 TESTRESULTS=$(TESTS:.v=.vo)
 

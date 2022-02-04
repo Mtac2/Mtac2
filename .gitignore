@@ -1,6 +1,7 @@
 # Generated Makefile
 /Makefile
 /Makefile.conf
+src/META.coq-mtac2
 
 # Make dependencies
 *.d

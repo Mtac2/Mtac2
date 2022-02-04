@@ -14,7 +14,7 @@
 
 }
 
-DECLARE PLUGIN "MetaCoq"
+DECLARE PLUGIN "coq-mtac2.plugin"
 
 {
 

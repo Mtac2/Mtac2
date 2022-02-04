@@ -7,7 +7,7 @@ open Extraargs
 
 }
 
-DECLARE PLUGIN "MetaCoqPlugin"
+DECLARE PLUGIN "coq-mtac2.plugin"
 
 {
 
