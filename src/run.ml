@@ -1156,8 +1156,8 @@ let declare_mind env sigma params sigs mut_constrs =
         match CoqSort.from_coq sigma env t with
         | Prop_sort -> sigma, mkProp
         | Type_sort ->
-            let sigma, univ = Evd.new_univ_variable (Evd.UnivFlexible false) sigma in
-            sigma, mkType univ
+            let sigma, univ = Evd.new_sort_variable (Evd.UnivFlexible false) sigma in
+            sigma, mkSort univ
       ) in
       let name = CoqString.from_coq (env, sigma) name in
       let name = Id.of_string name in
