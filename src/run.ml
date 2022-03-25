@@ -957,7 +957,7 @@ exception CanonicalStructureMayNotBeOpaque
 let run_declare_def env sigma kind name opaque ty bod =
   let open Decls in
   let vernac_definition_hook poly = function
-    | Coercion -> Some (ComCoercion.add_coercion_hook ~poly)
+    | Coercion -> Some (ComCoercion.add_coercion_hook ~poly ~nonuniform:false)
     | CanonicalStructure ->
         if opaque then raise CanonicalStructureMayNotBeOpaque else
           Some (Declare.Hook.(make (fun { S.dref; _ } -> Canonical.declare_canonical_structure dref)))
@@ -1242,10 +1242,10 @@ let declare_mind env sigma params sigs mut_constrs =
   let mind_entry_inds = List.rev mind_entry_inds in
   let univs, ubinders = Evd.univ_entry ~poly:false sigma in
   let uctx = match univs with
-  | UState.Monomorphic_entry ctx ->
-    let () = DeclareUctx.declare_universe_context ~poly:false ctx in
-    Entries.Monomorphic_ind_entry
-  | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
+    | UState.Monomorphic_entry ctx ->
+        let () = DeclareUctx.declare_universe_context ~poly:false ctx in
+        Entries.Monomorphic_ind_entry
+    | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
   in
   let _ = DeclareInd.declare_mutual_inductive_with_eliminations
             {mind_entry_record=None;
