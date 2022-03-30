@@ -988,7 +988,7 @@ let run_declare_def env sigma kind name opaque ty bod =
   ; Method|]
   in
   let univs = EConstr.universes_of_constr sigma bod in
-  let univs = Univ.LSet.union univs (EConstr.universes_of_constr sigma ty) in
+  let univs = Univ.Level.Set.union univs (EConstr.universes_of_constr sigma ty) in
 
   let ty = Unsafe.to_constr ty in
   let bod = Unsafe.to_constr bod in

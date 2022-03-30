@@ -3,7 +3,7 @@
    module MetaCoqRun : sig val run_tac_constr : closed_glob_constr -> unit
    Proofview.tactic *)
 type mrun_arg_type =
-  | PolyProgram of (Univ.AUContext.t * EConstr.types)
+  | PolyProgram of (Univ.AbstractContext.t * EConstr.types)
   | MonoProgram of (EConstr.types)
   | GTactic
 

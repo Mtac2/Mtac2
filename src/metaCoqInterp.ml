@@ -2,7 +2,7 @@ open Constrs
 open Ltac_pretype
 
 type mrun_arg_type =
-  | PolyProgram of (Univ.AUContext.t * EConstr.types)
+  | PolyProgram of (Univ.AbstractContext.t * EConstr.types)
   | MonoProgram of (EConstr.types)
   | GTactic
 
