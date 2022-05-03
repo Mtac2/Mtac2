@@ -42,10 +42,6 @@ jobs:
         opam pin
         opam list
         
-    - name: fix-permissions
-      run: |
-        sudo chown -R coq:coq "$GITHUB_WORKSPACE"
-        
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - name: checkout
       uses: actions/checkout@v3
