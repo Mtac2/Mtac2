@@ -5,7 +5,7 @@ Import ListNotations.
 
 Class MBind (M : Type -> Type) :=
   mbind : forall {A B}, (A -> M B) -> M A -> M B.
-Instance list_bind : MBind list := fun A B f =>
+#[global] Instance list_bind : MBind list := fun A B f =>
   fix go (l : list A) :=
     match l with nil => nil | cons x l => f x ++ go l end%list.
 
@@ -44,7 +44,7 @@ Notation "[ x ; y ; .. ; z ]" :=  (cons x (cons y .. (cons z nil) ..)) : list_sc
 
 Class MBind (M : Type -> Type) :=
   mbind : forall {A B}, (A -> M B) -> M A -> M B.
-Instance list_bind : MBind list := fun A B f =>
+#[global] Instance list_bind : MBind list := fun A B f =>
   fix go (l : list A) :=
     match l with nil => nil | cons x l => f x ++ go l end%list.
 

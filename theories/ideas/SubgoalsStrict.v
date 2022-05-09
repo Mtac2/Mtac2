@@ -35,7 +35,7 @@ Arguments nseq {A B _} _%tactic _%tactic _ {_}.
 
 Import Mtac2.lib.List.
 
-Instance nseq_list {A B} n (nt: ntactic A n) (l: mlist (gtactic B)) pf: NSeq nt l pf := fun g =>
+#[global] Instance nseq_list {A B} n (nt: ntactic A n) (l: mlist (gtactic B)) pf: NSeq nt l pf := fun g =>
   gs <- nt g;
   ls <- T.gmap l gs.(goals);
   let res := dreduce (@mconcat, @mapp) (mconcat ls) in

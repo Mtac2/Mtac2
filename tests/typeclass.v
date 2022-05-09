@@ -2,7 +2,7 @@ From Mtac2 Require Import Mtac2.
 
 Class Test := { val : nat }.
 
-Instance Zero : Test := {| val := 0 |}.
+#[global] Instance Zero : Test := {| val := 0 |}.
 
 Import M.notations.
 

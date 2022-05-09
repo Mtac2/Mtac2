@@ -82,7 +82,7 @@ Definition tc_unify_mtac T (A B : T) :=
     (* M.print_term (A,B);; *)
     M.failwith "cannot (tc_)unify."
   end.
-Hint Extern 0 (@TC_UNIFY ?T ?A ?B) => mrun (tc_unify_mtac T A B) : typeclass_instances.
+#[global] Hint Extern 0 (@TC_UNIFY ?T ?A ?B) => mrun (tc_unify_mtac T A B) : typeclass_instances.
 
 Structure CS_UNIFY (T : Type) :=
   CS_Unify {
@@ -93,7 +93,7 @@ Structure CS_UNIFY (T : Type) :=
 
 Class MT_OF {A} (T : A -> Prop) := mt_of : A -> msigT MTele_Ty.
 Arguments mt_of {_} _ {_}.
-Hint Extern 0 (@MT_OF ?A ?t) => mrun (@MTele_of A t) : typeclass_instances.
+#[global] Hint Extern 0 (@MT_OF ?A ?t) => mrun (@MTele_of A t) : typeclass_instances.
 
 
 Notation "'mtmmatch_prog' x 'as' y 'return' T p" :=

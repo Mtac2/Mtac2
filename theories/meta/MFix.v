@@ -61,7 +61,7 @@ Class MT_OF (T : Prop) :=
 Definition tc_helper (t : Prop)  :=
                                 '(existT _ m (existT _ mT eq)) <- MTele_of' t;
                                 M.ret (Build_MT_OF _ m mT eq).
-Hint Extern 0 (MT_OF ?t) => mrun (tc_helper t
+#[global] Hint Extern 0 (MT_OF ?t) => mrun (tc_helper t
                               ) : typeclass_instances.
 
 Definition mfix_tc' {A : Prop} {mt : MT_OF A} :

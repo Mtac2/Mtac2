@@ -302,9 +302,9 @@ Class Seq (A B C : Type) :=
   seq : gtactic A -> C -> gtactic B.
 Arguments seq {A B C _} _%tactic _%tactic.
 
-Instance seq_one {A B} : Seq A B (gtactic B) := fun t1 t2 => bind t1 (fun _ => t2).
+#[global] Instance seq_one {A B} : Seq A B (gtactic B) := fun t1 t2 => bind t1 (fun _ => t2).
 
-Instance seq_list {A B} : Seq A B (mlist (gtactic B)) := fun t f g =>
+#[global] Instance seq_list {A B} : Seq A B (mlist (gtactic B)) := fun t f g =>
   gs <- t g >>= filter_goals;
   ls <- gmap f gs;
   let res := dreduce (@mconcat, mapp) (mconcat ls) in
@@ -384,7 +384,7 @@ Definition print_goal : tactic := with_goal M.print_goal.
 (** Type for goal manipulation primitives *)
 Definition selector A := mlist (A *m goal gs_any) -> M (mlist (A *m goal gs_any)).
 
-Instance tactic_selector A : Seq A A (selector A) := fun t s g =>
+#[global] Instance tactic_selector A : Seq A A (selector A) := fun t s g =>
   t g >>= filter_goals >>= s.
 
 Module S.

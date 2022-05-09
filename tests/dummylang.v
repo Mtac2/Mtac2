@@ -66,7 +66,7 @@ Proof.
   eapply stepsn. eapply IfF. econstructor.
 Qed.
 
-Hint Constructors is_val st exp step estep steps unop binop.
+#[global] Hint Constructors is_val st exp step estep steps unop binop.
 
 (** We prove that every program terminates in a ;;. We do it first in plain
     Ltac. *)
