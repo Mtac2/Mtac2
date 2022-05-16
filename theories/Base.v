@@ -28,7 +28,7 @@ Module M.
   Arguments eval {A} _ {_}.
 End M.
 
-Hint Extern 20 (M.runner ?f) =>
+#[global] Hint Extern 20 (M.runner ?f) =>
 (mrun (M.bind f (fun eres=> M.ret (M.Build_runner f eres))))  : typeclass_instances.
 
 

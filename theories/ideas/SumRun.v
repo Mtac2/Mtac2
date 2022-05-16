@@ -17,7 +17,7 @@ End SumRunner.
 
 Import SumRunner.
 
-Hint Extern 0 (sum_runner ?f) =>
+#[global] Hint Extern 0 (sum_runner ?f) =>
 (mrun (
      mtry
        (eres <- f;
