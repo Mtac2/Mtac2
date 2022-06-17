@@ -1554,7 +1554,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
         let ob = reduce sigma env (to_econstr red) (to_econstr term) in
         match ob with
         | ReductionValue (sigma, b) ->
-            let e = (Esubst.subs_cons (of_econstr b) e) in
+            let e = (CClosure.usubs_cons (of_econstr b) e) in
             let ctxt = {ctxt with sigma} in
             (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
         | ReductionStuck ->
@@ -1564,7 +1564,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
             let l = to_econstr (Array.get args' 0) in
             efail (E.mkReductionFailure sigma env l)
       else
-        let e = (Esubst.subs_cons v e) in
+        let e = (CClosure.usubs_cons v e) in
         (eval[@tailcall]) ctxt vms (mk_red (FCLOS (bd, e)))
 
   | Monadic, FFlex (ConstKey (hc, _) as k) ->
@@ -1735,7 +1735,7 @@ and primitive ctxt vms mh reduced_term =
                     let renv = of_econstr renv' in
                     let nus = ctxt.nus + 1 in
                     let stack = Zapp [|of_econstr (mkVar name)|] :: stack in
-                    (run'[@tailcall]) {ctxt with backtrace; env; renv; sigma; nus; stack} (Code f :: nu :: vms)
+                    (run'[@tailcall]) {backtrace; env; renv; sigma; nus; stack} (Code f :: nu :: vms)
               end
         | StuckName -> efail (Exceptions.mkWrongTerm sigma env s)
         | InvalidName _ -> efail (Exceptions.mkInvalidName sigma env s)
@@ -1770,7 +1770,7 @@ and primitive ctxt vms mh reduced_term =
                   let renv = of_econstr renv in
                   let nus = ctxt.nus + 1 in
                   let stack = Zapp [|of_econstr (mkVar name); of_econstr body|] :: stack in
-                  (run'[@tailcall]) {ctxt with backtrace; env; renv; sigma; nus; stack} (Code f :: nu :: vms)
+                  (run'[@tailcall]) {backtrace; env; renv; sigma; nus; stack} (Code f :: nu :: vms)
               end
         | StuckName -> efail (Exceptions.mkWrongTerm sigma env s)
         | InvalidName _ -> efail (Exceptions.mkInvalidName sigma env s)
