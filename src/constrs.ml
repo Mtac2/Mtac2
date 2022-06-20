@@ -38,12 +38,12 @@ module Constrs = struct
   let mkUConstr name sigma env = mkUConstr_of_global (mkUGlobal name) sigma env
 
   let isGlobal sigma r c =
-    Globnames.is_global (Lazy.force r) (to_constr sigma c)
+    Constr.isRefX (Lazy.force r) (to_constr sigma c)
 
   let isConstr sigma = fun r c -> eq_constr_nounivs sigma (Lazy.force r) c
 
   let isUConstr r sigma env =
-    is_global sigma r
+    isRefX sigma r
 
 end
 

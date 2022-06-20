@@ -1027,7 +1027,7 @@ let run_declare_implicits env sigma gr impls =
   ; true    (* Maximal *)
   |]
   in
-  let gr = Globnames.global_of_constr gr in
+  let gr, _ = try Constr.destRef gr with DestKO -> raise Not_found in
   let impls = CoqList.from_coq sigma env impls in
   let idx = ref (List.length impls) in
   let impls = List.map

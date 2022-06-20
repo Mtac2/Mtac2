@@ -26,7 +26,7 @@ let constant_of_string e =
   let p = Libnames.path_of_string full_name in
   (* let q = Libnames.qualid_of_path p in *)
   match Nametab.global_of_path p with
-  | Globnames.ConstRef (c) -> c
+  | ConstRef (c) -> c
   | _ -> raise Not_found
 
 let isConstant sigma const c =
