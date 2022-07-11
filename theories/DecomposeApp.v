@@ -87,7 +87,7 @@ Local Definition mtele_convert' {A : Type} {B : A -> Prop} {G : Type} {mt:MTele}
 induction mt as [|X F IHmt].
 - cbn. refine (fun x => x).
 - cbn. intros ? ? ?.
-  refine (IHmt _ _ _ _); auto.
+  refine (IHmt _ _ _ _); [|auto].
   apply X0.
 Defined.
 
