@@ -128,7 +128,7 @@ let proof_mode_identifier = "MProof"
     mode.
 *)
 
-let _ = Pvernac.register_proof_mode proof_mode_identifier mproof_mode
+let pmode = Pvernac.register_proof_mode proof_mode_identifier mproof_mode
 
 (** The following command extends both the parser and the interpreter
    of the Vernacular language so that a new keyword "MProof" is
@@ -167,7 +167,10 @@ let _ = Pvernac.register_proof_mode proof_mode_identifier mproof_mode
 }
 
 VERNAC COMMAND EXTEND MProofCommand
-| [ "MProof" ]
+| ![proof] [ "MProof" ]
   => { Vernacextend.(VtProofMode proof_mode_identifier) }
-  -> { MetaCoqInterp.interp_mproof_command () }
+  -> { fun ~pstate ->
+         let pstate = Declare.Proof.set_proof_mode pmode pstate in
+         MetaCoqInterp.interp_mproof_command ();
+         pstate }
 END
