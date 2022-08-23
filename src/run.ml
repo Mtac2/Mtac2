@@ -300,9 +300,9 @@ module ReductionStrategy = struct
   open Context
 
   let reduce_constant = lazy (constant_of_string "Reduction.reduce")
-  let isReduce sigma env c = isConstant sigma (Lazy.force reduce_constant) c
+  let isReduce sigma env c = isConstant sigma env (Lazy.force reduce_constant) c
   let isTReduce sigma env c = isReduce sigma env (EConstr.of_constr c)
-  let isFReduce sigma env c = isFConstant (Lazy.force reduce_constant) c
+  let isFReduce sigma env c = isFConstant env (Lazy.force reduce_constant) c
 
   let has_definition ts env sigma t =
     if isVar sigma t then
@@ -698,7 +698,7 @@ let make_Case (env, sigma) case =
           let ctx, _ = mip.mind_nf_lc.(i) in
           let ctx, _ = List.chop mip.mind_consnrealdecls.(i) ctx in
           let nas = Array.of_list (List.rev_map get_annot ctx) in
-          let args = Context.Rel.to_extended_vect mkRel 0 ctx in
+          let args = Context.Rel.instance mkRel 0 ctx in
           nas, (mkApp (Vars.lift (Array.length nas) br, args))
         in
         let repr_branches = List.mapi expand_branch repr_branches in
@@ -886,7 +886,7 @@ let make_evar sigma env ty =
 let hash env sigma c size =
   let size = CoqN.from_coq (env, sigma) size in
   let h = Constr.hash (Unsafe.to_constr c) in
-  CoqN.to_coq (Pervasives.abs (h mod size))
+  CoqN.to_coq (Stdlib.abs (h mod size))
 
 (* reflects the hypotheses in [env] in a list of [ahyp] *)
 let build_hypotheses sigma env =
@@ -1538,11 +1538,11 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
       let (is_reduce, num_args, args_clos) = (
         match fterm_of v with
         | FApp (h, args) -> (isFReduce sigma env h, Array.length args, fun () -> args)
-        | FCLOS (t, env) when Constr.isApp t ->
+        | FCLOS (t, subst) when Constr.isApp t ->
             let (h, args) = Constr.destApp t in
             (isTReduce sigma env h,
              Array.length args,
-             fun () -> Array.map (fun x -> mk_red (FCLOS (x, env))) args
+             fun () -> Array.map (fun x -> mk_red (FCLOS (x, subst))) args
             )
         | _ -> (false, -1, fun () -> [||])
       ) in
@@ -2068,7 +2068,7 @@ and primitive ctxt vms mh reduced_term =
             *)
             let c_proj, c_rval = destProj sigma c_head in
             let c_constant = (Projection.constant c_proj) in
-            if isConstant sigma c_constant t_head then
+            if isConstant sigma env c_constant t_head then
               let n_params = Structures.Structure.projection_nparams c_constant in
               let _t_params, t_args = List.chop n_params t_args in
               (t_head, c_rval :: c_args), (t_head, t_args)
@@ -2087,7 +2087,7 @@ and primitive ctxt vms mh reduced_term =
                we should unify them. Thus, we always expand in this case.
             *)
             let t_proj, t_rval = destProj sigma t_head in
-            (* Code for clever verison:
+            (* Code for clever version:
              * let t_constant = (Projection.constant t_proj) in
              * let n_params = Recordops.find_projection_nparams (GlobRef.ConstRef t_constant) in
              * if isConstant sigma t_constant c_head && List.length c_args > n_params then
@@ -2101,7 +2101,7 @@ and primitive ctxt vms mh reduced_term =
         | (true, true) ->
             let (c_proj, c_rval) = destProj sigma c_head in
             let (t_proj, t_rval) = destProj sigma t_head in
-            if Projection.equal c_proj t_proj then
+            if QProjection.equal env c_proj t_proj then
               (* we use [c_head] on both sides to make sure they are considered equal *)
               (c_head, c_rval :: c_args), (c_head, t_rval :: t_args)
             else
