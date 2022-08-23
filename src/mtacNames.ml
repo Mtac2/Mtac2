@@ -26,18 +26,18 @@ let constant_of_string e =
   let p = Libnames.path_of_string full_name in
   (* let q = Libnames.qualid_of_path p in *)
   match Nametab.global_of_path p with
-  | ConstRef (c) -> c
+  | Names.GlobRef.ConstRef (c) -> c
   | _ -> raise Not_found
 
-let isConstant sigma const c =
+let isConstant sigma env const c =
   match EConstr.kind sigma c with
-  | Const (n, _) -> Names.Constant.equal n const
+  | Const (n, _) -> Environ.QConstant.equal env n const
   | _ -> false
 
-let isFConstant const fc =
+let isFConstant env const fc =
   match CClosure.fterm_of fc with
   | CClosure.FFlex (Names.ConstKey (n, _)) ->
-      Names.Constant.equal n const
+      Environ.QConstant.equal env n const
   | _ -> false
 
 let mkCase ind v ret branch sigma env =
