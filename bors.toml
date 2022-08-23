@@ -1,5 +1,5 @@
 status = [
-  "build"
+  "bors build finished"
 ]
 # Uncomment this to use a two hour timeout.
 # The default is one hour.
