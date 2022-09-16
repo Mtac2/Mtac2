@@ -2313,7 +2313,7 @@ and abs vms case ctxt a p x y n t : data_stack =
       let (sigma, e) = E.mkAbsVariableIsADefinition sigma env x in
       (run'[@tailcall]) {ctxt with sigma} (Fail (of_econstr e) :: vms)
     else if check_abs_deps env sigma x y p then
-      let y' = Vars.subst_vars [name] y in
+      let y' = Vars.subst_vars sigma [name] y in
       let run t = (run'[@tailcall]) ctxt (Ret (of_econstr t) :: vms) in
       match case with
       | AbsProd -> (run[@tailcall]) (mkProd (nameR name, a, y'))
