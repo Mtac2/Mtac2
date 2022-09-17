@@ -182,7 +182,7 @@ module Goal = struct
               compute sigma accu evenv
           end
       | [] -> (sigma, accu) in
-    let ids = List.map (fun v -> EConstr.mkVar (Declaration.get_id v)) evenv in
+    let ids = Evd.evar_identity_subst evinfo in
     let evar = (ev, ids) in
     let sigma, tg = mkTheGoal ~base:base (Evd.existential_type sigma evar) (EConstr.mkEvar evar) sigma env in
     compute sigma tg evenv (* we're missing the removal of the variables not ocurring in evenv *)
@@ -2362,7 +2362,7 @@ and cvar vms ctxt ty ohyps =
               let (e, _) = destEvar sigma evar in
               (* the evar created by make_evar has id in the substitution
                  but we need to remap it to the actual variables in hyps *)
-              `OK (sigma, mkEvar (e, vars))
+              `OK (sigma, mkLEvar sigma (e, vars))
             with
             | MissingDep ->
                 `MDep
