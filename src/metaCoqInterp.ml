@@ -156,7 +156,7 @@ module MetaCoqRun = struct
   *)
   let run_tac t =
     let open Proofview.Goal in
-    nf_enter begin fun gl ->
+    enter begin fun gl ->
       let loc = Constrexpr_ops.constr_loc t in
       let env = env gl in
       let concl = concl gl in
@@ -182,7 +182,7 @@ module MetaCoqRun = struct
 
   let run_tac_constr t =
     let open Proofview.Goal in
-    nf_enter begin fun gl ->
+    enter begin fun gl ->
       let env = env gl in
       let concl = concl gl in
       let sigma = sigma gl in
