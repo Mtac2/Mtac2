@@ -11,7 +11,7 @@ module Constrs : sig
 
   val mkConstr : string -> constr Lazy.t
 
-  val mkConstr_of_global : Names.GlobRef.t Lazy.t -> constr
+  val mkConstr_of_global : Names.GlobRef.t -> constr
 
   val mkUConstr : string -> evar_map -> Environ.env -> (Evd.evar_map * constr)
 
@@ -101,15 +101,15 @@ module CoqOption : sig
 end
 
 module CoqUnit : sig
-  val mkType : constr
-  val mkTT : constr
+  val mkType : constr Lazy.t
+  val mkTT : constr Lazy.t
 end
 
 module CoqBool : sig
 
-  val mkType : constr
-  val mkTrue : constr
-  val mkFalse : constr
+  val mkType : constr Lazy.t
+  val mkTrue : constr Lazy.t
+  val mkFalse : constr Lazy.t
 
   exception NotABool
 
