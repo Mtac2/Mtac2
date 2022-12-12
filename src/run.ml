@@ -1709,9 +1709,9 @@ and primitive ctxt vms mh reduced_term =
       (run_fix[@tailcall]) ctxt vms hf [|a1; a2; a3; a4; a5|] b f [|x1; x2; x3; x4; x5|]
   | MConstr (Mis_var, (_, e)) ->
       if isVar sigma (to_econstr e) then
-        ereturn sigma CoqBool.mkTrue
+        ereturn sigma (Lazy.force CoqBool.mkTrue)
       else
-        ereturn sigma CoqBool.mkFalse
+        ereturn sigma (Lazy.force CoqBool.mkFalse)
 
   | MConstr (Mnu, (a, _, s, ot, f)) ->
       let a = to_econstr a in
@@ -1838,20 +1838,20 @@ and primitive ctxt vms mh reduced_term =
   | MConstr (Mis_evar, (_, e)) ->
       let e = whd_evar sigma (to_econstr e) in
       if isEvar sigma e || (isApp sigma e && isEvar sigma (fst (destApp sigma e))) then
-        ereturn sigma CoqBool.mkTrue
+        ereturn sigma (Lazy.force CoqBool.mkTrue)
       else
-        ereturn sigma CoqBool.mkFalse
+        ereturn sigma (Lazy.force CoqBool.mkFalse)
 
   | MConstr (Mhash, (_, x1, x2)) ->
       ereturn sigma (hash env sigma (to_econstr x1) (to_econstr x2))
 
   | MConstr (Msolve_typeclasses, _) ->
       let evd' = Typeclasses.resolve_typeclasses ~fail:false env sigma in
-      ereturn evd' CoqUnit.mkTT
+      ereturn evd' (Lazy.force CoqUnit.mkTT)
 
   | MConstr (Mprint, (s)) ->
       print sigma env (to_econstr s);
-      ereturn sigma CoqUnit.mkTT
+      ereturn sigma (Lazy.force CoqUnit.mkTT)
 
   | MConstr (Mpretty_print, (_, t)) ->
       let t = nf_evar sigma (to_econstr t) in
@@ -1973,7 +1973,7 @@ and primitive ctxt vms mh reduced_term =
   | MConstr (Mlist_ltac, _) ->
       let aux k _ = Feedback.msg_info (Pp.str (Names.KerName.to_string k)) in
       KNmap.iter aux (Tacenv.ltac_entries ());
-      ereturn sigma CoqUnit.mkTT
+      ereturn sigma (Lazy.force CoqUnit.mkTT)
 
   | MConstr (Mread_line, _) ->
       ereturn sigma (CoqString.to_coq (read_line ()))
@@ -2013,7 +2013,7 @@ and primitive ctxt vms mh reduced_term =
       let reference, impls = to_econstr reference, to_econstr impls in
       let reference_t = EConstr.Unsafe.to_constr reference in
       (match run_declare_implicits env sigma reference_t impls with
-       | (sigma, ret) -> ereturn sigma ret
+       | (sigma, ret) -> ereturn sigma (Lazy.force ret)
        | exception Not_found ->
            efail (E.mkNotAReference sigma env (to_econstr t) reference)
       )
@@ -2027,13 +2027,13 @@ and primitive ctxt vms mh reduced_term =
       ereturn sigma (CoqBool.to_coq !debug_ex)
   | MConstr (Mset_debug_exceptions, b) ->
       debug_ex := CoqBool.from_coq sigma (to_econstr b);
-      ereturn sigma CoqUnit.mkTT
+      ereturn sigma (Lazy.force CoqUnit.mkTT)
 
   | MConstr (Mget_trace, _) ->
       ereturn sigma (CoqBool.to_coq !trace)
   | MConstr (Mset_trace, b) ->
       trace := CoqBool.from_coq sigma (to_econstr b);
-      ereturn sigma CoqUnit.mkTT
+      ereturn sigma (Lazy.force CoqUnit.mkTT)
 
   | MConstr (Mdecompose_app', (_, _, _, uni, t, c, cont_success, cont_failure)) ->
       (* : A B m uni a C cont  *)
@@ -2195,7 +2195,7 @@ and primitive ctxt vms mh reduced_term =
       let fname = Constant.canonical name in
       let last = None in
       let () = Hashtbl.add timers fname ((ref last, ref 0.0)) in
-      ereturn sigma CoqUnit.mkTT
+      ereturn sigma (Lazy.force CoqUnit.mkTT)
 
   | MConstr (Mstart_timer, (_, t_arg, reset)) ->
       let reset = CoqBool.from_coq sigma (to_econstr reset) in
@@ -2207,8 +2207,8 @@ and primitive ctxt vms mh reduced_term =
         | t ->
             let () = fst t := Some (System.get_time ()) in
             if reset then snd t := 0.0;
-            ereturn sigma CoqUnit.mkTT
-        | exception Not_found -> ereturn sigma CoqUnit.mkTT
+            ereturn sigma (Lazy.force CoqUnit.mkTT)
+        | exception Not_found -> ereturn sigma (Lazy.force CoqUnit.mkTT)
       end
 
   | MConstr (Mstop_timer, (_, t_arg)) ->
@@ -2226,8 +2226,8 @@ and primitive ctxt vms mh reduced_term =
                   snd t := total +. (System.time_difference last time)
               | None -> snd t := -.infinity
             end;
-            ereturn sigma CoqUnit.mkTT
-        | exception Not_found -> ereturn sigma CoqUnit.mkTT
+            ereturn sigma (Lazy.force CoqUnit.mkTT)
+        | exception Not_found -> ereturn sigma (Lazy.force CoqUnit.mkTT)
       end
 
   | MConstr (Mreset_timer, (_, t_arg)) ->
@@ -2237,7 +2237,7 @@ and primitive ctxt vms mh reduced_term =
       let t = Hashtbl.find timers fname in
       let () = fst t := None in
       let () = snd t := 0.0 in
-      ereturn sigma CoqUnit.mkTT
+      ereturn sigma (Lazy.force CoqUnit.mkTT)
 
   | MConstr (Mprint_timer, (_, t_arg)) ->
       let t_arg = to_econstr t_arg in
@@ -2246,14 +2246,14 @@ and primitive ctxt vms mh reduced_term =
       let t = Hashtbl.find timers fname in
       let total = !(snd t) in
       let () = Feedback.msg_info (Pp.str (Printf.sprintf "%f" total)) in
-      ereturn sigma CoqUnit.mkTT
+      ereturn sigma (Lazy.force CoqUnit.mkTT)
 
   | MConstr (Mkind_of_term, (_, t)) ->
       ereturn sigma (koft sigma (CClosure.term_of_fconstr t))
 
   | MConstr (Mdeclare_mind, (params, inds, constrs)) ->
       let sigma, types = declare_mind env sigma (to_econstr params) (to_econstr inds) (to_econstr constrs) in
-      ereturn sigma types
+      ereturn sigma (Lazy.force types)
   | MConstr (Mexisting_instance, (name, prio, global)) ->
       let global = CoqBool.from_coq sigma (to_econstr global) in
       let name = CoqString.from_coq (env, sigma) (to_econstr name) in
@@ -2264,7 +2264,7 @@ and primitive ctxt vms mh reduced_term =
       let hint_priority = Option.map (CoqN.from_coq (env, sigma)) prio in
       let global = if global then Hints.SuperGlobal else Hints.Local in
       Classes.existing_instance global qualid (Some {hint_priority; hint_pattern= None});
-      ereturn sigma (CoqUnit.mkTT)
+      ereturn sigma ((Lazy.force CoqUnit.mkTT))
   | MConstr (Minstantiate_evar, (ty, _, evar, solution, succ, fail)) ->
       let evar = to_econstr evar in
       begin

@@ -18,14 +18,13 @@ module Constrs = struct
   let mkGlobal name = lazy (Nametab.global_of_path (Libnames.path_of_string name))
 
   let mkConstr_of_global gr =
-    let gr = Lazy.force gr in
     try of_constr @@
       UnivGen.constr_of_monomorphic_global (Global.env ()) gr
     with Not_found -> raise (Constr_not_found (glob_to_string gr))
        | Invalid_argument _ -> raise (Constr_poly (glob_to_string gr))
 
   let mkConstr name =
-    lazy (mkConstr_of_global (mkGlobal name))
+    lazy (mkConstr_of_global (Lazy.force (mkGlobal name)))
 
   let mkUGlobal name =
     Nametab.global_of_path (Libnames.path_of_string name)
@@ -54,8 +53,8 @@ module ConstrBuilder = struct
 
   let from_string (s:string) : t = lazy (Nametab.global_of_path (Libnames.path_of_string s))
 
-  let build (s : t) = mkConstr_of_global s
-  let build_app s args = mkApp (mkConstr_of_global s, args)
+  let build (s : t) = lazy (mkConstr_of_global (Lazy.force s))
+  let build_app (s : t) args = mkApp (mkConstr_of_global (Lazy.force s), args)
 
   let equal sigma s = isGlobal sigma s
 
@@ -238,11 +237,11 @@ module CoqPositive = struct
 
   let rec to_coq n =
     if n = 1 then
-      mkConstr_of_global xH
+      mkConstr_of_global (Lazy.force xH)
     else if n mod 2 = 0 then
-      mkApp(mkConstr_of_global xO, [|to_coq (n / 2)|])
+      mkApp(mkConstr_of_global (Lazy.force xO), [|to_coq (n / 2)|])
     else
-      mkApp(mkConstr_of_global xI, [|to_coq ((n-1)/2)|])
+      mkApp(mkConstr_of_global (Lazy.force xI), [|to_coq ((n-1)/2)|])
 end
 
 module CoqN = struct
@@ -274,9 +273,9 @@ module CoqN = struct
 
   let to_coq n =
     if n = 0 then
-      mkConstr_of_global h0
+      mkConstr_of_global (Lazy.force h0)
     else
-      mkApp(mkConstr_of_global hP, [|CoqPositive.to_coq n|])
+      mkApp(mkConstr_of_global (Lazy.force hP), [|CoqPositive.to_coq n|])
 end
 
 module CoqZ = struct
@@ -288,11 +287,11 @@ module CoqZ = struct
 
   let to_coq n =
     if n = 0 then
-      mkConstr_of_global z0
+      mkConstr_of_global (Lazy.force z0)
     else if n > 0 then
-      mkApp(mkConstr_of_global zpos, [|CoqPositive.to_coq n|])
+      mkApp(mkConstr_of_global (Lazy.force zpos), [|CoqPositive.to_coq n|])
     else
-      mkApp(mkConstr_of_global zneg, [|CoqPositive.to_coq n|])
+      mkApp(mkConstr_of_global (Lazy.force zneg), [|CoqPositive.to_coq n|])
 end
 
 module CoqBool = struct
@@ -308,7 +307,7 @@ module CoqBool = struct
 
   exception NotABool
 
-  let to_coq b = if b then mkTrue else mkFalse
+  let to_coq b = if b then Lazy.force mkTrue else Lazy.force mkFalse
   let from_coq sigma c =
     if equal sigma trueBuilder c then true
     else if equal sigma falseBuilder c then false
@@ -369,7 +368,7 @@ module CoqString = struct
             (str_cons,
              [|CoqAscii.to_coq s.[i];
                coqstr|]))
-    in go (String.length s - 1) (build emptyBuilder)
+    in go (String.length s - 1) (Lazy.force (build emptyBuilder))
 end
 
 module CoqUnit = struct

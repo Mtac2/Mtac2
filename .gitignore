@@ -54,6 +54,9 @@ src/META.coq-mtac2
 src/metaCoqInit.ml
 src/metaCoqTactic.ml
 
+/tests/sf-5/Makefile
+/tests/sf-5/Makefile.conf
+
 # ocamlbuild working directory
 _build/
 .merlin
