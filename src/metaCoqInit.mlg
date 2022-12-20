@@ -168,6 +168,11 @@ let _ = Pvernac.register_proof_mode proof_mode_identifier mproof_mode
 
 VERNAC COMMAND EXTEND MProofCommand
 | [ "MProof" ]
-  => { Vernacextend.(VtProofMode proof_mode_identifier) }
+  => { (match Pvernac.lookup_proof_mode proof_mode_identifier with
+       | None ->
+         CErrors.user_err Pp.(str (Format.sprintf "No proof mode named \"%s\"."
+            proof_mode_identifier))
+       | Some proof_mode -> Vernacextend.VtProofMode proof_mode)
+     }
   -> { MetaCoqInterp.interp_mproof_command () }
 END
