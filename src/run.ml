@@ -1124,6 +1124,7 @@ let declare_mind env sigma params sigs mut_constrs =
   (* Calculate length and LocalEntry list from parameter telescope.
      The LocalEntry list is reversed because we are using a left fold.
   *)
+  let sigma = Evd.collapse_sort_variables sigma in
   let n_params, mind_entry_params, _, params =
     mTele_fold_left sigma env (fun (n, acc, vars, params) (name, typeX) ->
       let id = match name.binder_name with
@@ -1156,8 +1157,8 @@ let declare_mind env sigma params sigs mut_constrs =
         match CoqSort.from_coq sigma env t with
         | Prop_sort -> sigma, mkProp
         | Type_sort ->
-            let sigma, univ = Evd.new_sort_variable (Evd.UnivFlexible false) sigma in
-            sigma, mkSort univ
+            let sigma, univ = Evd.new_univ_level_variable (Evd.UnivFlexible false) sigma in
+            sigma, mkType (Univ.Universe.make univ)
       ) in
       let name = CoqString.from_coq (env, sigma) name in
       let name = Id.of_string name in
