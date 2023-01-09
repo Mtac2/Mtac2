@@ -1426,6 +1426,10 @@ let pop_args num stack =
   else if List.length argss == 1 then (List.hd argss, stack)
   else (Array.concat argss, stack)
 
+let unfold_reference env (cst, u) = match Environ.lookup_constant cst env with
+| { const_body = Def b } -> Some (CClosure.mk_clos (Esubst.subs_id 0, u) b)
+| { const_body = (OpaqueDef _ | Undef _ | Primitive _) } -> None
+| exception Not_found -> None
 
 let rec run' ctxt (vms : vm list) =
   (* let sigma, env, stack = ctxt.sigma, ctxt.env, ctxt.stack in *)
@@ -1568,23 +1572,19 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
         let e = (CClosure.usubs_cons v e) in
         (eval[@tailcall]) ctxt vms (mk_red (FCLOS (bd, e)))
 
-  | Monadic, FFlex (ConstKey (hc, _) as k) ->
+  | Monadic, FFlex (ConstKey (hc, u)) ->
       begin
         match MConstr.mconstr_head_opt hc with
         | Some mh ->
             (* We have reached a primitive *)
             (primitive[@tailcall]) ctxt vms mh reduced_term
         | None ->
-            let redflags = (CClosure.RedFlags.fCONST hc) in
-            let tab = CClosure.create_tab () in
-            let flags = RedFlags.red_transparent (CClosure.RedFlags.mkflags [redflags]) in
-            let o = CClosure.unfold_reference env flags tab k in
-            match o with
-            | Def v ->
+            match unfold_reference env (hc, u) with
+            | Some v ->
                 let backtrace = Backtrace.push (fun () -> Constant hc) ctxt.backtrace in
                 let ctxt = {ctxt with backtrace} in
                 (run'[@taillcall]) ctxt (Code v :: vms)
-            | _ ->
+            | None ->
                 efail (E.mkStuckTerm sigma env (to_econstr t))
       end
 
