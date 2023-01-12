@@ -146,7 +146,7 @@ module MetaCoqRun = struct
 
   let evar_of_goal gl =
     let evk = Proofview.Goal.goal gl in
-    let info = Evd.find (Proofview.Goal.sigma gl) evk in
+    let EvarInfo info = Evd.find (Proofview.Goal.sigma gl) evk in
     let ids = Evd.evar_identity_subst info in
     EConstr.Unsafe.to_constr @@ EConstr.mkEvar (evk, ids)
 
