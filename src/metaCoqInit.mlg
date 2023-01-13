@@ -29,7 +29,7 @@ DECLARE PLUGIN "coq-mtac2.plugin"
 (** Introduce a new parsing rule identifier "vernac:mproof_command".
     This rule is expected to produce a vernac expression. *)
 let mproof_mode : Vernacexpr.vernac_expr Pcoq.Entry.t =
-  Pcoq.Entry.create "vernac:mproof_command"
+  Pcoq.Entry.make "vernac:mproof_command"
 
 (**
 
