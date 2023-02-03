@@ -163,7 +163,7 @@ end
 
 module CoqInd_Dyn : sig
   exception NotAmkInd_dyn
-  val from_coq : Evd.evar_map -> 'a -> EConstr.t -> EConstr.t array
+  val from_coq : Evd.evar_map -> Environ.env -> EConstr.t -> EConstr.t array
   val to_coq :
     Evd.evar_map ->
     Environ.env -> EConstr.t array -> Evd.evar_map * EConstr.t

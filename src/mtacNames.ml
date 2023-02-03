@@ -13,9 +13,9 @@ let mkUBuilder e = UConstrBuilder.from_string (metaCoq_module_name ^ "." ^ e)
 let mkT_lazy = mkUConstr "M.M.t"
 let mkUConstr e = Constrs.mkUConstr (metaCoq_module_name ^ "." ^ e)
 
-let isConstr sigma e =
+let isConstr sigma env e =
   let c = Lazy.force (mkConstr e) in
-  eq_constr sigma c
+  eq_constr env sigma c
 
 let isUConstr sigma env e =
   let sigma, c = mkUConstr e sigma env in

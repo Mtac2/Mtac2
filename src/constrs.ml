@@ -42,7 +42,7 @@ module Constrs = struct
   let isConstr sigma = fun r c -> eq_constr_nounivs sigma (Lazy.force r) c
 
   let isUConstr r sigma env =
-    isRefX sigma r
+    isRefX env sigma r
 
 end
 
