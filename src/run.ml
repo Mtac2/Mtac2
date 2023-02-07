@@ -164,7 +164,7 @@ module Goal = struct
               let nd' = lookup id env_list in
               let ty = get_type nd in
               let ty' = get_type nd' in
-              if eq_constr sigma ty ty' then
+              if eq_constr env sigma ty ty' then
                 compute sigma accu evenv (* same name and type, continue with the next *)
               else
                 begin
@@ -665,7 +665,7 @@ let dest_Case (env, sigma) t =
 
 let contract_return_clause sigma (mib, mip) p =
   let open Context.Rel.Declaration in
-  let (arity, p) = EConstr.decompose_lam_n_decls sigma (mip.mind_nrealdecls + 1) p in
+  let (arity, p) = EConstr.decompose_lambda_n_decls sigma (mip.mind_nrealdecls + 1) p in
   match arity with
   | LocalAssum (_, ty) :: _ ->
       let (ind, args) = decompose_appvect sigma ty in
