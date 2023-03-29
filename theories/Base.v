@@ -1,4 +1,4 @@
-Declare ML Module "coq-unicoq.plugin".
+Declare ML Module "unicoq:coq-unicoq.plugin".
 Declare ML Module "MetaCoqPlugin:coq-mtac2.plugin".
 
 (* Declare ML Module must work without the Requires to be compatible
