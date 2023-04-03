@@ -1757,7 +1757,7 @@ and primitive ctxt vms mh reduced_term =
               begin
                 let ta = to_econstr ta in
                 let (_, d, dty, body) = destLetIn sigma c in
-                let eqaty = Unicoq.Munify.unify_evar_conv TransparentState.full env sigma Reduction.CONV ta dty in
+                let eqaty = Unicoq.Munify.unify_evar_conv TransparentState.full env sigma Conversion.CONV ta dty in
                 let eqtypes = match eqaty with Evarsolve.Success _ -> true | _ -> false in
                 if not eqtypes then
                   efail (Exceptions.mkNotTheSameType sigma env ta)
@@ -1890,7 +1890,7 @@ and primitive ctxt vms mh reduced_term =
       let x, y, uni = to_econstr x, to_econstr y, to_econstr uni in
       begin
         let open UnificationStrategy in
-        match unify None sigma env uni Reduction.CONV x y with
+        match unify None sigma env uni Conversion.CONV x y with
         | Evarsolve.Success sigma, _ ->
             (run'[@tailcall]) {ctxt with sigma = sigma} (Code ts :: vms)
         | _, _ ->
@@ -1903,7 +1903,7 @@ and primitive ctxt vms mh reduced_term =
       let x, y, uni = to_econstr x, to_econstr y, to_econstr uni in
       let fT = mkProd(anonR, x, y) in
       begin
-        let r = UnificationStrategy.unify None sigma env uni Reduction.CUMUL x y in
+        let r = UnificationStrategy.unify None sigma env uni Conversion.CUMUL x y in
         match r with
         | Evarsolve.Success sigma, _ ->
             let id = mkLambda(anonR,x,mkRel 1) in
@@ -2123,7 +2123,7 @@ and primitive ctxt vms mh reduced_term =
               (run'[@tailcall]) {ctxt with sigma = sigma; stack=Zapp (Array.of_list t_args_rem) :: stack} (upd cont_success)
           | ((c,t)::ls) ->
 
-              let (unires, _) = UnificationStrategy.unify None sigma env uni (Reduction.CONV) c t
+              let (unires, _) = UnificationStrategy.unify None sigma env uni (Conversion.CONV) c t
               in
               match unires with
               | Evarsolve.Success (sigma) ->
