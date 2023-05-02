@@ -15,7 +15,7 @@ let ifTactic env sigma ty c =
   let unitType = CoqUnit.mkType in
   let gtactic = EConstr.mkApp(gtactic, [|Lazy.force unitType|]) in
   let open Evarsolve in
-  let res = Unicoq.Munify.unify_evar_conv TransparentState.full env sigma Reduction.CONV gtactic ty in
+  let res = Unicoq.Munify.unify_evar_conv TransparentState.full env sigma Conversion.CONV gtactic ty in
   match res with
   | Success sigma -> (true, sigma)
   | _ -> (false, sigma)
