@@ -507,5 +507,8 @@ Definition new_destruct {A : Type} (n : A) : tactic := \tactic g =>
             M.unify_or_fail UniCoq caseterm (Dyn ge);;
             M.ret tt
           );;
-          let goals' := dreduce (@mmap) (mmap (A:=goal gs_open) (fun '(Metavar _ _ g) => mpair tt (AnyMetavar _ _ g)) goals) in
-          M.ret goals'.
+          M.map (fun (g : goal gs_open) =>
+                   match g with
+                   | (Metavar _ _ g) => M.ret (m: tt, (AnyMetavar _ _ g))
+                  end
+            ) goals.
