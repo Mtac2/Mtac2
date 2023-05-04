@@ -98,7 +98,7 @@ Definition abs_let: forall{A: Type} {P: A->Type} (x: A) (y: A), P x -> t (let x 
 (** [abs_prod x e] returns [forall x, e]. It raises [NotAVar] if [x] is not a
     variable, or [AbsDependencyError] if [e] or its type [P] depends on a
     variable also depending on [x]. *)
-Definition abs_prod_type: forall{A: Type} (x : A), Type -> t Type.
+Definition abs_prod_type@{a y r + | a <= r, y <= r +} : forall{A: Type@{a}} (x : A), Type@{y} -> t Type@{r}.
   make. Qed.
 
 (** [abs_prod x e] returns [forall x, e]. It raises [NotAVar] if [x] is not a
