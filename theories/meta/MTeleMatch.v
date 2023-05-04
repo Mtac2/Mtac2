@@ -99,7 +99,7 @@ Notation "'mtmmatch_alt' x 'as' y 'return' T 'with' p 'end'" :=
     mtmmatch' _ (fun y => mprojT1 (mt1 y)) (fun y => mprojT2 (mt1 y)) x p
   ) (at level 90, p custom Mtac2_with_branch).
 
-Fail Local Example test_mtmmatch (n : nat) :=
+Local Example test_mtmmatch (n : nat) :=
   mtmmatch_alt n as n' return n = n' -> M (n = 1) with
   | 1 =n> fun H => M.ret H
   | _ as _catchall => fun H : n = _catchall => M.failwith "test"
