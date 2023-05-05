@@ -167,8 +167,9 @@ Definition print : string -> t@{Set} unit.
 Definition pretty_print : forall{A: Type}, A -> t@{Set} string.
   make. Qed.
 
-(** [hyps] returns the list of hypotheses. *)
-Definition hyps: t (mlist Hyp).
+(** [hyps@{u h}] returns the list of hypotheses if the type of all hypotheses fits
+    within universe [h]. Otherwise, it throws the [HypsUniverseError] exception *)
+Definition hyps@{u h}: t@{u} (mlist@{u} Hyp@{h}).
   make. Qed.
 
 Definition destcase: forall{A: Type} (a: A), t (Case).

@@ -238,6 +238,8 @@ module Exceptions = struct
 
   let mkNotAList = mkDebugEx "NotAList"
 
+  let mkHypsUniverseError = mkDebugEx "HypsUniverseError"
+
   let mkReductionFailure = mkDebugEx "ReductionFailure"
 
   let mkNotAUnifStrategy = mkDebugEx "NotAUnifStrategy"
@@ -1856,8 +1858,6 @@ and primitive ctxt vms mh univs reduced_term =
         in
         let ulist = EInstance.make (Univ.Instance.of_array [|ulist|]) in
         let uhyp  = EInstance.make (Univ.Instance.of_array [|uhyp|]) in
-        (* let ulist = EInstance.make (Univ.Instance.of_array [|Univ.Level.set|]) in
-         * let uhyp = EInstance.make (Univ.Instance.of_array [|Univ.Level.set|]) in *)
         let sigma, hyps = build_hypotheses ~univ_hyp:uhyp ~univ_list:ulist sigma env in
         let sigma, hyp_ty = UConstrBuilder.build_app ~univs:uhyp Hypotheses.hyp_builder sigma env [||] in
         let sigma, list_ty = UConstrBuilder.build_app ~univs:ulist CoqList.listBuilder sigma env [|hyp_ty|] in
@@ -1875,7 +1875,7 @@ and primitive ctxt vms mh univs reduced_term =
             return sigma (of_econstr hyps)
         | exception Pretype_errors.PretypeError (env, sigma, err) ->
             Feedback.msg_debug (Himsg.explain_pretype_error env sigma err);
-            efail (E.mkNotAList sigma env hyps) (* TODO pick correct exception *)
+            efail (E.mkHypsUniverseError sigma env hyps)
       end
 
   | MConstr (Mdestcase, (_, t)) ->
