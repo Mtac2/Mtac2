@@ -1874,7 +1874,8 @@ and primitive ctxt vms mh univs reduced_term =
              * Feedback.msg_debug (Printer.pr_econstr_env env sigma hyps); *)
             return sigma (of_econstr hyps)
         | exception Pretype_errors.PretypeError (env, sigma, err) ->
-            Feedback.msg_debug (Himsg.explain_pretype_error env sigma err);
+            if !debug_ex then
+              Feedback.msg_debug (Himsg.explain_pretype_error env sigma err);
             efail (E.mkHypsUniverseError sigma env hyps)
       end
 
