@@ -32,7 +32,6 @@ end
 
 type ctxt = {
   env: Environ.env;
-  renv: CClosure.fconstr;
   sigma: Evd.evar_map;
   nus: int;
   stack: CClosure.stack;
@@ -44,9 +43,9 @@ type vm = Code of CClosure.fconstr
         | Fail of CClosure.fconstr
         | Bind of (CClosure.fconstr * backtrace)
         | Try of (Evd.evar_map * CClosure.stack * backtrace * CClosure.fconstr)
-        | Nu of (Names.Id.t * Environ.env * CClosure.fconstr * backtrace)
-        | Rem of (Environ.env * CClosure.fconstr * bool)
-        | Rep of (Environ.env * CClosure.fconstr)
+        | Nu of (Names.Id.t * Environ.env * backtrace)
+        | Rem of (Environ.env * bool)
+        | Rep of (Environ.env)
 
 (* val run_fix : ctxt -> vm list -> CClosure.fconstr -> CClosure.fconstr array -> CClosure.fconstr -> CClosure.fconstr -> CClosure.fconstr array *)
 
