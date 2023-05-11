@@ -2283,7 +2283,7 @@ and primitive ctxt vms mh univs reduced_term =
       let open Typeclasses in
       let hint_priority = Option.map (CoqN.from_coq (env, sigma)) prio in
       let global = if global then Hints.SuperGlobal else Hints.Local in
-      Classes.existing_instance global qualid (Some {hint_priority; hint_pattern= None});
+      Classes.existing_instance global (Nametab.locate qualid) (Some {hint_priority; hint_pattern= None});
       ereturn sigma ((Lazy.force CoqUnit.mkTT))
   | MConstr (Minstantiate_evar, (ty, _, evar, solution, succ, fail)) ->
       let evar = to_econstr evar in
