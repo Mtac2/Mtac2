@@ -189,20 +189,26 @@ Definition constrs: forall{A: Type} (a: A), t Ind_dyn.
 Definition makecase: forall(C: Case), t dyn.
   make. Qed.
 
-(** [unify r x y ts tf] uses reduction strategy [r] to equate [x] and [y].
+(** [unify_cnt u x y ts tf] uses unification strategy [r] to equate [x] and [y].
     If unification succeeds, it will run [ts].
     Otherwise, if unification fails, [tf] is executed instead.
     It uses convertibility of universes, meaning that it fails if [x]
     is [Prop] and [y] is [Type]. If they are both types, it will
     try to equate its leveles. *)
 
-Definition unify_cnt {A: Type} {B: A -> Type} (U:Unification) (x y : A) : t (B y) -> t (B x) -> t (B x).
+Definition unify_cnt {A: Type} {B: A -> Type} (u:Unification) (x y : A) : t (B y) -> t (B x) -> t (B x).
   make. Qed.
 
-(** [munify_univ A B r] uses reduction strategy [r] to equate universes
-    [A] and [B].  It uses cumulativity of universes, e.g., it succeeds if
-    [x] is [Prop] and [y] is [Type]. *)
-Definition unify_univ (A: Type) (B: Type) : Unification -> t (moption (A->B)).
+(** [unify_cumul_cnt u A B ts tf] uses unification strategy [u] to cumulatively
+    unify type [A] with type [B].
+    If successful, it runs [ts (fun a:A=>a)], where the function argument is of
+    type [A->B] and is thus a witness that [A] can be embedded into [B].
+    Otherwise, if unification fails, [unify_cumul_cnt] runs [tf].
+
+    Note that unlike [unfiy_cnt], [unify_cumul_cnt] does not establish
+    convertibility. This means that in general [A] and [B] cannot be used
+    interchangeably when unification succeeds *)
+Definition unify_cumul_cnt {C : Type} (u:Unification) (A: Type) (B: Type) : ((A->B) -> t C) -> t C -> t C.
   make. Qed.
 
 (** [get_reference s] returns the constant that is reference by s. *)
@@ -393,6 +399,9 @@ Definition unify@{a} {A : Type@{a}} (x y : A) (U : Unification) : t@{a} (moption
   unify_cnt@{a a} (A:=A) (B:=fun x => moption@{a} (meq x y)) U x y
             (ret@{a} (mSome@{a} (@meq_refl _ y)))
             (ret@{a} mNone@{a}).
+
+Definition unify_cumul@{a b+} (A : Type@{a}) (B : Type@{b}) (U : Unification) : t (moption (A->B)) :=
+  unify_cumul_cnt U A B (fun f => M.ret (mSome f)) (M.ret mNone).
 
 
 Definition raise {A:Type} (e: Exception): t A :=
@@ -726,8 +735,26 @@ Definition mwith {A B} (c : A) (n : string) (v : B) : t dyn :=
 Definition type_of {A} (x : A) : Type := A.
 Definition type_inside {A} (x : t A) : Type := A.
 
+(** Unifies [x] with [y] and raises [NotUnifiable] if it they are not unifiable. *)
+Definition unify_or_fail {A} (u : Unification) (x y : A) : t (x =m= y) :=
+  oeq <- unify x y u;
+  match oeq with
+  | mNone => raise (NotUnifiable x y)
+  | mSome eq => ret eq
+  end.
+
+(** Cumulatively unifies [x] with [y] and raises [NotUnifiable] if it they are
+    not unifiable. *)
+Definition unify_cumul_or_fail {A} (u : Unification) (x y : A) : t (x =m= y) :=
+  oeq <- unify x y u;
+  match oeq with
+  | mNone => raise (NotUnifiable x y)
+  | mSome eq => ret eq
+  end.
+
+
 Definition cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
-  of <- unify_univ A B u;
+  of <- unify_cumul A B u;
   match of with
   | mSome f =>
     let fx := reduce (RedOneStep [rl:RedBeta]) (f x) in
@@ -738,21 +765,12 @@ Definition cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
 
 (* [y] is the evar *)
 Definition inst_cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
-  of <- unify_univ A B u;
+  of <- unify_cumul A B u;
   match of with
   | mSome f =>
     let fx := reduce (RedOneStep [rl:RedBeta]) (f x) in
     instantiate_evar y fx (M.ret true) (M.ret false)
   | mNone => ret false
-  end.
-
-(** Unifies [x] with [y] and raises [NotUnifiable] if it they
-    are not unifiable. *)
-Definition unify_or_fail {A} (u : Unification) (x y : A) : t (x =m= y) :=
-  oeq <- unify x y u;
-  match oeq with
-  | mNone => raise (NotUnifiable x y)
-  | mSome eq => ret eq
   end.
 
 (** Unifies [x] with [y] using cumulativity and raises [NotCumul] if it they

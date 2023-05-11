@@ -1917,19 +1917,20 @@ and primitive ctxt vms mh univs reduced_term =
             efail (E.mkNotAUnifStrategy sigma env u)
       end
 
-  | MConstr (Munify_univ, (x, y, uni)) ->
+  | MConstr (Munify_cumul, (_, uni, x, y, ts, tf)) ->
       let x, y, uni = to_econstr x, to_econstr y, to_econstr uni in
-      let fT = mkProd(anonR, x, y) in
       begin
-        let r = UnificationStrategy.unify None sigma env uni Conversion.CUMUL x y in
+        let open UnificationStrategy in
+        let r = unify None sigma env uni Conversion.CUMUL x y in
         match r with
         | Evarsolve.Success sigma, _ ->
-            let id = mkLambda(anonR,x,mkRel 1) in
-            let sigma, some = CoqOption.mkSome sigma env fT id in
-            ereturn sigma some
+            let id = EConstr.mkLambda(anonR,x,mkRel 1) in
+            let ts = of_econstr (EConstr.mkApp (to_econstr ts, [|id|])) in
+            (run'[@tailcall]) {ctxt with sigma = sigma} (Code ts :: vms)
         | _, _ ->
-            let sigma, none = CoqOption.mkNone sigma env fT in
-            ereturn sigma none
+            (run'[@tailcall]) ctxt (Code tf :: vms)
+        | exception NotAUnifStrategy u ->
+            efail (E.mkNotAUnifStrategy sigma env u)
       end
 
   | MConstr (Mget_reference, s) ->
