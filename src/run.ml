@@ -353,7 +353,7 @@ module ReductionStrategy = struct
 
   let one_step flags env sigma c =
     let ts = get_ts env in
-    let h, args = decompose_app sigma c in
+    let h, args = decompose_app_list sigma c in
     let h = whd_evar sigma h in
     let r =
       match kind sigma h with
@@ -1999,7 +1999,7 @@ and primitive ctxt vms mh univs reduced_term =
       ereturn sigma (CoqString.to_coq (read_line ()))
 
   | MConstr (Mdecompose, (_, t)) ->
-      let (h, args) = decompose_app sigma (to_econstr t) in
+      let (h, args) = decompose_app_list sigma (to_econstr t) in
       let sigma, dyn = mkdyn sigma env in
       let sigma, listdyn = CoqList.mkType sigma env dyn in
       let sigma, dh = mkDyn (Retyping.get_type_of env sigma h) h sigma env in
@@ -2065,8 +2065,8 @@ and primitive ctxt vms mh univs reduced_term =
       let t = Termops.eta_reduce_head sigma (to_econstr t) in
       let c = Termops.eta_reduce_head sigma (to_econstr c) in
 
-      let (t_head, t_args) = decompose_app sigma t in
-      let (c_head, c_args) = decompose_app sigma c in
+      let (t_head, t_args) = decompose_app_list sigma t in
+      let (c_head, c_args) = decompose_app_list sigma c in
       (* We need to be careful about primitive projections.
          In particular, we always need to unify parameters *if* the pattern contains them.
          There are several situations to consider that involve primitive projections:
@@ -2094,7 +2094,7 @@ and primitive ctxt vms mh univs reduced_term =
               (t_head, c_rval :: c_args), (t_head, t_args)
             else
               let c = Retyping.expand_projection env sigma c_proj c_rval c_args in
-              let c_head, c_args = decompose_app sigma c in
+              let c_head, c_args = decompose_app_list sigma c in
               (c_head, c_args), (t_head, t_args)
         | (false, true) ->
             (* Trying to be clever about this case, too.
@@ -2116,7 +2116,7 @@ and primitive ctxt vms mh univs reduced_term =
              *   (c_head, c_args), (c_head, t_args)
              * else *)
             let t = Retyping.expand_projection env sigma t_proj t_rval t_args in
-            let t_head, t_args = decompose_app sigma t in
+            let t_head, t_args = decompose_app_list sigma t in
             (c_head, c_args), (t_head, t_args)
         | (true, true) ->
             let (c_proj, c_rval) = destProj sigma c_head in
@@ -2453,8 +2453,7 @@ let run (env0, sigma) ty t : data =
   let ty = EConstr.of_constr (RE.whd_betadeltaiota env sigma (of_econstr ty)) in
   (* Feedback.msg_info (Printer.pr_econstr_env env sigma ty); *)
   let _, ty = decompose_app sigma ty in
-  assert (List.length ty == 1);
-  let _ty = List.nth ty 0 in
+  assert (Array.length ty == 1);
 
   match run' {env; sigma; nus=0; stack=CClosure.empty_stack; backtrace=[]} [Code t] with
   | Err (sigma', v, _, backtrace) ->
