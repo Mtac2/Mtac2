@@ -10,7 +10,7 @@ Reserved Notation "'Typeₛ'".
 Reserved Notation "'Propₛ'".
 Module S.
 
-Monomorphic Inductive Sort : Type := Prop_sort | Type_sort.
+Monomorphic Inductive Sort : Set := Prop_sort | Type_sort.
 
 Notation "'Typeₛ'" := Type_sort.
 Notation "'Propₛ'" := Prop_sort.

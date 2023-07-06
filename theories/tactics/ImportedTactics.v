@@ -63,7 +63,7 @@ Ltac lrewrite3 a b c := rewrite <- a, <- b, <- c.
 Ltac lrewrite4 a b c d := rewrite <- a, <- b, <- c, <- d.
 Ltac lrewrite5 a b c d e := rewrite <- a, <- b, <- c, <- d, <- e.
 
-Inductive RewriteDirection := LeftRewrite | RightRewrite.
+Inductive RewriteDirection : Set := LeftRewrite | RightRewrite.
 
 Definition trewrite (d : RewriteDirection) (args : mlist dyn) : tactic := fun g =>
   (ter <- compute_terminator args;

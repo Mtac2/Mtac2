@@ -56,7 +56,7 @@ Abort.
 
 Section ExampleReflect.
 
-  Inductive reflect (P :Prop) : bool -> Type :=
+  Inductive reflect (P :Prop) : bool -> Set :=
   | RTrue : P -> reflect P true
   | RFalse : ~P -> reflect P false.
 
