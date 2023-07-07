@@ -33,7 +33,7 @@ Eval hnf in ltac:(mrun (MTele_of (fun x : nat => forall y:nat, M (x = y)))).
 Local Example MTele_of_Test : nat -> msigT MTele_Ty :=
   Eval hnf in ltac:(mrun (MTele_of (fun x : nat => forall y:nat, M (x = y)))).
 
-Class TC_UNIFY {T : Type} (A B : T) := tc_unify : (A =m= B).
+Class TC_UNIFY {T : Type} (A B : T) : Prop := tc_unify : (A =m= B).
 Arguments tc_unify {_} _ _ {_}.
 Definition tc_unify_mtac T (A B : T) :=
   (* M.print "tc_unify 1";; *)

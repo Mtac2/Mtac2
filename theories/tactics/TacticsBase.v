@@ -299,7 +299,7 @@ Fixpoint gmap@{a b+} {A:Type@{a}} {B:Type@{b}} (tacs : mlist (gtactic A)) (gs : 
   | _, _ => M.raise NotSameSize
   end.
 
-Class Seq (A B C : Type) :=
+Class Seq (A B C : Type) : Prop :=
   seq : gtactic A -> C -> gtactic B.
 Arguments seq {A B C _} _%tactic _%tactic.
 

@@ -162,7 +162,7 @@ end
 
 
 Section Test.
-  Inductive Rnat : Type :=
+  Inductive Rnat : Set :=
   | Rmult : Rnat -> Rnat -> Rnat
   | RO : Rnat
   | RS : Rnat -> Rnat.

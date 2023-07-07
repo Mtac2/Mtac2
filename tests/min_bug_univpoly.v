@@ -289,7 +289,7 @@ Inductive Reduction :=
 | RedStrong : redlist RedFlags -> Reduction
 | RedVmCompute.
 
-Inductive Unification : Type :=
+Inductive Unification : Set :=
 | UniCoq : Unification
 | UniMatch : Unification
 | UniMatchNoRed : Unification
