@@ -33,6 +33,8 @@ Qed.
 Lemma testLApply@{i j} : Type@{i} -> Type@{max(i,j)}.
 Proof. apply @id. Qed.
 
+Declare Scope pattern_scope.
+
 Notation "p '=e>' b" := (pbase p%core (b%core) UniEvarconv)
   (no associativity, at level 201) : pattern_scope.
 Notation "p '=e>' [ H ] b" := (pbase p%core (b%core) UniEvarconv)

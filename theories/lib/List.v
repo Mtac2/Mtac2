@@ -46,7 +46,7 @@ Definition mtl {A} (l:mlist A) :=
 Fixpoint mnth {A} (n:nat) (l:mlist A) (default:A) {struct l} : A :=
   match n, l with
   | O, x :m: l' => x
-  | O, other => default
+  | O, _other => default
   | S m, [m:] => default
   | S m, x :m: t => mnth m t default
   end.
@@ -54,7 +54,7 @@ Fixpoint mnth {A} (n:nat) (l:mlist A) (default:A) {struct l} : A :=
 Fixpoint mnth_ok {A} (n:nat) (l:mlist A) (default:A) {struct l} : bool :=
   match n, l with
   | O, x :m: l' => true
-  | O, other => false
+  | O, _other => false
   | S m, [m:] => false
   | S m, x :m: t => mnth_ok m t default
   end.
