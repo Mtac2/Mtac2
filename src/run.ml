@@ -724,7 +724,7 @@ let get_Constrs (env, sigma) t =
   (* let t = to_constr sigma t in *)
   let t_type, args = decompose_app sigma (EConstr.of_constr (RE.whd_betadeltaiota env sigma (of_econstr t))) in
   if isInd sigma t_type then
-    let (mind, ind_i), _ = destInd sigma t_type in
+    let (mind, ind_i), u = destInd sigma t_type in
     let mbody = Environ.lookup_mind mind env in
     let ind = Array.get (mbody.mind_packets) ind_i in
     let sigma, dyn = mkdyn sigma env in
@@ -732,7 +732,7 @@ let get_Constrs (env, sigma) t =
     let sigma, l = Array.fold_right
                      (fun i (sigma, l) ->
                         let constr = Names.ith_constructor_of_inductive (mind, ind_i) i in
-                        let coq_constr = mkConstruct constr in
+                        let coq_constr = mkConstructU (constr, u) in
                         let ty = Retyping.get_type_of env sigma coq_constr in
                         let sigma, dyn_constr = mkDyn ty coq_constr sigma env in
                         CoqList.mkCons sigma env dyn dyn_constr l
