@@ -297,8 +297,7 @@ module E = Exceptions
 
 module ReductionStrategy = struct
   open Reductionops
-  open CClosure
-  open CClosure.RedFlags
+  open RedFlags
   open Context
 
   let reduce_constant = lazy (constant_of_string "Reduction.reduce")
@@ -451,13 +450,13 @@ module ReductionStrategy = struct
     with RedList.NotAList _ -> ReductionStuck
        | _ -> ReductionFailure
 
-  (* let whd_betadeltaiota_nolet = whdfun CClosure.allnolet *)
+  (* let whd_betadeltaiota_nolet = whdfun RedFlags.allnolet *)
 
   let whd_all_novars =
     let flags = red_add_transparent betaiota TransparentState.cst_full in
     whdfun flags
 
-  let whd_betadeltaiota = whdfun CClosure.all
+  let whd_betadeltaiota = whdfun RedFlags.all
 end
 
 module RE = ReductionStrategy
@@ -1487,8 +1486,8 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
   (* let term = zip_term (CClosure.term_of_fconstr t) stack in
    * Feedback.msg_debug (Printer.pr_constr_env env sigma term); *)
 
-  let reds = CClosure.allnolet in
-  let reds = CClosure.RedFlags.red_add_transparent reds TransparentState.var_full in
+  let reds = RedFlags.allnolet in
+  let reds = RedFlags.red_add_transparent reds TransparentState.var_full in
   let infos = create_clos_infos env sigma reds in
   let tab = CClosure.create_tab () in
   let reduced_term, stack = reduce_noshare infos tab t stack in
@@ -1601,7 +1600,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
 
   | Pure, (_ as t) when not reduced_to_let ->
       let careless, careful = cut_stack stack in
-      let infos = CClosure.infos_with_reds infos (CClosure.all) in
+      let infos = CClosure.infos_with_reds infos RedFlags.all in
       (* let term_to_reduce = _zip_term (CClosure.term_of_fconstr reduced_term) careless in
        * Feedback.msg_debug (Printer.pr_constr_env env sigma term_to_reduce); *)
       let tab = CClosure.create_tab () in
@@ -1609,7 +1608,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
 
       let stack = List.append stack careful in
       (* carefully reduce further without touching lets *)
-      let infos = CClosure.infos_with_reds infos (CClosure.allnolet) in
+      let infos = CClosure.infos_with_reds infos RedFlags.allnolet in
       let tab = CClosure.create_tab () in
       let t', stack = reduce_noshare infos tab t' stack in
       (* signal that we have advanced reduced everything down to lets *)
@@ -2200,7 +2199,7 @@ and primitive ctxt vms mh univs reduced_term =
                stack=Zapp [|h_type; arg_type; h; arg|] ::
                stack} (upd cont) | exception Constr.DestKO ->
             *)
-            let h_type = ReductionStrategy.whdfun (CClosure.all) env sigma (of_econstr (h_type)) in
+            let h_type = ReductionStrategy.whdfun RedFlags.all env sigma (of_econstr (h_type)) in
             let h_typefun = to_lambda sigma 1 (EConstr.of_constr h_type) in
             let arg_type = (match EConstr.destLambda sigma h_typefun with | (_, ty, _) -> ty) in
             let (h_type, arg_type, h, arg) = (of_econstr h_typefun, of_econstr arg_type, of_econstr h, of_econstr arg) in
