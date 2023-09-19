@@ -980,8 +980,8 @@ let run_declare_def env sigma kind name opaque ty bod =
   ; Instance
   ; Method|]
   in
-  let univs = EConstr.universes_of_constr sigma bod in
-  let univs = Univ.Level.Set.union univs (EConstr.universes_of_constr sigma ty) in
+  let _, univs = EConstr.universes_of_constr sigma bod in
+  let univs = Univ.Level.Set.union univs (snd (EConstr.universes_of_constr sigma ty)) in
 
   let ty = Unsafe.to_constr ty in
   let bod = Unsafe.to_constr bod in
@@ -1237,7 +1237,7 @@ let declare_mind env sigma params sigs mut_constrs =
   let univs, ubinders = Evd.univ_entry ~poly:false sigma in
   let uctx = match univs with
     | UState.Monomorphic_entry ctx ->
-        let () = DeclareUctx.declare_universe_context ~poly:false ctx in
+        let () = Global.push_context_set ~strict:true ctx in
         Entries.Monomorphic_ind_entry
     | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
   in
@@ -1347,8 +1347,8 @@ let _zip_term m stk =
            zip_term zfun t s
         *)
         assert false
-    | Zproj p::s ->
-        let t = mkProj (Projection.make p true, m) in
+    | Zproj (p,r)::s ->
+        let t = mkProj (Projection.make p true, r, m) in
         zip_term zfun t s
     | Zfix(fx,par)::s ->
         let h = mkApp(zip_term zfun (zfun fx) par,[|m|]) in
@@ -1581,8 +1581,8 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
       end
 
   (* [whd_stack] considers unfolded primitive projections fully reduced. That will not do. *)
-  | Monadic, FProj (proj, t) ->
-      let stack = Zproj (Projection.repr proj) :: stack in
+  | Monadic, FProj (proj, r, t) ->
+      let stack = Zproj (Projection.repr proj, r) :: stack in
       let ctxt = {ctxt with stack} in
       (eval[@tailcall]) ctxt vms t
 
@@ -1850,13 +1850,14 @@ and primitive ctxt vms mh univs reduced_term =
   | MConstr (Mhyps, _) ->
       let sigma, hyps, expected_type =
         let ulist, uhyp =
-          let univs = Univ.Instance.to_array univs in
-          match univs with
-          | [|ulist; uhyp|] -> ulist, uhyp
-          | _ -> failwith ("Expected `M.hyps` to have two universes; found "  ^ string_of_int (Array.length univs))
+          let qs, univs = UVars.Instance.to_array univs in
+          match qs, univs with
+          | [||], [|ulist; uhyp|] -> ulist, uhyp
+          | _ -> failwith ("Expected `M.hyps` to have zero qualities and two universes; found "  ^
+                           string_of_int (Array.length qs) ^ " and " ^ string_of_int (Array.length univs))
         in
-        let ulist = EInstance.make (Univ.Instance.of_array [|ulist|]) in
-        let uhyp  = EInstance.make (Univ.Instance.of_array [|uhyp|]) in
+        let ulist = EInstance.make (UVars.Instance.of_array ([||], [|ulist|])) in
+        let uhyp  = EInstance.make (UVars.Instance.of_array ([||], [|uhyp|])) in
         let sigma, hyps = build_hypotheses ~univ_hyp:uhyp ~univ_list:ulist sigma env in
         let sigma, hyp_ty = UConstrBuilder.build_app ~univs:uhyp Hypotheses.hyp_builder sigma env [||] in
         let sigma, list_ty = UConstrBuilder.build_app ~univs:ulist CoqList.listBuilder sigma env [|hyp_ty|] in
@@ -2085,7 +2086,7 @@ and primitive ctxt vms mh univs reduced_term =
                can simply unify the record values.
                Otherwise it could be literally anything. In that case, we expand [c_head].
             *)
-            let c_proj, c_rval = destProj sigma c_head in
+            let c_proj, _, c_rval = destProj sigma c_head in
             let c_constant = (Projection.constant c_proj) in
             if isConstant sigma env c_constant t_head then
               let n_params = Structures.Structure.projection_nparams c_constant in
@@ -2105,7 +2106,7 @@ and primitive ctxt vms mh univs reduced_term =
                However, this breaks the requirement that if the pattern mentions the parameters
                we should unify them. Thus, we always expand in this case.
             *)
-            let t_proj, t_rval = destProj sigma t_head in
+            let t_proj, _, t_rval = destProj sigma t_head in
             (* Code for clever version:
              * let t_constant = (Projection.constant t_proj) in
              * let n_params = Recordops.find_projection_nparams (GlobRef.ConstRef t_constant) in
@@ -2118,8 +2119,8 @@ and primitive ctxt vms mh univs reduced_term =
             let t_head, t_args = decompose_app_list sigma t in
             (c_head, c_args), (t_head, t_args)
         | (true, true) ->
-            let (c_proj, c_rval) = destProj sigma c_head in
-            let (t_proj, t_rval) = destProj sigma t_head in
+            let (c_proj, _, c_rval) = destProj sigma c_head in
+            let (t_proj, _, t_rval) = destProj sigma t_head in
             if QProjection.equal env c_proj t_proj then
               (* we use [c_head] on both sides to make sure they are considered equal *)
               (c_head, c_rval :: c_args), (c_head, t_rval :: t_args)
