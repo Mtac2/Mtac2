@@ -24,8 +24,7 @@ jobs:
         # Browse URL: https://github.com/coq-community/docker-coq/wiki#supported-tags
         # to get the list of supported (coq, ocaml) versions in coqorg/coq.
         coq_version:
-        #  - '8.15'
-          - 'dev'
+          - '8.18'
         ocaml_version:
           - '4.12.1-flambda'
       # at most 20 concurrent jobs per free account:
