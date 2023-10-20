@@ -29,35 +29,35 @@ Abort.
 
 Require Import Arith.
 
-Example exif (x : nat) : if beq_nat (S x) 1 then x = 0 : Type else True.
+Example exif (x : nat) : if Nat.eqb (S x) 1 then x = 0 : Type else True.
 MProof.
-variabilize (beq_nat (S x) (S 0)) as t.
-assert (B:t = beq_nat (S x) 1).
+variabilize (Nat.eqb (S x) (S 0)) as t.
+assert (B:t = Nat.eqb (S x) 1).
 reflexivity.
 Abort.
 
 Definition sillyfun (n : nat) : bool :=
-  if beq_nat n 3 then false
-  else if beq_nat n 5 then false
+  if Nat.eqb n 3 then false
+  else if Nat.eqb n 5 then false
   else false.
 
 Theorem sillyfun_false : forall (n : nat),
   (sillyfun n = false) : Type.
 MProof.
   intros n. unfold sillyfun.
-  variabilize (beq_nat n 3) as t3.
+  variabilize (Nat.eqb n 3) as t3.
   destruct t3.
   simpl. reflexivity.
   simpl.
-  variabilize (beq_nat _ _) as t5.
+  variabilize (Nat.eqb _ _) as t5.
   destruct t5 &> reflexivity.
 Qed.
 
 
 
 Definition sillyfun1 (n : nat) : bool :=
-  if beq_nat n 3 then true
-  else if beq_nat n 5 then true
+  if Nat.eqb n 3 then true
+  else if Nat.eqb n 5 then true
   else false.
 
 Fixpoint evenb (n:nat) : bool :=
@@ -74,7 +74,7 @@ Theorem sillyfun1_odd : forall (n : nat),
      oddb n = true) : Type .
 MProof.
   intros n. unfold sillyfun1.
-  variabilize (beq_nat n 3) as t.
+  variabilize (Nat.eqb n 3) as t.
   assert (Heqe3 : t = (n =? 3)%nat) |1> reflexivity.
   move_back Heqe3.
   destruct t &> intro Heqe3.

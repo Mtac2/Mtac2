@@ -11,12 +11,16 @@ Require Import Lia.
 
 Lemma lt_0_S n : 0 < S n. Proof. lia. Qed.
 
+(* NOTE: unidirectional version of Nat.succ_lt_mono for compatibility. *)
+Lemma succ_lt_mono_lr (n m : nat) : n < m -> S n < S m.
+Proof. now intros H; apply ->PeanoNat.Nat.succ_lt_mono. Qed.
+
 Fixpoint prove_leq n m : M (n < m) :=
   match n, m with
   | 0, S _ => M.ret (lt_0_S _)
   | S n', S m' =>
     H <- prove_leq n' m';
-    M.ret (Lt.lt_n_S _ _ H)
+    M.ret (succ_lt_mono_lr _ _ H)
   | _, _ => M.failwith "n not < m"
   end.
 
