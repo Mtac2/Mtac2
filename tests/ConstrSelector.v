@@ -44,7 +44,7 @@ Definition total_map (A:Type) := id -> A.
 
 Definition beq_id id1 id2 :=
   match id1,id2 with
-    | Id n1, Id n2 => beq_nat n1 n2
+    | Id n1, Id n2 => Nat.eqb n1 n2
   end.
 
 Definition t_update {A:Type} (m : total_map A)
@@ -82,7 +82,7 @@ Fixpoint beval (st : state) (b : bexp) : bool :=
   match b with
   | BTrue       => true
   | BFalse      => false
-  | BEq a1 a2   => beq_nat (aeval st a1) (aeval st a2)
+  | BEq a1 a2   => Nat.eqb (aeval st a1) (aeval st a2)
   | BLe a1 a2   => leb (aeval st a1) (aeval st a2)
   | BNot b1     => negb (beval st b1)
   | BAnd b1 b2  => andb (beval st b1) (beval st b2)

@@ -47,12 +47,12 @@ Import M.notations.
 (** In addition, we import a couple of modules from the standard
 library that we are going to use in some examples. *)
 
-Require Import Arith.Arith Arith.Div2.
+Require Import Arith.Arith.
 Require Import Lists.List.
 Require Import Strings.String.
 
 Set Implicit Arguments.
-Notation "x == y" := (beq_nat x y) (at level 60).
+Notation "x == y" := (Nat.eqb x y) (at level 60).
 
 (** We start by showing the standard _unit_ and _bind_ operators,
 which in our language are called [ret] (for return) and [bind]. The
@@ -204,7 +204,7 @@ Definition collatz :=
       if n == 1 then
         ret nil
       else if is_even n then
-        f (div2 n)
+        f (Nat.div2 n)
       else
         f (3 * n + 1)
     in
@@ -668,12 +668,11 @@ Program Definition eq_nats  :=
       ret _
     end.
 Next Obligation.
-  symmetry.
-  apply beq_nat_refl.
+  apply Nat.eqb_refl.
 Qed.
 Next Obligation.
-  rewrite beq_nat_true_iff.
-  apply plus_comm.
+  rewrite Nat.eqb_eq.
+  apply Nat.add_comm.
 Qed.
 (** Notice how we use the [[H]] notation after the right arrow in the
 pattern. The name [H] will be instantiated with a proof of equality of

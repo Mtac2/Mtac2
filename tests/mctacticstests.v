@@ -268,14 +268,14 @@ Qed.
 Example apply_tactic (a b : nat) : a > b -> S a > S b.
 MProof.
   intro H.
-  apply Gt.gt_n_S.
+  apply (proj1 (PeanoNat.Nat.succ_lt_mono b a)).
   assumption.
 Qed.
 
 Example apply_tactic_fail (a b : nat) : a > b -> S a > b.
 MProof.
   intro H.
-  Fail apply Gt.gt_n_S.
+  Fail apply (proj1 (PeanoNat.Nat.succ_lt_mono b a)).
 Abort.
 
 Goal forall b1 b2 b3 : bool, andb b1 (andb b2 b3) = andb b1 (andb b2 b3).
