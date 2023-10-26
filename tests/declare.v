@@ -79,18 +79,22 @@ Compute ltac:(mrun alrdecl).
 
 Print NAT4. (* definitions before the failing one are declared. *)
 
+(* NOTE: We give a unidirectional version of Nat.succ_le_mono for compatibility. *)
+Lemma succ_le_mono_lr (n m : nat) : n <= m -> S n <= S m.
+Proof. now apply ->PeanoNat.Nat.succ_le_mono. Qed.
+
 (* we should check that the terms are closed w.r.t. section variables *)
 (* JANNO: for now we just raise an catchable exception. *)
 Fail Compute fun x y =>
           ltac:(mrun (
                     mtry
-                      M.declare dok_Definition "lenS" true (Le.le_n_S x y);; M.ret tt
+                      M.declare dok_Definition "lenS" true (succ_le_mono_lr x y);; M.ret tt
                       with | UnboundVar => M.failwith "This must fail" | _ => M.ret tt end
                )).
 
 (* This used to fail because of weird universe issues. *)
-Compute ltac:(mrun (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c)).
-Definition decl_blu := (c <- M.declare dok_Definition "blu" true (Le.le_n_S); M.print_term c).
+Compute ltac:(mrun (c <- M.declare dok_Definition "blu" true (succ_le_mono_lr); M.print_term c)).
+Definition decl_blu := (c <- M.declare dok_Definition "blu" true (succ_le_mono_lr); M.print_term c).
 (* This now fails because the previous failure no longer exists and [blu] is declared. *)
 Fail Compute ltac:(mrun decl_blu).
 
