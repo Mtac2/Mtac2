@@ -647,7 +647,7 @@ let name_occurn_env env n =
 let dest_Case (env, sigma) t =
   let sigma, dyn = mkdyn sigma env in
   try
-    let (info, return_type, iv, discriminant, branches) = EConstr.expand_case env sigma (destCase sigma t) in
+    let (info, (return_type,r), iv, discriminant, branches) = EConstr.expand_case env sigma (destCase sigma t) in
     let sigma, branch_dyns = Array.fold_right (
       fun t (sigma,l) ->
         let dyn_type = Retyping.get_type_of env sigma t in
@@ -694,7 +694,7 @@ let make_Case (env, sigma) case =
         let rci = Sorts.Relevant in
         let mib = Environ.lookup_mind mind env in
         let mip = mib.Declarations.mind_packets.(ind_i) in
-        let case_info = Inductiveops.make_case_info env (mind, ind_i) rci LetPatternStyle in
+        let case_info = Inductiveops.make_case_info env (mind, ind_i) LetPatternStyle in
         let (u, pms, repr_return) = contract_return_clause sigma (mib, mip) repr_return in
         let expand_branch i br =
           let open Context.Rel.Declaration in
@@ -708,7 +708,7 @@ let make_Case (env, sigma) case =
         let match_term = EConstr.mkCase (case_info,
                                          u,
                                          pms,
-                                         repr_return,
+                                         (repr_return, rci),
                                          NoInvert (* TODO handle case inversion *),
                                          repr_val,
                                          (Array.of_list repr_branches)) in
