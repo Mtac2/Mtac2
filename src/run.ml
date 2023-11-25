@@ -950,7 +950,7 @@ exception CanonicalStructureMayNotBeOpaque
 let run_declare_def env sigma kind name opaque ty bod =
   let open Decls in
   let vernac_definition_hook poly = function
-    | Coercion -> Some (ComCoercion.add_coercion_hook ~poly ~reversible:false)
+    | Coercion -> Some (ComCoercion.add_coercion_hook ~reversible:false)
     | CanonicalStructure ->
         if opaque then raise CanonicalStructureMayNotBeOpaque else
           Some (Declare.Hook.(make (fun { S.dref; _ } -> Canonical.declare_canonical_structure dref)))
