@@ -22,6 +22,14 @@ open CClosure
 
 let get_ts env = Conv_oracle.get_transp_state (Environ.oracle env)
 
+let ts_var_full =
+  let open TransparentState in
+  { tr_var = Id.Pred.full; tr_cst = Cpred.empty; tr_prj = PRpred.empty }
+
+let ts_cst_full =
+  let open TransparentState in
+  { tr_var = Id.Pred.empty; tr_cst = Cpred.full; tr_prj = PRpred.full }
+
 (** returns the i-th position of constructor c (starting from 0) *)
 let get_constructor_pos sigma c = let (_, pos), _ = destConstruct sigma c in pos-1
 
@@ -387,9 +395,9 @@ module ReductionStrategy = struct
         else if ci < Array.length redflags then
           red_add reds redflags.(ci)
         else if ci = posDeltaC then
-          red_add_transparent (red_add reds fDELTA) TransparentState.cst_full
+          red_add_transparent (red_add reds fDELTA) ts_cst_full
         else if ci = posDeltaX then
-          red_add_transparent (red_add reds fDELTA) TransparentState.var_full
+          red_add_transparent (red_add reds fDELTA) ts_var_full
         else
           failwith "Unknown flag"
       else if isApp sigma f then
@@ -453,7 +461,7 @@ module ReductionStrategy = struct
   (* let whd_betadeltaiota_nolet = whdfun RedFlags.allnolet *)
 
   let whd_all_novars =
-    let flags = red_add_transparent betaiota TransparentState.cst_full in
+    let flags = red_add_transparent betaiota ts_cst_full in
     whdfun flags
 
   let whd_betadeltaiota = whdfun RedFlags.all
@@ -1487,7 +1495,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
    * Feedback.msg_debug (Printer.pr_constr_env env sigma term); *)
 
   let reds = RedFlags.allnolet in
-  let reds = RedFlags.red_add_transparent reds TransparentState.var_full in
+  let reds = RedFlags.red_add_transparent reds ts_var_full in
   let infos = create_clos_infos env sigma reds in
   let tab = CClosure.create_tab () in
   let reduced_term, stack = reduce_noshare infos tab t stack in
