@@ -1428,7 +1428,7 @@ let pop_args num stack =
 
 let unfold_reference env (cst, u) = match Environ.lookup_constant cst env with
   | { const_body = Def b } -> Some (CClosure.mk_clos (Esubst.subs_id 0, u) b)
-  | { const_body = (OpaqueDef _ | Undef _ | Primitive _) } -> None
+  | { const_body = (OpaqueDef _ | Undef _ | Primitive _ | Symbol _) } -> None
   | exception Not_found -> None
 
 let rec run' ctxt (vms : vm list) =
