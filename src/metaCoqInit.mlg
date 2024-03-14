@@ -99,11 +99,20 @@ VERNAC { mproof_mode } EXTEND MProofInstr
   { fun ~pstate -> MetaCoqInterp.interp_proof_constr ~pstate _instr }
 END
 
+{
+open G_vernac
+}
+
 (** The parsing rule for the non terminal [mproof_instr]. *)
 GRAMMAR EXTEND Gram
-GLOBAL: mproof_instr;
+GLOBAL: mproof_instr mproof_mode;
   mproof_instr :
     [[ c=Pcoq.Constr.term ; "." -> { MetaCoqInstr.MetaCoq_constr c } ]];
+  mproof_mode:
+    [[ p = subprf -> { Vernacexpr.VernacSynPure p }
+     | g = OPT toplevel_selector; p = subprf_with_selector -> { Vernacexpr.VernacSynPure (p g) }
+     ]]
+  ;
 END
 
 {
