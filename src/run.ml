@@ -1989,7 +1989,7 @@ and primitive ctxt vms mh univs reduced_term =
             let sigma, goal = Goal.mkgoal ~base:false sigma env in
             let sigma, listg = CoqList.mkType sigma env goal in
             let sigma, goals = CoqList.pto_coq env goal (fun e sigma->Goal.goal_of_evar ~base:false env sigma e) new_undef sigma in
-            let sigma, pair = CoqPair.mkPair sigma env concl listg (of_constr c) goals in
+            let sigma, pair = CoqPair.mkPair sigma env concl listg c goals in
             (ereturn[@tailcall]) sigma pair
         | exception CErrors.UserError ppm ->
             let expl = string_of_ppcmds ppm in
