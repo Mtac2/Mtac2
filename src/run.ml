@@ -699,7 +699,7 @@ let make_Case (env, sigma) case =
   if isInd sigma t_type then
     match kind sigma t_type with
     | Ind ((mind, ind_i), _) ->
-        let rci = Sorts.Relevant in
+        let rci = ERelevance.relevant in
         let mib = Environ.lookup_mind mind env in
         let mip = mib.Declarations.mind_packets.(ind_i) in
         let case_info = Inductiveops.make_case_info env (mind, ind_i) LetPatternStyle in
@@ -708,6 +708,7 @@ let make_Case (env, sigma) case =
           let open Context.Rel.Declaration in
           let ctx, _ = mip.mind_nf_lc.(i) in
           let ctx, _ = List.chop mip.mind_consnrealdecls.(i) ctx in
+          let ctx = of_rel_context ctx in
           let nas = Array.of_list (List.rev_map get_annot ctx) in
           let args = Context.Rel.instance mkRel 0 ctx in
           nas, (mkApp (Vars.lift (Array.length nas) br, args))
@@ -1134,7 +1135,7 @@ let declare_mind env sigma params sigs mut_constrs =
       in
       let vars = Id.Set.add id vars in
       let params = (name, typeX):: params in
-      (n+1, (Context.Rel.Declaration.LocalAssum (nameR id, EConstr.to_constr sigma typeX))::acc, vars, params)
+      (n+1, (Context.Rel.Declaration.LocalAssum (Context.nameR id, EConstr.to_constr sigma typeX))::acc, vars, params)
     ) (0, [], vars, []) params in
 
   let params_rev = params in
@@ -1142,7 +1143,7 @@ let declare_mind env sigma params sigs mut_constrs =
 
   let _param_env =
     List.fold_left (fun param_env (name, typeX) ->
-      Environ.push_rel (Context.Rel.Declaration.LocalAssum (name, EConstr.to_constr sigma typeX)) param_env
+      Environ.push_rel (Context.Rel.Declaration.LocalAssum (EConstr.to_binder_annot sigma name, EConstr.to_constr sigma typeX)) param_env
     ) env params
   in
 
@@ -1168,11 +1169,11 @@ let declare_mind env sigma params sigs mut_constrs =
   ) sigs in
 
   let ind_env = List.fold_left (fun ind_env (name, _,_, _, ind_arity_full) ->
-    Environ.push_rel (Context.Rel.Declaration.LocalAssum (nameR name, EConstr.to_constr sigma ind_arity_full)) ind_env
+    Environ.push_rel (Context.Rel.Declaration.LocalAssum (Context.nameR name, EConstr.to_constr sigma ind_arity_full)) ind_env
   ) env inds in
   let _ind_env =
     List.fold_left (fun param_env (name, typeX) ->
-      Environ.push_rel (Context.Rel.Declaration.LocalAssum (name, EConstr.to_constr sigma typeX)) param_env
+      Environ.push_rel (Context.Rel.Declaration.LocalAssum (EConstr.to_binder_annot sigma name, EConstr.to_constr sigma typeX)) param_env
     ) ind_env params
   in
 
