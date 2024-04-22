@@ -14,6 +14,6 @@ install: [
 ]
 remove: ["rm" "-R" "%{lib}%/coq/user-contrib/Mtac2"]
 depends: [
-  "coq" {>= "dev"}
-  "coq-unicoq" {>= "dev"}
+  "coq" {>= "8.19"}
+  "coq-unicoq" {>= "1.6"}
 ]
