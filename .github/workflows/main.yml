@@ -27,7 +27,7 @@ jobs:
         #  - '8.15'
           - '8.19'
         ocaml_version:
-          - '4.12.1-flambda'
+          - '4.14-flambda'
       # at most 20 concurrent jobs per free account:
       # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#usage-limits
       max-parallel: 4
