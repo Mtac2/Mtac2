@@ -25,7 +25,7 @@ jobs:
         # to get the list of supported (coq, ocaml) versions in coqorg/coq.
         coq_version:
         #  - '8.15'
-          - 'dev'
+          - '8.19'
         ocaml_version:
           - '4.12.1-flambda'
       # at most 20 concurrent jobs per free account:
