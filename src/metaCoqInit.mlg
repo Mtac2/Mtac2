@@ -47,23 +47,13 @@ let mproof_mode : Vernacexpr.vernac_expr Pcoq.Entry.t =
    - at the raw level (just after parsing), these semantic values are
    [MetaCoqInstr.mproof_instr] ;
 
-   - after parsing, they should not appear anymore. (This is encoded
-   by the usage of [Util.Empty.t] type which encode a type with no
-   inhabitant.)
+   - TODO it can also be used by Solve Obligations, Hint Extern etc
+     but won't work until it has intern and interp functions registered.
+     It should also have a subst function registered and raw and glob printers.
 
 *)
-let wit_mproof_instr : (MetaCoqInstr.mproof_instr, Util.Empty.t, Util.Empty.t) Genarg.genarg_type =
+let wit_mproof_instr : (MetaCoqInstr.mproof_instr, Util.Empty.t, unit) Genarg.genarg_type =
   Genarg.create_arg "mproof_instr"
-
-(* FIXME: (Yann) I am not 100% sure that using all this machinery is really needed.
-   FIXME: Indeed, for the moment [with_mproof_instr] is not used except in the following
-   FIXME: instruction.
-
-   FIXME: Besides, is that true that no Mproof instruction will escape the
-   FIXME: parsing phase?
-*)
-
-(* FIXME: (Beta) I have no idea what I'm doing *)
 
 (** We introduce a new grammar rule for MProof instructions. The type of
     the semantic values (with_mproof_instr) is specified. *)
@@ -82,19 +72,13 @@ let mproof_instr : MetaCoqInstr.mproof_instr Pcoq.Entry.t =
     sign at the beginning of the rule means that there is no specific
     keyword starting the words derived from this non terminal.
 
-    As far as I understand STM machinery:
-    - [VtProofStep false] means that the interpretation of the proof step
-    cannot be parallelized.
-    - [VtLater] means that the command does not alter the parser and can
-    therefore by executed after the parsing of the rest of the source file.
-
     Finally, we do not produce any semantic value for the moment.
 
 *)
 }
 
 VERNAC { mproof_mode } EXTEND MProofInstr
-| ![proof] [ mproof_instr(_instr) ] =>
+| ![proof] [ mproof_instr(_instr) "." ] =>
   { Vernacextend.classify_as_proofstep } ->
   { fun ~pstate -> MetaCoqInterp.interp_proof_constr ~pstate _instr }
 END
@@ -107,7 +91,7 @@ open G_vernac
 GRAMMAR EXTEND Gram
 GLOBAL: mproof_instr mproof_mode;
   mproof_instr :
-    [[ c=Pcoq.Constr.term ; "." -> { MetaCoqInstr.MetaCoq_constr c } ]];
+    [[ c=Pcoq.Constr.term -> { MetaCoqInstr.MetaCoq_constr c } ]];
   mproof_mode:
     [[ p = subprf -> { Vernacexpr.VernacSynPure p }
      | g = OPT toplevel_selector; p = subprf_with_selector -> { Vernacexpr.VernacSynPure (p g) }
@@ -125,9 +109,6 @@ let proof_mode_identifier = "MProof"
 
 (** Register the proof mode.
 
-    See proof_global.mli for a documentation on the role of each of
-    the following fields.
-
     In our case, we have to set the command entry to "mproof_mode"
     defined in the MetaCoqParser when we enter in proof mode. This
     dynamically change the parser for the proof script instructions.
@@ -137,7 +118,12 @@ let proof_mode_identifier = "MProof"
     mode.
 *)
 
-let _ = Pvernac.register_proof_mode proof_mode_identifier mproof_mode
+let _ = Pvernac.register_proof_mode proof_mode_identifier
+  (ProofMode {
+     command_entry = mproof_mode;
+     wit_tactic_expr = wit_mproof_instr;
+     tactic_expr_entry = mproof_instr;
+   })
 
 (** The following command extends both the parser and the interpreter
    of the Vernacular language so that a new keyword "MProof" is
