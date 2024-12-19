@@ -1403,6 +1403,21 @@ let reduce_noshare infos t stack =
   let r = CClosure.whd_stack infos t stack in
   r
 
+let mk_fapp hd args =
+  let open Constr in
+  let fargs = Array.mapi (fun i _ -> mkRel (i + 2)) args in
+  let subst = Array.fold_right (fun arg accu -> Esubst.subs_cons arg accu) args (Esubst.subs_id 0) in
+  let subst = Esubst.subs_cons hd subst in
+  CClosure.mk_clos (subst, UVars.Instance.empty) (mkApp (mkRel 1, fargs))
+
+(* Create a new fconstr cell to break sharing *)
+let mk_cell c =
+  let open Constr in
+  let subst = Esubst.subs_cons c (Esubst.subs_id 0) in
+  (* This is a dummy cast that is immediately reduced away. We cannot put the
+     Rel directly otherwise mk_clos is optimized to keep sharing. *)
+  CClosure.mk_clos (subst, UVars.Instance.empty) (mkCast (mkRel 1, DEFAULTcast, mkProp))
+
 let pop_args num stack =
   let rec pop_args num stack =
     if num > 0 then
@@ -1548,7 +1563,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
             let (h, args) = Constr.destApp t in
             (isTReduce sigma env h,
              Array.length args,
-             fun () -> Array.map (fun x -> mk_red (FCLOS (x, subst))) args
+             fun () -> Array.map (fun x -> mk_clos subst x) args
             )
         | _ -> (false, -1, fun () -> [||])
       ) in
@@ -1562,7 +1577,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
         | ReductionValue (sigma, b) ->
             let e = (CClosure.usubs_cons (of_econstr b) e) in
             let ctxt = {ctxt with sigma} in
-            (run'[@tailcall]) ctxt (upd (mk_red (FCLOS (bd, e))))
+            (run'[@tailcall]) ctxt (upd (mk_clos e bd))
         | ReductionStuck ->
             let l = to_econstr (Array.get args' 0) in
             efail (E.mkNotAList sigma env l)
@@ -1571,7 +1586,7 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
             efail (E.mkReductionFailure sigma env l)
       else
         let e = (CClosure.usubs_cons v e) in
-        (eval[@tailcall]) ctxt vms (mk_red (FCLOS (bd, e)))
+        (eval[@tailcall]) ctxt vms (mk_clos e bd)
 
   | Monadic, FFlex (ConstKey (hc, u)) ->
       begin
@@ -1607,13 +1622,13 @@ and eval ctxt (vms : vm list) ?(reduced_to_let=false) t =
         efail (E.mkStuckTerm sigma env (to_econstr reduced_term))
       end
 
-  | Pure, (_ as t) when not reduced_to_let ->
+  | Pure, _ when not reduced_to_let ->
       let careless, careful = cut_stack stack in
       let infos = CClosure.infos_with_reds infos RedFlags.all in
       (* let term_to_reduce = _zip_term (CClosure.term_of_fconstr reduced_term) careless in
        * Feedback.msg_debug (Printer.pr_constr_env env sigma term_to_reduce); *)
       let tab = CClosure.create_tab () in
-      let t', stack = reduce_noshare infos tab (CClosure.mk_red t) careless in
+      let t', stack = reduce_noshare infos tab (mk_cell reduced_term) careless in
 
       let stack = List.append stack careful in
       (* carefully reduce further without touching lets *)
@@ -1662,7 +1677,11 @@ and primitive ctxt vms mh univs reduced_term =
 
   let hf = reduced_term in
 
-  if !trace then print_constr sigma env (EConstr.of_constr (CClosure.term_of_fconstr (mk_red (FApp (reduced_term,args)))));
+  let () =
+    if !trace then
+      let c = Constr.mkApp (CClosure.term_of_fconstr reduced_term, Array.map CClosure.term_of_fconstr args) in
+      print_constr sigma env (EConstr.of_constr c)
+  in
 
   let ctxt = {ctxt with stack} in
 
@@ -2319,7 +2338,7 @@ and primitive ctxt vms mh univs reduced_term =
 and run_fix ctxt (vms: vm list) (h: fconstr) (a: fconstr array) (b: fconstr) (f: fconstr) (x: fconstr array) =
   (* (run'[@tailcall]) {ctxt with stack=Zapp (Array.append [|mk_red (FApp (h, Array.append a [|f|]))|] x)::ctxt.stack} (Code f :: vms) *)
   (* Feedback.msg_notice(Pp.str "run_fix"); *)
-  (run'[@tailcall]) {ctxt with stack=Zapp (Array.append [|mk_red (FApp (h, Array.append a [|b;f|]))|] x)::ctxt.stack} (Code f :: vms)
+  (run'[@tailcall]) {ctxt with stack=Zapp (Array.append [|mk_fapp h (Array.append a [|b;f|])|] x)::ctxt.stack} (Code f :: vms)
 
 (* abs case env a p x y n abstract variable x from term y according to the case.
    if variables depending on x appear in y or the type p, it fails. n is for fixpoint and t for a let-binder. *)
