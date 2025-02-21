@@ -878,7 +878,7 @@ let new_env (env, sigma) hyps =
   in subs, env
 
 let make_evar sigma env ty =
-  let sigma, evar = Evarutil.new_evar env sigma ty in
+  let sigma, evar = Evarutil.new_evar ~typeclass_candidate:false env sigma ty in
   sigma, evar
 
 
