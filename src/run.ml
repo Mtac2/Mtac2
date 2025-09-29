@@ -2049,7 +2049,7 @@ and primitive ctxt vms mh univs reduced_term =
 
   | MConstr (Mdeclare, (kind, name, opaque, ty, bod)) ->
       let kind, name, opaque, ty, bod = to_econstr kind, to_econstr name, to_econstr opaque, to_econstr ty, to_econstr bod in
-      (match run_declare_def env sigma kind name (CoqBool.from_coq sigma opaque) ty bod with
+      (match run_declare_def env sigma kind name (CoqBool.from_coq (env, sigma) opaque) ty bod with
        | (sigma, env, ret) -> ereturn ~new_env:env sigma (of_constr ret)
        | exception DeclareUniv.AlreadyDeclared _ ->
            efail (E.mkAlreadyDeclared sigma env name)
@@ -2074,13 +2074,13 @@ and primitive ctxt vms mh univs reduced_term =
   | MConstr (Mget_debug_exceptions, _) ->
       ereturn sigma (CoqBool.to_coq !debug_ex)
   | MConstr (Mset_debug_exceptions, b) ->
-      debug_ex := CoqBool.from_coq sigma (to_econstr b);
+      debug_ex := CoqBool.from_coq (env, sigma) (to_econstr b);
       ereturn sigma (Lazy.force CoqUnit.mkTT)
 
   | MConstr (Mget_trace, _) ->
       ereturn sigma (CoqBool.to_coq !trace)
   | MConstr (Mset_trace, b) ->
-      trace := CoqBool.from_coq sigma (to_econstr b);
+      trace := CoqBool.from_coq (env, sigma) (to_econstr b);
       ereturn sigma (Lazy.force CoqUnit.mkTT)
 
   | MConstr (Mdecompose_app', (_, _, _, uni, t, c, cont_success, cont_failure)) ->
@@ -2246,7 +2246,7 @@ and primitive ctxt vms mh univs reduced_term =
       ereturn sigma (Lazy.force CoqUnit.mkTT)
 
   | MConstr (Mstart_timer, (_, t_arg, reset)) ->
-      let reset = CoqBool.from_coq sigma (to_econstr reset) in
+      let reset = CoqBool.from_coq (env, sigma) (to_econstr reset) in
       let t_arg = to_econstr t_arg in
       let name, _ = destConst sigma t_arg in
       let fname = Constant.canonical name in
@@ -2303,7 +2303,7 @@ and primitive ctxt vms mh univs reduced_term =
       let sigma, types = declare_mind env sigma (to_econstr params) (to_econstr inds) (to_econstr constrs) in
       ereturn sigma (Lazy.force types)
   | MConstr (Mexisting_instance, (name, prio, global)) ->
-      let global = CoqBool.from_coq sigma (to_econstr global) in
+      let global = CoqBool.from_coq (env, sigma) (to_econstr global) in
       let name = CoqString.from_coq (env, sigma) (to_econstr name) in
       let path = Libnames.path_of_string name in
       let qualid = Libnames.qualid_of_path path in

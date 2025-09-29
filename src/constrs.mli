@@ -29,7 +29,7 @@ module ConstrBuilder : sig
 
   val build_app : t -> constr array -> constr
 
-  val equal : evar_map -> t -> constr -> bool
+  val equal : Environ.env -> evar_map -> t -> constr -> bool
 end
 
 module UConstrBuilder : sig
@@ -125,7 +125,7 @@ module CoqBool : sig
   exception NotABool
 
   val to_coq : bool -> constr
-  val from_coq : evar_map -> constr -> bool
+  val from_coq : (Environ.env * evar_map) -> constr -> bool
 end
 
 module CoqEq : sig
