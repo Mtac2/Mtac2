@@ -36,8 +36,8 @@ module Constrs = struct
 
   let mkUConstr name sigma env = mkUConstr_of_global (mkUGlobal name) sigma env
 
-  let isGlobal sigma r c =
-    Constr.isRefX (Lazy.force r) (to_constr sigma c)
+  let isGlobal env sigma r c =
+    EConstr.isRefX env sigma (Lazy.force r) c
 
   let isConstr sigma = fun r c -> eq_constr_nounivs sigma (Lazy.force r) c
 
@@ -56,11 +56,11 @@ module ConstrBuilder = struct
   let build (s : t) = lazy (mkConstr_of_global (Lazy.force s))
   let build_app (s : t) args = mkApp (mkConstr_of_global (Lazy.force s), args)
 
-  let equal sigma s = isGlobal sigma s
+  let equal env sigma s = isGlobal env sigma s
 
-  let from_coq s (_, sigma) cterm =
+  let from_coq s (env, sigma) cterm =
     let (head, args) = decompose_appvect sigma cterm in
-    if equal sigma s head then Some args else None
+    if equal env sigma s head then Some args else None
 end
 
 module UConstrBuilder = struct
@@ -222,20 +222,20 @@ module CoqPositive = struct
   let xO = mkGlobal "Coq.Numbers.BinNums.xO"
   let xH = mkGlobal "Coq.Numbers.BinNums.xH"
 
-  let isH sigma = isGlobal sigma xH
-  let isI sigma = isGlobal sigma xI
-  let isO sigma = isGlobal sigma xO
+  let isH env sigma = isGlobal env sigma xH
+  let isI env sigma = isGlobal env sigma xI
+  let isO env sigma = isGlobal env sigma xO
 
   let from_coq (env, evd) c =
     let rec fc i c =
-      if isH evd c then
+      if isH env evd c then
         1
       else
         let (s, n) = destApp evd c in
         begin
-          if isI evd s then
+          if isI env evd s then
             (fc (i+1) (n.(0)))*2 + 1
-          else if isO evd s then
+          else if isO env evd s then
             (fc (i+1) (n.(0)))*2
           else
             CErrors.user_err Pp.(str "Not a positive")
@@ -259,19 +259,19 @@ module CoqN = struct
   let h0 = mkGlobal "Coq.Numbers.BinNums.N0"
   let hP = mkGlobal "Coq.Numbers.BinNums.Npos"
 
-  let is0 sigma = isGlobal sigma h0
-  let isP sigma = isGlobal sigma hP
+  let is0 env sigma = isGlobal env sigma h0
+  let isP env sigma = isGlobal env sigma hP
 
   exception NotAnN
 
   let from_coq (env, evd) c =
     let fc c =
-      if is0 evd c then
+      if is0 env evd c then
         0
       else
         let (s, n) = destApp evd c in
         begin
-          if isP evd s then
+          if isP env evd s then
             CoqPositive.from_coq (env, evd) (n.(0))
           else
             raise NotAnN
@@ -317,9 +317,9 @@ module CoqBool = struct
   exception NotABool
 
   let to_coq b = if b then Lazy.force mkTrue else Lazy.force mkFalse
-  let from_coq sigma c =
-    if equal sigma trueBuilder c then true
-    else if equal sigma falseBuilder c then false
+  let from_coq (env, sigma) c =
+    if equal env sigma trueBuilder c then true
+    else if equal env sigma falseBuilder c then false
     else raise NotABool
 end
 
@@ -328,11 +328,11 @@ module CoqAscii = struct
 
   let asciiBuilder = from_string "Coq.Strings.Ascii.Ascii"
 
-  let from_coq (_, sigma) c =
+  let from_coq (env, sigma) c =
     let (h, args) = decompose_appvect sigma c in
     let rec from_bits n =
       if n >= Array.length args then 0
-      else (if CoqBool.from_coq sigma args.(n) then 1 else 0) lsl n + from_bits (n+1)
+      else (if CoqBool.from_coq (env, sigma) args.(n) then 1 else 0) lsl n + from_bits (n+1)
     in
     let n = from_bits 0 in
     Char.chr n
@@ -356,10 +356,10 @@ module CoqString = struct
     let buf = Buffer.create 128 in
     let rec fc s =
       let (h, args) = decompose_appvect sigma s in
-      if equal sigma stringBuilder h then
+      if equal env sigma stringBuilder h then
         let _ = Buffer.add_char buf (CoqAscii.from_coq ctx args.(0)) in
         fc args.(1)
-      else if equal sigma emptyBuilder h then ()
+      else if equal env sigma emptyBuilder h then ()
       else
         raise NotAString
     in
