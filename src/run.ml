@@ -2117,7 +2117,7 @@ and primitive ctxt vms mh univs reduced_term =
             let c_proj, _, c_rval = destProj sigma c_head in
             let c_constant = (Projection.constant c_proj) in
             if isConstant sigma env c_constant t_head then
-              let n_params = Structures.Structure.projection_nparams c_constant in
+              let n_params = Structures.Structure.projection_nparams env c_constant in
               let _t_params, t_args = List.chop n_params t_args in
               (t_head, c_rval :: c_args), (t_head, t_args)
             else
