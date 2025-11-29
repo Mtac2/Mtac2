@@ -740,7 +740,7 @@ let get_Constrs (env, sigma) t =
     let sigma, l = Array.fold_right
                      (fun i (sigma, l) ->
                         let constr = Names.ith_constructor_of_inductive (mind, ind_i) i in
-                        let coq_constr = mkConstruct constr in
+                        let coq_constr = EConstr.UnsafeMonomorphic.mkConstruct constr in
                         let ty = Retyping.get_type_of env sigma coq_constr in
                         let sigma, dyn_constr = mkDyn ty coq_constr sigma env in
                         CoqList.mkCons sigma env dyn dyn_constr l

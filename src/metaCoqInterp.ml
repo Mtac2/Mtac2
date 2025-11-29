@@ -192,7 +192,7 @@ module MetaCoqRun = struct
             begin
               try
                 let sigma = Evarconv.unify_leq_delay env sigma concl ty in
-                ((false, sigma, ty, EConstr.mkConst c), None)
+                ((false, sigma, ty, EConstr.UnsafeMonomorphic.mkConst c), None)
               with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (Pp.str "Different types")
             end
         | StaticallyChecked (PolyProgram (au, ty), Names.GlobRef.ConstRef  c) ->
@@ -202,7 +202,7 @@ module MetaCoqRun = struct
                 (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
                 let sigma = Evd.merge_sort_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
                 let sigma = Evarconv.unify_leq_delay env sigma concl ty in
-                ((false, sigma, ty, EConstr.mkConst c), None)
+                ((false, sigma, ty, EConstr.UnsafeMonomorphic.mkConst c), None)
               with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (Pp.str "Different types")
             end
         | StaticallyChecked (GTactic, gr) ->
