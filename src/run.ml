@@ -1246,8 +1246,7 @@ let declare_mind env sigma params sigs mut_constrs =
   let univs, ubinders = Evd.univ_entry ~poly:false sigma in
   let uctx = match univs with
     | UState.Monomorphic_entry ctx ->
-      let () = Global.push_qualities QGraph.Internal (PConstraints.ContextSet.sort_context_set ctx) in (* XXX *)
-      let () = Global.push_context_set (PConstraints.ContextSet.univ_context_set ctx) in
+      let () = Global.push_context_set ctx in
       Entries.Monomorphic_ind_entry
     | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
   in
