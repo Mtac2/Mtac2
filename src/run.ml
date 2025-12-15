@@ -996,9 +996,9 @@ let run_declare_def env sigma kind name opaque ty bod =
   let bod = Unsafe.to_constr bod in
 
   let sigma' = Evd.restrict_universe_context sigma univs in
-  let uctx = Evd.evar_universe_context sigma' in
+  let uctx = Evd.ustate sigma' in
 
-  let ctx = Evd.univ_entry ~poly:false sigma' in
+  let ctx = Evd.univ_entry ~poly:PolyFlags.default sigma' in
   let kind_pos = get_constructor_pos sigma kind in
   let kind = kinds.(kind_pos) in
   let name = CoqString.from_coq (env, sigma) name in
@@ -1006,7 +1006,7 @@ let run_declare_def env sigma kind name opaque ty bod =
   let ce = Declare.definition_entry ~opaque ~types:ty ~univs:ctx bod in
   let kn = Declare.declare_constant ~name:id ~kind:(Decls.IsDefinition kind) (Declare.DefinitionEntry ce) in
   let dref = GlobRef.ConstRef kn in
-  let () = Declare.Hook.call ?hook:(vernac_definition_hook false kind)
+  let () = Declare.Hook.call ?hook:(vernac_definition_hook PolyFlags.default kind)
              { Declare.Hook.S.uctx; obls=[]; scope=Locality.(Global ImportDefaultBehavior); dref }  in
   let c = UnivGen.constr_of_monomorphic_global (Global.env ()) dref in
   let env = Global.env () in
@@ -1243,7 +1243,7 @@ let declare_mind env sigma params sigs mut_constrs =
      mind_entry_lc} :: acc
   ) [] (zip (inds, constrs)) in
   let mind_entry_inds = List.rev mind_entry_inds in
-  let univs, ubinders = Evd.univ_entry ~poly:false sigma in
+  let univs, ubinders = Evd.univ_entry ~poly:PolyFlags.default sigma in
   let uctx = match univs with
     | UState.Monomorphic_entry ctx ->
       let () = Global.push_context_set ctx in
@@ -1482,7 +1482,7 @@ let rec run' ctxt (vms : vm list) =
   | Fail c, (Bind (_, _) :: vms) ->
       (run'[@tailcall]) ctxt (Fail c :: vms)
   | Fail c, (Try (sigma, stack, backtrace_try, b) :: vms) ->
-      let sigma = Evd.set_universe_context sigma (Evd.evar_universe_context ctxt.sigma) in
+      let sigma = Evd.set_universe_context sigma (Evd.ustate ctxt.sigma) in
       let (ground, (sigma, c)) = check_exception ctxt.sigma sigma ctxt.env (to_econstr c) in
       let backtrace = ctxt.backtrace in
       let backtrace = if ground then Backtrace.push_mtry backtrace_try backtrace else
@@ -2001,7 +2001,7 @@ and primitive ctxt vms mh univs reduced_term =
         let undef = Evar.Map.domain (Evd.undefined_map sigma) in
         let args_map = List.fold_left (fun m (k, v)-> Id.Map.add k v m) Id.Map.empty args in
         let ist = { (default_ist ()) with lfun = args_map } in
-        let name, poly = Id.of_string "mtac2", false in
+        let name, poly = Id.of_string "mtac2", PolyFlags.default in
         match Proof.refine_by_tactic ~name ~poly env sigma concl (Tacinterp.eval_tactic_ist ist to_call) with
         | (c, sigma) ->
             let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
