@@ -115,6 +115,7 @@ Print blu.
 
 
 Module Inductives.
+  Set Universe Polymorphism.
   Set Polymorphic Inductive Cumulativity.
   Unset Universe Minimization ToSet.
   Import ListNotations.
