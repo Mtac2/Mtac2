@@ -2002,7 +2002,7 @@ and primitive ctxt vms mh univs reduced_term =
         let args_map = List.fold_left (fun m (k, v)-> Id.Map.add k v m) Id.Map.empty args in
         let ist = { (default_ist ()) with lfun = args_map } in
         let name, poly = Id.of_string "mtac2", PolyFlags.default in
-        match Proof.refine_by_tactic ~name ~poly env sigma concl (Tacinterp.eval_tactic_ist ist to_call) with
+        match Subproof.refine_by_tactic ~name ~poly env sigma concl (Tacinterp.eval_tactic_ist ist to_call) with
         | (c, sigma) ->
             let new_undef = Evar.Set.diff (Evar.Map.domain (Evd.undefined_map sigma)) undef in
             let new_undef = Evar.Set.elements new_undef in
