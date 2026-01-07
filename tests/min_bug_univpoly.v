@@ -446,8 +446,8 @@ Module Export notations.
 End notations.
 
 Definition unify_cumul {A B} (x: A) (y: B) (u : Unification) : t bool :=
-  of <- unify_univ A B u;
-  match of with
+  from <- unify_univ A B u;
+  match from with
   | Some f =>
     let fx := reduce RedOneStep (f x) in
     oeq <- unify fx y u;

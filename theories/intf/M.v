@@ -754,8 +754,8 @@ Definition unify_cumul_or_fail {A} (u : Unification) (x y : A) : t (x =m= y) :=
 
 
 Definition cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
-  of <- unify_cumul A B u;
-  match of with
+  from <- unify_cumul A B u;
+  match from with
   | mSome f =>
     let fx := reduce (RedOneStep [rl:RedBeta]) (f x) in
     oeq <- unify fx y u;
@@ -765,8 +765,8 @@ Definition cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
 
 (* [y] is the evar *)
 Definition inst_cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
-  of <- unify_cumul A B u;
-  match of with
+  from <- unify_cumul A B u;
+  match from with
   | mSome f =>
     let fx := reduce (RedOneStep [rl:RedBeta]) (f x) in
     instantiate_evar y fx (M.ret true) (M.ret false)
