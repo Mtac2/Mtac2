@@ -43,7 +43,7 @@ let glob_mtac_type ist r =
           (* need to instantiate and register the abstract universes a *)
           let inst, ctx = UnivGen.fresh_instance_from au None in
           (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
-          let sigma = Evd.merge_sort_context_set ?sideff:(Some false) (Evd.UnivFlexible true) QGraph.Internal sigma ctx in
+          let sigma = Evd.merge_sort_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
           sigma, Vars.subst_instance_constr inst ty, (fun ty -> PolyProgram (au, ty))
     in
     let ty = EConstr.of_constr ty in
@@ -200,7 +200,7 @@ module MetaCoqRun = struct
               try
                 let inst, ctx = UnivGen.fresh_instance_from au None in
                 (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
-                let sigma = Evd.merge_sort_context_set ?sideff:(Some false) (Evd.UnivFlexible true) QGraph.Internal sigma ctx in
+                let sigma = Evd.merge_sort_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
                 let sigma = Evarconv.unify_leq_delay env sigma concl ty in
                 ((false, sigma, ty, EConstr.UnsafeMonomorphic.mkConst c), None)
               with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (Pp.str "Different types")
