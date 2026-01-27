@@ -48,8 +48,8 @@ Inductive t : Type -> Prop :=
   Notation "t >>= f" := (bind t f) (at level 70) : M_scope.
 
 Definition unify_cumul {A B} (x: A) (y: B) : t bool :=
-  of <- unify_univ A B;
-  match of with
+  from <- unify_univ A B;
+  match from with
   | Some f =>
     let fx := f x in
     oeq <- unify fx y;

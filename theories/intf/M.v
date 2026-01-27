@@ -337,7 +337,7 @@ Definition replace {A B C} (x:A) : A =m= B -> t C -> t C.
 
 Definition declare_mind
            (params : MTele)
-           (sigs : mlist (string *m (MTele_ConstT m:{ mt_ind &(MTele_ConstT S.Sort mt_ind)} params)))
+           (sigs : mlist (string *m (MTele_ConstT (msigT (MTele_ConstT S.Sort)) params)))
            (constrs :
               mfold_right
                 (fun '(m: _; ind) acc =>
@@ -351,7 +351,7 @@ Definition declare_mind
                                         (fun a =>
                                            mfold_right
                                              (fun '(m: _; ind) acc =>
-                                                mlist (string *m m:{mt_constr & MTele_ConstT (ArgsOf (mprojT1 (apply_constT ind a))) mt_constr}) *m acc
+                                                mlist (string *m msigT (MTele_ConstT (ArgsOf (mprojT1 (apply_constT ind a))))) *m acc
                                              )%type
                                              unit
                                              sigs
@@ -754,8 +754,8 @@ Definition unify_cumul_or_fail {A} (u : Unification) (x y : A) : t (x =m= y) :=
 
 
 Definition cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
-  of <- unify_cumul A B u;
-  match of with
+  from <- unify_cumul A B u;
+  match from with
   | mSome f =>
     let fx := reduce (RedOneStep [rl:RedBeta]) (f x) in
     oeq <- unify fx y u;
@@ -765,8 +765,8 @@ Definition cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
 
 (* [y] is the evar *)
 Definition inst_cumul {A B} (u : Unification) (x: A) (y: B) : t bool :=
-  of <- unify_cumul A B u;
-  match of with
+  from <- unify_cumul A B u;
+  match from with
   | mSome f =>
     let fx := reduce (RedOneStep [rl:RedBeta]) (f x) in
     instantiate_evar y fx (M.ret true) (M.ret false)

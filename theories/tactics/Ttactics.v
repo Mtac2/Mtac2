@@ -28,8 +28,8 @@ Mtac Do New Exception NotAProp.
 Definition to_goal (A : Type) : M (A *m goal gs_open) :=
   mtry
     P <- evar Prop;
-    of <- unify_cumul P A UniMatchNoRed;
-    match of with
+    from <- unify_cumul P A UniMatchNoRed;
+    match from with
     | mSome f => a <- M.evar P;
                  let a' := reduce (RedOneStep [rl: RedBeta]) (f a) in
                  ret (m: a', Metavar Propₛ _ a)
