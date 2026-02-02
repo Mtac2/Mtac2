@@ -55,6 +55,13 @@ let mproof_mode : Vernacexpr.vernac_expr Pcoq.Entry.t =
 let wit_mproof_instr : (MetaCoqInstr.mproof_instr, Util.Empty.t, unit) Genarg.genarg_type =
   Genarg.create_arg "mproof_instr"
 
+(* will need glob level to be non empty and gentactic registers to be usable *)
+let wit_mproof_instr_tac : (MetaCoqInstr.mproof_instr, Util.Empty.t) Gentactic.tag =
+  Gentactic.make "mproof_instr_tac"
+
+let () = Gentactic.register_intern wit_mproof_instr_tac @@ fun ist _ ->
+  CErrors.user_err Pp.(str "Using mtac2 for generic tactics (Hint Extern etc) is not supported.")
+
 (** We introduce a new grammar rule for MProof instructions. The type of
     the semantic values (with_mproof_instr) is specified. *)
 let mproof_instr : MetaCoqInstr.mproof_instr Pcoq.Entry.t =
@@ -121,7 +128,7 @@ let proof_mode_identifier = "MProof"
 let _ = Pvernac.register_proof_mode proof_mode_identifier
   (ProofMode {
      command_entry = mproof_mode;
-     wit_tactic_expr = wit_mproof_instr;
+     wit_tactic_expr = wit_mproof_instr_tac;
      tactic_expr_entry = mproof_instr;
    })
 
