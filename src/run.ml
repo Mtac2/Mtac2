@@ -1126,7 +1126,7 @@ let declare_mind env sigma params sigs mut_constrs =
   (* Calculate length and LocalEntry list from parameter telescope.
      The LocalEntry list is reversed because we are using a left fold.
   *)
-  let sigma = Evd.collapse_sort_variables sigma in
+  let sigma = Evd.collapse_sort_variables ~only_above_prop:false sigma in
   let n_params, mind_entry_params, _, params =
     mTele_fold_left sigma env (fun (n, acc, vars, params) (name, typeX) ->
       let id = match name.binder_name with
