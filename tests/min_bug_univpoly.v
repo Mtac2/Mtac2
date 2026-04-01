@@ -14,7 +14,7 @@ End LocalFalse.
 Axiom proof_admitted : False.
 Tactic Notation "admit" := abstract case proof_admitted.
 End AdmitTactic.
-Require Coq.Strings.String.
+From Stdlib Require String.
 
 Module Import LocalFalse.
 Inductive False := .

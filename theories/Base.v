@@ -9,9 +9,7 @@ Import Sorts.
 From Mtac2 Require Export Pattern.
 From Mtac2.intf Require Export Dyn Reduction Unification DeclarationDefs M Lift .
 
-Require Import Strings.String.
-Require Import NArith.BinNat.
-Require Import NArith.BinNatDef.
+From Stdlib Require Import String BinNat BinNatDef.
 Import Mtac2.lib.List.ListNotations.
 
 Set Universe Polymorphism.

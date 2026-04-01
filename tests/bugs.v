@@ -1,6 +1,6 @@
 From Mtac2 Require Import Logic Datatypes Mtac2.
 
-Require Import Bool.Bool.
+From Stdlib Require Import Bool.
 Import T.
 
 (** A bug with destruct *)

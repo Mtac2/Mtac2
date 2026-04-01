@@ -2,7 +2,7 @@ From Mtac2 Require Import Mtac2.
 
 Import M.
 
-Require Import Lists.List.
+From Stdlib Require Import List.
 Import ListNotations.
 
 Set Use Unicoq.

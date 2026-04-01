@@ -34,8 +34,7 @@ MProof.
   select (_ = _) >>= rrewrite ;; reflexivity.
 Qed.
 
-Require Import Coq.Arith.Arith.
-Require Import Coq.Arith.EqNat.
+From Stdlib Require Import Arith EqNat.
 
 Inductive id : Type :=
   | Id : nat -> id.
@@ -147,7 +146,7 @@ Inductive ceval : com -> state -> state -> Prop :=
 
   where "c1 '/' st '\\' st'" := (ceval c1 st st').
 
-Require Import Strings.String.
+From Stdlib Require Import String.
 
 Definition remember {A} (x:A) (def eq : string) : tactic :=
   cpose_base (TheName def) x (fun y:A=>

@@ -1,5 +1,4 @@
-Require Import Strings.String.
-Require Import NArith.BinNat.
+From Stdlib Require Import String BinNat.
 From Mtac2 Require Import Logic Datatypes Logic List Utils MTele Pattern Specif.
 Import ListNotations.
 Import ProdNotations.

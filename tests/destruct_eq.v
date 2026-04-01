@@ -1,5 +1,5 @@
 From Mtac2 Require Import Mtac2 CompoundTactics.
-From Coq.Arith Require Import Arith.
+From Stdlib Require Import Arith.
 
 Example beq_nat_ex : forall n, if (Nat.eqb n 3) then True else True.
 MProof.

@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String.
+From Stdlib Require Import String.
 From Mtac2 Require Import Datatypes List Mtac2.
 Import TacticsBase.T.
 Import Mtac2.lib.List.ListNotations.

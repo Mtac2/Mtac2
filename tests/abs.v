@@ -1,9 +1,9 @@
 From Mtac2
 Require Export Mtac2.
 
-Require Import Strings.String.
+From Stdlib Require Import String.
 
-Require Import Lists.List.
+From Stdlib Require Import List.
 Import ListNotations.
 
 Definition assert_eq {A} (a b : A) : M True := mmatch b with a => M.ret I | _ => M.raise exception end.

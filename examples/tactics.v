@@ -21,7 +21,7 @@ Require Import Mtac2.Mtac2.
 Import T.
 
 (** We're going to prove stuff about lists. *)
-Require Import Lists.List.
+From Stdlib Require Import List.
 Import Lists.List.ListNotations.
 
 (** A simple example to warm up. *)

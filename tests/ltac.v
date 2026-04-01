@@ -2,7 +2,7 @@ From Mtac2 Require Import Datatypes List Mtac2.
 Import Mtac2.lib.List.ListNotations.
 Import T.
 
-Require Import Bool.Bool.
+From Stdlib Require Import Bool.
 
 Ltac induction n := induction n.
 

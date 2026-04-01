@@ -60,7 +60,7 @@ Definition to_dynr (d: dyn) : M dynr := dcase d as e in ret (Dynr e).
 
 Import ProdNotations.
 Import Mtac2.lib.List.ListNotations.
-Require Import Strings.String.
+From Stdlib Require Import String.
 Definition construct_case A (x: A) (loop: forall r: dynr, M (moption (result x (elemr r)))) C :=
   let 'mkCase _ val retrn branches := C in
   nu (FreshFromStr "v") mNone (fun v=>

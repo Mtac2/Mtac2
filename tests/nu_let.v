@@ -1,5 +1,5 @@
 From Mtac2 Require Import Mtac2.
-Require Import Bool.Bool.
+From Stdlib Require Import Bool.
 
 Example hyp_well_formed : True.
 MProof.

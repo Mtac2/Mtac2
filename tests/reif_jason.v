@@ -1,5 +1,4 @@
-Require Import Coq.ZArith.ZArith.
-Require Import Coq.Lists.List.
+From Stdlib Require Import ZArith List.
 Set Implicit Arguments.
 Reserved Notation "'dlet' x .. y := v 'in' f"
          (at level 200, x binder, y binder, f at level 200, format "'dlet'  x .. y  :=  v  'in' '//' f").

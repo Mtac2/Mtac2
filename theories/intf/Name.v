@@ -1,4 +1,4 @@
-Require Import Strings.String.
+From Stdlib Require Import String.
 
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.

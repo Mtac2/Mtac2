@@ -47,9 +47,7 @@ Import M.notations.
 (** In addition, we import a couple of modules from the standard
 library that we are going to use in some examples. *)
 
-Require Import Arith.Arith.
-Require Import Lists.List.
-Require Import Strings.String.
+From Stdlib Require Import Arith List String.
 
 Set Implicit Arguments.
 Notation "x == y" := (Nat.eqb x y) (at level 60).

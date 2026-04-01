@@ -16,7 +16,7 @@ Qed.
 
 Goal forall x, 0 <= x.
 MProof.
-  H <- M.get_reference "Coq.Init.Peano.le_0_n";
+  H <- M.get_reference "Corelib.Init.Peano.le_0_n";
   dcase H as e in T.apply e.
 Qed.
 

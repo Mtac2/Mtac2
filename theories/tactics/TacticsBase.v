@@ -1,14 +1,12 @@
-Require Import Strings.String.
-Require Import ssrmatching.ssrmatching.
+From Stdlib Require Import String.
+From Corelib Require Import ssrmatching.
 From Mtac2 Require Export Base.
 From Mtac2 Require Import Logic Datatypes List Utils Logic intf.Sorts.
 Import Sorts.S.
 Import M.notations.
 Import Mtac2.lib.List.ListNotations.
 
-Require Import Strings.String.
-Require Import NArith.BinNat.
-Require Import NArith.BinNatDef.
+From Stdlib Require Import String BinNat BinNatDef.
 
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.

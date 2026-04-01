@@ -1,5 +1,5 @@
 From Mtac2 Require Import Base Datatypes List Sorts tactics.Tactics.
-Require Import Strings.String.
+From Stdlib Require Import String.
 Import Sorts.S.
 Import Mtac2.lib.List.ListNotations.
 Import ProdNotations.
@@ -179,7 +179,7 @@ Definition tor {A:Type} (t u : ttac A) : ttac A :=
 Definition reflexivity {P} {A B : P} : TT.ttac (A = B) :=
   r <- M.coerce (eq_refl A); M.ret (m: r, [m:]).
 
-Require Import Strings.String.
+From Stdlib Require Import String.
 
 Definition ucomp1 {A B} (t: ttac A) (u: ttac B) : ttac A :=
   '(m: v1, gls1) <- t;

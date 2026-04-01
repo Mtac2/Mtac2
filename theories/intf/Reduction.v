@@ -1,4 +1,4 @@
-From Coq Require Import String.
+From Stdlib Require Import String.
 From Mtac2.intf Require Import Dyn.
 
 Set Universe Polymorphism.
