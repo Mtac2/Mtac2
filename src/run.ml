@@ -885,7 +885,7 @@ let make_evar sigma env ty =
 (* return the reflected hash of a term *)
 let hash env sigma c size =
   let size = CoqN.from_coq (env, sigma) size in
-  let h = Constr.hash (Unsafe.to_constr c) in
+  let h = Termops.ConstrData.hash (Unsafe.to_constr c) in
   CoqN.to_coq (Stdlib.abs (h mod size))
 
 (* [build_hypotheses sigma env] reflects the hypotheses in [env] in a list of
