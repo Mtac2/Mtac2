@@ -375,7 +375,7 @@ Definition existing_instance (name : string) (priority : moption N) (global : bo
 Definition instantiate_evar {A : Type} {P : A -> Type} (e x : A) (succ : t (P x)) (fail : t (P e)) : t (P e).
   make. Qed.
 
-Arguments t _%type.
+Arguments t _%_type.
 
 Definition fmap {A:Type} {B:Type} (f : A -> B) (x : t A) : t B :=
   bind x (fun a => ret (f a)).
