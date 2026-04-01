@@ -1,6 +1,6 @@
 From Mtac2 Require Import Datatypes Mtac2.
 
-Require Import Lists.List.
+From Stdlib Require Import List.
 Import ListNotations.
 
 (** assert x y e asserts that y is syntactically equal to x. Since we

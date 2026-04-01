@@ -1,5 +1,5 @@
-Require Import Strings.String.
-Require Import ssrmatching.ssrmatching.
+From Stdlib Require Import String.
+From Corelib Require Import ssrmatching.
 From Mtac2 Require Export Base.
 From Mtac2 Require Import Logic Datatypes List Utils Logic Sorts MTeleMatch.
 From Mtac2.tactics Require Export TacticsBase.
@@ -8,9 +8,7 @@ Import M.notations.
 Import Mtac2.lib.List.ListNotations.
 Import T.
 
-Require Import Strings.String.
-Require Import NArith.BinNat.
-Require Import NArith.BinNatDef.
+From Stdlib Require Import String BinNat BinNatDef.
 
 Set Universe Polymorphism.
 Unset Universe Minimization ToSet.
@@ -661,7 +659,7 @@ Import TacticsBase.T.notations.
 
 (** Applies reflexivity *)
 Definition prim_reflexivity : tactic :=
-  apply (@Coq.Init.Logic.eq_refl).
+  apply (@Corelib.Init.Logic.eq_refl).
 
 (** Fist introduces the hypotheses and then applies reflexivity *)
 Definition reflexivity : tactic :=
@@ -681,16 +679,16 @@ Definition apply_in {P Q} (c : P -> Q) (H : P) : tactic :=
   change_hyp H (c H).
 
 Definition transitivity {B} (y : B) : tactic :=
-  apply (fun x => @Coq.Init.Logic.eq_trans B x y).
+  apply (fun x => @Corelib.Init.Logic.eq_trans B x y).
 
 Definition symmetry : tactic :=
-  apply Coq.Init.Logic.eq_sym.
+  apply Corelib.Init.Logic.eq_sym.
 
 Definition symmetry_in {T} {x y: T} (H: x = y) : tactic :=
-  apply_in (@Coq.Init.Logic.eq_sym _ _ _) H.
+  apply_in (@Corelib.Init.Logic.eq_sym _ _ _) H.
 
 Definition exfalso : tactic :=
-  apply Coq.Init.Logic.False_ind.
+  apply Corelib.Init.Logic.False_ind.
 
 Definition nconstructor (n : nat) : tactic :=
   A <- goal_type;

@@ -3,11 +3,11 @@ Require Import Mtac2.Mtac2.
 Inductive my_enum_type :=
   one | two | three.
 
-Require Import Vector.
+From Stdlib Require Import Vector.
 
 Import Fin.
 
-Require Import Lia.
+From Stdlib Require Import Lia.
 
 Lemma lt_0_S n : 0 < S n. Proof. lia. Qed.
 

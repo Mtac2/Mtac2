@@ -4,8 +4,8 @@ Import M.notations.
 
 Print Universes "universes-mtac2.txt".
 Import M.
-Require Import Coq.Numbers.BinNums.
-Require Import Strings.String.
+From Corelib Require Import BinNums.
+From Stdlib Require Import String.
 
 Definition file := "universes-mtac2.txt".
 Definition magic_number := "0".

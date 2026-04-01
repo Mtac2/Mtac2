@@ -3,7 +3,7 @@ Import Sorts.S.
 Import ListNotations.
 Set Implicit Arguments.
 Import ProdNotations.
-Require Import Strings.String.
+From Stdlib Require Import String.
 
 Set Universe Polymorphism.
 (** This is a simple example tighting up a bit the types of tactics in order to

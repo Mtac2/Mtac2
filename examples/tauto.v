@@ -1,5 +1,5 @@
 From Mtac2 Require Import Mtac2 Ttactics Sorts.
-From Coq Require Import List.
+From Stdlib Require Import List.
 Import M.notations.
 Import M.
 Import ListNotations.

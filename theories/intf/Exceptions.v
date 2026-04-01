@@ -1,4 +1,4 @@
-Require Import Strings.String.
+From Stdlib Require Import String.
 From Mtac2.intf Require Import Name.
 
 Set Universe Polymorphism.

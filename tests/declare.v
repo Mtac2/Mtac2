@@ -43,7 +43,7 @@ Module DeclareTest.
   Compute ltac:(mrun (M.declare_implicits (@Nat.add) [m: ia_Explicit | ia_Explicit])).
   Definition should_work := Nat.add 3 2.
 End DeclareTest.
-Require Import Strings.String.
+From Stdlib Require Import String.
 Import M.notations.
 
 Fixpoint defineN (n : nat) : M unit :=

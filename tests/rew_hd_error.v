@@ -2,7 +2,7 @@ From Mtac2 Require Import Mtac2.
 Import M.
 Import M.notations.
 
-Require Import Lists.List.
+From Stdlib Require Import List.
 Import ListNotations.
 
 Definition rew_hd_error : tactic :=

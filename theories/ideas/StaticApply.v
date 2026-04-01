@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String.
+From Stdlib Require Import String.
 From Mtac2 Require Import Base Logic Datatypes List MFix MTeleMatch.
 Import M.notations.
 Import Mtac2.lib.List.ListNotations.

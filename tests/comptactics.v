@@ -18,7 +18,7 @@ simple_rewrite H.
 reflexivity.
 Qed.
 
-Require Import Strings.String.
+From Stdlib Require Import String.
 Example exabs2' (x : nat) : S x = 1 -> 1 = S x.
 MProof.
 intro H.
@@ -27,7 +27,7 @@ assert (B:t = S x).
 reflexivity.
 Abort.
 
-Require Import Arith.
+From Stdlib Require Import Arith.
 
 Example exif (x : nat) : if Nat.eqb (S x) 1 then x = 0 : Type else True.
 MProof.

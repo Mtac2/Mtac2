@@ -1,4 +1,4 @@
-Require Import Bool.Bool.
+From Stdlib Require Import Bool.
 Require Import Mtac2.Mtac2.
 Import T.
 Import Mtac2.lib.List.ListNotations.
@@ -95,8 +95,8 @@ MProof.
   apply le_n.
 Qed.
 
-Require Import Lia.
-Definition lia := ltac "Coq.micromega.Lia.lia" [m:].
+From Stdlib Require Import Lia.
+Definition lia := ltac "Stdlib.micromega.Lia.lia" [m:].
 
 Goal (forall x y, x > y \/ y < x -> x <> y) -> 3 <> 0.
 MProof.
@@ -147,13 +147,13 @@ MProof.
   - exact G.
 Qed.
 
-Definition transitivity := "Coq.Init.Ltac.transitivity".
+Definition transitivity := "Corelib.Init.Ltac.transitivity".
 
 Lemma test6 : forall (x y z : Prop), x = y -> y = z -> x = z.
 MProof.
   intros x y z H G.
   ltac transitivity [m:Dyn y].
-  ltac "Coq.Init.Ltac.revgoals" [m:].
+  ltac "Corelib.Init.Ltac.revgoals" [m:].
   exact H.
   exact G.
 Qed.

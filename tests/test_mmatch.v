@@ -43,8 +43,8 @@ Import ListNotations.
 (** Testing the construction of mmatch *)
 Definition NotFound : Exception. exact exception. Qed.
 
-Require Import Init.Datatypes.
-Require Import Lists.List.
+From Corelib Require Import Datatypes.
+From Stdlib Require Import List.
 Import Base.M.
 Import M.notations.
 

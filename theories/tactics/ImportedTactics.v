@@ -4,7 +4,7 @@ Require Import ssrmatching.ssrmatching.
 Import M.notations.
 Import T.notations.
 
-Require Import Strings.String.
+From Stdlib Require Import String.
 Require Import Mtac2.lib.List.
 Import Mtac2.lib.List.ListNotations.
 

@@ -1,7 +1,7 @@
 From Mtac2 Require Import Mtac2 Ttactics.
 
 
-From Coq Require Import String.
+From Stdlib Require Import String.
 
 (* Mtac Do (do_def "tt_lt_trans" (@PeanoNat.Nat.lt_trans)). *)
 (* Check tt_lt_trans. *)

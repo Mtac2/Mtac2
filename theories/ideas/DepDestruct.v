@@ -4,7 +4,7 @@ Import Sorts.S.
 Import M.notations.
 Import ProdNotations.
 
-Require Import Strings.String.
+From Stdlib Require Import String.
 Import Mtac2.lib.List.ListNotations.
 
 Set Universe Polymorphism.

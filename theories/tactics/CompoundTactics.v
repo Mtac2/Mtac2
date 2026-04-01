@@ -4,7 +4,7 @@ Import M. Import M.notations.
 Import ListNotations.
 Import ProdNotations.
 
-Require Import Strings.String.
+From Stdlib Require Import String.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

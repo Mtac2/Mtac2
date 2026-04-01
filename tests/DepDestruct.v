@@ -193,10 +193,10 @@ Abort.
 End ExampleReflect.
 
 Set Unicoq Try Solving Eqn.
-Require Vector.
+From Stdlib Require Vector.
 Module VectorExample.
 Import Vector.
-Goal forall n (v : t nat n), n = Coq.Lists.List.length (to_list v).
+Goal forall n (v : t nat n), n = Stdlib.Lists.List.length (to_list v).
 Proof.
   pose (it := iTele (fun n => @iBase (Typeₛ) (t nat n))).
   pose (vnil := ((@cBase Typeₛ it (aTele 0 aBase) (nil nat))) : CTele it).
@@ -204,7 +204,7 @@ Proof.
   fix f 2.
   intros n v.
   pose (a := (aTele n (aBase)) : ATele it).
-  pose (rt := M.eval (abstract_goal (rsort := Propₛ) (n = Coq.Lists.List.length (to_list v)) a v)).
+  pose (rt := M.eval (abstract_goal (rsort := Propₛ) (n = Stdlib.Lists.List.length (to_list v)) a v)).
   simpl in vcons.
   cbn beta iota zeta delta -[RTele] in rt.
   assert (N : branch_of_CTele rt vnil).

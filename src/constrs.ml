@@ -218,9 +218,9 @@ end
 module CoqPositive = struct
   open Constrs
 
-  let xI = mkGlobal "Coq.Numbers.BinNums.xI"
-  let xO = mkGlobal "Coq.Numbers.BinNums.xO"
-  let xH = mkGlobal "Coq.Numbers.BinNums.xH"
+  let xI = mkGlobal "Corelib.Numbers.BinNums.xI"
+  let xO = mkGlobal "Corelib.Numbers.BinNums.xO"
+  let xH = mkGlobal "Corelib.Numbers.BinNums.xH"
 
   let isH env sigma = isGlobal env sigma xH
   let isI env sigma = isGlobal env sigma xI
@@ -255,9 +255,9 @@ end
 
 module CoqN = struct
   open Constrs
-  (* let tN = Constr.mkConstr "Coq.Numbers.BinNums.N" *)
-  let h0 = mkGlobal "Coq.Numbers.BinNums.N0"
-  let hP = mkGlobal "Coq.Numbers.BinNums.Npos"
+  (* let tN = Constr.mkConstr "Corelib.Numbers.BinNums.N" *)
+  let h0 = mkGlobal "Corelib.Numbers.BinNums.N0"
+  let hP = mkGlobal "Corelib.Numbers.BinNums.Npos"
 
   let is0 env sigma = isGlobal env sigma h0
   let isP env sigma = isGlobal env sigma hP
@@ -290,9 +290,9 @@ end
 module CoqZ = struct
   open Constrs
 
-  let z0 =   mkGlobal "Coq.Numbers.BinNums.Z0"
-  let zpos = mkGlobal "Coq.Numbers.BinNums.Zpos"
-  let zneg = mkGlobal "Coq.Numbers.BinNums.Zneg"
+  let z0 =   mkGlobal "Corelib.Numbers.BinNums.Z0"
+  let zpos = mkGlobal "Corelib.Numbers.BinNums.Zpos"
+  let zneg = mkGlobal "Corelib.Numbers.BinNums.Zneg"
 
   let to_coq n =
     if n = 0 then
@@ -306,9 +306,9 @@ end
 module CoqBool = struct
   open ConstrBuilder
 
-  let boolBuilder = from_string "Coq.Init.Datatypes.bool"
-  let trueBuilder = from_string "Coq.Init.Datatypes.true"
-  let falseBuilder = from_string "Coq.Init.Datatypes.false"
+  let boolBuilder = from_string "Corelib.Init.Datatypes.bool"
+  let trueBuilder = from_string "Corelib.Init.Datatypes.true"
+  let falseBuilder = from_string "Corelib.Init.Datatypes.false"
 
   let mkType = build boolBuilder
   let mkTrue = build trueBuilder
@@ -326,7 +326,7 @@ end
 module CoqAscii = struct
   open ConstrBuilder
 
-  let asciiBuilder = from_string "Coq.Strings.Ascii.Ascii"
+  let asciiBuilder = from_string "Stdlib.Strings.Ascii.Ascii"
 
   let from_coq (env, sigma) c =
     let (h, args) = decompose_appvect sigma c in
@@ -347,8 +347,8 @@ end
 module CoqString = struct
   open ConstrBuilder
 
-  let emptyBuilder = from_string "Coq.Strings.String.EmptyString"
-  let stringBuilder = from_string "Coq.Strings.String.String"
+  let emptyBuilder = from_string "Stdlib.Strings.String.EmptyString"
+  let stringBuilder = from_string "Stdlib.Strings.String.String"
 
   exception NotAString
 
@@ -383,8 +383,8 @@ end
 module CoqUnit = struct
   open ConstrBuilder
 
-  let unitBuilder = from_string "Coq.Init.Datatypes.unit"
-  let ttBuilder = from_string "Coq.Init.Datatypes.tt"
+  let unitBuilder = from_string "Corelib.Init.Datatypes.unit"
+  let ttBuilder = from_string "Corelib.Init.Datatypes.tt"
 
   let mkType = build unitBuilder
   let mkTT = build ttBuilder

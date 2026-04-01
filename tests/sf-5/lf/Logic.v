@@ -578,7 +578,7 @@ MProof.
     to import a special Coq library that allows rewriting with other
     formulas besides equality: *)
 
-Require Import Coq.Setoids.Setoid.
+From Corelib Require Import Setoid.
 
 (** Here is a simple example demonstrating how these tactics work with
     [iff].  First, let's prove a couple of basic iff equivalences... *)

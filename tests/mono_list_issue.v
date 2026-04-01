@@ -1,4 +1,4 @@
-From Coq Require Import List.
+From Stdlib Require Import List.
 Module PolyList.
 
 Polymorphic Inductive list (A : Type) : Type :=

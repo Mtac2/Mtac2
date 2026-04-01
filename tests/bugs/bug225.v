@@ -1,6 +1,6 @@
 From Mtac2 Require Import Base Datatypes.
 Import M.notations.
-From Coq Require Import String.
+From Stdlib Require Import String.
 
 Definition reduce_nu :=
   ltac:(
