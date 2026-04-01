@@ -42,10 +42,10 @@ Inductive msigT2 (A:Type) (P Q:A -> Type) : Type :=
 
 (* Notations *)
 
-Arguments msig (A P)%type.
-Arguments msig2 (A P Q)%type.
-Arguments msigT (A P)%type.
-Arguments msigT2 (A P Q)%type.
+Arguments msig (A P)%_type.
+Arguments msig2 (A P Q)%_type.
+Arguments msigT (A P)%_type.
+Arguments msigT2 (A P Q)%_type.
 
 (* Notation "{ x  |  P }" := (msig (fun x => P)) : type_scope. *)
 (* Notation "{ x  |  P  & Q }" := (msig2 (fun x => P) (fun x => Q)) : type_scope. *)

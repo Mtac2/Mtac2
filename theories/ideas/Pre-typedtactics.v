@@ -136,7 +136,7 @@ Definition do_def n {A:Prop} (a:A) :=
 (* *)
 
 Definition myprod := prod.
-Arguments myprod _%type _%type.
+Arguments myprod _%_type _%_type.
 
 Notation "T1 '|m-' G" := (myprod T1 G)
   (at level 98, no associativity,

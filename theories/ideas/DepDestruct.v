@@ -34,7 +34,7 @@ Declare Scope ITele_scope.
 Delimit Scope ITele_scope with IT.
 Bind Scope ITele_scope with ITele.
 Arguments iBase {_} _.
-Arguments iTele {_ _%type} _.
+Arguments iTele {_ _%_type} _.
 
 (** [ATele it] describes a applied version of the type described in
     [it]. For instance, if [it] represents the type [T] equals to
@@ -46,14 +46,14 @@ Arguments iTele {_ _%type} _.
 (* Delimit Scope ATele_scope with AT. *)
 (* Bind Scope ATele_scope with ATele. *)
 (* Arguments aBase {_ _}. *)
-(* Arguments aTele {_ _%type _} _%AT _. *)
+(* Arguments aTele {_ _%_type _} _%_AT _. *)
 
 Fixpoint ATele {sort} (it : ITele sort) : Type :=
   match it with
   | iBase T => unit
   | @iTele _ T f => { t : T & ATele (f t) }
   end.
-Arguments ATele {_} !_%IT : simpl nomatch.
+Arguments ATele {_} !_%_IT : simpl nomatch.
 Declare Scope ATele_scope.
 Delimit Scope ATele_scope with AT.
 Bind Scope ATele_scope with ATele.
@@ -67,7 +67,7 @@ Fixpoint ITele_App {isort} {it : ITele isort} : forall (args : ATele it), isort 
   | iBase T => fun _ => T
   | iTele f => fun '(existT _ t a) => ITele_App a
   end.
-Arguments ITele_App {_ !_%IT} !_%AT : simpl nomatch.
+Arguments ITele_App {_ !_%_IT} !_%_AT : simpl nomatch.
 
 (** Represents a constructor of an inductive type. *)
 Inductive CTele {sort} (it : ITele sort) : Type :=
@@ -76,9 +76,9 @@ Inductive CTele {sort} (it : ITele sort) : Type :=
 Declare Scope CTele_scope.
 Delimit Scope CTele_scope with CT.
 Bind Scope CTele_scope with CTele.
-Arguments CTele {_} _%IT.
-Arguments cBase {_ _%IT} _%AT _.
-Arguments cProd {_ _%IT _%type} _.
+Arguments CTele {_} _%_IT.
+Arguments cBase {_ _%_IT} _%_AT _.
+Arguments cProd {_ _%_IT _%_type} _.
 
 
 (** Represents a constructor of an inductive type where all arguments are non-dependent *)
@@ -102,7 +102,7 @@ Fixpoint RTele {isort : Sort} (rsort : Sort) (it : ITele isort) : Type :=
   | iBase T => T -> rsort
   | iTele f => forall t, RTele rsort (f t)
   end.
-Arguments RTele {_} _ _%IT.
+Arguments RTele {_} _ _%_IT.
 
 Fixpoint RTele_App {isort rsort} {it : ITele isort} : forall (a : ATele it), RTele rsort it -> selem_of (ITele_App a) -> stype_of rsort :=
   match it as it' with

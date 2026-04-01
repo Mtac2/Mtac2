@@ -53,7 +53,7 @@ Definition use {A} (t : tactic) : ttac A :=
     gs <- t g;
     let gs := dreduce (@mmap) (mmap (fun '(m: _, g) => g) gs) in
     M.ret (m: a, gs).
-Arguments use [_] _%tactic.
+Arguments use [_] _%_tactic.
 
 Definition idtac {A} : ttac A :=
     '(m: a, g) <- to_goal A;
@@ -69,7 +69,7 @@ Definition by' {A} (t : tactic) : ttac A :=
   | [m:] => ret (m: a, [m:])
   | _ => failwith "couldn't solve"
   end.
-Arguments by' [_] _%tactic.
+Arguments by' [_] _%_tactic.
 
 (** Coercion between an [M] program and a [ttac] *)
 Definition lift {A} (t : M A) : ttac A :=
@@ -364,7 +364,7 @@ Fixpoint match_goal_base (u : Unification)
 End MatchGoalTT.
 Import MatchGoalTT.
 
-Arguments match_goal_base _ _%TT.
+Arguments match_goal_base _ _%_TT.
 
 Module notations.
 (* Notation "[t: x | .. | y ]" := (TT.compi x (.. (TT.compi y (M.ret I)) ..)). *)

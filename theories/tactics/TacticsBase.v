@@ -299,7 +299,7 @@ Fixpoint gmap@{a b+} {A:Type@{a}} {B:Type@{b}} (tacs : mlist (gtactic A)) (gs : 
 
 Class Seq (A B C : Type) : Prop :=
   seq : gtactic A -> C -> gtactic B.
-Arguments seq {A B C _} _%tactic _%tactic.
+Arguments seq {A B C _} _%_tactic _%_tactic.
 
 #[global] Instance seq_one@{a b+} {A:Type@{a}} {B:Type@{b}} : Seq A B (gtactic B) :=
   fun t1 t2 => bind t1 (fun _ => t2).

@@ -31,7 +31,7 @@ Coercion n_to_g A n (nt : ntactic A n) : gtactic A := fun g=>pv <- nt g; M.ret p
     the composition of an ntactic with nth gtactics. *)
 Class NSeq (A B : Type) n (nt: ntactic A n) (l: mlist (gtactic B)) (pf: mlength l = n) :=
   nseq : gtactic B.
-Arguments nseq {A B _} _%tactic _%tactic _ {_}.
+Arguments nseq {A B _} _%_tactic _%_tactic _ {_}.
 
 Import Mtac2.lib.List.
 
