@@ -474,15 +474,15 @@ module UnificationStrategy = struct
 
   let evar_conv ts env sigma conv_pb t1 t2 =
     try
-      match evar_conv_x (default_flags_of ts) env sigma conv_pb t1 t2 with
+      match evar_conv_x (default_flags_of sigma ts) env sigma conv_pb t1 t2 with
       | Success sigma -> Success (solve_unif_constraints_with_heuristics env sigma)
       | e -> e
     with _ -> UnifFailure (sigma, Pretype_errors.ProblemBeyondCapabilities)
 
   let funs = [|
-    (fun _-> Unicoq.Munify.unify_evar_conv);
-    Unicoq.Munify.unify_match;
-    Unicoq.Munify.unify_match_nored;
+    (fun evars ts env sigma conv_pb t1 t2 -> Unicoq.Munify.unify_evar_conv sigma ts env sigma conv_pb t1 t2);
+    (fun evars ts env sigma conv_pb t1 t2 -> Unicoq.Munify.unify_match evars sigma ts env sigma conv_pb t1 t2);
+    (fun evars ts env sigma conv_pb t1 t2 -> Unicoq.Munify.unify_match_nored evars sigma ts env sigma conv_pb t1 t2);
     (fun _ -> evar_conv)
   |]
 
@@ -1775,7 +1775,7 @@ and primitive ctxt vms mh univs reduced_term =
               begin
                 let ta = to_econstr ta in
                 let (_, d, dty, body) = destLetIn sigma c in
-                let eqaty = Unicoq.Munify.unify_evar_conv TransparentState.full env sigma Conversion.CONV ta dty in
+                let eqaty = Unicoq.Munify.unify_evar_conv sigma TransparentState.full env sigma Conversion.CONV ta dty in
                 let eqtypes = match eqaty with Evarsolve.Success _ -> true | _ -> false in
                 if not eqtypes then
                   efail (Exceptions.mkNotTheSameType sigma env ta)
