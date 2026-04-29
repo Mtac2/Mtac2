@@ -1406,17 +1406,18 @@ let reduce_noshare infos t stack =
 let mk_fapp hd args =
   let open Constr in
   let fargs = Array.mapi (fun i _ -> mkRel (i + 2)) args in
-  let subst = Array.fold_right (fun arg accu -> Esubst.subs_cons arg accu) args (Esubst.subs_id 0) in
-  let subst = Esubst.subs_cons hd subst in
-  CClosure.mk_clos (subst, UVars.Instance.empty) (mkApp (mkRel 1, fargs))
+  let usubs_id = Esubst.subs_id 0, UVars.Instance.empty in
+  let usubs = Array.fold_right (fun arg accu -> CClosure.usubs_cons arg accu) args usubs_id in
+  let usubs = CClosure.usubs_cons hd usubs in
+  CClosure.mk_clos usubs (mkApp (mkRel 1, fargs))
 
 (* Create a new fconstr cell to break sharing *)
 let mk_cell c =
   let open Constr in
-  let subst = Esubst.subs_cons c (Esubst.subs_id 0) in
+  let usubs = CClosure.usubs_cons c (Esubst.subs_id 0, UVars.Instance.empty) in
   (* This is a dummy cast that is immediately reduced away. We cannot put the
      Rel directly otherwise mk_clos is optimized to keep sharing. *)
-  CClosure.mk_clos (subst, UVars.Instance.empty) (mkCast (mkRel 1, DEFAULTcast, mkProp))
+  CClosure.mk_clos usubs (mkCast (mkRel 1, DEFAULTcast, mkProp))
 
 let pop_args num stack =
   let rec pop_args num stack =
