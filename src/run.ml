@@ -935,7 +935,10 @@ let env_replacing sigma env x ty =
   let name_env = named_context env in
   let env = Environ.reset_context env in
   let nx = destVar sigma x in
-  let name_env = List.map (fun decl -> if get_id decl <> nx then decl else map_type (fun _ -> ty) decl) name_env in
+  let name_env = List.map (fun decl ->
+    if get_id decl <> nx then decl else
+      let id, bdy, _ = to_tuple decl in
+      of_tuple (id, bdy, ty)) name_env in
   let env = push_named_context name_env env in
   env, sigma
 
