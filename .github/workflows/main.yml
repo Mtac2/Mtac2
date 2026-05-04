@@ -26,8 +26,6 @@ jobs:
         coq_version:
         #  - '8.15'
           - 'dev'
-        ocaml_version:
-          - '4.12.1-flambda'
       # at most 20 concurrent jobs per free account:
       # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#usage-limits
       max-parallel: 4
@@ -44,7 +42,6 @@ jobs:
         with:
           opam_file: 'opam'
           coq_version: ${{ matrix.coq_version }}
-          ocaml_version: ${{ matrix.ocaml_version }}
           export: 'OPAMWITHTEST'
         env:
           OPAMWITHTEST: 'true'
