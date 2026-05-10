@@ -1,7 +1,7 @@
 package "plugin" (
   directory = "."
   description = "Coq Mtac2"
-  requires = "coq-core.plugins.ltac coq-unicoq.plugin"
+  requires = "rocq-runtime.plugins.ltac coq-unicoq.plugin"
   archive(byte) = "MetaCoqPlugin.cma"
   archive(native) = "MetaCoqPlugin.cmxa"
   plugin(byte) = "MetaCoqPlugin.cma"
