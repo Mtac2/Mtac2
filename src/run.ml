@@ -871,7 +871,7 @@ let new_env (env, sigma) hyps =
          be defined in the named context *)
       if check_vars sigma odef ty idset then
         let id = destVar sigma var in
-        (id::idlist, Id.Set.add id idset, subs, push_named (Context.Named.Declaration.of_tuple (annotR id, odef, ty)) env')
+        (id::idlist, Id.Set.add id idset, subs, push_named ProofVar (Context.Named.Declaration.of_tuple (annotR id, odef, ty)) env')
       else
         raise MissingDep
     ) hyps ([], Id.Set.empty, [], empty_env)
@@ -922,23 +922,30 @@ let build_hypotheses ?univ_list ?univ_hyp sigma env =
 (* builds the context without x (which should be a variable) *)
 let env_without sigma env x =
   let open Context.Named.Declaration in
-  let name_env = named_context env in
+  let name_env = named_context_val env in
   let env = Environ.reset_context env in
   let nx = destVar sigma x in
-  let name_env = List.filter (fun decl -> get_id decl <> nx) name_env in
+  let name_env = List.filter_map (fun decl ->
+    if get_id decl <> nx then Some (Environ.var_status_ctxt (get_id decl) name_env, decl) else None)
+    (EConstr.named_context_of_val name_env)
+  in
   let env = push_named_context name_env env in
   env, sigma
 
 (* builds the context without x (which should be a variable) *)
 let env_replacing sigma env x ty =
   let open Context.Named.Declaration in
-  let name_env = named_context env in
+  let name_env = named_context_val env in
   let env = Environ.reset_context env in
   let nx = destVar sigma x in
   let name_env = List.map (fun decl ->
-    if get_id decl <> nx then decl else
+    if get_id decl <> nx then
+      Environ.var_status_ctxt (get_id decl) name_env, decl
+    else
       let id, bdy, _ = to_tuple decl in
-      of_tuple (id, bdy, ty)) name_env in
+      ProofVar, of_tuple (id, bdy, ty))
+    (EConstr.named_context_of_val name_env)
+  in
   let env = push_named_context name_env env in
   env, sigma
 
@@ -1754,7 +1761,7 @@ and primitive ctxt vms mh univs reduced_term =
                 | exception CoqOption.NotAnOption -> efail (Exceptions.mkStuckTerm sigma env s)
                 | ot ->
                     let nu = Nu (name, ctxt.env, ctxt.backtrace) in
-                    let env = push_named (Context.Named.Declaration.of_tuple (annotR name, ot, a)) env in
+                    let env = push_named ProofVar (Context.Named.Declaration.of_tuple (annotR name, ot, a)) env in
                     let backtrace = Backtrace.push (fun () -> InternalNu (name)) ctxt.backtrace in
                     let nus = ctxt.nus + 1 in
                     let stack = Zapp [|of_econstr (mkVar name)|] :: stack in
@@ -1785,7 +1792,7 @@ and primitive ctxt vms mh univs reduced_term =
                   efail (Exceptions.mkNotTheSameType sigma env ta)
                 else
                   let nu = Nu (name, ctxt.env, ctxt.backtrace) in
-                  let env = push_named (Context.Named.Declaration.of_tuple (annotR name, Some d, dty)) env in
+                  let env = push_named ProofVar (Context.Named.Declaration.of_tuple (annotR name, Some d, dty)) env in
                   let var = mkVar name in
                   let body = Vars.subst1 var body in
                   let backtrace = Backtrace.push (fun () -> InternalNu (name)) ctxt.backtrace in
@@ -2435,7 +2442,7 @@ and cvar vms ctxt ty ohyps =
 (* returns the enviornment and substitution without db rels *)
 let db_to_named sigma env =
   let open Context in
-  let env' = push_named_context (named_context env) (reset_context env) in
+  let env' = reset_with_named_context (named_context_val env) env in
   let vars = Named.to_vars (named_context env) in
   let _, subs, env = CList.fold_right_i (fun n var (vars, subs, env') ->
     (* the definition might refer to previously defined indices
@@ -2452,7 +2459,7 @@ let db_to_named sigma env =
       name
     in
     let nvar = Named.Declaration.of_tuple (id, odef, ty) in
-    Id.Set.add id.binder_name vars, (n, mkVar id.binder_name) :: subs, push_named nvar env'
+    Id.Set.add id.binder_name vars, (n, mkVar id.binder_name) :: subs, push_named ProofVar nvar env'
   ) 1 (rel_context env) (vars, [], env') in
   subs, env
 
