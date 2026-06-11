@@ -2126,7 +2126,7 @@ and primitive ctxt vms mh univs reduced_term =
                Otherwise it could be literally anything. In that case, we expand [c_head].
             *)
             let c_proj, _, c_rval = destProj sigma c_head in
-            let c_constant = (Projection.constant c_proj) in
+            let c_constant = (Environ.projection_repr_constant env (Projection.repr c_proj)) in
             if isConstant sigma env c_constant t_head then
               let n_params = Structures.Structure.projection_nparams env c_constant in
               let _t_params, t_args = List.chop n_params t_args in
