@@ -11,6 +11,7 @@ open Environ
 open Evd
 open Context
 open Constr
+module CVars = Vars
 open EConstr
 open Termops
 open Reductionops
@@ -1254,12 +1255,21 @@ let declare_mind env sigma params sigs mut_constrs =
   ) [] (zip (inds, constrs)) in
   let mind_entry_inds = List.rev mind_entry_inds in
   let univs, ubinders = Evd.univ_entry ~poly:PolyFlags.default sigma in
-  let uctx = match univs with
+  let usubst, uctx = match univs with
     | UState.Monomorphic_entry ctx ->
       let () = Global.push_context_set ctx in
-      Entries.Monomorphic_ind_entry
-    | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
+      UVars.empty_sort_subst, Entries.Monomorphic_ind_entry
+    | UState.Polymorphic_entry uctx ->
+      let uinst, auctx = UVars.abstract_universes uctx in
+      UVars.make_instance_subst uinst, Entries.Polymorphic_ind_entry auctx
   in
+  let nf_univs c = CVars.subst_univs_level_constr usubst c in
+  let mind_entry_inds = List.map (fun ind ->
+    { ind with mind_entry_arity = nf_univs ind.mind_entry_arity;
+               mind_entry_lc = List.map nf_univs ind.mind_entry_lc })
+    mind_entry_inds
+  in
+  let mind_entry_params = CVars.subst_univs_level_context usubst mind_entry_params in
   let _ = DeclareInd.declare_mutual_inductive_with_eliminations
             {mind_entry_record=None;
              mind_entry_finite=Declarations.Finite;
