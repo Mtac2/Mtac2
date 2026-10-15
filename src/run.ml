@@ -2326,8 +2326,7 @@ and primitive ctxt vms mh univs reduced_term =
   | MConstr (Mexisting_instance, (name, prio, global)) ->
       let global = CoqBool.from_coq (env, sigma) (to_econstr global) in
       let name = CoqString.from_coq (env, sigma) (to_econstr name) in
-      let path = Libnames.path_of_string name in
-      let qualid = Libnames.qualid_of_path path in
+      let qualid = Libnames.qualid_of_string name in
       let prio = CoqOption.from_coq sigma env (to_econstr prio) in
       let open Typeclasses in
       let hint_priority = Option.map (CoqN.from_coq (env, sigma)) prio in
