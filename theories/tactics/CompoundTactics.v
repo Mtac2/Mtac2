@@ -57,11 +57,11 @@ Program Definition destruct_eq {A} (t: A) : tactic :=
 
 Module notations.
 
-Notation "'uid' v" := (fun v:unit=>unit) (at level 0).
+Notation "'uid' v" := (fun v:unit=>unit) (at level 0, v at level 0).
 Notation "'variabilize' t 'as' v" :=
   (
     cvariabilize_base false t (FreshFrom (uid v)) (fun _=>T.idtac)
-  ) (at level 0, t at next level, v at next level).
+  ) (at level 0, t at level 0, v at level 0).
 
 End notations.
 End CT.

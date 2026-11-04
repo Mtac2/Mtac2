@@ -38,7 +38,7 @@ Notation "t 'mwith' ( k := u )" :=
 (** creation of exceptions *)
 Definition new_exception name := M.declare dok_Definition name true exception;; M.ret tt.
 Definition binder_exception (f: unit->unit) := M.get_binder_name f >>= new_exception.
-Notation "'New' 'Exception' n" := (binder_exception (fun n=>n)) (at level 0, n at next level).
+Notation "'New' 'Exception' n" := (binder_exception (fun n=>n)) (at level 0, n at level 0).
 
 Definition Check {A} (x:A) := M.print_term A.
 

@@ -73,13 +73,13 @@ Definition trewrite (d : RewriteDirection) (args : mlist dyn) : tactic := fun g 
 
 Notation "'rewrite' '->' x , .. , z" :=
   (trewrite RightRewrite (mcons (Dyn x) .. (mcons (Dyn z) [m:]) ..))
-    (at level 0, x at next level, z at next level).
+    (at level 0, x at level 0, z at level 0).
 Notation "'rewrite' '<-' x , .. , z" :=
   (trewrite LeftRewrite (mcons (Dyn x) .. (mcons (Dyn z) [m:]) ..))
-    (at level 0, x at next level, z at next level).
+    (at level 0, x at level 0, z at level 0).
 Notation "'rewrite' x , .. , z" :=
   (trewrite RightRewrite (mcons (Dyn x) .. (mcons (Dyn z) [m:]) ..))
-    (at level 0, x at next level, z at next level).
+    (at level 0, x at level 0, z at level 0).
 
 Ltac in_rrewrite_all x := rewrite x in *.
 Ltac in_rrewrite1 x a := rewrite x in a.
@@ -103,13 +103,13 @@ Definition trewrite_in {T} (d: RewriteDirection) (x: T) (args: mlist dyn) : tact
 
 Notation "'rewrite_in' '->' a ; x , .. , z" :=
   (trewrite_in RightRewrite a (mcons (Dyn x) .. (mcons (Dyn z) [m:]) ..))
-    (at level 0, x at next level, z at next level).
+    (at level 0, x at level 0, z at level 0).
 Notation "'rewrite_in' '<-' a ; x , .. , z" :=
   (trewrite_in LeftRewrite a (mcons (Dyn x) .. (mcons (Dyn z) [m:]) ..))
-    (at level 0, x at next level, z at next level).
+    (at level 0, x at level 0, z at level 0).
 Notation "'rewrite_in' a ; x , .. , z" :=
   (trewrite_in RightRewrite a (mcons (Dyn x) .. (mcons (Dyn z) [m:]) ..))
-    (at level 0, x at next level, z at next level).
+    (at level 0, x at level 0, z at level 0).
 
 Notation "'rewrite_*' '->' a" := (trewrite_in RightRewrite a [m:]) (at level 0).
 Notation "'rewrite_*' '<-' a" := (trewrite_in LeftRewrite a [m:]) (at level 0).

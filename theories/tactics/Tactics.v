@@ -636,7 +636,7 @@ Module notations.
     (intro_cont (fun x=>t)) (at level 0, right associativity) : tactic_scope.
   Notation "'cintros' x .. y '{-' t '-}'" :=
     (intro_cont (fun x=>.. (intro_cont (fun y=>t)) ..))
-    (at level 0, x binder, y binder, t at next level, right associativity) : tactic_scope.
+    (at level 0, x binder, y binder, t at level 200, right associativity) : tactic_scope.
 
   Notation "'simpl'" := (treduce RedSimpl) : tactic_scope.
   Notation "'hnf'" := (treduce RedHNF) : tactic_scope.
