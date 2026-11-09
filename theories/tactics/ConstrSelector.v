@@ -23,7 +23,7 @@ Unset Universe Minimization ToSet.
    form A1 -> ... -> An -> I *)
 Definition get_constrs :=
   mfix1 fill (T : Type) : M (mlist dyn) :=
-    mmatch T return M (mlist dyn) with
+    (mmatch T return M (mlist dyn) with
     | [? A B] A -> B => fill B
     | [? A (P:A->Type)] forall x, P x =>
       M.nu (FreshFrom T) mNone (fun x=>
@@ -32,7 +32,7 @@ Definition get_constrs :=
     | _ =>
       '(mkInd_dyn _ _ _ l) <- M.constrs T;
       M.ret l
-    end%MC.
+    end)%MC.
 
 (** Given a constructor c, it returns its index. *)
 Definition index {A} (c: A) : M _ :=

@@ -47,9 +47,9 @@ Arguments branch_pattern _ _ &.
 Declare Custom Entry Mtac2_pattern.
 
 Notation "[¿  s .. t ]  ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
-  (in custom Mtac2_pattern at level 202, s binder, t binder, ps custom Mtac2_pattern, only parsing).
+  (in custom Mtac2_pattern at level 202, s binder, t binder, ps custom Mtac2_pattern at level 202, only parsing).
 Notation "'[S?'  s .. t ] ps" := (psort (fun s => .. (psort (fun t => ps)) ..))
-  (in custom Mtac2_pattern at level 202, s binder, t binder, ps custom Mtac2_pattern).
+  (in custom Mtac2_pattern at level 202, s binder, t binder, ps custom Mtac2_pattern at level 202).
 
 Notation "[? x .. y ] ps" :=
   (ptele (fun x => .. (ptele (fun y => ps)).. ))

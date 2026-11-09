@@ -46,7 +46,7 @@ Local Notation "\fnu x .. z , t" :=
 
 Local Notation "'\sfnu' s 'for' x .. z , t" :=
 (M.nu (FreshFromStr s) mNone (fun x => .. (M.nu (FreshFromStr s) mNone (fun z => t)) ..))
-(at level 101, x binder, z binder).
+(at level 101, x binder, z binder, t at level 200).
 
 
 Local Notation "\fnuf x .. z 'for' F , t" :=

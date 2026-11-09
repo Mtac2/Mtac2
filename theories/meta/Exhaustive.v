@@ -62,4 +62,4 @@ Notation "'exhaustively' ls" :=
   (
     ltac:(mrun (check_exhaustiveness ls (mNone)))
   )
-    (in custom Mtac2_with_branch at level 91, ls custom Mtac2_with_branch).
+    (in custom Mtac2_with_branch at level 91, ls custom Mtac2_with_branch at level 91).

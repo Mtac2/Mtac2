@@ -72,13 +72,13 @@ Notation "'<[decapp' a 'return' T 'with' b ]>" :=
   (
     ltac:(mrun (decompose_app (B:=T) a b))
   )
-  (at level 0, a at next level, b at next level) : M_scope.
+  (at level 0, a at level 200, b at level 200) : M_scope.
 
 Notation "'<[decapp' a 'with' b ]>" :=
   (
     ltac:(mrun (decompose_app (A:=?[A]) (B:=fun _ : ?A => _) a b))
   )
-  (at level 0, a at next level, b at next level) : M_scope.
+  (at level 0, a at level 200, b at level 200) : M_scope.
 
 
 Local Definition mtele_convert' {A : Type} {B : A -> Prop} {G : Type} {mt:MTele} {C : MTele_ConstT A mt} :
@@ -106,10 +106,10 @@ Notation "'<[decapp' a 'return' T 'with' b ]>" :=
   (
       ltac:(mrun (decompose_app_tactic (B:=T) a b))
   )
-  (at level 0, a at next level, b at next level) : tactic_scope.
+  (at level 0, a at level 200, b at level 200) : tactic_scope.
 
 Notation "'<[decapp' a 'with' b ]>" :=
   (
     ltac:(mrun (decompose_app_tactic (A:=?[A]) (B:=fun _ : ?A => _) a b))
   )
-  (at level 0, a at next level, b at next level) : tactic_scope.
+  (at level 0, a at level 200, b at level 200) : tactic_scope.

@@ -457,7 +457,7 @@ Module monad_notations.
      format "'[' '[' t1 ;;  ']' ']' '/' t2 ") : M_scope.
 
   Notation "f =<< t" := (bind t f) (at level 70, only parsing) : M_scope.
-  Notation "t >>= f" := (bind t f) (at level 70) : M_scope.
+  Notation "t >>= f" := (bind t f) (at level 69, left associativity) : M_scope.
 
   Infix "<$>" := fmap (at level 61, left associativity) : M_scope.
   Infix "<*>" := fapp (at level 61, left associativity) : M_scope.
@@ -898,7 +898,7 @@ Module notations.
   automagic spaces are inserted between the arguments. *)
   Notation "'mfail' s1 .. sn" :=
     ((fail_strs (mcons (Dyn s1) .. (mcons (Dyn sn) mnil) ..)) >>= M.failwith)
-      (at level 0, s1 at next level, sn at next level) : M_scope.
+      (at level 0, s1 at level 9, sn at level 9) : M_scope.
 End notations.
 
 Definition unfold_projection {A} (y : A) : t A :=

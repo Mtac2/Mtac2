@@ -428,7 +428,7 @@ Module notations.
      right associativity, format "'[' '`' r1  ..  rn  '<-'  '[' t1 ;  ']' ']' '/' t2 ") : tactic_scope.
 
   Notation "f =<< t" := (bind t f) (at level 70, only parsing) : tactic_scope.
-  Notation "t >>= f" := (bind t f) (at level 70) : tactic_scope.
+  Notation "t >>= f" := (bind t f) (at level 69, left associativity) : tactic_scope.
 
   Infix "<$>" := fmap (at level 61, left associativity) : tactic_scope.
   Infix "<*>" := fapp (at level 61, left associativity) : tactic_scope.
