@@ -41,9 +41,8 @@ let glob_mtac_type ist r =
           sigma, ty, (fun ty -> MonoProgram ty) (* constraints already registered *)
       | Declarations.Polymorphic au ->
           (* need to instantiate and register the abstract universes a *)
-          let sigma, (inst, ctx) = Evd.with_supply sigma (fun s -> UnivGen.fresh_instance_from s au None) in
           (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
-          let sigma = Evd.merge_sort_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
+          let sigma, inst = Evd.fresh_abstract_instance ~rigid:(Evd.UnivFlexible true) sigma au in
           sigma, Vars.subst_instance_constr inst ty, (fun ty -> PolyProgram (au, ty))
     in
     let ty = EConstr.of_constr ty in
@@ -198,9 +197,8 @@ module MetaCoqRun = struct
         | StaticallyChecked (PolyProgram (au, ty), Names.GlobRef.ConstRef  c) ->
             begin
               try
-                let sigma, (inst, ctx) = Evd.with_supply sigma (fun s -> UnivGen.fresh_instance_from s au None) in
                 (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
-                let sigma = Evd.merge_sort_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
+                let sigma, inst = Evd.fresh_abstract_instance ~rigid:(Evd.UnivFlexible true) sigma au in
                 let sigma = Evarconv.unify_leq_delay env sigma concl ty in
                 ((false, sigma, ty, EConstr.UnsafeMonomorphic.mkConst c), None)
               with Evarconv.UnableToUnify(_,_) -> CErrors.user_err (Pp.str "Different types")

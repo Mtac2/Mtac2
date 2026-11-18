@@ -1018,8 +1018,8 @@ let run_declare_def env sigma kind name opaque ty bod =
   let kn = Declare.declare_constant ~name:id ~kind:(Decls.IsDefinition kind) (Declare.DefinitionEntry ce) in
   let dref = GlobRef.ConstRef kn in
   let () = Declare.Hook.call ?hook:(vernac_definition_hook PolyFlags.default kind)
-             { Declare.Hook.S.uctx; obls=[]; scope=Locality.(Global ImportDefaultBehavior); dref;
-               univ_subst = UState.entry_subst ctx }  in
+             { Declare.Hook.S.uctx = UState.demote_global_univ_entry (fst ctx) uctx;
+               obls=[]; scope=Locality.(Global ImportDefaultBehavior); dref }  in
   let c = UnivGen.constr_of_monomorphic_global (Global.env ()) dref in
   let env = Global.env () in
   (* Feedback.msg_notice *)
