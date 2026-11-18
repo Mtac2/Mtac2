@@ -41,7 +41,7 @@ let glob_mtac_type ist r =
           sigma, ty, (fun ty -> MonoProgram ty) (* constraints already registered *)
       | Declarations.Polymorphic au ->
           (* need to instantiate and register the abstract universes a *)
-          let inst, ctx = UnivGen.fresh_instance_from au None in
+          let sigma, (inst, ctx) = Evd.with_supply sigma (fun s -> UnivGen.fresh_instance_from s au None) in
           (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
           let sigma = Evd.merge_sort_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
           sigma, Vars.subst_instance_constr inst ty, (fun ty -> PolyProgram (au, ty))
@@ -198,7 +198,7 @@ module MetaCoqRun = struct
         | StaticallyChecked (PolyProgram (au, ty), Names.GlobRef.ConstRef  c) ->
             begin
               try
-                let inst, ctx = UnivGen.fresh_instance_from au None in
+                let sigma, (inst, ctx) = Evd.with_supply sigma (fun s -> UnivGen.fresh_instance_from s au None) in
                 (* TODO: find out why UnivFlexible needs a bool & select correct bool. *)
                 let sigma = Evd.merge_sort_context_set ?sideff:(Some false) (Evd.UnivFlexible true) sigma ctx in
                 let sigma = Evarconv.unify_leq_delay env sigma concl ty in
