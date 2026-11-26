@@ -95,7 +95,7 @@ Definition construct_case A (x: A) (loop: forall r: dynr, M (moption (result x (
 
 Notation reduce_all := (reduce (RedStrong [rl:RedBeta; RedMatch; RedZeta;
            RedDeltaOnly [rl: Dyn elemr; Dyn typer; Dyn (@fu);
-             Dyn (@abs_app); Dyn (@meq_rect_r); Dyn (@meq_rect); Dyn (@meq_sym); Dyn (@internal_meq_rew_r);
+             Dyn (@abs_app); Dyn (@meq_rect_r); Dyn (@meq_rect); Dyn (@meq_sym); Dyn (@meq_rew_r);
              Dyn (@match_eq); Dyn (@non_dep_eq)]])).
 
 Definition abstract A B (x : A) (t : B) : M (moption _) :=

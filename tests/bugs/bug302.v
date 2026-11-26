@@ -12,7 +12,7 @@ Polymorphic Definition test : M unit :=
     eqp <- unify_or_fail UniCoq a tFalse;
     replace b eqp (
       (* here b : nat *)
-      let b' := rcbv (internal_meq_rew _ a (fun a => a) b tFalse eqp) in
+      let b' := rcbv (@meq_rew _ a (fun a => a) b tFalse eqp) in
       raise (omg_false b')
     )
   )

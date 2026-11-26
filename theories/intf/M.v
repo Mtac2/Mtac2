@@ -508,7 +508,7 @@ Definition open_pattern@{a p+} {A : Type@{a}} {P : A -> Type@{p}} {y} (E : Excep
    provided by the dependent pattern matching (which may be more reduced or
    otherwise mangled). *)
 Definition open_branch {A P} (E : Exception) (b : branch A (fun a => t (P a))) : forall y, t (P y) :=
-  Eval lazy beta zeta iota delta [internal_meq_rew open_pattern] in
+  Eval lazy beta zeta iota delta [meq_rew open_pattern] in
   match b in branch A' P' return
         forall (P_old : A' -> Type), P' =m= (fun a => t (P_old a)) -> forall y, t (P_old y)
   with

@@ -100,6 +100,8 @@ End equality.
   Defined.
 (* End Logic_lemmas. *)
 
+Scheme Rewriting for meq.
+
 (* Module EqNotations. *)
 (*   Notation "'rew' H 'in' H'" := (eq_rect _ _ H' _ H) *)
 (*     (at level 10, H' at level 10, *)
