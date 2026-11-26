@@ -1018,7 +1018,8 @@ let run_declare_def env sigma kind name opaque ty bod =
   let kn = Declare.declare_constant ~name:id ~kind:(Decls.IsDefinition kind) (Declare.DefinitionEntry ce) in
   let dref = GlobRef.ConstRef kn in
   let () = Declare.Hook.call ?hook:(vernac_definition_hook PolyFlags.default kind)
-             { Declare.Hook.S.uctx; obls=[]; scope=Locality.(Global ImportDefaultBehavior); dref }  in
+             { Declare.Hook.S.uctx = UState.demote_global_univ_entry (fst ctx) uctx;
+               obls=[]; scope=Locality.(Global ImportDefaultBehavior); dref }  in
   let c = UnivGen.constr_of_monomorphic_global (Global.env ()) dref in
   let env = Global.env () in
   (* Feedback.msg_notice *)
@@ -1256,9 +1257,9 @@ let declare_mind env sigma params sigs mut_constrs =
   let mind_entry_inds = List.rev mind_entry_inds in
   let univs, ubinders = Evd.univ_entry ~poly:PolyFlags.default sigma in
   let usubst, uctx = match univs with
-    | UState.Monomorphic_entry ctx ->
+    | UState.Monomorphic_entry (ctx, subst) ->
       let () = Global.push_context_set ctx in
-      UVars.empty_sort_subst, Entries.Monomorphic_ind_entry
+      (Sorts.QVar.Map.empty, subst), Entries.Monomorphic_ind_entry
     | UState.Polymorphic_entry uctx ->
       let uinst, auctx = UVars.abstract_universes uctx in
       UVars.make_instance_subst uinst, Entries.Polymorphic_ind_entry auctx
